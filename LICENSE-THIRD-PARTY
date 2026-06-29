@@ -1,0 +1,42 @@
+Third-Party Notices
+===================
+
+Current repository state:
+
+- No third-party source code is vendored in this repository.
+- No SRD rule data files are currently vendored beyond project specification
+  text. When SRD-derived rule data is added, it must follow LICENSE-CONTENT.md.
+
+Planned or referenced third-party materials:
+
+1. D&D 5e SRD 5.2.1
+
+   License: Creative Commons Attribution 4.0 International (CC-BY-4.0)
+   Source: https://www.dndbeyond.com/srd
+
+   Required attribution:
+
+   This work includes material from the System Reference Document 5.2.1
+   ("SRD 5.2.1") by Wizards of the Coast LLC, available at
+   https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative
+   Commons Attribution 4.0 International License, available at
+   https://creativecommons.org/licenses/by/4.0/legalcode.
+
+2. d20
+
+   License: MIT
+   Upstream: https://github.com/avrae/d20
+
+   If the project depends on, vendors, forks, or modifies d20, preserve the
+   upstream MIT license text, copyright notice, version, and any local
+   modifications in this file or in a dedicated third-party notice file.
+
+3. Avrae
+
+   License: GPL-3.0
+   Upstream: https://github.com/avrae/avrae
+
+   Avrae is referenced only as architecture and product experience research.
+   Do not copy Avrae source code, data files, or GPL-covered implementation
+   details into this repository unless the project intentionally accepts the
+   resulting GPL obligations.
