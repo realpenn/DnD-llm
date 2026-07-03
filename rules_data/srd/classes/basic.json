@@ -647,6 +647,17 @@
                         "srd.cure_wounds",
                         "srd.deft_explorer"
                     ]
+                },
+                "6": {
+                    "features": ["Roving"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving"
+                    ]
                 }
             },
             "subclasses": {

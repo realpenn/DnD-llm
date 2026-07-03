@@ -3274,6 +3274,31 @@
             "audit_label": "Deft Explorer"
         },
         {
+            "id": "srd.roving",
+            "name": "Roving",
+            "localization": {
+                "en": "Roving",
+                "zh": "漫游",
+                "aliases": ["Ranger Roving", "游侠漫游"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 6: Roving",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 6},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Ranger's Speed increases by 10 feet while not wearing Heavy armor, and the Ranger has a Climb Speed and Swim Speed equal to Speed."
+                }
+            ],
+            "audit_label": "Roving"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {

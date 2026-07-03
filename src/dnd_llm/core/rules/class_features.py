@@ -99,6 +99,14 @@ def barbarian_fast_movement_bonus(character: Character) -> int:
     return 10
 
 
+def ranger_roving_speed_bonus(character: Character) -> int:
+    if int(character.class_levels.get("ranger", 0)) < 6:
+        return 0
+    if is_wearing_heavy_armor(character):
+        return 0
+    return 10
+
+
 def monk_unarmored_movement_bonus(character: Character) -> int:
     monk_level = int(character.class_levels.get("monk", 0))
     if monk_level < 2:
@@ -117,7 +125,11 @@ def monk_unarmored_movement_bonus(character: Character) -> int:
 
 
 def class_feature_speed_bonus(character: Character) -> int:
-    return barbarian_fast_movement_bonus(character) + monk_unarmored_movement_bonus(character)
+    return (
+        barbarian_fast_movement_bonus(character)
+        + ranger_roving_speed_bonus(character)
+        + monk_unarmored_movement_bonus(character)
+    )
 
 
 def monk_martial_arts_die(character: Character) -> str:
@@ -523,6 +535,18 @@ def has_ranger_hunter_feature(character: Character, *, level: int) -> bool:
         int(character.class_levels.get("ranger", 0)) >= level
         and character.subclasses.get("ranger") == "hunter"
     )
+
+
+def ranger_roving_climb_speed_ft(character: Character) -> int | None:
+    if ranger_roving_speed_bonus(character) <= 0:
+        return None
+    return int(character.speed_ft) + class_feature_speed_bonus(character)
+
+
+def ranger_roving_swim_speed_ft(character: Character) -> int | None:
+    if ranger_roving_speed_bonus(character) <= 0:
+        return None
+    return int(character.speed_ft) + class_feature_speed_bonus(character)
 
 
 def ranger_hunters_prey_choice(character: Character) -> str | None:

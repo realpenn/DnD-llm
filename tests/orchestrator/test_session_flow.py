@@ -259,6 +259,23 @@ def test_advance_turn_budget_uses_monk_unarmored_movement(make_state) -> None:
     assert state.encounter.action_budgets["pc1"]["movement"] == 40
 
 
+def test_advance_turn_budget_uses_ranger_roving_when_not_in_heavy_armor(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"ranger": 6}
+    state.characters["pc1"].equipment = []
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    advanced = session.advance_turn("advance-to-roving-ranger")
+
+    assert isinstance(advanced, SessionResult)
+    assert advanced.accepted is True
+    assert state.encounter.current_combatant_id == "pc1"
+    assert state.encounter.action_budgets["pc1"]["movement"] == 40
+
+
 def test_session_rejects_out_of_turn_action(make_state) -> None:
     state = make_state()
     compendium = CompendiumLoader("rules_data").load()

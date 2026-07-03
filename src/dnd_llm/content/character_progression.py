@@ -245,6 +245,7 @@ CLASS_LEVEL_ACTIONS = {
         1: ["srd.favored_enemy_hunters_mark"],
         2: ["srd.cure_wounds", "srd.deft_explorer"],
         5: ["srd.extra_attack"],
+        6: ["srd.roving"],
     },
     "rogue": {
         1: ["srd.rogue_expertise", "srd.thieves_cant"],

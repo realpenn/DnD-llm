@@ -2054,6 +2054,9 @@ def test_compendium_loads_srd_actions() -> None:
         "damage_type": "force",
         "tracking_advantage": True,
     }
+    roving = compendium.action("srd.roving")
+    assert roving.action_economy == "none"
+    assert roving.requirements == {"class": "ranger", "class_level_min": 6}
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
@@ -3408,6 +3411,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.deft_explorer" not in compendium.classes["ranger"].levels["1"]["actions"]
     assert "srd.deft_explorer" in compendium.classes["ranger"].levels["2"]["actions"]
     assert "srd.deft_explorer" in compendium.classes["ranger"].levels["5"]["actions"]
+    assert compendium.classes["ranger"].levels["6"]["features"] == ["Roving"]
+    assert "srd.roving" in compendium.classes["ranger"].levels["6"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

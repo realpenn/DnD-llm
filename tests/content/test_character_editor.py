@@ -9,6 +9,9 @@ from dnd_llm.core.rules.class_features import (
     has_warlock_pact_of_blade,
     has_warlock_pact_of_tome,
     has_warlock_thirsting_blade,
+    ranger_roving_climb_speed_ft,
+    ranger_roving_speed_bonus,
+    ranger_roving_swim_speed_ft,
     warlock_devils_sight_range_ft,
     warlock_gift_of_depths_swim_speed_ft,
 )
@@ -1655,6 +1658,27 @@ def test_natural_language_character_edit_assigns_ranger_favored_enemy_uses() -> 
     assert "srd.favored_enemy_hunters_mark" in result.character.actions
     assert "srd.extra_attack" in result.character.actions
     assert result.character.resources["srd.resource.favored_enemy_hunters_mark"] == 3
+
+
+def test_natural_language_character_edit_assigns_ranger_roving_at_level_6() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger6")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 6}
+    assert "srd.roving" in result.character.actions
+
+    result.character.equipment = []
+    assert ranger_roving_speed_bonus(result.character) == 10
+    assert ranger_roving_climb_speed_ft(result.character) == 40
+    assert ranger_roving_swim_speed_ft(result.character) == 40
+
+    result.character.equipment = ["srd.chain_mail"]
+    assert ranger_roving_speed_bonus(result.character) == 0
+    assert ranger_roving_climb_speed_ft(result.character) is None
+    assert ranger_roving_swim_speed_ft(result.character) is None
 
 
 def test_natural_language_character_edit_assigns_hunter_subclass_default_prey() -> None:
