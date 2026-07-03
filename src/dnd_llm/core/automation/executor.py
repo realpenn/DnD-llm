@@ -341,6 +341,7 @@ class AutomationExecutor:
         preexisting_actor_effect_ids = self._actor_effect_ids(actor_id)
         self._validate_target_policy(action, actor_id, targets or [], params)
         self._validate_self_only_targets(action, actor_id, targets or [])
+        self._validate_requires_self_target(action, actor_id, targets or [])
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
@@ -8825,6 +8826,18 @@ class AutomationExecutor:
         for target_id in targets:
             if not (actor_aliases & self._entity_aliases(target_id)):
                 raise AutomationError("target must be self")
+
+    def _validate_requires_self_target(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+    ) -> None:
+        if action.properties.get("requires_self_target") is not True:
+            return
+        actor_aliases = self._entity_aliases(actor_id)
+        if not any(actor_aliases & self._entity_aliases(target_id) for target_id in targets):
+            raise AutomationError("target list must include self")
 
     def _validate_willing_targets(
         self,

@@ -266,6 +266,9 @@ class ActionResolver:
         self_only_check = self._check_self_only_targets(draft, action)
         if self_only_check is not None:
             return self_only_check
+        requires_self_target_check = self._check_requires_self_target(draft, action)
+        if requires_self_target_check is not None:
+            return requires_self_target_check
         willing_target_check = self._check_willing_targets(draft, action)
         if willing_target_check is not None:
             return willing_target_check
@@ -1528,6 +1531,24 @@ class ActionResolver:
                     reason="target must be self",
                     action_id=action.id,
                 )
+        return None
+
+    def _check_requires_self_target(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> ResolverResult | None:
+        if action.properties.get("requires_self_target") is not True:
+            return None
+        actor_aliases = self._entity_aliases(draft.actor_id)
+        if not any(
+            actor_aliases & self._entity_aliases(target_id) for target_id in draft.target_ids
+        ):
+            return ResolverResult(
+                status="rejected",
+                reason="target list must include self",
+                action_id=action.id,
+            )
         return None
 
     def _check_willing_targets(

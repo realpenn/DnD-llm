@@ -10257,6 +10257,110 @@ def test_word_of_recall_spends_slot_and_records_instant_sanctuary_teleport(
     assert world_effect_change["scope"] == effect["scope"]
 
 
+def test_etherealness_records_border_ethereal_world_effect_and_upcast_targets(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.spell_slots["8"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.etherealness",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 8, "target_willing": True},
+        idempotency_key="cast-etherealness-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    assert cost_change["base_spell_slot_level"] == 7
+    assert cost_change["spell_slot_level"] == 8
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.etherealness"
+    assert effect["effect_type"] == "etherealness"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "explicit",
+        "range_ft": 10,
+        "target_ids": ["pc1", "pc2"],
+    }
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "border_ethereal": True,
+        "current_plane_must_border_ethereal": True,
+        "ends_instantly_if_cast_on_ethereal_or_nonbordering_plane": True,
+        "can_move_in_any_direction": True,
+        "vertical_movement_extra_cost_per_foot": 1,
+        "perceives_origin_plane_gray": True,
+        "origin_plane_vision_range_ft": 60,
+        "can_affect_only_ethereal_plane": True,
+        "can_be_affected_only_by_ethereal_plane": True,
+        "non_ethereal_creatures_cannot_perceive_or_interact_without_special_ability": True,
+        "returns_to_origin_plane_when_spell_ends": True,
+        "returns_to_corresponding_space": True,
+        "shunted_to_nearest_unoccupied_space_if_occupied": True,
+        "shunted_force_damage_per_ft": 2,
+        "willing_creatures_must_be_within_ft": 10,
+        "higher_level_targets_per_slot_above_7": 3,
+        "includes_self": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "etherealness"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+
+
+def test_etherealness_requires_self_target_before_spending_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 13}
+    caster.actions.append("srd.etherealness")
+    caster.spell_slots["7"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    resolver = ActionResolver(state, compendium.actions)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="以太化盟友",
+            target_ids=["pc2"],
+            candidate_action_id="srd.etherealness",
+            params={"slot_level": 7, "target_willing": True},
+        )
+    )
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target list must include self"
+
+    with pytest.raises(AutomationError, match="target list must include self"):
+        tools._execute_action(
+            action_id="srd.etherealness",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 7, "target_willing": True},
+            idempotency_key="cast-etherealness-without-self",
+        )
+
+    assert caster.spell_slots["7"] == 1
+    assert state.world.active_effects == []
+
+
 def test_true_seeing_spends_component_and_grants_timed_truesight(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

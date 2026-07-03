@@ -292,6 +292,7 @@ P0 脚手架
   - [x] **P2-1ah** SRD 5.2.1 Ranger 6 `Roving` 落地：新增 `srd.roving` class feature 与 Ranger 6 级数据；按 SRD 在未穿 Heavy armor 时使 Speed 增加 10 feet，并提供等于当前 Speed 的 Climb Speed 与 Swim Speed helper；统一接入战斗移动预算、Resolver/Executor 有效速度路径，不虚构额外攀爬/游泳地形规则；覆盖 compendium、角色成长、重甲阻断与回合移动预算测试。
   - [x] **P2-1ai** SRD 5.2.1 Rogue 6 `Expertise` 落地：补齐 Rogue 6 级 class 数据，复用 `srd.rogue_expertise` marker 并注明 Rogue 6 再获得两项已熟练技能 Expertise；自然语言角色编辑支持 Rogue 6 显式选择至多四项已熟练 SRD 技能，Rogue 5 仍拒绝超出两项槽位，不默认代选技能；覆盖 compendium 与角色成长槽位测试。
   - [x] **P2-1aj** SRD 5.2.1 `Fire Storm` 落地：校准 7 环 Evocation spell 与 `srd.fire_storm` action；按 SRD 以 Action/150 尺创建最多十个彼此相邻的 10 尺 Cube 区域，区域内生物进行 Dexterity saving throw，失败承受 `7d10` Fire damage、成功半伤；记录未被穿戴或携带的易燃物会开始燃烧，不虚构燃烧物件调度器；改为使用施法者 spell save DC，覆盖 compendium、executor、自动模拟与全量门禁测试。
+  - [x] **P2-1ak** SRD 5.2.1 `Etherealness` 落地：新增 7 环 Conjuration spell 与 `srd.etherealness` action；按 SRD 以 Action/Self/最多 8 小时让施法者进入 Border Ethereal，记录可任意方向移动、上下移动每尺额外消耗 1 尺、只能看见原位面 60 尺灰影、只与 Ethereal Plane 上的生物/物体/效果交互、结束时返回对应位置且占位时被移到最近空位并按移动尺数两倍承受 Force damage 等元数据；支持 8/9 环每高一环至多额外 3 个 10 尺内 willing targets 且目标列表必须包含施法者，不虚构位面旅行或占位解析系统；覆盖 compendium、resolver、executor、生命周期 tick 与自动模拟测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

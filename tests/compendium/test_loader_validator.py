@@ -61,6 +61,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
+        "srd.etherealness",
         "srd.find_the_path",
         "srd.true_seeing",
         "srd.passwall",
@@ -734,6 +735,58 @@ def test_compendium_loads_srd_actions() -> None:
                 "appears_nearest_unoccupied_space_to_designated_spot": True,
                 "designates_sanctuary_by_casting_this_spell_there": True,
                 "destination": "previously_designated_sanctuary",
+            },
+        },
+    ]
+    etherealness = compendium.action("srd.etherealness")
+    assert etherealness.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "cleric", "sorcerer", "warlock", "wizard"],
+    }
+    assert etherealness.properties["spell_classes"] == [
+        "bard",
+        "cleric",
+        "sorcerer",
+        "warlock",
+        "wizard",
+    ]
+    assert etherealness.properties["requires_willing_target"] is True
+    assert etherealness.properties["requires_self_target"] is True
+    assert etherealness.range == {"self": True}
+    assert etherealness.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+        "base_spell_slot_level": 7,
+        "max_targets_per_slot_above": 3,
+    }
+    assert etherealness.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "world_effect",
+            "effect_type": "etherealness",
+            "scope": {"target": "explicit", "range_ft": 10},
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "border_ethereal": True,
+                "current_plane_must_border_ethereal": True,
+                "ends_instantly_if_cast_on_ethereal_or_nonbordering_plane": True,
+                "can_move_in_any_direction": True,
+                "vertical_movement_extra_cost_per_foot": 1,
+                "perceives_origin_plane_gray": True,
+                "origin_plane_vision_range_ft": 60,
+                "can_affect_only_ethereal_plane": True,
+                "can_be_affected_only_by_ethereal_plane": True,
+                "non_ethereal_creatures_cannot_perceive_or_interact_without_special_ability": True,
+                "returns_to_origin_plane_when_spell_ends": True,
+                "returns_to_corresponding_space": True,
+                "shunted_to_nearest_unoccupied_space_if_occupied": True,
+                "shunted_force_damage_per_ft": 2,
+                "willing_creatures_must_be_within_ft": 10,
+                "higher_level_targets_per_slot_above_7": 3,
+                "includes_self": True,
             },
         },
     ]
@@ -3506,6 +3559,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.heal",
         "srd.spell.harm",
         "srd.spell.finger_of_death",
+        "srd.spell.etherealness",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9
     assert compendium.spell("srd.spell.flame_strike").level == 5
