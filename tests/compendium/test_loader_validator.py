@@ -52,6 +52,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.cloudkill",
         "srd.teleportation_circle",
         "srd.passwall",
+        "srd.tree_stride",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -351,6 +352,36 @@ def test_compendium_loads_srd_actions() -> None:
                 "permanent_circle_daily_castings_required": 365,
             },
         }
+    ]
+    tree_stride = compendium.action("srd.tree_stride")
+    assert tree_stride.requirements == {
+        "spell_level": 5,
+        "class_any": ["druid", "ranger"],
+    }
+    assert tree_stride.properties["spell_classes"] == ["druid", "ranger"]
+    assert tree_stride.range == {"self": True}
+    assert tree_stride.target_policy == {"min": 1, "max": 1, "self": True, "harmful": False}
+    assert tree_stride.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "tree_stride": True,
+                "tree_stride_range_ft": 500,
+                "same_kind_living_tree_required": True,
+                "tree_must_be_at_least_actor_size": True,
+                "enter_tree_movement_cost_ft": 5,
+                "destination_exit_movement_cost_ft": 5,
+                "knows_same_kind_tree_locations_within_ft": 500,
+                "appears_within_ft_of_destination_tree": 5,
+                "returns_within_ft_of_entered_tree_if_no_movement_left": 5,
+                "uses_per_turn": 1,
+                "must_end_turn_outside_tree": True,
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
     ]
     passwall = compendium.action("srd.passwall")
     assert passwall.requirements == {"spell_level": 5, "class_any": ["wizard"]}

@@ -8946,6 +8946,57 @@ def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 599
 
 
+def test_tree_stride_spends_slot_and_applies_concentration_transport_ability(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.tree_stride",
+        ["pc1"],
+        5,
+        idempotency_key="cast-tree-stride",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.tree_stride"
+    assert effect["condition"] is None
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+    assert effect["passive_modifiers"] == {
+        "tree_stride": True,
+        "tree_stride_range_ft": 500,
+        "same_kind_living_tree_required": True,
+        "tree_must_be_at_least_actor_size": True,
+        "enter_tree_movement_cost_ft": 5,
+        "destination_exit_movement_cost_ft": 5,
+        "knows_same_kind_tree_locations_within_ft": 500,
+        "appears_within_ft_of_destination_tree": 5,
+        "returns_within_ft_of_entered_tree_if_no_movement_left": 5,
+        "uses_per_turn": 1,
+        "must_end_turn_outside_tree": True,
+    }
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc1"
+    assert passive_change["passive_modifiers"]["tree_stride"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:
