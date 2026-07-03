@@ -3521,7 +3521,7 @@
                 "zh": "游荡者专精",
                 "aliases": ["Rogue Expertise", "游荡者技能专精"]
             },
-            "source": "SRD 5.2.1 Rogue Class Features: Level 1: Expertise",
+            "source": "SRD 5.2.1 Rogue Class Features: Level 1: Expertise; Level 6: Expertise",
             "rules_version": "srd-5.2.1",
             "action_type": "class_feature",
             "action_economy": "none",
@@ -3533,7 +3533,7 @@
             "automation": [
                 {
                     "type": "text_result",
-                    "text": "This marker records that a Rogue gains Expertise in two skill proficiencies of choice, doubling Proficiency Bonus for those skill checks."
+                    "text": "This marker records that a Rogue gains Expertise in two skill proficiencies of choice at level 1, and in two more skill proficiencies of choice at Rogue level 6, doubling Proficiency Bonus for those skill checks."
                 }
             ],
             "audit_label": "Rogue Expertise"

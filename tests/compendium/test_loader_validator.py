@@ -3312,6 +3312,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.thieves_cant" in compendium.classes["rogue"].levels["1"]["actions"]
     assert "srd.thieves_cant" in compendium.classes["rogue"].levels["5"]["actions"]
     assert "srd.steady_aim" in compendium.classes["rogue"].levels["3"]["actions"]
+    assert compendium.classes["rogue"].levels["6"]["features"] == ["Expertise"]
+    assert "srd.rogue_expertise" in compendium.classes["rogue"].levels["6"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",

@@ -2078,6 +2078,36 @@ def test_natural_language_character_edit_assigns_skill_expertise_choices() -> No
     assert character.skill_expertise == []
 
 
+def test_natural_language_character_edit_assigns_rogue_level_6_expertise_slots() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.skill_proficiencies = ["stealth", "perception", "arcana", "history"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 rogue6 专精 潜行 察觉 奥秘 历史",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"rogue": 6}
+    assert result.character.skill_expertise == ["stealth", "perception", "arcana", "history"]
+    assert "srd.rogue_expertise" in result.character.actions
+
+
+def test_natural_language_character_edit_rejects_rogue_level_5_extra_expertise_slots() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.skill_proficiencies = ["stealth", "perception", "arcana", "history"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 rogue5 专精 潜行 察觉 奥秘 历史",
+    )
+
+    assert result.accepted is False
+    assert result.errors is not None
+    assert any("Expertise 槽位" in error for error in result.errors)
+
+
 def test_natural_language_character_edit_enforces_scholar_expertise_skill_list() -> None:
     character = default_fighter("pc1", "Penn")
     character.skill_proficiencies = ["arcana", "stealth"]

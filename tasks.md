@@ -290,6 +290,7 @@ P0 脚手架
   - [x] **P2-1af** SRD 5.2.1 Paladin 6 `Aura of Protection` 落地：新增 `srd.aura_of_protection` class feature 与 Paladin 6 级数据；按 SRD 在 Paladin 未 Incapacitated 时，使自身和 10 尺 Emanation 内盟友的 saving throw 获得 Charisma modifier 加值且最低 +1；同一目标不叠加多个 Paladin aura，取一个可用最高加值；同步自动化 saving throw 与 direct `roll_save`，不虚构资源或主动动作；覆盖 compendium、executor、失能停用、direct save、建角动作与自动模拟测试。
   - [x] **P2-1ag** SRD 5.2.1 Warlock Fiend Patron 6 `Dark One's Own Luck` 落地：新增 `srd.dark_ones_own_luck` class feature 与 Warlock 6 级/fiend 子职数据；按 SRD 在 ability check 或 saving throw 掷骰后、效果发生前显式消耗 `srd.resource.dark_ones_own_luck` 加 `1d10`，次数等于 Charisma modifier（至少 1）并长休恢复，且每个掷骰最多使用一次；同步 direct `roll_check`/`roll_save` 与 automation ability_check/saving_throw，不虚构额外动作或反应；覆盖 compendium、executor、长休资源与建角测试。
   - [x] **P2-1ah** SRD 5.2.1 Ranger 6 `Roving` 落地：新增 `srd.roving` class feature 与 Ranger 6 级数据；按 SRD 在未穿 Heavy armor 时使 Speed 增加 10 feet，并提供等于当前 Speed 的 Climb Speed 与 Swim Speed helper；统一接入战斗移动预算、Resolver/Executor 有效速度路径，不虚构额外攀爬/游泳地形规则；覆盖 compendium、角色成长、重甲阻断与回合移动预算测试。
+  - [x] **P2-1ai** SRD 5.2.1 Rogue 6 `Expertise` 落地：补齐 Rogue 6 级 class 数据，复用 `srd.rogue_expertise` marker 并注明 Rogue 6 再获得两项已熟练技能 Expertise；自然语言角色编辑支持 Rogue 6 显式选择至多四项已熟练 SRD 技能，Rogue 5 仍拒绝超出两项槽位，不默认代选技能；覆盖 compendium 与角色成长槽位测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
