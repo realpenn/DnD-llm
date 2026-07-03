@@ -4480,6 +4480,37 @@
             "audit_label": "Wholeness of Body"
         },
         {
+            "id": "srd.evasion",
+            "name": "Evasion",
+            "localization": {
+                "en": "Evasion",
+                "zh": "闪避",
+                "aliases": ["Monk Evasion", "武僧闪避"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 7: Evasion",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 7},
+            "properties": {
+                "dexterity_save_half_damage": true,
+                "success_damage": 0,
+                "failure_damage": "half",
+                "disabled_by_condition": "incapacitated"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Monk takes no damage on a successful Dexterity saving throw against an effect that deals half damage on success, and half damage on a failed save, unless Incapacitated."
+                }
+            ],
+            "audit_label": "Evasion"
+        },
+        {
             "id": "srd.patient_defense",
             "name": "Patient Defense",
             "localization": {

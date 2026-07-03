@@ -4028,6 +4028,17 @@ def test_compendium_loads_srd_actions() -> None:
         "subclass": "open_hand",
     }
     assert wholeness.automation[1]["minimum_amount"] == 1
+    assert compendium.classes["monk"].levels["7"]["features"] == ["Evasion"]
+    assert "srd.evasion" in compendium.classes["monk"].levels["7"]["actions"]
+    evasion = compendium.action("srd.evasion")
+    assert evasion.action_economy == "none"
+    assert evasion.requirements == {"class": "monk", "class_level_min": 7}
+    assert evasion.properties == {
+        "dexterity_save_half_damage": True,
+        "success_damage": 0,
+        "failure_damage": "half",
+        "disabled_by_condition": "incapacitated",
+    }
     assert "srd.dodge" not in compendium.classes["monk"].levels["2"]["actions"]
     assert "srd.favored_enemy_hunters_mark" in compendium.classes["ranger"].levels["1"]["actions"]
     assert "srd.deft_explorer" not in compendium.classes["ranger"].levels["1"]["actions"]

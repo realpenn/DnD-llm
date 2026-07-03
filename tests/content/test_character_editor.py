@@ -1753,6 +1753,18 @@ def test_natural_language_character_edit_assigns_monk_empowered_strikes() -> Non
     assert "srd.resource.wholeness_of_body" not in result.character.resources
 
 
+def test_natural_language_character_edit_assigns_monk_evasion() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk7")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 7}
+    assert "srd.evasion" in result.character.actions
+    assert result.character.resources["srd.resource.focus_points"] == 7
+
+
 def test_natural_language_character_edit_assigns_open_hand_wholeness_of_body() -> None:
     character = default_fighter("pc1", "Penn")
     character.abilities["wis"] = 16

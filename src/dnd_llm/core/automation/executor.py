@@ -49,6 +49,7 @@ from ..rules.class_features import (
     has_wizard_evocation_feature,
     is_bloodied,
     is_wearing_armor,
+    monk_evasion_applies,
     monk_martial_arts_die,
     monk_slow_fall_damage_reduction,
     monk_unarmored_defense_armor_class,
@@ -90,6 +91,7 @@ INDOMITABLE_ACTION_ID = "srd.indomitable"
 STUDIED_ATTACKS_ACTION_ID = "srd.studied_attacks"
 STUDIED_ATTACKS_CONDITION = "studied_attacks"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
+EVASION_ACTION_ID = "srd.evasion"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
 NATURES_SANCTUARY_ACTION_ID = "srd.natures_sanctuary"
@@ -272,6 +274,7 @@ class _Context:
     attack_critical: dict[str, bool] = field(default_factory=dict)
     attack_advantage: dict[str, str | None] = field(default_factory=dict)
     save_successes: dict[str, bool] = field(default_factory=dict)
+    save_abilities: dict[str, str] = field(default_factory=dict)
     last_damage_taken: dict[str, int] = field(default_factory=dict)
     uncanny_dodge_reactions_spent: set[str] = field(default_factory=set)
     deflect_attacks_reactions_spent: set[str] = field(default_factory=set)
@@ -728,6 +731,7 @@ class AutomationExecutor:
                 if use_indomitable:
                     raise AutomationError("Indomitable requires a rolled failed saving throw")
                 ctx.save_successes[target_id] = False
+                ctx.save_abilities[target_id] = ability.lower()
                 ctx.result.node_results[path] = {
                     "target_id": target_id,
                     "ability": ability,
@@ -782,6 +786,7 @@ class AutomationExecutor:
                 total = int(indomitable_result["total_after"])
                 success = bool(indomitable_result["success"])
             ctx.save_successes[target_id] = success
+            ctx.save_abilities[target_id] = ability.lower()
             ctx.result.node_results[path] = {
                 "target_id": target_id,
                 "ability": ability,
@@ -982,8 +987,19 @@ class AutomationExecutor:
             if reduced_weapon_damage is not None:
                 amount = reduced_weapon_damage.amount_after
                 ctx.result.dice_rolls.extend(roll.to_dict() for roll in reduced_weapon_damage.rolls)
-            if save_half and ctx.save_successes.get(target_id, False) and potent_cantrip is None:
-                amount //= 2
+            evasion = None
+            amount_before_evasion = amount
+            if save_half and potent_cantrip is None:
+                evasion = self._evasion_adjustment(
+                    target_id,
+                    amount,
+                    save_success=ctx.save_successes.get(target_id),
+                    save_ability=ctx.save_abilities.get(target_id),
+                )
+                if evasion is not None:
+                    amount = int(evasion["amount_after_evasion"])
+                elif ctx.save_successes.get(target_id, False):
+                    amount //= 2
             if potent_cantrip is not None:
                 amount_before_potent_cantrip = amount
                 amount //= 2
@@ -1067,6 +1083,9 @@ class AutomationExecutor:
             if deflect_attacks is not None:
                 change["deflect_attacks"] = deflect_attacks
                 change["amount_before_deflect_attacks"] = amount_before_deflect_attacks
+            if evasion is not None:
+                change["evasion"] = evasion
+                change["amount_before_evasion"] = amount_before_evasion
             if passive_bonus:
                 change["passive_damage_bonus"] = passive_bonus
                 change["passive_sources"] = passive_bonus_sources
@@ -6605,6 +6624,35 @@ class AutomationExecutor:
                     }
                 )
         return sources
+
+    def _evasion_adjustment(
+        self,
+        target_id: str,
+        amount: int,
+        *,
+        save_success: bool | None,
+        save_ability: str | None,
+    ) -> dict[str, Any] | None:
+        if save_success is None or str(save_ability).lower() != "dex":
+            return None
+        target = self._entity(target_id)
+        owner = self._proficiency_source(target)
+        if not isinstance(owner, Character) or not monk_evasion_applies(owner):
+            return None
+        incapacitated_sources = self._condition_sources(
+            target,
+            {"incapacitated", "paralyzed", "petrified", "stunned", "unconscious"},
+        )
+        if incapacitated_sources:
+            return None
+        amount_after = 0 if save_success else int(amount) // 2
+        return {
+            "source_action_id": EVASION_ACTION_ID,
+            "save_ability": "dex",
+            "saving_throw_success": save_success,
+            "amount_before_evasion": int(amount),
+            "amount_after_evasion": amount_after,
+        }
 
     def _ability_check_status_advantage(
         self,

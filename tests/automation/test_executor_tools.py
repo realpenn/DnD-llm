@@ -8776,6 +8776,156 @@ def test_automation_saving_throw_applies_barbarian_danger_sense(make_state) -> N
     assert incapacitated_save["status_sources"] == []
 
 
+def test_monk_evasion_takes_no_damage_on_successful_dex_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 7}
+    state.characters["pc1"].saving_throw_proficiencies = ["dex"]
+    action = ActionDefinition(
+        id="test.dex_save_half_damage",
+        name="Dex Save Half Damage",
+        localization={"en": "Dex Save Half Damage", "zh": "敏捷半伤", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"},
+            {"type": "damage", "amount": 10, "damage_type": "fire", "save_half": True},
+        ],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([12]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert result.node_results["automation[0]"]["success"] is True
+    assert damage_change["amount"] == 0
+    assert damage_change["applied"] == 0
+    assert damage_change["amount_before_evasion"] == 10
+    assert damage_change["evasion"] == {
+        "source_action_id": "srd.evasion",
+        "save_ability": "dex",
+        "saving_throw_success": True,
+        "amount_before_evasion": 10,
+        "amount_after_evasion": 0,
+    }
+    assert state.encounter.combatants["pc1"].hp_current == 10
+
+
+def test_monk_evasion_halves_damage_on_failed_dex_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 7}
+    state.characters["pc1"].saving_throw_proficiencies = ["dex"]
+    action = ActionDefinition(
+        id="test.dex_save_half_damage",
+        name="Dex Save Half Damage",
+        localization={"en": "Dex Save Half Damage", "zh": "敏捷半伤", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"},
+            {"type": "damage", "amount": 10, "damage_type": "fire", "save_half": True},
+        ],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert result.node_results["automation[0]"]["success"] is False
+    assert damage_change["amount"] == 5
+    assert damage_change["applied"] == 5
+    assert damage_change["evasion"]["saving_throw_success"] is False
+    assert damage_change["evasion"]["amount_after_evasion"] == 5
+    assert state.encounter.combatants["pc1"].hp_current == 5
+
+
+def test_monk_evasion_does_not_apply_to_non_dex_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 7}
+    action = ActionDefinition(
+        id="test.con_save_half_damage",
+        name="Con Save Half Damage",
+        localization={"en": "Con Save Half Damage", "zh": "体质半伤", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "saving_throw", "ability": "con", "difficulty_tier": "medium"},
+            {"type": "damage", "amount": 10, "damage_type": "poison", "save_half": True},
+        ],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([13]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert result.node_results["automation[0]"]["success"] is True
+    assert damage_change["amount"] == 5
+    assert damage_change["applied"] == 5
+    assert "evasion" not in damage_change
+    assert state.encounter.combatants["pc1"].hp_current == 5
+
+
+def test_monk_evasion_disabled_while_incapacitated(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 7}
+    state.characters["pc1"].saving_throw_proficiencies = ["dex"]
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "incapacitated-test", "condition": "incapacitated"}
+    )
+    action = ActionDefinition(
+        id="test.dex_save_half_damage",
+        name="Dex Save Half Damage",
+        localization={"en": "Dex Save Half Damage", "zh": "敏捷半伤", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"},
+            {"type": "damage", "amount": 10, "damage_type": "fire", "save_half": True},
+        ],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([12]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert result.node_results["automation[0]"]["success"] is True
+    assert damage_change["amount"] == 5
+    assert damage_change["applied"] == 5
+    assert "evasion" not in damage_change
+    assert state.encounter.combatants["pc1"].hp_current == 5
+
+
 def test_automation_ability_check_uses_backing_character_skill_proficiency(
     make_state,
 ) -> None:

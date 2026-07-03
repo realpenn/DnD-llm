@@ -236,6 +236,7 @@ CLASS_LEVEL_ACTIONS = {
         4: ["srd.slow_fall"],
         5: ["srd.stunning_strike", "srd.extra_attack"],
         6: ["srd.empowered_strikes"],
+        7: ["srd.evasion"],
     },
     "paladin": {
         1: ["srd.lay_on_hands", "srd.lay_on_hands_remove_poisoned", "srd.cure_wounds"],

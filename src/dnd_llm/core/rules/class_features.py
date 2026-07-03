@@ -180,6 +180,10 @@ def has_monk_feature(character: Character, *, level: int) -> bool:
     return int(character.class_levels.get("monk", 0)) >= level
 
 
+def monk_evasion_applies(character: Character) -> bool:
+    return has_monk_feature(character, level=7)
+
+
 def monk_slow_fall_damage_reduction(character: Character) -> int:
     monk_level = int(character.class_levels.get("monk", 0))
     if monk_level < 4:
