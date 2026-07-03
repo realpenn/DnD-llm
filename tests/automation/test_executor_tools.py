@@ -8730,6 +8730,114 @@ def test_greater_restoration_requires_choice_before_spending_cost(make_state) ->
     assert caster.gold == 100
 
 
+def test_cloudkill_uses_actor_spell_dc_deals_poison_and_records_fog(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.cloudkill",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-cloudkill",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "poison"
+    assert damage_change["amount"] == 8
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "5d8"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.cloudkill"
+    assert effect["effect_type"] == "cloudkill_fog"
+    assert effect["concentration"] is True
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["scope"] == {"shape": "sphere", "radius_ft": 20, "range_ft": 120}
+    assert effect["metadata"] == {
+        "heavily_obscured": True,
+        "dispersed_by_strong_wind": True,
+        "moves_away_from_caster_ft_at_start_of_turn": 10,
+        "repeat_save_triggers": [
+            "sphere_moves_into_space",
+            "creature_enters_area",
+            "creature_ends_turn_in_area",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "con",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "5d8 poison",
+            "higher_level_damage_increase": "1d8 per slot above 5",
+        },
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "cloudkill_fog"
+    assert world_effect_change["concentration"] is True
+
+
+def test_cloudkill_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.cloudkill",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-cloudkill-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:

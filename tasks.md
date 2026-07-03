@@ -261,6 +261,7 @@ P0 脚手架
   - [x] **P2-1c** SRD 5.2.1 `Mass Cure Wounds` 落地：新增 5 环 Abjuration spell 与 `srd.mass_cure_wounds` action；按 SRD 以 60 尺内 30 尺半径 Sphere 最多 6 个目标恢复 `5d8 + spellcasting ability modifier` HP，支持每高一环 `+1d8` 且实际扣除请求环位；新增受限施法属性治疗加值解析，覆盖 compendium、executor、自动模拟与全量门禁测试。
   - [x] **P2-1d** SRD 5.2.1 `Hold Monster` 落地：新增 5 环 Enchantment spell 与 `srd.hold_monster` action；按 SRD 以 90 尺内目标 Wisdom saving throw 失败施加 Concentration 1 minute 的 Paralyzed condition，并在目标回合结束重复 Wisdom save 成功则结束；支持每高一环额外 1 个目标的动态目标上限，覆盖 compendium、executor、resolver、自动模拟与全量门禁测试。
   - [x] **P2-1e** SRD 5.2.1 `Greater Restoration` 落地：新增 5 环 Abjuration spell 与 `srd.greater_restoration` action；按 SRD 以 Touch/Action 消耗 5 环法术位与 100 GP 材料成本，并要求选择一种复原项，只移除 1 层 Exhaustion、Charmed/Petrified、curse/cursed item attunement marker、ability score reduction marker 或 HP maximum reduction marker；补充 HP 上限恢复与 Greater Restoration 参数前置校验，覆盖 compendium、executor、resolver、自动模拟与全量门禁测试。
+  - [x] **P2-1f** SRD 5.2.1 `Cloudkill` 落地：新增 5 环 Conjuration spell 与 `srd.cloudkill` action；按 SRD 以 120 尺内 20 尺半径 Sphere 造成 Constitution saving throw，失败承受 `5d8` Poison damage、成功半伤，支持每高一环 `+1d8` 且实际扣除请求环位；记录 Concentration 10 minutes 的 heavily obscured yellow-green fog、强风驱散、每回合开始远离施法者 10 尺以及进入/结束回合/雾团移入时每回合一次重复豁免等 SRD 元数据，不虚构雾团移动调度器；覆盖 compendium、executor、自动模拟与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

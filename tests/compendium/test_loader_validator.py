@@ -49,6 +49,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mass_cure_wounds",
         "srd.hold_monster",
         "srd.greater_restoration",
+        "srd.cloudkill",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -264,6 +265,49 @@ def test_compendium_loads_srd_actions() -> None:
                 "ability_score_reduction",
                 "hp_max_reduction",
             ],
+        },
+    ]
+    cloudkill = compendium.action("srd.cloudkill")
+    assert cloudkill.requirements == {
+        "spell_level": 5,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert cloudkill.properties["spell_classes"] == ["sorcerer", "wizard"]
+    assert cloudkill.range == {"normal_ft": 120, "shape": "sphere", "radius_ft": 20}
+    assert cloudkill.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert cloudkill.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "5d8",
+            "damage_type": "poison",
+            "save_half": True,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "cloudkill_fog",
+            "scope": {"shape": "sphere", "radius_ft": 20, "range_ft": 120},
+            "duration": {"until": "concentration_10_minutes"},
+            "metadata": {
+                "heavily_obscured": True,
+                "dispersed_by_strong_wind": True,
+                "moves_away_from_caster_ft_at_start_of_turn": 10,
+                "repeat_save_triggers": [
+                    "sphere_moves_into_space",
+                    "creature_enters_area",
+                    "creature_ends_turn_in_area",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "con",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "5d8 poison",
+                    "higher_level_damage_increase": "1d8 per slot above 5",
+                },
+            },
         },
     ]
     assert "srd.innate_sorcery" in compendium.actions
