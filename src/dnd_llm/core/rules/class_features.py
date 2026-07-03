@@ -78,6 +78,7 @@ WARLOCK_ELDRITCH_MIND = "eldritch_mind"
 UNCANNY_METABOLISM_RESOURCE = "srd.resource.uncanny_metabolism"
 WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
+DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -245,6 +246,13 @@ def has_warlock_fiend_feature(character: Character, *, level: int) -> bool:
         int(character.class_levels.get("warlock", 0)) >= level
         and character.subclasses.get("warlock") == "fiend"
     )
+
+
+def dark_ones_own_luck_uses(character: Character) -> int:
+    if not has_warlock_fiend_feature(character, level=6):
+        return 0
+    charisma = int(character.abilities.get("cha", character.abilities.get("CHA", 10)))
+    return max(1, ability_modifier(charisma))
 
 
 def has_warlock_eldritch_mind(character: Character) -> bool:

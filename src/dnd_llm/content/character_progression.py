@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from dnd_llm.core.models import Character
 from dnd_llm.core.rules.class_features import (
+    DARK_ONES_OWN_LUCK_RESOURCE,
     DIVINE_ORDER_CHOICE_KEY,
     DIVINE_ORDER_PROTECTOR,
     DIVINE_ORDER_THAUMATURGE,
@@ -327,7 +328,7 @@ SUBCLASS_ACTIONS = {
         "draconic": {3: ["srd.draconic_resilience"]},
     },
     "warlock": {
-        "fiend": {3: ["srd.dark_ones_blessing"]},
+        "fiend": {3: ["srd.dark_ones_blessing"], 6: ["srd.dark_ones_own_luck"]},
     },
     "wizard": {
         "evocation": {3: ["srd.potent_cantrip"]},
@@ -2345,6 +2346,11 @@ def _resources_for_levels(
     warlock_level = int(class_levels.get("warlock", 0))
     if warlock_level >= 2:
         resources["srd.resource.magical_cunning"] = 1
+    if warlock_level >= 6 and subclasses.get("warlock") == "fiend":
+        resources[DARK_ONES_OWN_LUCK_RESOURCE] = max(
+            1,
+            _ability_modifier_from_scores(abilities, "cha"),
+        )
     if (
         warlock_level >= 5
         and feature_choices.get(WARLOCK_GIFT_OF_DEPTHS_CHOICE_KEY)

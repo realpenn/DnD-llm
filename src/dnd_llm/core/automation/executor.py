@@ -11,6 +11,7 @@ from ..persistence import AuditLog
 from ..positioning import TacticalGraph
 from ..rules.checks import d20_expression
 from ..rules.class_features import (
+    DARK_ONES_OWN_LUCK_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     aura_of_protection_saving_throw_bonus,
@@ -37,6 +38,7 @@ from ..rules.class_features import (
     has_rogue_thief_feature,
     has_warlock_eldritch_mind,
     has_warlock_eldritch_smite,
+    has_warlock_fiend_feature,
     has_warlock_investment_of_chain_master,
     has_warlock_repelling_blast,
     has_warlock_thirsting_blade,
@@ -77,6 +79,7 @@ MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
+DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
@@ -673,8 +676,17 @@ class AutomationExecutor:
     def _node_saving_throw(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         ability = str(node["ability"])
         dc, dc_source = self._resolve_node_dc(ctx, node)
+        if (
+            bool(ctx.params.get("use_dark_ones_own_luck"))
+            and ctx.params.get("dark_ones_own_luck_target_id") is None
+            and len(ctx.targets) > 1
+        ):
+            raise AutomationError("Dark One's Own Luck saving throw requires an explicit target")
         for target_id in ctx.targets:
             target = self._entity(target_id)
+            use_dark_ones_own_luck = self._use_dark_ones_own_luck_for_save(ctx, target_id)
+            if use_dark_ones_own_luck:
+                self._validate_dark_ones_own_luck_available(target)
             auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
                 ctx.save_successes[target_id] = False
@@ -707,6 +719,15 @@ class AutomationExecutor:
             ctx.result.dice_rolls.append(roll.to_dict())
             ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
             total = roll.total + adjustment
+            dark_ones_own_luck_result = self._apply_dark_ones_own_luck_to_roll(
+                ctx,
+                target,
+                total,
+                path,
+                use_dark_ones_own_luck=use_dark_ones_own_luck,
+            )
+            if dark_ones_own_luck_result is not None:
+                total = int(dark_ones_own_luck_result["total_after"])
             success = total >= dc
             ctx.save_successes[target_id] = success
             ctx.result.node_results[path] = {
@@ -727,6 +748,8 @@ class AutomationExecutor:
                 "total": total,
                 "success": success,
             }
+            if dark_ones_own_luck_result is not None:
+                ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
 
     def _node_ability_check(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         original_ability = str(node["ability"]).lower()
@@ -755,6 +778,8 @@ class AutomationExecutor:
         bonus = base_bonus - exhaustion_penalty
         if bool(ctx.params.get("use_tactical_mind")):
             self._validate_tactical_mind_available(ctx.actor_id)
+        if bool(ctx.params.get("use_dark_ones_own_luck")):
+            self._validate_dark_ones_own_luck_available(actor)
         status_advantage, status_sources = self._ability_check_status_advantage(
             actor,
             ability,
@@ -775,6 +800,15 @@ class AutomationExecutor:
         ctx.result.dice_rolls.append(roll.to_dict())
         ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
         total = roll.total + adjustment
+        dark_ones_own_luck_result = self._apply_dark_ones_own_luck_to_roll(
+            ctx,
+            actor,
+            total,
+            path,
+            use_dark_ones_own_luck=bool(ctx.params.get("use_dark_ones_own_luck")),
+        )
+        if dark_ones_own_luck_result is not None:
+            total = int(dark_ones_own_luck_result["total_after"])
         tactical_mind_result = self._apply_tactical_mind_to_ability_check(
             ctx,
             total,
@@ -808,6 +842,8 @@ class AutomationExecutor:
         }
         if primal_knowledge is not None:
             ctx.result.node_results[path]["primal_knowledge"] = primal_knowledge
+        if dark_ones_own_luck_result is not None:
+            ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
         if tactical_mind_result is not None:
             ctx.result.node_results[path]["tactical_mind"] = tactical_mind_result
 
@@ -2635,6 +2671,78 @@ class AutomationExecutor:
             "total_after": after_total,
             "spent": success,
             "success": success,
+        }
+
+    def _use_dark_ones_own_luck_for_save(self, ctx: _Context, target_id: str) -> bool:
+        if not bool(ctx.params.get("use_dark_ones_own_luck")):
+            return False
+        explicit_target = ctx.params.get("dark_ones_own_luck_target_id")
+        if explicit_target is not None:
+            return str(explicit_target) == target_id
+        return len(ctx.targets) == 1
+
+    def _dark_ones_own_luck_character(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> Character | None:
+        if isinstance(entity, Character):
+            return entity
+        if isinstance(entity, Combatant):
+            backing = self.state.characters.get(entity.entity_id)
+            if backing is not None:
+                return backing
+        return None
+
+    def _validate_dark_ones_own_luck_available(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> None:
+        character = self._dark_ones_own_luck_character(entity)
+        if character is None or not has_warlock_fiend_feature(character, level=6):
+            raise AutomationError("Dark One's Own Luck requires Fiend Patron Warlock level 6")
+        if int(character.resources.get(DARK_ONES_OWN_LUCK_RESOURCE, 0)) <= 0:
+            raise AutomationError("Dark One's Own Luck requires an available use")
+
+    def _apply_dark_ones_own_luck_to_roll(
+        self,
+        ctx: _Context,
+        entity: Character | Monster | Combatant,
+        total: int,
+        path: str,
+        *,
+        use_dark_ones_own_luck: bool,
+    ) -> dict[str, Any] | None:
+        if not use_dark_ones_own_luck:
+            return None
+        character = self._dark_ones_own_luck_character(entity)
+        if character is None:
+            raise AutomationError("Dark One's Own Luck requires a character")
+        before_resource = int(character.resources.get(DARK_ONES_OWN_LUCK_RESOURCE, 0))
+        roll = self.roll_service.roll("1d10")
+        ctx.result.dice_rolls.append(roll.to_dict())
+        after_total = total + roll.total
+        after_resource = before_resource - 1
+        character.resources[DARK_ONES_OWN_LUCK_RESOURCE] = after_resource
+        entity_id = str(getattr(entity, "id", character.id))
+        ctx.result.state_changes.append(
+            {
+                "type": "dark_ones_own_luck",
+                "actor_id": entity_id,
+                "source_action_id": DARK_ONES_OWN_LUCK_ACTION_ID,
+                "resource": DARK_ONES_OWN_LUCK_RESOURCE,
+                "before": before_resource,
+                "after": after_resource,
+                "path": path,
+            }
+        )
+        return {
+            "resource": DARK_ONES_OWN_LUCK_RESOURCE,
+            "resource_before": before_resource,
+            "resource_after": after_resource,
+            "roll_total": roll.total,
+            "total_before": total,
+            "total_after": after_total,
+            "spent": True,
         }
 
     def _node_pact_magic_recovery(self, ctx: _Context, path: str) -> None:

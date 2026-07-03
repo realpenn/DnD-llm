@@ -1827,6 +1827,12 @@ def test_compendium_loads_srd_actions() -> None:
         "subclass": "fiend",
     }
     assert compendium.action("srd.dark_ones_blessing").automation[0]["type"] == "text_result"
+    assert compendium.action("srd.dark_ones_own_luck").requirements == {
+        "class": "warlock",
+        "class_level_min": 6,
+        "subclass": "fiend",
+    }
+    assert compendium.action("srd.dark_ones_own_luck").automation[0]["type"] == "text_result"
     assert "srd.divine_spark_heal" in compendium.actions
     assert compendium.action("srd.divine_spark_heal").target_policy["exclude_self"] is True
     assert compendium.action("srd.divine_spark_heal").cost.resources == {
@@ -3591,9 +3597,11 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert compendium.classes["warlock"].levels["2"]["features"] == ["Magical Cunning"]
     assert compendium.classes["warlock"].levels["5"]["features"] == []
+    assert compendium.classes["warlock"].levels["6"]["features"] == ["Subclass Feature"]
     assert compendium.classes["warlock"].subclasses["fiend"]["name"] == "Fiend Patron"
     assert compendium.classes["warlock"].subclasses["fiend"]["actions"] == [
-        "srd.dark_ones_blessing"
+        "srd.dark_ones_blessing",
+        "srd.dark_ones_own_luck",
     ]
     assert compendium.classes["warlock"].levels["2"]["actions"] == [
         "srd.eldritch_blast",
@@ -3601,6 +3609,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.magical_cunning",
     ]
     assert "srd.dark_ones_blessing" not in compendium.classes["warlock"].levels["3"]["actions"]
+    assert "srd.dark_ones_own_luck" in compendium.classes["warlock"].levels["6"]["actions"]
     assert compendium.classes["wizard"].levels["1"]["features"] == [
         "Spellcasting",
         "Ritual Adept",

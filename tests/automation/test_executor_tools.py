@@ -3622,6 +3622,102 @@ def test_paladin_aura_of_protection_inactive_while_incapacitated(make_state) -> 
     assert save_node["passive_sources"] == []
 
 
+def test_dark_ones_own_luck_adds_d10_to_direct_check_and_long_rest_restores(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 6}
+    character.subclasses = {"warlock": "fiend"}
+    character.abilities["cha"] = 16
+    character.resources["srd.resource.dark_ones_own_luck"] = 3
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 7]),
+    )
+
+    result = tools.roll_check(
+        "pc1",
+        "cha",
+        difficulty_tier="hard",
+        use_dark_ones_own_luck=True,
+        idempotency_key="dark-luck-check",
+    )
+
+    assert result["total"] == 20
+    assert result["success"] is True
+    assert result["dark_ones_own_luck"] == {
+        "resource": "srd.resource.dark_ones_own_luck",
+        "resource_before": 3,
+        "resource_after": 2,
+        "roll_total": 7,
+        "total_before": 13,
+        "total_after": 20,
+        "spent": True,
+        "success": True,
+    }
+    assert character.resources["srd.resource.dark_ones_own_luck"] == 2
+
+    long_rest = tools.long_rest(["pc1"], idempotency_key="dark-luck-long-rest")
+
+    assert long_rest["results"]["pc1"]["restored_resources"]["srd.resource.dark_ones_own_luck"] == 1
+    assert character.resources["srd.resource.dark_ones_own_luck"] == 3
+
+
+def test_dark_ones_own_luck_adds_d10_to_automation_saving_throw(make_state) -> None:
+    state = make_state()
+    target = state.characters["pc2"]
+    target.class_levels = {"warlock": 6}
+    target.subclasses = {"warlock": "fiend"}
+    target.abilities["cha"] = 14
+    target.resources["srd.resource.dark_ones_own_luck"] = 2
+    action = ActionDefinition(
+        id="test.dark_luck_save",
+        name="Dark Luck Save",
+        localization={"en": "Dark Luck Save", "zh": "黑暗主运气豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([9, 6]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+        params={"use_dark_ones_own_luck": True},
+    )
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["total"] == 15
+    assert save_node["success"] is True
+    assert save_node["dark_ones_own_luck"] == {
+        "resource": "srd.resource.dark_ones_own_luck",
+        "resource_before": 2,
+        "resource_after": 1,
+        "roll_total": 6,
+        "total_before": 9,
+        "total_after": 15,
+        "spent": True,
+    }
+    assert target.resources["srd.resource.dark_ones_own_luck"] == 1
+    assert any(
+        change["type"] == "dark_ones_own_luck"
+        and change["source_action_id"] == "srd.dark_ones_own_luck"
+        for change in result.state_changes
+    )
+
+
 def test_armor_of_shadows_casts_mage_armor_without_spell_slot(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

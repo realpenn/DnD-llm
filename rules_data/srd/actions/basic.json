@@ -2723,6 +2723,31 @@
             "audit_label": "Dark One's Blessing"
         },
         {
+            "id": "srd.dark_ones_own_luck",
+            "name": "Dark One's Own Luck",
+            "localization": {
+                "en": "Dark One's Own Luck",
+                "zh": "黑暗主运气",
+                "aliases": ["Fiend Patron Dark One's Own Luck", "邪魔宗主黑暗主运气"]
+            },
+            "source": "SRD 5.2.1 Warlock Subclass: Fiend Patron, Level 6: Dark One's Own Luck",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 6, "subclass": "fiend"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Fiend Patron Warlock can add 1d10 to an ability check or saving throw after seeing the roll and before its effects occur, using a Long Rest resource equal to Charisma modifier minimum once and no more than once per roll."
+                }
+            ],
+            "audit_label": "Dark One's Own Luck"
+        },
+        {
             "id": "srd.draconic_resilience",
             "name": "Draconic Resilience",
             "localization": {

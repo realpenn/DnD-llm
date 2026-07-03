@@ -16,12 +16,14 @@ from .persistence import AuditLog
 from .positioning import TacticalGraph
 from .rules.checks import roll_check
 from .rules.class_features import (
+    DARK_ONES_OWN_LUCK_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
     druid_magician_check_bonus,
     has_condition,
     has_rogue_thief_feature,
+    has_warlock_fiend_feature,
     remarkable_athlete_applies_to_check,
 )
 from .rules.combat import apply_damage as apply_damage_rule
@@ -60,6 +62,7 @@ class EngineTools:
         dc_ref: str | None = None,
         advantage: str | None = None,
         relies_on_sight: bool = False,
+        use_dark_ones_own_luck: bool = False,
         use_tactical_mind: bool = False,
         use_primal_knowledge: bool = False,
         idempotency_key: str | None = None,
@@ -123,6 +126,8 @@ class EngineTools:
             proficiency_sources = [*proficiency_sources, "feature:primal_order_magician"]
         if use_tactical_mind:
             self._validate_tactical_mind_available(proficiency_source)
+        if use_dark_ones_own_luck:
+            self._validate_dark_ones_own_luck_available(proficiency_source)
         d20_penalty, d20_penalty_sources = self._exhaustion_penalty_for(actor_id)
         status_advantage, status_sources = self._ability_check_status_advantage(
             actor_id,
@@ -158,6 +163,15 @@ class EngineTools:
         if primal_knowledge is not None:
             payload["primal_knowledge"] = primal_knowledge
         dice_rolls = [result.roll.to_dict()]
+        dark_ones_own_luck = self._apply_dark_ones_own_luck_to_roll(
+            actor_id,
+            payload,
+            proficiency_source,
+            use_dark_ones_own_luck=use_dark_ones_own_luck,
+        )
+        if dark_ones_own_luck is not None:
+            payload["dark_ones_own_luck"] = dark_ones_own_luck["result"]
+            dice_rolls.append(dark_ones_own_luck["roll"])
         tactical_mind = self._apply_tactical_mind_to_check(
             actor_id,
             payload,
@@ -180,6 +194,7 @@ class EngineTools:
                 "dc_ref": dc_ref,
                 "advantage": merged_advantage,
                 "relies_on_sight": relies_on_sight,
+                "use_dark_ones_own_luck": use_dark_ones_own_luck,
                 "use_tactical_mind": use_tactical_mind,
                 "use_primal_knowledge": use_primal_knowledge,
             },
@@ -197,6 +212,7 @@ class EngineTools:
         difficulty_tier: str | None = None,
         dc_ref: str | None = None,
         advantage: str | None = None,
+        use_dark_ones_own_luck: bool = False,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"roll_save:{self.state.event_counter}"
@@ -220,6 +236,8 @@ class EngineTools:
             ability,
         )
         passive_bonus, passive_bonus_sources = self._saving_throw_passive_bonus(actor_id, ability)
+        if use_dark_ones_own_luck:
+            self._validate_dark_ones_own_luck_available(proficiency_source)
         result = roll_check(
             actor_id=actor_id,
             actor=actor,
@@ -243,6 +261,16 @@ class EngineTools:
         payload["status_sources"] = status_sources
         payload["passive_bonus"] = passive_bonus
         payload["passive_bonus_sources"] = passive_bonus_sources
+        dice_rolls = [result.roll.to_dict()]
+        dark_ones_own_luck = self._apply_dark_ones_own_luck_to_roll(
+            actor_id,
+            payload,
+            proficiency_source,
+            use_dark_ones_own_luck=use_dark_ones_own_luck,
+        )
+        if dark_ones_own_luck is not None:
+            payload["dark_ones_own_luck"] = dark_ones_own_luck["result"]
+            dice_rolls.append(dark_ones_own_luck["roll"])
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -253,9 +281,10 @@ class EngineTools:
                 "difficulty_tier": difficulty_tier,
                 "dc_ref": dc_ref,
                 "advantage": advantage,
+                "use_dark_ones_own_luck": use_dark_ones_own_luck,
             },
             tool_result=payload,
-            dice_rolls=[result.roll.to_dict()],
+            dice_rolls=dice_rolls,
         )
         require_game_state_invariants(self.state)
         return payload
@@ -1569,6 +1598,46 @@ class EngineTools:
             raise ValueError("Tactical Mind requires Fighter level 2")
         if int(actor.resources.get("srd.resource.second_wind", 0)) <= 0:
             raise ValueError("Tactical Mind requires an available Second Wind use")
+
+    @staticmethod
+    def _validate_dark_ones_own_luck_available(actor: Character | Monster | Combatant) -> None:
+        if not isinstance(actor, Character) or not has_warlock_fiend_feature(actor, level=6):
+            raise ValueError("Dark One's Own Luck requires Fiend Patron Warlock level 6")
+        if int(actor.resources.get(DARK_ONES_OWN_LUCK_RESOURCE, 0)) <= 0:
+            raise ValueError("Dark One's Own Luck requires an available use")
+
+    def _apply_dark_ones_own_luck_to_roll(
+        self,
+        actor_id: str,
+        payload: dict[str, Any],
+        actor: Character | Monster | Combatant,
+        *,
+        use_dark_ones_own_luck: bool,
+    ) -> dict[str, Any] | None:
+        if not use_dark_ones_own_luck:
+            return None
+        if not isinstance(actor, Character):
+            raise ValueError("Dark One's Own Luck requires a character")
+        before_resource = int(actor.resources.get(DARK_ONES_OWN_LUCK_RESOURCE, 0))
+        roll = self.roll_service.roll("1d10")
+        before_total = int(payload["total"])
+        after_total = before_total + roll.total
+        actor.resources[DARK_ONES_OWN_LUCK_RESOURCE] = before_resource - 1
+        payload["total"] = after_total
+        payload["success"] = after_total >= int(payload["dc"])
+        return {
+            "roll": roll.to_dict(),
+            "result": {
+                "resource": DARK_ONES_OWN_LUCK_RESOURCE,
+                "resource_before": before_resource,
+                "resource_after": actor.resources[DARK_ONES_OWN_LUCK_RESOURCE],
+                "roll_total": roll.total,
+                "total_before": before_total,
+                "total_after": after_total,
+                "spent": True,
+                "success": payload["success"],
+            },
+        }
 
     def _apply_tactical_mind_to_check(
         self,

@@ -5,9 +5,11 @@ from typing import Any
 from ..dice import RollResult, RollService
 from ..models import Character
 from .class_features import (
+    DARK_ONES_OWN_LUCK_RESOURCE,
     GIFT_OF_DEPTHS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WHOLENESS_OF_BODY_RESOURCE,
+    dark_ones_own_luck_uses,
     has_monk_open_hand_feature,
     has_warlock_gift_of_depths,
 )
@@ -430,6 +432,9 @@ def resource_maxima(character: Character) -> dict[str, int]:
     warlock_level = int(character.class_levels.get("warlock", 0))
     if warlock_level >= 2:
         maxima[MAGICAL_CUNNING_RESOURCE] = 1
+    dark_ones_own_luck_max = dark_ones_own_luck_uses(character)
+    if dark_ones_own_luck_max:
+        maxima[DARK_ONES_OWN_LUCK_RESOURCE] = dark_ones_own_luck_max
     if has_warlock_gift_of_depths(character):
         maxima[GIFT_OF_DEPTHS_RESOURCE] = 1
     wizard_level = int(character.class_levels.get("wizard", 0))

@@ -885,14 +885,23 @@
                         "srd.eldritch_invocations",
                         "srd.magical_cunning"
                     ]
+                },
+                "6": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
                 }
             },
             "subclasses": {
                 "fiend": {
                     "name": "Fiend Patron",
                     "level": 3,
-                    "features": ["Dark One's Blessing"],
-                    "actions": ["srd.dark_ones_blessing"]
+                    "features": ["Dark One's Blessing", "Dark One's Own Luck"],
+                    "actions": ["srd.dark_ones_blessing", "srd.dark_ones_own_luck"]
                 }
             }
         },
