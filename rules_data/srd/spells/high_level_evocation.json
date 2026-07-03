@@ -390,13 +390,31 @@
         "action_type": "spell",
         "action_economy": "action",
         "range": { "normal_ft": 150 },
-        "target_policy": { "min": 1, "max": 4, "harmful": true },
-        "requirements": { "spell_level": 6 },
+        "target_policy": {
+          "min": 1,
+          "max": 4,
+          "harmful": true,
+          "base_spell_slot_level": 6,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": { "spell_level": 6, "class_any": ["sorcerer", "wizard"] },
+        "properties": {
+          "material_component": {
+            "description": "three silver pins",
+            "consumed": false
+          },
+          "primary_target_must_be_visible_within_range": true,
+          "secondary_bolts_leap_from_first_target": true,
+          "secondary_targets_must_be_within_ft_of_first_target": 30,
+          "targets_can_be_creatures_or_objects": true,
+          "target_can_be_hit_by_only_one_bolt": true,
+          "higher_level_additional_targets_per_slot_above_6": 1
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 6 },
         "automation": [
           { "type": "target", "mode": "explicit" },
-          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
           { "type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": true }
         ],
         "audit_label": "Chain Lightning"

@@ -218,6 +218,35 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "2d8",
         },
     ]
+    chain_lightning = compendium.action("srd.chain_lightning")
+    assert chain_lightning.requirements == {
+        "spell_level": 6,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert chain_lightning.properties["spell_classes"] == ["sorcerer", "wizard"]
+    assert chain_lightning.properties["material_component"] == {
+        "description": "three silver pins",
+        "consumed": False,
+    }
+    assert chain_lightning.properties["primary_target_must_be_visible_within_range"] is True
+    assert chain_lightning.properties["secondary_bolts_leap_from_first_target"] is True
+    assert chain_lightning.properties["secondary_targets_must_be_within_ft_of_first_target"] == 30
+    assert chain_lightning.properties["targets_can_be_creatures_or_objects"] is True
+    assert chain_lightning.properties["target_can_be_hit_by_only_one_bolt"] is True
+    assert chain_lightning.properties["higher_level_additional_targets_per_slot_above_6"] == 1
+    assert chain_lightning.range == {"normal_ft": 150}
+    assert chain_lightning.target_policy == {
+        "min": 1,
+        "max": 4,
+        "harmful": True,
+        "base_spell_slot_level": 6,
+        "max_targets_per_slot_above": 1,
+    }
+    assert chain_lightning.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": True},
+    ]
     finger_of_death = compendium.action("srd.finger_of_death")
     assert finger_of_death.requirements == {
         "spell_level": 7,

@@ -8946,6 +8946,137 @@ def test_blight_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["9d8"]
 
 
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_chain_lightning_uses_allowed_class_spell_dc_and_half_damage_on_success(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 11}
+    caster.abilities[ability] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.chain_lightning",
+        ["goblin1"],
+        6,
+        idempotency_key=f"cast-chain-lightning-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "lightning"
+    assert damage_change["amount"] == 4
+    assert damage_change["applied"] == 4
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d8"]
+
+
+def test_chain_lightning_upcast_adds_one_target_per_slot_above_six(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 1
+    caster.spell_slots["7"] = 1
+    target_ids = ["goblin1", "goblin2", "goblin3", "goblin4", "goblin5"]
+    for index, target_id in enumerate(target_ids, start=1):
+        if target_id not in state.encounter.combatants:
+            state.encounter.combatants[target_id] = Combatant(
+                id=target_id,
+                entity_id=target_id,
+                name=f"Chain Target {index}",
+                side="monsters",
+                hp_current=80,
+                hp_max=80,
+                armor_class=12,
+            )
+        target = state.encounter.combatants[target_id]
+        target.abilities = {"dex": 10}
+        target.hp_current = 80
+        target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+
+    with pytest.raises(AutomationError, match="too many targets"):
+        EngineTools(state, compendium, AuditLog()).cast_spell(
+            "pc1",
+            "srd.chain_lightning",
+            target_ids,
+            6,
+            idempotency_key="cast-chain-lightning-too-many-base",
+        )
+
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 1, 1, 1, 1, 8, 8, 8, 8, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.chain_lightning",
+        target_ids,
+        7,
+        idempotency_key="cast-chain-lightning-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 1
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["target_id"] for change in damage_changes] == target_ids
+    assert [change["damage_type"] for change in damage_changes] == ["lightning"] * 5
+    assert [change["amount"] for change in damage_changes] == [8, 8, 8, 8, 8]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "1d20+0",
+        "1d20+0",
+        "1d20+0",
+        "1d20+0",
+        "10d8",
+        "10d8",
+        "10d8",
+        "10d8",
+        "10d8",
+    ]
+
+
 def test_circle_of_death_uses_actor_spell_dc_and_deals_necrotic_area_damage(
     make_state,
 ) -> None:
