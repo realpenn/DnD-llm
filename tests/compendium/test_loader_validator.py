@@ -171,6 +171,48 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.detect_magic"
     )
     assert compendium.spell("srd.spell.detect_magic").ritual is True
+    ice_storm = compendium.action("srd.ice_storm")
+    assert ice_storm.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert ice_storm.properties["spell_classes"] == ["druid", "sorcerer", "wizard"]
+    assert ice_storm.properties["material_component"] == {
+        "description": "a mitten",
+        "consumed": False,
+    }
+    assert (
+        ice_storm.properties["ground_in_cylinder_becomes_difficult_terrain_until_end_of_next_turn"]
+        is True
+    )
+    assert ice_storm.properties["higher_level_increases_bludgeoning_damage_only"] is True
+    assert ice_storm.range == {
+        "normal_ft": 300,
+        "shape": "cylinder",
+        "radius_ft": 20,
+        "height_ft": 40,
+    }
+    assert ice_storm.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert ice_storm.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "2d10",
+            "damage_type": "bludgeoning",
+            "save_half": True,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d10",
+        },
+        {"type": "damage", "dice": "4d6", "damage_type": "cold", "save_half": True},
+        {
+            "type": "world_effect",
+            "effect_type": "difficult_terrain",
+            "scope": {"shape": "cylinder", "radius_ft": 20, "height_ft": 40},
+            "duration": {"until": "end_of_next_turn"},
+            "metadata": {"ground_in_cylinder": True, "source": "hailstones"},
+        },
+    ]
     blight = compendium.action("srd.blight")
     assert blight.requirements == {
         "spell_level": 4,

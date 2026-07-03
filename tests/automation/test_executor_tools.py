@@ -8884,6 +8884,118 @@ def test_greater_invisibility_applies_concentration_invisible_without_attack_bre
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("druid", "wis", "spell_save_dc:druid"),
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_ice_storm_uses_allowed_class_spell_dc_and_halves_both_damage_types(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 9}
+    caster.abilities[ability] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 10, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.ice_storm",
+        ["goblin1"],
+        4,
+        idempotency_key=f"cast-ice-storm-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["damage_type"] for change in damage_changes] == ["bludgeoning", "cold"]
+    assert [change["amount"] for change in damage_changes] == [5, 3]
+    assert [change["applied"] for change in damage_changes] == [5, 3]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "2d10",
+        "4d6",
+    ]
+    effect = state.world.active_effects[-1]
+    assert effect["effect_type"] == "difficult_terrain"
+    assert effect["scope"] == {"shape": "cylinder", "radius_ft": 20, "height_ft": 40}
+    assert effect["duration"] == {"until": "end_of_next_turn"}
+    assert effect["metadata"] == {
+        "ground_in_cylinder": True,
+        "source": "hailstones",
+    }
+
+
+def test_ice_storm_upcast_adds_only_bludgeoning_damage_die(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 10, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.ice_storm",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-ice-storm-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["damage_type"] for change in damage_changes] == ["bludgeoning", "cold"]
+    assert [change["amount"] for change in damage_changes] == [10, 6]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "3d10",
+        "4d6",
+    ]
+
+
 def test_blight_uses_actor_spell_dc_and_plant_auto_fails_save(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

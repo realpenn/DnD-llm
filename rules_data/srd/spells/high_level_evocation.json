@@ -19,19 +19,39 @@
         "action_economy": "action",
         "range": { "normal_ft": 300, "shape": "cylinder", "radius_ft": 20, "height_ft": 40 },
         "target_policy": { "min": 1, "max": 12, "harmful": true },
-        "requirements": { "spell_level": 4 },
+        "requirements": { "spell_level": 4, "class_any": ["druid", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a mitten",
+            "consumed": false
+          },
+          "ground_in_cylinder_becomes_difficult_terrain_until_end_of_next_turn": true,
+          "higher_level_increases_bludgeoning_damage_only": true
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 4 },
         "automation": [
           { "type": "target", "mode": "area" },
-          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
-          { "type": "damage", "dice": "2d10", "damage_type": "bludgeoning", "save_half": true },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "2d10",
+            "damage_type": "bludgeoning",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d10"
+          },
           { "type": "damage", "dice": "4d6", "damage_type": "cold", "save_half": true },
           {
             "type": "world_effect",
             "effect_type": "difficult_terrain",
             "scope": { "shape": "cylinder", "radius_ft": 20, "height_ft": 40 },
-            "duration": { "until": "end_of_next_turn" }
+            "duration": { "until": "end_of_next_turn" },
+            "metadata": {
+              "ground_in_cylinder": true,
+              "source": "hailstones"
+            }
           }
         ],
         "audit_label": "Ice Storm"
