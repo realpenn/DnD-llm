@@ -516,7 +516,14 @@ def test_compendium_loads_srd_actions() -> None:
         },
     ]
     greater_invisibility = compendium.action("srd.greater_invisibility")
-    assert greater_invisibility.requirements == {"spell_level": 4}
+    assert greater_invisibility.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "sorcerer", "wizard"],
+    }
+    assert greater_invisibility.properties["spell_classes"] == ["bard", "sorcerer", "wizard"]
+    assert greater_invisibility.properties["target_type"] == "creature"
+    assert greater_invisibility.properties["target_must_be_touched"] is True
+    assert greater_invisibility.properties["does_not_end_early_on_attack_damage_or_spell"] is True
     assert greater_invisibility.range == {"touch": True}
     assert greater_invisibility.automation == [
         {"type": "target", "mode": "explicit"},

@@ -8834,6 +8834,7 @@ def test_greater_invisibility_applies_concentration_invisible_without_attack_bre
 ) -> None:
     state = make_state()
     assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"bard": 7}
     state.characters["pc1"].spell_slots["4"] = 1
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(state, compendium, AuditLog())

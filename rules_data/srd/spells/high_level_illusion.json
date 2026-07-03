@@ -19,7 +19,13 @@
         "action_economy": "action",
         "range": { "touch": true },
         "target_policy": { "min": 1, "max": 1, "harmful": false },
-        "requirements": { "spell_level": 4 },
+        "requirements": { "spell_level": 4, "class_any": ["bard", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "target_type": "creature",
+          "target_must_be_touched": true,
+          "does_not_end_early_on_attack_damage_or_spell": true
+        },
         "friendly_fire_policy": "raw",
         "cost": { "spell_slot_level": 4 },
         "automation": [

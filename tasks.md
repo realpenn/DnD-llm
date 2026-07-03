@@ -302,6 +302,7 @@ P0 脚手架
   - [x] **P2-1ar** SRD 5.2.1 `Meteor Swarm` 落地：校准 9 环 Evocation spell 与 `srd.meteor_swarm` action；按 SRD 限定 Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，四个 1 mile 内可见点各形成 40 尺半径 Sphere，区域内生物失败承受 `20d6` Fire damage 与 `20d6` Bludgeoning damage、成功两者均半伤；记录同一生物处于多个 Sphere 只受一次影响、非魔法未穿戴/携带物体受伤且可燃物开始燃烧，不虚构四球几何调度器；覆盖 compendium、executor、双伤害半伤与全量门禁测试。
   - [x] **P2-1as** SRD 5.2.1 `Cone of Cold` 落地：校准 5 环 Evocation spell 与 `srd.cone_of_cold` action；按 SRD 限定 Druid/Sorcerer/Wizard，使用施法者 spell save DC 进行 Constitution saving throw，60 尺 Cone 内目标失败承受 `8d8` Cold damage、成功半伤；支持每高一环 `+1d8` 且记录被此法术杀死的生物会成为 frozen statue until it thaws，不虚构融化调度器；覆盖 compendium、executor、升环伤害与全量门禁测试。
   - [x] **P2-1at** SRD 5.2.1 `Ice Storm` 落地：校准 4 环 Evocation spell 与 `srd.ice_storm` action；按 SRD 限定 Druid/Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，20 尺半径、40 尺高 Cylinder 内目标失败承受 `2d10` Bludgeoning damage 与 `4d6` Cold damage、成功两者均半伤；记录 hailstones 使 Cylinder 内地面成为 Difficult Terrain 到施法者下回合结束，且每高一环只让 Bludgeoning damage `+1d10`；覆盖 compendium、executor、升环伤害与全量门禁测试。
+  - [x] **P2-1au** SRD 5.2.1 `Greater Invisibility` 补校准：按 SRD 限定 Bard/Sorcerer/Wizard 4 环 Illusion spell，补充 creature touch target 与不会因攻击、造成伤害或施法提前结束的元数据；保留现有 Concentration 1 minute Invisible condition 执行语义，覆盖 compendium、executor 与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
