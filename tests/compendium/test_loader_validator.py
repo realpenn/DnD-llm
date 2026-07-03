@@ -51,6 +51,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.greater_restoration",
         "srd.cloudkill",
         "srd.teleportation_circle",
+        "srd.insect_plague",
         "srd.passwall",
         "srd.tree_stride",
         "srd.wall_of_force",
@@ -311,6 +312,52 @@ def test_compendium_loads_srd_actions() -> None:
                     "dc_from": {"spell_save_dc": "actor"},
                     "damage": "5d8 poison",
                     "higher_level_damage_increase": "1d8 per slot above 5",
+                },
+            },
+        },
+    ]
+    insect_plague = compendium.action("srd.insect_plague")
+    assert insect_plague.requirements == {
+        "spell_level": 5,
+        "class_any": ["cleric", "druid", "sorcerer"],
+    }
+    assert insect_plague.properties["spell_classes"] == ["cleric", "druid", "sorcerer"]
+    assert insect_plague.properties["material_component"] == {
+        "description": "a locust",
+        "consumed": False,
+    }
+    assert insect_plague.range == {"normal_ft": 300, "shape": "sphere", "radius_ft": 20}
+    assert insect_plague.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert insect_plague.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "4d10",
+            "damage_type": "piercing",
+            "save_half": True,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d10",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "insect_plague_swarm",
+            "scope": {"shape": "sphere", "radius_ft": 20, "range_ft": 300},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "lightly_obscured": True,
+                "difficult_terrain": True,
+                "repeat_save_triggers": [
+                    "creature_enters_area",
+                    "creature_ends_turn_in_area",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "con",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "4d10 piercing",
+                    "higher_level_damage_increase": "1d10 per slot above 5",
                 },
             },
         },

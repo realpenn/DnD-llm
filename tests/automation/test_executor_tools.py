@@ -8838,6 +8838,121 @@ def test_cloudkill_upcast_spends_requested_slot_and_adds_damage_die(make_state) 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
 
 
+def test_insect_plague_uses_actor_spell_dc_deals_piercing_and_records_swarm(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 10]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.insect_plague",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-insect-plague",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "piercing"
+    assert damage_change["amount"] == 10
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "4d10"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.insect_plague"
+    assert effect["effect_type"] == "insect_plague_swarm"
+    assert effect["concentration"] is True
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["scope"] == {"shape": "sphere", "radius_ft": 20, "range_ft": 300}
+    assert effect["metadata"] == {
+        "lightly_obscured": True,
+        "difficult_terrain": True,
+        "repeat_save_triggers": [
+            "creature_enters_area",
+            "creature_ends_turn_in_area",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "con",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "4d10 piercing",
+            "higher_level_damage_increase": "1d10 per slot above 5",
+        },
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "insect_plague_swarm"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
+def test_insect_plague_upcast_spends_requested_slot_and_adds_damage_die(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 10]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.insect_plague",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-insect-plague-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "5d10"]
+
+
 def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
