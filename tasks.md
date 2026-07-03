@@ -46,12 +46,12 @@ P0 脚手架
 
 **Goal：** 建立 spec §8 的目录骨架、依赖、配置与 CI，让后续里程碑有可落地的工程地基。
 
-- [ ] **P0-1** 初始化 Python 3.11+ 项目：`pyproject.toml`、依赖（`python-telegram-bot`、OpenAI 兼容 client、`d20`、`pydantic` 或等价、`pytest`）。↳ spec §8
-- [ ] **P0-2** 按 spec §8 建目录骨架：`core/`、`rules_data/`、`dm/`、`content/`、`orchestrator/`、`telegram_bot/`、`tests/`（含 `core/positioning.py`、`core/resolver.py`）。
-- [ ] **P0-3** 工具链：lint（ruff）、format（black/ruff-format）、类型检查（mypy/pyright）、pre-commit、CI 跑 `pytest` + 类型检查。
-- [ ] **P0-4** 配置层：环境变量加载（`BOT_TOKEN`、`OPENAI_BASE_URL`、`OPENAI_API_KEY`、各用途 model id、战役包目录）；DM/摘要/内容生成可分别配模型。↳ spec §8 / §11.24
-- [ ] **P0-5** JSON Schema 基建：`rules_data/schemas/` 版本化 schema 加载器与校验入口（供 M2 `RuleDataValidator` 复用）。↳ spec §3.1.1 / §11.18
-- [ ] **P0-6** 许可证义务接线：确认 `LICENSE`(Apache-2.0)/`LICENSE-CONTENT.md`(CC-BY-4.0)/`NOTICE`/`LICENSE-THIRD-PARTY` 就位；为 SRD 派生数据与战役包预留逐字署名注入位。↳ spec §12
+- [x] **P0-1** 初始化 Python 3.11+ 项目：`pyproject.toml`、依赖（`python-telegram-bot`、OpenAI 兼容 client、`d20`、`pydantic` 或等价、`pytest`）。↳ spec §8
+- [x] **P0-2** 按 spec §8 建目录骨架：`core/`、`rules_data/`、`dm/`、`content/`、`orchestrator/`、`telegram_bot/`、`tests/`（含 `core/positioning.py`、`core/resolver.py`）。
+- [x] **P0-3** 工具链：lint（ruff）、format（black/ruff-format）、类型检查（mypy/pyright）、pre-commit、CI 跑 `pytest` + 类型检查。
+- [x] **P0-4** 配置层：环境变量加载（`BOT_TOKEN`、`OPENAI_BASE_URL`、`OPENAI_API_KEY`、各用途 model id、战役包目录）；DM/摘要/内容生成可分别配模型。↳ spec §8 / §11.24
+- [x] **P0-5** JSON Schema 基建：`rules_data/schemas/` 版本化 schema 加载器与校验入口（供 M2 `RuleDataValidator` 复用）。↳ spec §3.1.1 / §11.18
+- [x] **P0-6** 许可证义务接线：确认 `LICENSE`(Apache-2.0)/`LICENSE-CONTENT.md`(CC-BY-4.0)/`NOTICE`/`LICENSE-THIRD-PARTY` 就位；为 SRD 派生数据与战役包预留逐字署名注入位。↳ spec §12
 - **Exit：** `pytest` 空跑通过；CI 绿；`python -m dnd_llm`（或等价入口）能加载配置并退出；schema 校验器能对一个示例 JSON 报 pass/fail。
 
 ---
@@ -65,12 +65,12 @@ P0 脚手架
 **Goal：** 数据模型 + 确定性骰子 + 审计 + 存读档。这是一切的地基。
 ↳ 依赖：P0 ｜ ↳ spec §3.1 / §3.1.2 / §6 / §11.16-17
 
-- [ ] **M1-1** 状态模型（`core/models.py`）：`Character`（属性/调整值/职业等级/熟练/HP/临时HP/**生命骰**/AC/速度/技能/豁免/装备/物品栏/法术位/状态效果/位置/金币/经验）、`Monster/NPC`（5e stat block 子集）、`Encounter`（参战实体/先攻/回合指针/地形/轻量战术位置图引用）、`WorldState`、`SessionConfig`（`pvp_enabled`/`friendly_fire`/展示策略）。↳ spec §3.1
-- [ ] **M1-2** 位置字段双轨：`Character` 探索期 `zone_id`，战斗期 combatant 实例持 `position_node_id`（结构占位，图计算留 M3）。↳ spec §3.1
-- [ ] **M1-3** `RollService`（`core/dice.py`）：封装 `d20`，注入 RNG；每战役/存档持 `rng_seed` + 单调 `roll_counter`；每次掷骰产出 `roll_id`，记录 dice expr/seed/counter/优劣势/每骰原始面/保留丢弃/总值/展示串。↳ spec §3.1.2 / §11.17
-- [ ] **M1-4** 审计日志（`core/persistence.py`）：追加写事件日志，字段至少含 spec §6 全列表（玩家原文、`PlayerIntent`、工具名+参数、工具结果、automation node path、骰面、事件计数、idempotency key、model id、prompt/schema 版本、规则数据版本、战役包版本、时间）。
-- [ ] **M1-5** 存读档：状态 + 摘要 + seed/roll_counter + 事件计数 + 审计引用 → JSON（可读、可 diff）；`save`/`load` 往返等价。↳ spec §6
-- [ ] **M1-6** 确定性回放测试骨架：同 seed+counter+动作序列 → 同结果；`d20` 升级漂移时可按审计骰面重放。↳ spec §3.1.2
+- [x] **M1-1** 状态模型（`core/models.py`）：`Character`（属性/调整值/职业等级/熟练/HP/临时HP/**生命骰**/AC/速度/技能/豁免/装备/物品栏/法术位/状态效果/位置/金币/经验）、`Monster/NPC`（5e stat block 子集）、`Encounter`（参战实体/先攻/回合指针/地形/轻量战术位置图引用）、`WorldState`、`SessionConfig`（`pvp_enabled`/`friendly_fire`/展示策略）。↳ spec §3.1
+- [x] **M1-2** 位置字段双轨：`Character` 探索期 `zone_id`，战斗期 combatant 实例持 `position_node_id`（结构占位，图计算留 M3）。↳ spec §3.1
+- [x] **M1-3** `RollService`（`core/dice.py`）：封装 `d20`，注入 RNG；每战役/存档持 `rng_seed` + 单调 `roll_counter`；每次掷骰产出 `roll_id`，记录 dice expr/seed/counter/优劣势/每骰原始面/保留丢弃/总值/展示串。↳ spec §3.1.2 / §11.17
+- [x] **M1-4** 审计日志（`core/persistence.py`）：追加写事件日志，字段至少含 spec §6 全列表（玩家原文、`PlayerIntent`、工具名+参数、工具结果、automation node path、骰面、事件计数、idempotency key、model id、prompt/schema 版本、规则数据版本、战役包版本、时间）。
+- [x] **M1-5** 存读档：状态 + 摘要 + seed/roll_counter + 事件计数 + 审计引用 → JSON（可读、可 diff）；`save`/`load` 往返等价。↳ spec §6
+- [x] **M1-6** 确定性回放测试骨架：同 seed+counter+动作序列 → 同结果；`d20` 升级漂移时可按审计骰面重放。↳ spec §3.1.2
 - **Exit：** 构造一个 `Character` + 一串掷骰，save→load→继续掷骰结果完全一致；回放测试通过；审计日志字段齐全可解析。
 
 ## M2 — Automation DSL
@@ -78,11 +78,11 @@ P0 脚手架
 **Goal：** 把规则效果数据化：定义 schema、节点模型、Executor、Validator。
 ↳ 依赖：M1 ｜ ↳ spec §3.1.1 / §11.13-14
 
-- [ ] **M2-1** 定义 schema（`core/automation/definitions.py`）：`ActionDefinition`（id/name/localization+aliases/source/rules_version/action_type/action_economy/range/target_policy/requirements/**friendly_fire_policy**/cost/automation/audit_label）、`HazardDefinition`、`EventDefinition`。↳ spec §3.1.1 / §11.14
-- [ ] **M2-2** `EffectInstance`（`core/automation/effects.py`）：effect_id/source_ref/source_action_id/target_id/applied_by/condition 或被动修正/duration/tick_on/concentration/stacking_policy/父子效果/remove_conditions/审计。↳ spec §3.1.1 / §11.16
-- [ ] **M2-3** automation 节点（`core/automation/nodes.py`）：`target`（self/each/all/explicit/**area**：node/中心 combatant + shape/radius/line/cone）、`attack_roll`、`saving_throw`、`ability_check`、`damage`/`healing`/`temp_hp`、`condition`、`resource_delta`、`move`、`branch`、`text_result`。↳ spec §3.1.1
-- [ ] **M2-4** `AutomationExecutor`（`core/automation/executor.py`）：把已校验定义编译为 automation tree 并结算；所有掷骰经 `RollService`；所有变更写审计 + 生成/更新 `EffectInstance`。
-- [ ] **M2-5** `RuleDataValidator`（`core/compendium/validators.py`）：schema 校验（字段/节点/target+friendly fire policy/cost/source/rules version/战术图 node-edge 字段）、规则校验（环位/职业等级/动作经济/状态名/伤害类型/SRD 来源）、本地化别名校验（归一冲突→保留 `ambiguous`，不加载期报错）、**安全校验**（运行时 LLM 不能提交/改 automation tree）。↳ spec §3.1.1 / §11.18
+- [x] **M2-1** 定义 schema（`core/automation/definitions.py`）：`ActionDefinition`（id/name/localization+aliases/source/rules_version/action_type/action_economy/range/target_policy/requirements/**friendly_fire_policy**/cost/automation/audit_label）、`HazardDefinition`、`EventDefinition`。↳ spec §3.1.1 / §11.14
+- [x] **M2-2** `EffectInstance`（`core/automation/effects.py`）：effect_id/source_ref/source_action_id/target_id/applied_by/condition 或被动修正/duration/tick_on/concentration/stacking_policy/父子效果/remove_conditions/审计。↳ spec §3.1.1 / §11.16
+- [x] **M2-3** automation 节点（`core/automation/nodes.py`）：`target`（self/each/all/explicit/**area**：node/中心 combatant + shape/radius/line/cone）、`attack_roll`、`saving_throw`、`ability_check`、`damage`/`healing`/`temp_hp`、`condition`、`resource_delta`、`move`、`branch`、`text_result`。↳ spec §3.1.1
+- [x] **M2-4** `AutomationExecutor`（`core/automation/executor.py`）：把已校验定义编译为 automation tree 并结算；所有掷骰经 `RollService`；所有变更写审计 + 生成/更新 `EffectInstance`。
+- [x] **M2-5** `RuleDataValidator`（`core/compendium/validators.py`）：schema 校验（字段/节点/target+friendly fire policy/cost/source/rules version/战术图 node-edge 字段）、规则校验（环位/职业等级/动作经济/状态名/伤害类型/SRD 来源）、本地化别名校验（归一冲突→保留 `ambiguous`，不加载期报错）、**安全校验**（运行时 LLM 不能提交/改 automation tree）。↳ spec §3.1.1 / §11.18
 - **Exit：** 用一个手写 `ActionDefinition`（如「短剑攻击」「治疗术」）跑 Executor 得到正确状态变更与审计；非法定义被 Validator 精确拒绝；定义可 JSON 往返。
 
 ## M3 — 规则核心 + 定位 + Resolver + Tool Facade
@@ -90,15 +90,15 @@ P0 脚手架
 **Goal：** 5e 结算 helper、战斗定位图、动作审核、对 LLM 的工具门面。
 ↳ 依赖：M2 ｜ ↳ spec §3.1 / §3.1.1 / §3.2.1 / §4.2 / §11.30-32
 
-- [ ] **M3-1** 规则 helper（`core/rules/`）：检定、豁免、攻击命中、伤害（**抗性/免疫/易伤**）、状态、专注（concentration，伤害触发 CON 豁免、单并发）、休整（**短休/长休**）、死亡豁免。↳ spec §9 Phase 1 引擎清单
-- [ ] **M3-2** `difficulty_tier` → DC 映射表（very_easy…nearly_impossible）与 `dc_ref` 解析；最终 DC 写审计；运行时不接受裸数值 DC。↳ spec §3.1「关于 DC」/ §11.31
-- [ ] **M3-3** 行动经济（`core/economy.py`）：action/bonus/reaction/movement/object-free interaction 预算；回合开始/结束重置或 tick；预算不足 Executor 拒绝。↳ spec §3.1.1 / §4.2
-- [ ] **M3-4** 定位（`core/positioning.py`）：`PositionNode` + 带 `distance_ft`/movement cost/LOS/cover/difficult terrain 的边；最短路求距离、LOS/cover 判定、可达性、**AoE 命中集合**、**借机攻击触发**（离开敌方 reach 覆盖 node）。运行时若需生成战术图，生成过程经 seed 或落档以保回放。↳ spec §3.1 定位段 / §4.2 / §11.32
-- [ ] **M3-5** `ActionResolver`（`core/resolver.py`）：`PlayerActionDraft` → 确定性审核 `accepted`/`rejected`/`ambiguous`（含友伤 `confirm_required` 子型）。校验拥有/已知已准备/资源法术位/行动经济/目标距离视线遮蔽/友伤策略；`candidate_action_id` 仅路由提示，必须照常校验存在性/归属/合法性。↳ spec §3.2.1 / §4.3 / §11.26
-- [ ] **M3-6** Tool Facade（`core/tools.py`）：DM 可调用工具（`roll_check`/`roll_save`/`attack`/`cast_spell`/`use_item`/`move`/`interact`/`trigger_event`/`apply_hazard`/`award`/`request_combat`/`request_end_combat`）+ 内部/GM 工具（`apply_damage`/`apply_healing`/`apply_condition`/…/`gm_override`）。DM 工具只接有限参数转 Executor，**不开放裸状态修改**。↳ spec §3.1 / §11.3/15
-- [ ] **M3-7** `apply_hazard` 受控通道：仅放行 SRD 5.2.1 Hazards/Environmental Effects；params 必须可追溯（地图/战役包/玩家声明/规则离散项）；映射已校验 `HazardDefinition.automation`；每次写审计。↳ spec §3.1.3
-- [ ] **M3-8** PvP/友伤强制：默认 `pvp_enabled=false`（PC 不能以 allied PC 为有害目标→`rejected`）；玩家 AoE 默认 `friendly_fire=confirm`（波及友军→`confirm_required`）；`off|confirm|raw` 可配；怪物 AoE 按规则正常波及。↳ spec §4.3 / §11.33
-- [ ] **M3-9** 引擎不变量强制 + 测试：HP 不负伤害治疗 / 法术位 0 不可施法 / 移动沿 zone 边（探索）或战术图边（战斗）/ 奖励只经 `award` / 任何变更有审计。↳ spec §3.1.3
+- [x] **M3-1** 规则 helper（`core/rules/`）：检定、豁免、攻击命中、伤害（**抗性/免疫/易伤**）、状态、专注（concentration，伤害触发 CON 豁免、单并发）、休整（**短休/长休**）、死亡豁免。↳ spec §9 Phase 1 引擎清单
+- [x] **M3-2** `difficulty_tier` → DC 映射表（very_easy…nearly_impossible）与 `dc_ref` 解析；最终 DC 写审计；运行时不接受裸数值 DC。↳ spec §3.1「关于 DC」/ §11.31
+- [x] **M3-3** 行动经济（`core/economy.py`）：action/bonus/reaction/movement/object-free interaction 预算；回合开始/结束重置或 tick；预算不足 Executor 拒绝。↳ spec §3.1.1 / §4.2
+- [x] **M3-4** 定位（`core/positioning.py`）：`PositionNode` + 带 `distance_ft`/movement cost/LOS/cover/difficult terrain 的边；最短路求距离、LOS/cover 判定、可达性、**AoE 命中集合**、**借机攻击触发**（离开敌方 reach 覆盖 node）。运行时若需生成战术图，生成过程经 seed 或落档以保回放。↳ spec §3.1 定位段 / §4.2 / §11.32
+- [x] **M3-5** `ActionResolver`（`core/resolver.py`）：`PlayerActionDraft` → 确定性审核 `accepted`/`rejected`/`ambiguous`（含友伤 `confirm_required` 子型）。校验拥有/已知已准备/资源法术位/行动经济/目标距离视线遮蔽/友伤策略；`candidate_action_id` 仅路由提示，必须照常校验存在性/归属/合法性。↳ spec §3.2.1 / §4.3 / §11.26
+- [x] **M3-6** Tool Facade（`core/tools.py`）：DM 可调用工具（`roll_check`/`roll_save`/`attack`/`cast_spell`/`use_item`/`move`/`interact`/`trigger_event`/`apply_hazard`/`award`/`request_combat`/`request_end_combat`）+ 内部/GM 工具（`apply_damage`/`apply_healing`/`apply_condition`/…/`gm_override`）。DM 工具只接有限参数转 Executor，**不开放裸状态修改**。↳ spec §3.1 / §11.3/15
+- [x] **M3-7** `apply_hazard` 受控通道：仅放行 SRD 5.2.1 Hazards/Environmental Effects；params 必须可追溯（地图/战役包/玩家声明/规则离散项）；映射已校验 `HazardDefinition.automation`；每次写审计。↳ spec §3.1.3
+- [x] **M3-8** PvP/友伤强制：默认 `pvp_enabled=false`（PC 不能以 allied PC 为有害目标→`rejected`）；玩家 AoE 默认 `friendly_fire=confirm`（波及友军→`confirm_required`）；`off|confirm|raw` 可配；怪物 AoE 按规则正常波及。↳ spec §4.3 / §11.33
+- [x] **M3-9** 引擎不变量强制 + 测试：HP 不负伤害治疗 / 法术位 0 不可施法 / 移动沿 zone 边（探索）或战术图边（战斗）/ 奖励只经 `award` / 任何变更有审计。↳ spec §3.1.3
 - **Exit：** 给定一个小型战术图 + 两名 combatant，能正确判定近战/远程射程、AoE 命中集合、借机攻击触发；Resolver 对合法/幻觉/越权/友伤草案分别返回正确分类；PvP 默认拦截生效。
 
 ## M4 — Compendium（SRD 数据填充）
@@ -106,11 +106,11 @@ P0 脚手架
 **Goal：** 把 Tier 1 全量规则数据填进 `rules_data/`，全部以 automation 表达。
 ↳ 依赖：M2（schema）+ M3（结算语义）｜ ↳ spec §3.1 / §9 / §11.12/18
 
-- [ ] **M4-1** 加载器与本地化（`core/compendium/loader.py` + `localization.py`）：加载 `rules_data/srd/**` 与战役包事件；中英标准名 + 别名 + 名称归一。↳ spec §11.18
-- [ ] **M4-2** 基础动作：攻击/施法/闪避/脱离/冲刺/帮助/躲藏 + 借机攻击、额外攻击。↳ spec §9
-- [ ] **M4-3** 核心状态（`conditions.json`）：中毒/眩晕/倒地/束缚/目盲/魅惑/恐慌/麻痹等**全部核心状态**，以 `EffectInstance` 语义落地。↳ spec §9
-- [ ] **M4-4** 危害（`hazards.json`）：SRD 5.2.1 Hazards 与 Environmental Effects（坠落/窒息/燃烧/脱水/饥饿/极端冷热/深水/强风等）。↳ spec §3.1.3
-- [ ] **M4-5** 职业（`classes.json`）：**SRD 5.2.1 全部基础职业**，等级 1–5，含 3 级子职；职业能力以 `ActionDefinition`/automation。多职业/专长**不做**（Phase 2）。↳ spec §9 / §11.12
+- [x] **M4-1** 加载器与本地化（`core/compendium/loader.py` + `localization.py`）：加载 `rules_data/srd/**` 与战役包事件；中英标准名 + 别名 + 名称归一。↳ spec §11.18
+- [x] **M4-2** 基础动作：攻击/施法/闪避/脱离/冲刺/帮助/躲藏 + 借机攻击、额外攻击。↳ spec §9
+- [x] **M4-3** 核心状态（`conditions.json`）：中毒/眩晕/倒地/束缚/目盲/魅惑/恐慌/麻痹等**全部核心状态**，以 `EffectInstance` 语义落地。↳ spec §9
+- [x] **M4-4** 危害（`hazards.json`）：SRD 5.2.1 Hazards 与 Environmental Effects（坠落/窒息/燃烧/脱水/饥饿/极端冷热/深水/强风等）。↳ spec §3.1.3
+- [x] **M4-5** 职业（`classes.json`）：**SRD 5.2.1 全部基础职业**，等级 1–5，含 3 级子职；职业能力以 `ActionDefinition`/automation。多职业/专长**不做**（Phase 2）。↳ spec §9 / §11.12
   - [x] **M4-5a** Rogue 3 `Steady Aim` 按 SRD 5.2.1 落为可执行 `ActionDefinition`：未移动过才可用、奖励动作、下一次本回合攻击优势、速度/移动预算归零，并覆盖解析器/执行器测试。
   - [x] **M4-5b** 基础职业 1–5 级 class feature/subclass 显示名按 SRD 5.2.1 表格校准，移除旧版名称残留（如 Primal Path、Bard College、Arcane Tradition 等）。
   - [x] **M4-5c** Fighter 5 `Tactical Shift` 按 SRD 5.2.1 接入 `Second Wind`：使用 Second Wind 时可选半速战术位移、不触发借机攻击，非法距离/等级在扣资源前拒绝，并覆盖执行器测试。
@@ -256,9 +256,9 @@ P0 脚手架
 ↳ spec §9 Phase 2 / §11.12/29。架构已预留全量空间，本阶段填充。
 
 - [ ] **P2-1** 等级 6+：更高环法术、更多子职特性。
-- [ ] **P2-2** 多职业 + 专长。
+- [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
-- [ ] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
+- [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
   - [x] **P2-4a** SRD 5.2.1 `Potion of Resistance` 落地：按 SRD 表限定 acid/cold/fire/force/lightning/necrotic/poison/psychic/radiant/thunder 十种伤害类型，饮用为 Bonus Action，1 小时给予所选伤害类型 Resistance；缺失或非表内 `damage_type` 在扣物品/行动经济前拒绝，并覆盖 compendium、resolver、executor、DM tool-calling 与自动模拟测试。
   - [x] **P2-4b** SRD 5.2.1 `Potion of Invulnerability` 落地：饮用为 Bonus Action，按 SRD 在 1 分钟内给予所有伤害 Resistance；复用 `all_damage_resistance` 被动修正与 `duration_1_minute` 生命周期，覆盖 compendium、executor 伤害减半、10 tick 过期与自动模拟测试。
   - [x] **P2-4c** SRD 5.2.1 `Potion of Water Breathing` 落地：饮用为 Bonus Action，按 SRD 在 24 小时内可水下呼吸；复用 `Water Breathing` 的 `can_breathe_underwater` 被动修正与 `duration_24_hours`/`environment` 语义，不额外虚构游泳速度或水下战斗规则，并覆盖 compendium、executor 与自动模拟测试。
@@ -295,16 +295,16 @@ P0 脚手架
 
 ↳ spec §9 Phase 3。
 
-- [ ] **P3-1** 内容生成组件运行时实时产出剧情与地图（Zone Graph / Tactical Graph 动态扩展），DM 即兴成团；启用架构图中 LLM-DM→Content Gen 路径。
-- [ ] **P3-2** 长战役向量检索记忆：按情境召回历史片段（spec §5.6 留口）。
+- [x] **P3-1** 内容生成组件运行时实时产出剧情与地图（Zone Graph / Tactical Graph 动态扩展），DM 即兴成团；启用架构图中 LLM-DM→Content Gen 路径。
+- [x] **P3-2** 长战役向量检索记忆：按情境召回历史片段（spec §5.6 留口）。
 
 # Phase 4 — 体验与运营
 
 ↳ spec §9 Phase 4 / §11.8。
 
-- [ ] **P4-1** 多战役并行、跨群（解除单群单战役限制）。
-- [ ] **P4-2** 观战模式。
-- [ ] **P4-3** 角色成长持久化增强、并发/超时/速率精细化。
+- [x] **P4-1** 多战役并行、跨群（解除单群单战役限制）。
+- [x] **P4-2** 观战模式。
+- [x] **P4-3** 角色成长持久化增强、并发/超时/速率精细化。
 - [ ] **P4-4** 成本监控。
 
 ---
