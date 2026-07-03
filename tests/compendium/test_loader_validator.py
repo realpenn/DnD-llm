@@ -217,6 +217,33 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "2d8",
         },
     ]
+    fire_storm = compendium.action("srd.fire_storm")
+    assert fire_storm.requirements == {
+        "spell_level": 7,
+        "class_any": ["cleric", "druid", "sorcerer"],
+    }
+    assert fire_storm.properties["spell_classes"] == ["cleric", "druid", "sorcerer"]
+    assert fire_storm.properties["area_shape"] == {
+        "shape": "contiguous_cubes",
+        "max_cubes": 10,
+        "cube_size_ft": 10,
+        "cube_contiguity": "contiguous_with_at_least_one_other_cube",
+    }
+    assert fire_storm.properties["flammable_objects_not_worn_or_carried_start_burning"] is True
+    assert fire_storm.range == {"normal_ft": 150, "shape": "area"}
+    assert fire_storm.target_policy == {"min": 1, "max": 20, "harmful": True}
+    assert fire_storm.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "7d10", "damage_type": "fire", "save_half": True},
+        {
+            "type": "text_result",
+            "text": (
+                "The fire storm uses up to ten contiguous 10-foot cubes; "
+                "flammable objects not worn or carried in the area start burning."
+            ),
+        },
+    ]
     greater_invisibility = compendium.action("srd.greater_invisibility")
     assert greater_invisibility.requirements == {"spell_level": 4}
     assert greater_invisibility.range == {"touch": True}

@@ -421,13 +421,29 @@
         "action_economy": "action",
         "range": { "normal_ft": 150, "shape": "area" },
         "target_policy": { "min": 1, "max": 20, "harmful": true },
-        "requirements": { "spell_level": 7 },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["cleric", "druid", "sorcerer"]
+        },
+        "properties": {
+          "area_shape": {
+            "shape": "contiguous_cubes",
+            "max_cubes": 10,
+            "cube_size_ft": 10,
+            "cube_contiguity": "contiguous_with_at_least_one_other_cube"
+          },
+          "flammable_objects_not_worn_or_carried_start_burning": true
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 7 },
         "automation": [
           { "type": "target", "mode": "area" },
-          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
-          { "type": "damage", "dice": "7d10", "damage_type": "fire", "save_half": true }
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "7d10", "damage_type": "fire", "save_half": true },
+          {
+            "type": "text_result",
+            "text": "The fire storm uses up to ten contiguous 10-foot cubes; flammable objects not worn or carried in the area start burning."
+          }
         ],
         "audit_label": "Fire Storm"
       }

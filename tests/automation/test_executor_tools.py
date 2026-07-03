@@ -9033,6 +9033,53 @@ def test_circle_of_death_upcast_spends_requested_slot_and_adds_two_damage_dice(
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d8"]
 
 
+def test_fire_storm_uses_actor_spell_dc_and_records_srd_area_metadata(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 13}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 10]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.fire_storm",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-fire-storm",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "fire"
+    assert damage_change["amount"] == 5
+    assert damage_change["applied"] == 5
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "7d10"]
+    assert result["messages"] == [
+        "The fire storm uses up to ten contiguous 10-foot cubes; "
+        "flammable objects not worn or carried in the area start burning."
+    ]
+
+
 def test_mass_cure_wounds_uses_actor_spellcasting_modifier_for_each_target(
     make_state,
 ) -> None:
