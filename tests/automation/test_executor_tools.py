@@ -2978,6 +2978,62 @@ def test_monk_level_five_unarmed_strike_uses_scaled_martial_arts_die(make_state)
     assert damage_change["amount"] == 6
 
 
+def test_monk_empowered_strikes_can_make_unarmed_damage_force(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 6}
+    character.actions.extend(["srd.monk_unarmed_strike", "srd.empowered_strikes"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.monk_unarmed_strike",
+        ["goblin1"],
+        params={"empowered_strikes_damage_type": "force"},
+        idempotency_key="monk-empowered-strikes-force",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert result["success"] is True
+    assert damage_change["damage_type"] == "force"
+    assert damage_change["amount"] == 6
+
+
+def test_empowered_strikes_requires_monk_level_six_before_spending_focus(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 5}
+    character.actions.append("srd.flurry_of_blows")
+    character.resources["srd.resource.focus_points"] = 5
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="Empowered Strikes requires Monk level 6"):
+        tools.perform_action(
+            "pc1",
+            "srd.flurry_of_blows",
+            ["goblin1"],
+            params={
+                "strike_1_target": "goblin1",
+                "strike_2_target": "goblin1",
+                "empowered_strikes_damage_type": "force",
+            },
+            idempotency_key="empowered-strikes-too-low",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 5
+
+
 def test_flurry_of_blows_spends_focus_and_can_split_strikes(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -3051,6 +3107,80 @@ def test_level_five_flurry_of_blows_uses_scaled_martial_arts_die(make_state) -> 
         "1d20+4",
         "1d8",
     ]
+
+
+def test_open_hand_wholeness_of_body_heals_self_and_spends_resource(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    combatant = state.encounter.combatants["pc1"]
+    character.class_levels = {"monk": 6}
+    character.subclasses = {"monk": "open_hand"}
+    character.abilities["wis"] = 16
+    character.actions.append("srd.wholeness_of_body")
+    character.resources["srd.resource.wholeness_of_body"] = 3
+    combatant.hp_current = 5
+    combatant.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.wholeness_of_body",
+        [],
+        idempotency_key="wholeness-of-body",
+    )
+
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert result["success"] is True
+    assert healing_change["amount"] == 7
+    assert healing_change["applied"] == 7
+    assert combatant.hp_current == 12
+    assert character.resources["srd.resource.wholeness_of_body"] == 2
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+
+
+def test_open_hand_wholeness_of_body_healing_has_minimum_one(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    combatant = state.encounter.combatants["pc1"]
+    character.class_levels = {"monk": 6}
+    character.subclasses = {"monk": "open_hand"}
+    character.abilities["wis"] = 8
+    character.actions.append("srd.wholeness_of_body")
+    character.resources["srd.resource.wholeness_of_body"] = 1
+    combatant.hp_current = 5
+    combatant.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.wholeness_of_body",
+        [],
+        idempotency_key="wholeness-of-body-minimum",
+    )
+
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert result["success"] is True
+    assert healing_change["amount"] == 1
+    assert healing_change["applied"] == 1
+    assert combatant.hp_current == 6
 
 
 def test_open_hand_technique_addle_blocks_opportunity_attacks(make_state) -> None:

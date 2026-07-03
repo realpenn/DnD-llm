@@ -3326,9 +3326,13 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["monk"].subclasses["open_hand"]["name"] == (
         "Warrior of the Open Hand"
     )
-    assert compendium.classes["monk"].subclasses["open_hand"]["features"] == ["Open Hand Technique"]
+    assert compendium.classes["monk"].subclasses["open_hand"]["features"] == [
+        "Open Hand Technique",
+        "Wholeness of Body",
+    ]
     assert compendium.classes["monk"].subclasses["open_hand"]["actions"] == [
-        "srd.open_hand_technique"
+        "srd.open_hand_technique",
+        "srd.wholeness_of_body",
     ]
     open_hand = compendium.action("srd.open_hand_technique")
     assert open_hand.requirements == {
@@ -3368,6 +3372,25 @@ def test_compendium_loads_srd_actions() -> None:
     stunning_strike = compendium.action("srd.stunning_strike")
     assert stunning_strike.action_economy == "none"
     assert stunning_strike.requirements == {"class": "monk", "class_level_min": 5}
+    assert compendium.classes["monk"].levels["6"]["features"] == [
+        "Empowered Strikes",
+        "Subclass Feature",
+    ]
+    assert {
+        "srd.empowered_strikes",
+        "srd.wholeness_of_body",
+    } <= set(compendium.classes["monk"].levels["6"]["actions"])
+    empowered_strikes = compendium.action("srd.empowered_strikes")
+    assert empowered_strikes.action_economy == "none"
+    assert empowered_strikes.requirements == {"class": "monk", "class_level_min": 6}
+    wholeness = compendium.action("srd.wholeness_of_body")
+    assert wholeness.action_economy == "bonus_action"
+    assert wholeness.requirements == {
+        "class": "monk",
+        "class_level_min": 6,
+        "subclass": "open_hand",
+    }
+    assert wholeness.automation[1]["minimum_amount"] == 1
     assert "srd.dodge" not in compendium.classes["monk"].levels["2"]["actions"]
     assert "srd.favored_enemy_hunters_mark" in compendium.classes["ranger"].levels["1"]["actions"]
     assert "srd.deft_explorer" not in compendium.classes["ranger"].levels["1"]["actions"]

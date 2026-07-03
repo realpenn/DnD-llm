@@ -63,6 +63,7 @@ from dnd_llm.core.rules.class_features import (
     WARLOCK_REPELLING_BLAST_ELDRITCH_BLAST,
     WARLOCK_THIRSTING_BLADE_CHOICE_KEY,
     WARLOCK_THIRSTING_BLADE_SELECTED,
+    WHOLENESS_OF_BODY_RESOURCE,
     draconic_resilience_hp_bonus,
     warlock_lessons_of_first_ones_choice_key,
     warlock_lessons_of_first_ones_origin_feats,
@@ -225,6 +226,7 @@ CLASS_LEVEL_ACTIONS = {
         3: ["srd.deflect_attacks"],
         4: ["srd.slow_fall"],
         5: ["srd.stunning_strike", "srd.extra_attack"],
+        6: ["srd.empowered_strikes"],
     },
     "paladin": {
         1: ["srd.lay_on_hands", "srd.lay_on_hands_remove_poisoned", "srd.cure_wounds"],
@@ -302,7 +304,7 @@ SUBCLASS_ACTIONS = {
         "champion": {3: ["srd.improved_critical", "srd.remarkable_athlete"]},
     },
     "monk": {
-        "open_hand": {3: ["srd.open_hand_technique"]},
+        "open_hand": {3: ["srd.open_hand_technique"], 6: ["srd.wholeness_of_body"]},
     },
     "paladin": {
         "devotion": {3: ["srd.sacred_weapon"]},
@@ -1713,6 +1715,7 @@ def _recalculate_progression_fields(character: Character) -> None:
     )
     character.resources = _resources_for_levels(
         character.class_levels,
+        character.subclasses,
         character.feature_choices,
         character.resources,
         character.abilities,
@@ -2259,6 +2262,7 @@ def _actions_for_levels(
 
 def _resources_for_levels(
     class_levels: dict[str, int],
+    subclasses: dict[str, str],
     feature_choices: dict[str, str],
     current: dict[str, int],
     abilities: dict[str, int],
@@ -2303,6 +2307,11 @@ def _resources_for_levels(
     if monk_level >= 2:
         resources["srd.resource.focus_points"] = monk_level
         resources[UNCANNY_METABOLISM_RESOURCE] = 1
+    if monk_level >= 6 and subclasses.get("monk") == "open_hand":
+        resources[WHOLENESS_OF_BODY_RESOURCE] = max(
+            1,
+            _ability_modifier_from_scores(abilities, "wis"),
+        )
     bard_level = int(class_levels.get("bard", 0))
     if bard_level > 0:
         resources["srd.resource.bardic_inspiration"] = max(

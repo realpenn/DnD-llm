@@ -76,6 +76,7 @@ WARLOCK_ELDRITCH_SMITE_CHOICE_KEY = "warlock.eldritch_invocation.eldritch_smite"
 WARLOCK_ELDRITCH_SMITE_SELECTED = "selected"
 WARLOCK_ELDRITCH_MIND = "eldritch_mind"
 UNCANNY_METABOLISM_RESOURCE = "srd.resource.uncanny_metabolism"
+WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(

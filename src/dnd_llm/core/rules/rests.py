@@ -7,6 +7,8 @@ from ..models import Character
 from .class_features import (
     GIFT_OF_DEPTHS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
+    WHOLENESS_OF_BODY_RESOURCE,
+    has_monk_open_hand_feature,
     has_warlock_gift_of_depths,
 )
 from .conditions import lower_exhaustion
@@ -400,6 +402,8 @@ def resource_maxima(character: Character) -> dict[str, int]:
     if monk_level >= 2:
         maxima[FOCUS_POINTS_RESOURCE] = monk_level
         maxima[UNCANNY_METABOLISM_RESOURCE] = 1
+    if has_monk_open_hand_feature(character, level=6):
+        maxima[WHOLENESS_OF_BODY_RESOURCE] = max(1, _ability_modifier(character, "wis"))
     bard_level = int(character.class_levels.get("bard", 0))
     if bard_level > 0:
         maxima[BARDIC_INSPIRATION_RESOURCE] = max(1, _ability_modifier(character, "cha"))

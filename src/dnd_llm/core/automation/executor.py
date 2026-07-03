@@ -356,6 +356,7 @@ class AutomationExecutor:
         self._validate_repelling_blast_preconditions(action, actor_id, targets or [], params)
         self._validate_slow_fall_preconditions(action, targets or [], params)
         self._validate_stunning_strike_preconditions(action, actor_id, targets or [], params)
+        self._validate_empowered_strikes_preconditions(action, actor_id, params)
         self._validate_preserve_life_preconditions(action, actor_id, targets or [], params)
         self._validate_cutting_words_preconditions(action, params)
         self._validate_lands_aid_preconditions(action, targets or [], params)
@@ -811,10 +812,14 @@ class AutomationExecutor:
     def _node_damage(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         damage_type = self._pact_weapon_damage_type(
             ctx,
-            self._sacred_weapon_damage_type(
+            self._empowered_strikes_damage_type(
                 ctx,
                 node,
-                str(node.get("damage_type", "untyped")),
+                self._sacred_weapon_damage_type(
+                    ctx,
+                    node,
+                    str(node.get("damage_type", "untyped")),
+                ),
             ),
         )
         require_hit = bool(node.get("requires_hit", False))
@@ -2861,16 +2866,30 @@ class AutomationExecutor:
 
     def _roll_amount(self, ctx: _Context, node: dict[str, Any]) -> tuple[int, list[RollResult]]:
         if "amount" in node:
-            return int(node["amount"]) + self._amount_bonus(ctx, node), []
+            return self._minimum_amount(
+                int(node["amount"]) + self._amount_bonus(ctx, node),
+                node,
+            ), []
         if "amount_from" in node:
-            return self._param_amount(ctx, str(node["amount_from"])) + self._amount_bonus(
-                ctx, node
+            return self._minimum_amount(
+                self._param_amount(ctx, str(node["amount_from"])) + self._amount_bonus(ctx, node),
+                node,
             ), []
         if "dice_from" in node:
             roll = self.roll_service.roll(self._dynamic_dice_expression(ctx, node))
-            return roll.total + self._amount_bonus(ctx, node), [roll]
+            return self._minimum_amount(
+                roll.total + self._amount_bonus(ctx, node),
+                node,
+            ), [roll]
         roll = self.roll_service.roll(self._scaled_dice_expression(ctx, node))
-        return roll.total + self._amount_bonus(ctx, node), [roll]
+        return self._minimum_amount(roll.total + self._amount_bonus(ctx, node), node), [roll]
+
+    @staticmethod
+    def _minimum_amount(amount: int, node: dict[str, Any]) -> int:
+        minimum = node.get("minimum_amount")
+        if minimum is None:
+            return amount
+        return max(int(minimum), amount)
 
     def _scaled_dice_expression(self, ctx: _Context, node: dict[str, Any]) -> str:
         base_expression = str(node["dice"])
@@ -3139,6 +3158,30 @@ class AutomationExecutor:
         if self._sacred_weapon_effect(ctx) is None:
             return base_damage_type
         return "radiant"
+
+    def _empowered_strikes_damage_type(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        base_damage_type: str,
+    ) -> str:
+        requested = ctx.params.get(
+            "empowered_strikes_damage_type",
+            ctx.params.get("unarmed_strike_damage_type"),
+        )
+        if requested is None:
+            return base_damage_type
+        choice = str(requested).casefold().strip()
+        normal_types = {
+            "normal",
+            str(node.get("damage_type", "")).casefold(),
+            base_damage_type.casefold(),
+        }
+        if choice in normal_types:
+            return base_damage_type
+        if choice != "force":
+            raise AutomationError("empowered_strikes_damage_type must be normal or force")
+        return "force"
 
     def _sacred_weapon_effect(self, ctx: _Context) -> dict[str, Any] | None:
         if not self._is_melee_weapon_attack_action(ctx.action):
@@ -4625,6 +4668,30 @@ class AutomationExecutor:
     @staticmethod
     def _stunning_strike_requested(params: dict[str, Any]) -> bool:
         return params.get("use_stunning_strike") is True
+
+    def _validate_empowered_strikes_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        raw = params.get(
+            "empowered_strikes_damage_type",
+            params.get("unarmed_strike_damage_type"),
+        )
+        if raw is None or raw == "":
+            return
+        if isinstance(raw, (dict, list)):
+            raise AutomationError("empowered_strikes_damage_type must be a scalar")
+        choice = str(raw).casefold().strip()
+        if choice not in {"normal", "bludgeoning", "force"}:
+            raise AutomationError("empowered_strikes_damage_type must be normal or force")
+        if action.action_type != "unarmed_attack":
+            raise AutomationError("Empowered Strikes requires an Unarmed Strike")
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or not has_monk_feature(actor_owner, level=6):
+            raise AutomationError("Empowered Strikes requires Monk level 6")
+        params["empowered_strikes_damage_type"] = choice
 
     @classmethod
     def _stunning_strike_target_id(

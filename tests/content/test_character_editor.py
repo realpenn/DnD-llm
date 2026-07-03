@@ -1604,6 +1604,34 @@ def test_natural_language_character_edit_assigns_monk_stunning_strike() -> None:
     assert result.character.resources["srd.resource.focus_points"] == 5
 
 
+def test_natural_language_character_edit_assigns_monk_empowered_strikes() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk6")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 6}
+    assert "srd.empowered_strikes" in result.character.actions
+    assert "srd.wholeness_of_body" not in result.character.actions
+    assert "srd.resource.wholeness_of_body" not in result.character.resources
+
+
+def test_natural_language_character_edit_assigns_open_hand_wholeness_of_body() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.abilities["wis"] = 16
+
+    result = apply_natural_language_character_edit(character, "职业 monk6 子职 open_hand")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 6}
+    assert result.character.subclasses == {"monk": "open_hand"}
+    assert "srd.empowered_strikes" in result.character.actions
+    assert "srd.wholeness_of_body" in result.character.actions
+    assert result.character.resources["srd.resource.wholeness_of_body"] == 3
+
+
 def test_natural_language_character_edit_assigns_ranger_favored_enemy_uses() -> None:
     character = default_fighter("pc1", "Penn")
 

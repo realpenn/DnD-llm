@@ -167,6 +167,14 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         and not isinstance(node["shared_roll"], bool)
     ):
         errors.append(f"{path}: shared_roll must be a boolean")
+    if node_type in {"damage", "healing", "temp_hp"} and "minimum_amount" in node:
+        minimum_amount = node["minimum_amount"]
+        if (
+            not isinstance(minimum_amount, int)
+            or isinstance(minimum_amount, bool)
+            or minimum_amount < 0
+        ):
+            errors.append(f"{path}: minimum_amount must be a non-negative integer")
     if node_type in {"damage", "healing"} and "extra_dice_per_slot_above" in node:
         extra_dice = node["extra_dice_per_slot_above"]
         if not isinstance(extra_dice, str) or not extra_dice:

@@ -89,6 +89,28 @@ def test_short_rest_restores_monk_focus_points(make_state) -> None:
     assert character.resources["srd.resource.uncanny_metabolism"] == 1
 
 
+def test_long_rest_restores_open_hand_wholeness_of_body(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 6}
+    character.subclasses = {"monk": "open_hand"}
+    character.abilities["wis"] = 16
+    character.resources["srd.resource.wholeness_of_body"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    short = tools.short_rest("pc1", {}, idempotency_key="wholeness-short-rest")
+
+    assert "srd.resource.wholeness_of_body" not in short["restored_resources"]
+    assert character.resources["srd.resource.wholeness_of_body"] == 0
+
+    long = tools.long_rest(["pc1"], idempotency_key="wholeness-long-rest")
+
+    assert long["results"]["pc1"]["restored_resources"]["srd.resource.wholeness_of_body"] == 3
+    assert character.resources["srd.resource.wholeness_of_body"] == 3
+
+
 def test_wild_shape_restoration_follows_srd_uses(make_state) -> None:
     state = make_state()
     character = state.characters["pc1"]

@@ -4007,6 +4007,63 @@
             "audit_label": "Stunning Strike"
         },
         {
+            "id": "srd.empowered_strikes",
+            "name": "Empowered Strikes",
+            "localization": {
+                "en": "Empowered Strikes",
+                "zh": "力能打击",
+                "aliases": ["Monk Empowered Strikes", "武僧力能打击"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 6: Empowered Strikes",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 6},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Monk deals damage with an Unarmed Strike, the damage can be Force or its normal damage type."
+                }
+            ],
+            "audit_label": "Empowered Strikes"
+        },
+        {
+            "id": "srd.wholeness_of_body",
+            "name": "Wholeness of Body",
+            "localization": {
+                "en": "Wholeness of Body",
+                "zh": "完整之躯",
+                "aliases": ["Open Hand Wholeness of Body", "空手道完整之躯"]
+            },
+            "source": "SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 6: Wholeness of Body",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 6, "subclass": "open_hand"},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.wholeness_of_body": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "healing",
+                    "dice_from": {"class_feature": "monk_martial_arts_die"},
+                    "bonus_from": {"ability_modifier": "wis"},
+                    "minimum_amount": 1
+                },
+                {
+                    "type": "text_result",
+                    "text": "The Open Hand Monk regains Hit Points equal to one Martial Arts die plus Wisdom modifier, with a minimum of 1 Hit Point regained."
+                }
+            ],
+            "audit_label": "Wholeness of Body"
+        },
+        {
             "id": "srd.patient_defense",
             "name": "Patient Defense",
             "localization": {
