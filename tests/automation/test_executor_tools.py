@@ -8358,6 +8358,67 @@ def test_deflect_attacks_requires_monk_level_three_before_spending_attack(make_s
     assert state.encounter.action_budgets == {}
 
 
+def test_deflect_energy_allows_deflect_attacks_against_force_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 13}
+    character.actions.extend(["srd.deflect_attacks", "srd.deflect_energy"])
+    state.encounter.combatants["pc1"].armor_class = 1
+    state.encounter.combatants["pc1"].hp_current = 10
+    tools = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 6, 10]),
+        AuditLog(),
+    )
+
+    result = tools.execute(
+        _weapon_attack_action(),
+        actor_id="goblin1",
+        targets=["pc1"],
+        params={"use_deflect_attacks": True},
+        idempotency_key="deflect-energy-force",
+    )
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    deflect_change = next(
+        change for change in result.state_changes if change["type"] == "deflect_attacks"
+    )
+    assert result.success is True
+    assert damage_change["damage_type"] == "force"
+    assert damage_change["amount_before_deflect_attacks"] == 6
+    assert damage_change["amount"] == 0
+    assert damage_change["applied"] == 0
+    assert deflect_change["deflect_energy"] is True
+    assert deflect_change["reduction_cap"] == 25
+    assert deflect_change["reduction"] == 6
+    assert state.encounter.combatants["pc1"].hp_current == 10
+
+
+def test_deflect_attacks_rejects_non_basic_damage_before_deflect_energy(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 12}
+    character.actions.append("srd.deflect_attacks")
+    state.encounter.combatants["pc1"].armor_class = 1
+    tools = AutomationExecutor(state, _FixedSingleDieRollService([10]), AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Deflect Attacks requires an attack roll with bludgeoning, piercing, or slashing damage",
+    ):
+        tools.execute(
+            _weapon_attack_action(),
+            actor_id="goblin1",
+            targets=["pc1"],
+            params={"use_deflect_attacks": True},
+            idempotency_key="deflect-energy-too-early",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
 def test_monk_stunning_strike_failed_save_stuns_and_spends_focus(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

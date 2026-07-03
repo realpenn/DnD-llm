@@ -72,6 +72,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.danger_sense",
     "srd.dash",
     "srd.deft_explorer",
+    "srd.deflect_energy",
     "srd.devils_sight",
     "srd.disengage",
     "srd.disciple_of_life",

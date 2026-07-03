@@ -7346,14 +7346,16 @@ class AutomationExecutor:
             raise AutomationError("Deflect Attacks cannot be combined with Uncanny Dodge")
         if target_id not in set(targets):
             raise AutomationError("Deflect Attacks target must be a target of the attack")
-        if not self._action_supports_deflect_attacks(action):
-            raise AutomationError(
-                "Deflect Attacks requires an attack roll with bludgeoning, piercing, or slashing damage"
-            )
         target = self._entity(target_id)
         owner = self._resource_owner(target_id)
         if not isinstance(owner, Character) or not has_monk_feature(owner, level=3):
             raise AutomationError("Deflect Attacks requires Monk level 3")
+        if not self._action_supports_deflect_attacks(action, owner):
+            if has_monk_feature(owner, level=13):
+                raise AutomationError("Deflect Attacks requires an attack roll with damage")
+            raise AutomationError(
+                "Deflect Attacks requires an attack roll with bludgeoning, piercing, or slashing damage"
+            )
         if not self._reaction_budget_available(target_id, target):
             raise AutomationError("not enough reaction budget")
         redirect_target_id = self._deflect_attacks_redirect_target_id(params)
@@ -7377,13 +7379,15 @@ class AutomationExecutor:
         selected_target_id = self._deflect_attacks_target_id(ctx.original_targets, ctx.params)
         if selected_target_id != target_id:
             return amount, None
-        if not self._action_supports_deflect_attacks(ctx.action):
+        owner = self._resource_owner(target_id)
+        owner_character = owner if isinstance(owner, Character) else None
+        if not self._action_supports_deflect_attacks(ctx.action, owner_character):
             return amount, None
         if not ctx.attack_hits.get(target_id, False):
             return amount, None
         if (
             target_id not in ctx.deflect_attacks_reduction_remaining
-            and damage_type not in BASIC_WEAPON_DAMAGE_TYPES
+            and not self._deflect_attacks_accepts_damage_type(owner_character, damage_type)
         ):
             return amount, None
         reaction_spent = target_id not in ctx.deflect_attacks_reactions_spent
@@ -7391,11 +7395,10 @@ class AutomationExecutor:
         reduction_static_bonus = 0
         reduction_cap: int | None = None
         if reaction_spent:
-            owner = self._resource_owner(target_id)
-            if not isinstance(owner, Character) or not has_monk_feature(owner, level=3):
+            if owner_character is None or not has_monk_feature(owner_character, level=3):
                 raise AutomationError("Deflect Attacks requires Monk level 3")
-            monk_level = int(owner.class_levels.get("monk", 0))
-            reduction_static_bonus = self._ability_modifier(owner, "dex") + monk_level
+            monk_level = int(owner_character.class_levels.get("monk", 0))
+            reduction_static_bonus = self._ability_modifier(owner_character, "dex") + monk_level
             reduction_roll = self.roll_service.roll("1d10")
             ctx.result.dice_rolls.append(reduction_roll.to_dict())
             reduction_cap = max(0, reduction_roll.total + reduction_static_bonus)
@@ -7417,6 +7420,11 @@ class AutomationExecutor:
             "reaction_spent": reaction_spent,
             "path": path,
         }
+        if damage_type.lower() not in BASIC_WEAPON_DAMAGE_TYPES:
+            change["deflect_energy"] = self._deflect_attacks_accepts_damage_type(
+                owner_character,
+                damage_type,
+            )
         if reduction_roll is not None:
             change["reduction_roll_total"] = reduction_roll.total
             change["reduction_static_bonus"] = reduction_static_bonus
@@ -7664,15 +7672,35 @@ class AutomationExecutor:
         normal_range = int(action.range.get("normal_ft", 0))
         return normal_range <= 5
 
-    def _action_supports_deflect_attacks(self, action: ActionDefinition) -> bool:
+    @staticmethod
+    def _deflect_attacks_accepts_damage_type(
+        owner: Character | None,
+        damage_type: str,
+    ) -> bool:
+        if damage_type.lower() in BASIC_WEAPON_DAMAGE_TYPES:
+            return True
+        return owner is not None and has_monk_feature(owner, level=13)
+
+    def _action_supports_deflect_attacks(
+        self,
+        action: ActionDefinition,
+        owner: Character | None,
+    ) -> bool:
         if action.action_type not in ATTACK_ACTION_TYPES:
             return False
         nodes = self._automation_nodes(action.automation)
-        return any(node.get("type") == "attack_roll" for node in nodes) and any(
-            node.get("type") == "damage"
-            and node.get("requires_hit") is True
-            and str(node.get("damage_type", "")).lower() in BASIC_WEAPON_DAMAGE_TYPES
+        if not any(node.get("type") == "attack_roll" for node in nodes):
+            return False
+        damage_nodes = [
+            node
             for node in nodes
+            if node.get("type") == "damage" and node.get("requires_hit") is True
+        ]
+        if owner is not None and has_monk_feature(owner, level=13):
+            return bool(damage_nodes)
+        return any(
+            str(node.get("damage_type", "")).lower() in BASIC_WEAPON_DAMAGE_TYPES
+            for node in damage_nodes
         )
 
     def _validate_uncanny_dodge_preconditions(

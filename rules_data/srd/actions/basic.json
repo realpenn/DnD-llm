@@ -4648,6 +4648,36 @@
             "audit_label": "Heightened Focus"
         },
         {
+            "id": "srd.deflect_energy",
+            "name": "Deflect Energy",
+            "localization": {
+                "en": "Deflect Energy",
+                "zh": "拨挡能量",
+                "aliases": ["Monk Deflect Energy", "武僧拨挡能量"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 13: Deflect Energy",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 13},
+            "properties": {
+                "enhances_action": "srd.deflect_attacks",
+                "deflect_attacks_damage_types": "any",
+                "replaces_basic_weapon_damage_type_limit": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a level 13 Monk can use Deflect Attacks against attacks that deal any damage type, not just Bludgeoning, Piercing, or Slashing."
+                }
+            ],
+            "audit_label": "Deflect Energy"
+        },
+        {
             "id": "srd.patient_defense",
             "name": "Patient Defense",
             "localization": {

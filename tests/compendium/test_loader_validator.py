@@ -4115,6 +4115,17 @@ def test_compendium_loads_srd_actions() -> None:
         "forgoing_food_and_drink_does_not_cause_exhaustion": True,
         "food_drink_exhaustion_hazards": ["srd.dehydration", "srd.malnutrition"],
     }
+    assert "srd.deflect_energy" not in compendium.classes["monk"].levels["10"]["actions"]
+    assert compendium.classes["monk"].levels["13"]["features"] == ["Deflect Energy"]
+    assert "srd.deflect_energy" in compendium.classes["monk"].levels["13"]["actions"]
+    deflect_energy = compendium.action("srd.deflect_energy")
+    assert deflect_energy.action_economy == "none"
+    assert deflect_energy.requirements == {"class": "monk", "class_level_min": 13}
+    assert deflect_energy.properties == {
+        "enhances_action": "srd.deflect_attacks",
+        "deflect_attacks_damage_types": "any",
+        "replaces_basic_weapon_damage_type_limit": True,
+    }
     patient_focus = compendium.action("srd.patient_defense_focus")
     assert patient_focus.automation[3]["if_true"] == [
         {
