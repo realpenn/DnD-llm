@@ -146,6 +146,24 @@ def test_compendium_loads_srd_actions() -> None:
         "class_level_min": 3,
         "subclass": "champion",
     }
+    assert "srd.additional_fighting_style" in compendium.actions
+    assert compendium.action("srd.additional_fighting_style").requirements == {
+        "class": "fighter",
+        "class_level_min": 7,
+        "subclass": "champion",
+    }
+    assert compendium.action("srd.additional_fighting_style").properties == {
+        "grants_additional_fighting_style_feat": True,
+        "requires_explicit_fighting_style_feat_choice": True,
+        "fighting_style_feat_prerequisite": "Fighting Style Feature",
+        "available_srd_fighting_style_feats": [
+            "Archery",
+            "Defense",
+            "Great Weapon Fighting",
+            "Two-Weapon Fighting",
+        ],
+        "does_not_select_default_feat": True,
+    }
     assert "srd.heroic_warrior" in compendium.actions
     assert compendium.action("srd.heroic_warrior").requirements == {
         "class": "fighter",
@@ -3707,6 +3725,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["fighter"].subclasses["champion"]["features"] == [
         "Improved Critical",
         "Remarkable Athlete",
+        "Additional Fighting Style",
         "Heroic Warrior",
         "Superior Critical",
         "Survivor",
@@ -3714,6 +3733,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["fighter"].subclasses["champion"]["actions"] == [
         "srd.improved_critical",
         "srd.remarkable_athlete",
+        "srd.additional_fighting_style",
         "srd.heroic_warrior",
         "srd.superior_critical",
         "srd.survivor",
@@ -3722,6 +3742,8 @@ def test_compendium_loads_srd_actions() -> None:
         "Extra Attack",
         "Tactical Shift",
     ]
+    assert compendium.classes["fighter"].levels["7"]["features"] == ["Subclass Feature"]
+    assert "srd.additional_fighting_style" in compendium.classes["fighter"].levels["7"]["actions"]
     indomitable = compendium.action("srd.indomitable")
     assert indomitable.requirements == {"class": "fighter", "class_level_min": 9}
     assert indomitable.action_economy == "none"

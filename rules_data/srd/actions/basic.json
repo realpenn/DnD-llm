@@ -2832,6 +2832,43 @@
             "audit_label": "Remarkable Athlete"
         },
         {
+            "id": "srd.additional_fighting_style",
+            "name": "Additional Fighting Style",
+            "localization": {
+                "en": "Additional Fighting Style",
+                "zh": "额外战斗风格",
+                "aliases": ["Champion Additional Fighting Style", "冠军额外战斗风格"]
+            },
+            "source": "SRD 5.2.1 Fighter Subclass: Champion, Level 7: Additional Fighting Style",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 7, "subclass": "champion"},
+            "properties": {
+                "grants_additional_fighting_style_feat": true,
+                "requires_explicit_fighting_style_feat_choice": true,
+                "fighting_style_feat_prerequisite": "Fighting Style Feature",
+                "available_srd_fighting_style_feats": [
+                    "Archery",
+                    "Defense",
+                    "Great Weapon Fighting",
+                    "Two-Weapon Fighting"
+                ],
+                "does_not_select_default_feat": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Champion gains another Fighting Style feat of their choice; the character must explicitly choose the SRD Fighting Style feat."
+                }
+            ],
+            "audit_label": "Additional Fighting Style"
+        },
+        {
             "id": "srd.heroic_warrior",
             "name": "Heroic Warrior",
             "localization": {

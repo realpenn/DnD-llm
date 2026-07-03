@@ -438,6 +438,17 @@
                         "srd.extra_attack"
                     ]
                 },
+                "7": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind",
+                        "srd.extra_attack",
+                        "srd.additional_fighting_style"
+                    ]
+                },
                 "9": {
                     "features": ["Indomitable", "Tactical Master"],
                     "actions": [
@@ -557,6 +568,7 @@
                     "features": [
                         "Improved Critical",
                         "Remarkable Athlete",
+                        "Additional Fighting Style",
                         "Heroic Warrior",
                         "Superior Critical",
                         "Survivor"
@@ -564,6 +576,7 @@
                     "actions": [
                         "srd.improved_critical",
                         "srd.remarkable_athlete",
+                        "srd.additional_fighting_style",
                         "srd.heroic_warrior",
                         "srd.superior_critical",
                         "srd.survivor"
