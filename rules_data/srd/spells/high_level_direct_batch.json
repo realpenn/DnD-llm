@@ -50,12 +50,28 @@
         "action_economy": "action",
         "range": { "normal_ft": 60 },
         "target_policy": { "min": 1, "max": 1, "harmful": true },
-        "requirements": { "spell_level": 6 },
+        "requirements": { "spell_level": 6, "class_any": ["sorcerer", "wizard"] },
+        "properties": {
+          "material_component": {
+            "description": "a lodestone and dust",
+            "consumed": false
+          },
+          "target_options": ["creature", "nonmagical_object", "creation_of_magical_force"],
+          "creation_of_magical_force_example": "Wall of Force",
+          "zero_hp_disintegrates_target_and_nonmagical_worn_carried": true,
+          "disintegrated_into": "gray dust",
+          "revival_only_by": ["True Resurrection", "Wish"],
+          "auto_disintegrates_large_or_smaller_nonmagical_object_or_magical_force": true,
+          "huge_or_larger_object_or_force_disintegrated_portion": {
+            "shape": "cube",
+            "size_ft": 10
+          }
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 6 },
         "automation": [
           { "type": "target", "mode": "explicit" },
-          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
           {
             "type": "branch",
             "condition": "last_save_success",
@@ -63,7 +79,13 @@
               { "type": "text_result", "text": "The target succeeds; Disintegrate deals no damage." }
             ],
             "if_false": [
-              { "type": "damage", "dice": "10d6+40", "damage_type": "force" },
+              {
+                "type": "damage",
+                "dice": "10d6+40",
+                "damage_type": "force",
+                "base_spell_slot_level": 6,
+                "extra_dice_per_slot_above": "3d6"
+              },
               {
                 "type": "text_result",
                 "text": "If this damage reduces the target to 0 HP, apply the SRD disintegration aftermath."

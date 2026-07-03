@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from dnd_llm.core.automation.definitions import ActionDefinition
@@ -34,15 +36,25 @@ class _FixedSingleDieRollService:
         self.counter = 0
 
     def roll(self, expression: str, advantage: str | None = None) -> RollResult:
-        value = self.values.pop(0)
-        sides_text = expression.split("d", 1)[1].split("+", 1)[0].split("-", 1)[0]
-        sides = int(sides_text)
         modifier = 0
-        if "+" in expression:
-            modifier = int(expression.split("+", 1)[1])
-        elif "-" in expression:
-            modifier = -int(expression.split("-", 1)[1])
-        total = value + modifier
+        total = 0
+        dice: list[RollDie] = []
+        for match in re.finditer(
+            r"([+-]?)(?:(\d*)d(\d+)|(\d+))",
+            expression.replace(" ", ""),
+            re.IGNORECASE,
+        ):
+            sign = -1 if match.group(1) == "-" else 1
+            if match.group(3):
+                value = self.values.pop(0)
+                sides = int(match.group(3))
+                die = RollDie(sides=sides, value=value, kept=True)
+                dice.append(die)
+                total += sign * value
+            else:
+                value = sign * int(match.group(4))
+                modifier += value
+                total += value
         counter = self.counter
         self.counter += 1
         return RollResult(
@@ -51,10 +63,10 @@ class _FixedSingleDieRollService:
             seed=0,
             counter=counter,
             advantage=advantage,
-            dice=[RollDie(sides=sides, value=value, kept=True)],
+            dice=dice,
             modifier_total=modifier,
             total=total,
-            display=f"{expression}: fixed {value} => {total}",
+            display=f"{expression}: fixed => {total}",
         )
 
 
@@ -9074,6 +9086,121 @@ def test_chain_lightning_upcast_adds_one_target_per_slot_above_six(
         "10d8",
         "10d8",
         "10d8",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_disintegrate_uses_allowed_class_spell_dc_and_no_damage_on_success(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 11}
+    caster.abilities[ability] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.disintegrate",
+        ["goblin1"],
+        6,
+        idempotency_key=f"cast-disintegrate-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    assert [change for change in result["state_changes"] if change["type"] == "damage"] == []
+    assert target.hp_current == 80
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    assert result["messages"] == ["The target succeeds; Disintegrate deals no damage."]
+
+
+def test_disintegrate_upcast_adds_three_damage_dice_and_records_srd_aftermath(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 50
+    target.hp_max = 50
+    compendium = CompendiumLoader("rules_data").load()
+    action = compendium.action("srd.disintegrate")
+    assert action.properties["zero_hp_disintegrates_target_and_nonmagical_worn_carried"] is True
+    assert action.properties["revival_only_by"] == ["True Resurrection", "Wish"]
+    assert (
+        action.properties["auto_disintegrates_large_or_smaller_nonmagical_object_or_magical_force"]
+        is True
+    )
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.disintegrate",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-disintegrate-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "force"
+    assert damage_change["amount"] == 56
+    assert damage_change["applied"] == 50
+    assert target.hp_current == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "10d6+40+3d6",
+    ]
+    assert result["messages"] == [
+        "If this damage reduces the target to 0 HP, apply the SRD disintegration aftermath."
     ]
 
 

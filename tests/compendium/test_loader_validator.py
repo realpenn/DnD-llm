@@ -247,6 +247,69 @@ def test_compendium_loads_srd_actions() -> None:
         {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
         {"type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": True},
     ]
+    disintegrate = compendium.action("srd.disintegrate")
+    assert disintegrate.requirements == {
+        "spell_level": 6,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert disintegrate.properties["spell_classes"] == ["sorcerer", "wizard"]
+    assert disintegrate.properties["material_component"] == {
+        "description": "a lodestone and dust",
+        "consumed": False,
+    }
+    assert disintegrate.properties["target_options"] == [
+        "creature",
+        "nonmagical_object",
+        "creation_of_magical_force",
+    ]
+    assert disintegrate.properties["creation_of_magical_force_example"] == "Wall of Force"
+    assert (
+        disintegrate.properties["zero_hp_disintegrates_target_and_nonmagical_worn_carried"] is True
+    )
+    assert disintegrate.properties["disintegrated_into"] == "gray dust"
+    assert disintegrate.properties["revival_only_by"] == ["True Resurrection", "Wish"]
+    assert (
+        disintegrate.properties[
+            "auto_disintegrates_large_or_smaller_nonmagical_object_or_magical_force"
+        ]
+        is True
+    )
+    assert disintegrate.properties["huge_or_larger_object_or_force_disintegrated_portion"] == {
+        "shape": "cube",
+        "size_ft": 10,
+    }
+    assert disintegrate.range == {"normal_ft": 60}
+    assert disintegrate.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert disintegrate.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [
+                {
+                    "type": "text_result",
+                    "text": "The target succeeds; Disintegrate deals no damage.",
+                }
+            ],
+            "if_false": [
+                {
+                    "type": "damage",
+                    "dice": "10d6+40",
+                    "damage_type": "force",
+                    "base_spell_slot_level": 6,
+                    "extra_dice_per_slot_above": "3d6",
+                },
+                {
+                    "type": "text_result",
+                    "text": (
+                        "If this damage reduces the target to 0 HP, apply the SRD "
+                        "disintegration aftermath."
+                    ),
+                },
+            ],
+        },
+    ]
     finger_of_death = compendium.action("srd.finger_of_death")
     assert finger_of_death.requirements == {
         "spell_level": 7,
@@ -3624,6 +3687,8 @@ def test_compendium_loads_srd_actions() -> None:
         "type": "damage",
         "dice": "10d6+40",
         "damage_type": "force",
+        "base_spell_slot_level": 6,
+        "extra_dice_per_slot_above": "3d6",
     }
     assert compendium.action("srd.harm").automation[3]["if_false"] == [
         {"type": "max_hp_delta", "amount_from": "-last_damage_taken"}
