@@ -8353,6 +8353,61 @@ def test_aid_increases_hp_max_and_current_hp(make_state) -> None:
     assert any(change["type"] == "max_hp_delta" for change in result["state_changes"])
 
 
+def test_greater_invisibility_applies_concentration_invisible_without_attack_break(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.greater_invisibility",
+        ["pc1"],
+        4,
+        idempotency_key="cast-greater-invisibility",
+    )
+
+    assert result["success"] is True
+    assert state.characters["pc1"].spell_slots["4"] == 0
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.greater_invisibility"
+    assert effect["condition"] == "invisible"
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "target_turn_start"
+    assert effect["concentration"] is True
+
+    tools.economy.set("pc1", "action", 1)
+    attack = tools.attack(
+        "pc1",
+        "goblin1",
+        "srd.shortsword_attack",
+        idempotency_key="greater-invisibility-attack",
+    )
+
+    assert attack["success"] is True
+    assert any(
+        active.get("source_action_id") == "srd.greater_invisibility"
+        and active.get("condition") == "invisible"
+        for active in state.encounter.combatants["pc1"].status_effects
+    )
+    assert not [
+        change
+        for change in attack["state_changes"]
+        if change.get("type") == "effect_expired"
+        and any(
+            removed.get("source_action_id") == "srd.greater_invisibility"
+            for removed in change.get("removed", [])
+        )
+    ]
+
+    lifecycle = tick_effects(state, trigger="target_turn_start", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
 def test_max_hp_delta_can_follow_last_damage_taken(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

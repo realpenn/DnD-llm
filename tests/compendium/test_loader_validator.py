@@ -44,6 +44,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.heal",
         "srd.harm",
         "srd.finger_of_death",
+        "srd.greater_invisibility",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -138,6 +139,19 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.detect_magic"
     )
     assert compendium.spell("srd.spell.detect_magic").ritual is True
+    greater_invisibility = compendium.action("srd.greater_invisibility")
+    assert greater_invisibility.requirements == {"spell_level": 4}
+    assert greater_invisibility.range == {"touch": True}
+    assert greater_invisibility.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "condition",
+            "condition": "invisible",
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "target_turn_start",
+            "concentration": True,
+        },
+    ]
     assert "srd.innate_sorcery" in compendium.actions
     assert compendium.action("srd.innate_sorcery").cost.resources == {
         "srd.resource.innate_sorcery": 1
