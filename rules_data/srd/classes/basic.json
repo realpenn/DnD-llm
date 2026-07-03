@@ -439,14 +439,15 @@
                     ]
                 },
                 "9": {
-                    "features": ["Indomitable"],
+                    "features": ["Indomitable", "Tactical Master"],
                     "actions": [
                         "srd.longsword_attack",
                         "srd.second_wind",
                         "srd.action_surge",
                         "srd.tactical_mind",
                         "srd.extra_attack",
-                        "srd.indomitable"
+                        "srd.indomitable",
+                        "srd.tactical_master"
                     ]
                 }
             },

@@ -82,6 +82,18 @@ def test_compendium_loads_srd_actions() -> None:
         "class_level_min": 2,
     }
     assert compendium.action("srd.tactical_mind").action_economy == "none"
+    assert "srd.tactical_master" in compendium.actions
+    assert compendium.action("srd.tactical_master").requirements == {
+        "class": "fighter",
+        "class_level_min": 9,
+    }
+    assert compendium.action("srd.tactical_master").action_economy == "none"
+    assert compendium.action("srd.tactical_master").properties == {
+        "weapon_mastery_property_replacement": True,
+        "requires_weapon_mastery_property_you_can_use": True,
+        "replacement_mastery_properties": ["Push", "Sap", "Slow"],
+        "scope": "one_attack",
+    }
     assert "srd.improved_critical" in compendium.actions
     assert compendium.action("srd.improved_critical").requirements == {
         "class": "fighter",
@@ -3662,8 +3674,12 @@ def test_compendium_loads_srd_actions() -> None:
         "recharge": "long_rest",
         "uses_by_fighter_level": {"9": 1, "13": 2, "17": 3},
     }
-    assert compendium.classes["fighter"].levels["9"]["features"] == ["Indomitable"]
+    assert compendium.classes["fighter"].levels["9"]["features"] == [
+        "Indomitable",
+        "Tactical Master",
+    ]
     assert "srd.indomitable" in compendium.classes["fighter"].levels["9"]["actions"]
+    assert "srd.tactical_master" in compendium.classes["fighter"].levels["9"]["actions"]
     assert "srd.rage" in compendium.classes["barbarian"].levels["1"]["actions"]
     assert compendium.classes["barbarian"].levels["1"]["features"] == [
         "Rage",

@@ -2745,6 +2745,37 @@
             "audit_label": "Indomitable"
         },
         {
+            "id": "srd.tactical_master",
+            "name": "Tactical Master",
+            "localization": {
+                "en": "Tactical Master",
+                "zh": "战术大师",
+                "aliases": ["Fighter Tactical Master", "战士战术大师"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 9: Tactical Master",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 9},
+            "properties": {
+                "weapon_mastery_property_replacement": true,
+                "requires_weapon_mastery_property_you_can_use": true,
+                "replacement_mastery_properties": ["Push", "Sap", "Slow"],
+                "scope": "one_attack"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Fighter attacks with a weapon whose mastery property they can use, they can replace that property with Push, Sap, or Slow for that attack."
+                }
+            ],
+            "audit_label": "Tactical Master"
+        },
+        {
             "id": "srd.improved_critical",
             "name": "Improved Critical",
             "localization": {

@@ -34,6 +34,7 @@ def test_natural_language_character_edit_assigns_fighter_indomitable_at_level_9(
     assert result.character is not None
     assert result.character.class_levels == {"fighter": 9}
     assert "srd.indomitable" in result.character.actions
+    assert "srd.tactical_master" in result.character.actions
     assert result.character.resources["srd.resource.indomitable"] == 1
 
 
