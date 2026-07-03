@@ -158,6 +158,25 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             )
     if node_type == "condition" and "condition" not in node:
         errors.append(f"{path}: condition node requires condition")
+    if node_type == "condition":
+        duration = node.get("duration")
+        if isinstance(duration, dict) and "repeat_save" in duration:
+            repeat_save = duration["repeat_save"]
+            if not isinstance(repeat_save, dict):
+                errors.append(f"{path}: duration.repeat_save must be an object")
+            else:
+                if not isinstance(repeat_save.get("ability"), str):
+                    errors.append(f"{path}: duration.repeat_save ability must be a string")
+                has_dc = isinstance(repeat_save.get("dc"), int) and not isinstance(
+                    repeat_save.get("dc"), bool
+                )
+                has_dc_from = isinstance(repeat_save.get("dc_from"), dict)
+                if not has_dc and not has_dc_from:
+                    errors.append(f"{path}: duration.repeat_save requires dc or dc_from")
+                if "end_on_success" in repeat_save and not isinstance(
+                    repeat_save["end_on_success"], bool
+                ):
+                    errors.append(f"{path}: duration.repeat_save end_on_success must be boolean")
     if (
         node_type in {"damage", "condition", "passive_effect"}
         and "requires_failed_save" in node

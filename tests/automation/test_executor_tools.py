@@ -8561,6 +8561,153 @@ def test_mass_cure_wounds_upcast_spends_requested_slot_and_adds_healing_die(
     assert healing_change["amount"] == result["dice_rolls"][0]["total"] + 4
 
 
+def test_hold_monster_uses_actor_spell_dc_and_repeat_save_duration(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 8}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.hold_monster",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-hold-monster",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    effect = state.encounter.combatants["goblin1"].status_effects[-1]
+    assert effect["condition"] == "paralyzed"
+    assert effect["source_action_id"] == "srd.hold_monster"
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 16,
+            "dc_source": "spell_save_dc:wizard",
+            "end_on_success": True,
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is True
+
+    lifecycle = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert lifecycle.expired[0]["condition"] == "paralyzed"
+    assert lifecycle.expired[0]["repeat_save"]["dc"] == 16
+    assert lifecycle.expired[0]["repeat_save"]["success"] is True
+
+
+def test_hold_monster_rejects_extra_target_without_upcast_before_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="too many targets"):
+        tools.cast_spell(
+            "pc1",
+            "srd.hold_monster",
+            ["goblin1", "goblin2"],
+            5,
+            idempotency_key="cast-hold-monster-too-many",
+        )
+
+    assert caster.spell_slots["5"] == 1
+
+
+def test_hold_monster_upcast_allows_additional_target_and_spends_requested_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    state.encounter.combatants["goblin1"].abilities = {"wis": 8}
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        abilities={"wis": 8},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.hold_monster",
+        ["goblin1", "goblin2"],
+        6,
+        idempotency_key="cast-hold-monster-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+    condition_changes = [
+        change for change in result["state_changes"] if change["type"] == "condition"
+    ]
+    assert [change["target_id"] for change in condition_changes] == ["goblin1", "goblin2"]
+    assert all(change["condition"] == "paralyzed" for change in condition_changes)
+
+
 def test_max_hp_delta_can_follow_last_damage_taken(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

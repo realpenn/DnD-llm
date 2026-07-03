@@ -319,7 +319,7 @@ class AutomationExecutor:
         result = AutomationResult(action_id=action.id, actor_id=actor_id, success=True)
         params = params or {}
         preexisting_actor_effect_ids = self._actor_effect_ids(actor_id)
-        self._validate_target_policy(action, actor_id, targets or [])
+        self._validate_target_policy(action, actor_id, targets or [], params)
         self._validate_self_only_targets(action, actor_id, targets or [])
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
@@ -1214,7 +1214,7 @@ class AutomationExecutor:
                 target_id=target_id,
                 applied_by=ctx.actor_id,
                 condition=condition,
-                duration=dict(node.get("duration", {})),
+                duration=self._resolved_condition_duration(ctx, node),
                 tick_on=node.get("tick_on"),
                 concentration=concentration,
                 stacking_policy=str(node.get("stacking_policy", "replace")),
@@ -2015,6 +2015,20 @@ class AutomationExecutor:
             "ticks_per_unit": ticks_per_unit,
         }
         duration["remaining_ticks"] = roll.total * ticks_per_unit
+        return duration
+
+    def _resolved_condition_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
+        duration = dict(node.get("duration", {}))
+        repeat_save = duration.get("repeat_save")
+        if not isinstance(repeat_save, dict):
+            return duration
+        resolved_repeat_save = dict(repeat_save)
+        dc_from = resolved_repeat_save.pop("dc_from", None)
+        if dc_from is not None:
+            dc, dc_source = self._resolve_dynamic_dc(ctx, dc_from)
+            resolved_repeat_save["dc"] = dc
+            resolved_repeat_save["dc_source"] = dc_source
+        duration["repeat_save"] = resolved_repeat_save
         return duration
 
     def _resolved_passive_modifiers(
@@ -7940,13 +7954,14 @@ class AutomationExecutor:
         action: ActionDefinition,
         actor_id: str,
         targets: list[str],
+        params: dict[str, Any],
     ) -> None:
         policy = action.target_policy
         min_targets = int(policy.get("min", 0))
-        max_targets = policy.get("max")
+        max_targets = self._effective_max_targets(action, params)
         if len(targets) < min_targets:
             raise AutomationError("not enough targets")
-        if max_targets is not None and len(targets) > int(max_targets):
+        if max_targets is not None and len(targets) > max_targets:
             raise AutomationError("too many targets")
         if bool(policy.get("exclude_self", False)):
             actor_aliases = self._entity_aliases(actor_id)
@@ -7960,6 +7975,26 @@ class AutomationExecutor:
                 if self._creature_type_for(target).lower() not in allowed:
                     expected = ", ".join(sorted(allowed))
                     raise AutomationError(f"target must be {expected}")
+
+    def _effective_max_targets(
+        self,
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> int | None:
+        max_targets = action.target_policy.get("max")
+        if max_targets is None:
+            return None
+        maximum = int(max_targets)
+        per_slot = action.target_policy.get("max_targets_per_slot_above")
+        if per_slot is None:
+            return maximum
+        if not isinstance(per_slot, int) or isinstance(per_slot, bool) or per_slot < 1:
+            raise AutomationError("max_targets_per_slot_above must be a positive integer")
+        base_slot = action.target_policy.get("base_spell_slot_level", action.cost.spell_slot_level)
+        if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
+            raise AutomationError("base_spell_slot_level must be a positive integer")
+        slot_level = self._spell_slot_level_to_spend(action, params)
+        return maximum + max(0, slot_level - base_slot) * per_slot
 
     def _validate_self_only_targets(
         self,

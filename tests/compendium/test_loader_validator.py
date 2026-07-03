@@ -47,6 +47,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.greater_invisibility",
         "srd.blight",
         "srd.mass_cure_wounds",
+        "srd.hold_monster",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -193,6 +194,39 @@ def test_compendium_loads_srd_actions() -> None:
             "bonus_from": {"spellcasting_ability_modifier": "actor"},
             "base_spell_slot_level": 5,
             "extra_dice_per_slot_above": "1d8",
+        },
+    ]
+    hold_monster = compendium.action("srd.hold_monster")
+    assert hold_monster.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert hold_monster.properties["spell_classes"] == ["bard", "sorcerer", "warlock", "wizard"]
+    assert hold_monster.range == {"normal_ft": 90}
+    assert hold_monster.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": True,
+        "base_spell_slot_level": 5,
+        "max_targets_per_slot_above": 1,
+    }
+    assert hold_monster.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "paralyzed",
+            "requires_failed_save": True,
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                },
+            },
+            "tick_on": "target_turn_end",
+            "concentration": True,
         },
     ]
     assert "srd.innate_sorcery" in compendium.actions

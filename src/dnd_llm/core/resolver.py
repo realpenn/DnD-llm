@@ -1356,12 +1356,12 @@ class ActionResolver:
     ) -> ResolverResult | None:
         policy = action.target_policy
         min_targets = int(policy.get("min", 0))
-        max_targets = policy.get("max")
+        max_targets = self._effective_max_targets(draft, action)
         if len(draft.target_ids) < min_targets:
             return ResolverResult(
                 status="rejected", reason="not enough targets", action_id=action.id
             )
-        if max_targets is not None and len(draft.target_ids) > int(max_targets):
+        if max_targets is not None and len(draft.target_ids) > max_targets:
             return ResolverResult(status="rejected", reason="too many targets", action_id=action.id)
         if bool(policy.get("exclude_self", False)):
             actor_aliases = self._entity_aliases(draft.actor_id)
@@ -1425,6 +1425,27 @@ class ActionResolver:
                     confirm_required=True,
                 )
         return None
+
+    def _effective_max_targets(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> int | None:
+        max_targets = action.target_policy.get("max")
+        if max_targets is None:
+            return None
+        maximum = int(max_targets)
+        per_slot = action.target_policy.get("max_targets_per_slot_above")
+        if per_slot is None:
+            return maximum
+        base_slot = action.target_policy.get("base_spell_slot_level", action.cost.spell_slot_level)
+        if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
+            return maximum
+        try:
+            slot_level = self._spell_slot_level_to_spend(draft, action)
+        except ValueError:
+            slot_level = base_slot
+        return maximum + max(0, slot_level - base_slot) * int(per_slot)
 
     def _check_self_only_targets(
         self,

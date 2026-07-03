@@ -363,6 +363,52 @@ def test_resolver_rejects_spell_slot_below_spell_base_level(make_state) -> None:
     assert result.reason == "spell requires level 4 slot or higher"
 
 
+def test_resolver_scales_spell_target_cap_with_requested_slot_level(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.hold_monster")
+    character.spell_slots["5"] = 1
+    character.spell_slots["6"] = 1
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    base_slot = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="怪物定身术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.hold_monster",
+            params={"slot_level": 5},
+        )
+    )
+    upcast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="怪物定身术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.hold_monster",
+            params={"slot_level": 6},
+        )
+    )
+
+    assert base_slot.status == "rejected"
+    assert base_slot.reason == "too many targets"
+    assert upcast.status == "accepted"
+    assert upcast.action_id == "srd.hold_monster"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:
