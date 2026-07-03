@@ -48,6 +48,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.hold_monster",
+        "srd.greater_restoration",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -227,6 +228,42 @@ def test_compendium_loads_srd_actions() -> None:
             },
             "tick_on": "target_turn_end",
             "concentration": True,
+        },
+    ]
+    greater_restoration = compendium.action("srd.greater_restoration")
+    assert greater_restoration.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "cleric", "druid", "paladin", "ranger"],
+    }
+    assert greater_restoration.properties["spell_classes"] == [
+        "bard",
+        "cleric",
+        "druid",
+        "paladin",
+        "ranger",
+    ]
+    assert greater_restoration.properties["greater_restoration_choices"] == [
+        "exhaustion",
+        "charmed_or_petrified",
+        "curse",
+        "ability_score_reduction",
+        "hp_max_reduction",
+    ]
+    assert greater_restoration.cost.spell_slot_level == 5
+    assert greater_restoration.cost.gold == 100
+    assert greater_restoration.range == {"touch": True}
+    assert greater_restoration.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "greater_restoration",
+            "choice_param": "greater_restoration_choice",
+            "choices": [
+                "exhaustion",
+                "charmed_or_petrified",
+                "curse",
+                "ability_score_reduction",
+                "hp_max_reduction",
+            ],
         },
     ]
     assert "srd.innate_sorcery" in compendium.actions

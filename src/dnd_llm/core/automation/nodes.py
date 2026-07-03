@@ -14,6 +14,7 @@ NODE_TYPES = {
     "cutting_words",
     "hunter_lore",
     "remove_condition",
+    "greater_restoration",
     "passive_effect",
     "world_effect",
     "repeat_use_save_before_long_rest",
@@ -39,6 +40,7 @@ STATE_CHANGING_NODE_TYPES = {
     "temp_hp",
     "condition",
     "remove_condition",
+    "greater_restoration",
     "passive_effect",
     "world_effect",
     "repeat_use_save_before_long_rest",
@@ -194,6 +196,15 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.append(f"{path}: remove_condition conditions must be a list")
         if effect_markers is not None and not isinstance(effect_markers, list):
             errors.append(f"{path}: remove_condition effect_markers must be a list")
+    if node_type == "greater_restoration":
+        choices = node.get("choices")
+        if not isinstance(choices, list) or not choices:
+            errors.append(f"{path}: greater_restoration requires choices")
+        elif not all(isinstance(choice, str) and choice for choice in choices):
+            errors.append(f"{path}: greater_restoration choices must be strings")
+        choice_param = node.get("choice_param", "greater_restoration_choice")
+        if not isinstance(choice_param, str) or not choice_param:
+            errors.append(f"{path}: greater_restoration choice_param must be a string")
     if node_type == "preserve_life_healing":
         points_param = node.get("points_param", "preserve_life_points")
         if not isinstance(points_param, str) or not points_param:

@@ -38,6 +38,13 @@ RESOLVER_CREATURE_SIZE_RANKS = {
     "huge": 5,
     "gargantuan": 6,
 }
+RESOLVER_GREATER_RESTORATION_CHOICES = {
+    "exhaustion",
+    "charmed_or_petrified",
+    "curse",
+    "ability_score_reduction",
+    "hp_max_reduction",
+}
 RESOLVER_PACT_OF_BLADE_WEAPON_ACTION_ID = "srd.pact_of_the_blade_weapon"
 RESOLVER_PACT_OF_CHAIN_FIND_FAMILIAR_ACTION_ID = "srd.pact_of_the_chain_find_familiar"
 RESOLVER_THIRSTING_BLADE_ACTION_ID = "srd.thirsting_blade"
@@ -172,6 +179,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=damage_type_error,
+                action_id=action.id,
+            )
+        greater_restoration_error = self._greater_restoration_choice_error(draft, action)
+        if greater_restoration_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=greater_restoration_error,
                 action_id=action.id,
             )
         oil_vial_check = self._prepare_size_based_oil_vial_cost(draft, action)
@@ -410,6 +424,24 @@ class ActionResolver:
         if normalized not in allowed:
             return f"damage_type must be one of: {', '.join(allowed)}"
         draft.params["damage_type"] = normalized
+        return None
+
+    @staticmethod
+    def _greater_restoration_choice_error(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        for node in action.automation:
+            if node.get("type") != "greater_restoration":
+                continue
+            choice_param = str(node.get("choice_param", "greater_restoration_choice"))
+            if choice_param not in draft.params:
+                return f"missing required parameter {choice_param}"
+            choice = str(draft.params[choice_param])
+            allowed_choices = {str(item) for item in node.get("choices", [])}
+            if choice not in allowed_choices or choice not in RESOLVER_GREATER_RESTORATION_CHOICES:
+                expected = ", ".join(sorted(allowed_choices & RESOLVER_GREATER_RESTORATION_CHOICES))
+                return f"unsupported Greater Restoration choice {choice}; choose {expected}"
         return None
 
     def _prepare_size_based_oil_vial_cost(

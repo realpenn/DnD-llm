@@ -133,6 +133,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
     inventory = {"srd.potion_of_healing": 1}
     resources = {"srd.resource.second_wind": 2}
     spell_slots = {"1": 4, "2": 3, "3": 2}
+    gold = 0
     enemy_creature_type = "humanoid"
     enemy_status_effects: list[dict[str, Any]] = []
     enemy_resistances: list[str] = []
@@ -146,6 +147,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
             resources[resource] = max(1, amount)
         for resource in action.cost.resource_params:
             resources[resource] = max(1, resources.get(resource, 0))
+        gold = max(gold, int(action.cost.gold))
         if action.cost.spell_slot_level is not None:
             spell_slots[str(action.cost.spell_slot_level)] = max(
                 1,
@@ -216,6 +218,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
         inventory=inventory,
         resources=resources,
         spell_slots=spell_slots,
+        gold=gold,
         tool_proficiencies=["thieves_tools"] if class_levels.get("rogue", 0) else [],
         feature_choices={"ranger.hunter.hunters_prey": "colossus_slayer"}
         if subclasses.get("ranger") == "hunter"
@@ -312,4 +315,8 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
     params: dict[str, Any] = {}
     if action.properties.get("requires_dim_light_or_darkness") is True:
         params["in_dim_light_or_darkness"] = True
+    if action.properties.get("greater_restoration") is True:
+        choices = action.properties.get("greater_restoration_choices", [])
+        if isinstance(choices, list) and choices:
+            params["greater_restoration_choice"] = str(choices[0])
     return params

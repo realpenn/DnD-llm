@@ -8708,6 +8708,213 @@ def test_hold_monster_upcast_allows_additional_target_and_spends_requested_slot(
     assert all(change["condition"] == "paralyzed" for change in condition_changes)
 
 
+def test_greater_restoration_requires_choice_before_spending_cost(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="missing required parameter"):
+        tools.perform_action(
+            "pc1",
+            "srd.greater_restoration",
+            ["pc2"],
+            {"slot_level": 5},
+            idempotency_key="greater-restoration-missing-choice",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 100
+
+
+def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 100
+    target_character = state.characters["pc2"]
+    target_combatant = state.encounter.combatants["pc2"]
+    target_character.status_effects = [
+        {"effect_id": "char-exhaustion", "condition": "exhaustion", "level": 2}
+    ]
+    target_combatant.status_effects = [
+        {"effect_id": "combat-exhaustion", "condition": "exhaustion", "level": 1}
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.greater_restoration",
+        ["pc2"],
+        {"slot_level": 5, "greater_restoration_choice": "exhaustion"},
+        idempotency_key="greater-restoration-exhaustion",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_5", "gold"]
+    greater_restore = next(
+        change for change in result["state_changes"] if change["type"] == "greater_restoration"
+    )
+    assert greater_restore["choice"] == "exhaustion"
+    assert greater_restore["removed"] == {"exhaustion": 1}
+    assert greater_restore["removed_owners"] == [
+        {
+            "owner_type": "character",
+            "owner_id": "pc2",
+            "condition": "exhaustion",
+            "count": 1,
+            "level_before": 2,
+            "level_after": 1,
+        }
+    ]
+    assert target_character.status_effects == [
+        {"effect_id": "char-exhaustion", "condition": "exhaustion", "level": 1}
+    ]
+    assert target_combatant.status_effects == [
+        {"effect_id": "combat-exhaustion", "condition": "exhaustion", "level": 1}
+    ]
+
+
+def test_greater_restoration_removes_selected_condition_or_marked_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 3
+    caster.gold = 300
+    target = state.encounter.combatants["pc2"]
+    target.status_effects = [
+        {"effect_id": "charm", "condition": "charmed"},
+        {"effect_id": "stone", "condition": "petrified"},
+        {"effect_id": "fright", "condition": "frightened"},
+        {"effect_id": "curse", "effect_markers": ["curse"]},
+        {"effect_id": "ability-loss", "metadata": {"ability_score_reduction": True}},
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    condition_result = tools.perform_action(
+        "pc1",
+        "srd.greater_restoration",
+        ["pc2"],
+        {"slot_level": 5, "greater_restoration_choice": "charmed_or_petrified"},
+        idempotency_key="greater-restoration-condition",
+    )
+    tools.economy.set("pc1", "action", 1)
+    marker_result = tools.perform_action(
+        "pc1",
+        "srd.greater_restoration",
+        ["pc2"],
+        {"slot_level": 5, "greater_restoration_choice": "ability_score_reduction"},
+        idempotency_key="greater-restoration-ability",
+    )
+    tools.economy.set("pc1", "action", 1)
+    curse_result = tools.perform_action(
+        "pc1",
+        "srd.greater_restoration",
+        ["pc2"],
+        {"slot_level": 5, "greater_restoration_choice": "curse"},
+        idempotency_key="greater-restoration-curse",
+    )
+
+    condition_change = next(
+        change
+        for change in condition_result["state_changes"]
+        if change["type"] == "greater_restoration"
+    )
+    marker_change = next(
+        change
+        for change in marker_result["state_changes"]
+        if change["type"] == "greater_restoration"
+    )
+    curse_change = next(
+        change
+        for change in curse_result["state_changes"]
+        if change["type"] == "greater_restoration"
+    )
+    assert condition_change["removed"] == {"charmed": 1, "petrified": 1}
+    assert marker_change["removed_markers"] == {"ability_score_reduction": 1}
+    assert curse_change["removed_markers"] == {"curse": 1}
+    assert {effect.get("effect_id") for effect in target.status_effects} == {"fright"}
+    assert caster.spell_slots["5"] == 0
+    assert caster.gold == 0
+
+
+def test_greater_restoration_restores_hp_max_reduction(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 100
+    target_character = state.characters["pc2"]
+    target_combatant = state.encounter.combatants["pc2"]
+    target_character.hp_max = 4
+    target_character.hp_current = 4
+    target_combatant.hp_max = 4
+    target_combatant.hp_current = 4
+    target_combatant.status_effects = [
+        {
+            "effect_id": "hp-drain",
+            "effect_markers": ["hp_max_reduction"],
+            "metadata": {"hp_max_reduction": 4},
+        }
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.greater_restoration",
+        ["pc2"],
+        {"slot_level": 5, "greater_restoration_choice": "hp_max_reduction"},
+        idempotency_key="greater-restoration-hp-max",
+    )
+
+    greater_restore = next(
+        change for change in result["state_changes"] if change["type"] == "greater_restoration"
+    )
+    assert greater_restore["removed_markers"] == {"hp_max_reduction": 1}
+    assert greater_restore["hp_max_restored"] == [
+        {
+            "owner_type": "character",
+            "owner_id": "pc2",
+            "amount": 4,
+            "hp_max_before": 4,
+            "hp_max_after": 8,
+            "hp_current_before": 4,
+            "hp_current_after": 4,
+        },
+        {
+            "owner_type": "combatant",
+            "owner_id": "pc2",
+            "amount": 4,
+            "hp_max_before": 4,
+            "hp_max_after": 8,
+            "hp_current_before": 4,
+            "hp_current_after": 4,
+        },
+    ]
+    assert target_character.hp_max == 8
+    assert target_combatant.hp_max == 8
+    assert target_combatant.status_effects == []
+
+
 def test_max_hp_delta_can_follow_last_damage_taken(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

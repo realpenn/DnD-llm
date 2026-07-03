@@ -119,6 +119,13 @@ CREATURE_SIZE_RANKS = {
     "huge": 5,
     "gargantuan": 6,
 }
+GREATER_RESTORATION_CHOICES = {
+    "exhaustion",
+    "charmed_or_petrified",
+    "curse",
+    "ability_score_reduction",
+    "hp_max_reduction",
+}
 
 
 class AutomationError(RuntimeError):
@@ -354,6 +361,7 @@ class AutomationExecutor:
         self._validate_thirsting_blade_preconditions(action, actor_id, params)
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
         self._validate_allowed_damage_type_param(action, params)
+        self._validate_greater_restoration_preconditions(action, params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
         self._validate_tactical_shift_preconditions(action, actor_id, params)
@@ -417,6 +425,8 @@ class AutomationExecutor:
             self._node_condition(ctx, node, path)
         elif node_type == "remove_condition":
             self._node_remove_condition(ctx, node, path)
+        elif node_type == "greater_restoration":
+            self._node_greater_restoration(ctx, node, path)
         elif node_type == "passive_effect":
             self._node_passive_effect(ctx, node, path)
         elif node_type == "world_effect":
@@ -1315,6 +1325,266 @@ class AutomationExecutor:
                         "path": path,
                     }
                 )
+
+    def _node_greater_restoration(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        choice_param = str(node.get("choice_param", "greater_restoration_choice"))
+        if choice_param not in ctx.params:
+            raise AutomationError(f"missing required parameter {choice_param}")
+        choice = str(ctx.params[choice_param])
+        allowed_choices = {str(item) for item in node.get("choices", GREATER_RESTORATION_CHOICES)}
+        if choice not in allowed_choices or choice not in GREATER_RESTORATION_CHOICES:
+            expected = ", ".join(sorted(allowed_choices & GREATER_RESTORATION_CHOICES))
+            raise AutomationError(
+                f"unsupported Greater Restoration choice {choice}; choose {expected}"
+            )
+        for target_id in ctx.targets:
+            change = self._greater_restoration_change(target_id, choice, path)
+            if change is not None:
+                ctx.result.state_changes.append(change)
+
+    def _greater_restoration_change(
+        self,
+        target_id: str,
+        choice: str,
+        path: str,
+    ) -> dict[str, Any] | None:
+        if choice == "exhaustion":
+            removed_exhaustion, removed_owners = self._remove_one_exhaustion_level(target_id)
+            if not removed_exhaustion:
+                return None
+            return {
+                "type": "greater_restoration",
+                "target_id": target_id,
+                "choice": choice,
+                "removed": {"exhaustion": removed_exhaustion},
+                "removed_markers": {},
+                "removed_owners": removed_owners,
+                "path": path,
+            }
+        if choice == "charmed_or_petrified":
+            removed_conditions, removed_owners = self._remove_conditions_for_target(
+                target_id,
+                ["charmed", "petrified"],
+            )
+            if not removed_conditions:
+                return None
+            return {
+                "type": "greater_restoration",
+                "target_id": target_id,
+                "choice": choice,
+                "removed": removed_conditions,
+                "removed_markers": {},
+                "removed_owners": removed_owners,
+                "path": path,
+            }
+        if choice == "curse":
+            removed_markers, removed_owners = self._remove_effect_markers_for_target(
+                target_id,
+                ["curse", "cursed_item_attunement"],
+            )
+            if not removed_markers:
+                return None
+            return {
+                "type": "greater_restoration",
+                "target_id": target_id,
+                "choice": choice,
+                "removed": {},
+                "removed_markers": removed_markers,
+                "removed_owners": removed_owners,
+                "path": path,
+            }
+        if choice == "ability_score_reduction":
+            removed_markers, removed_owners = self._remove_effect_markers_for_target(
+                target_id,
+                ["ability_score_reduction"],
+            )
+            if not removed_markers:
+                return None
+            return {
+                "type": "greater_restoration",
+                "target_id": target_id,
+                "choice": choice,
+                "removed": {},
+                "removed_markers": removed_markers,
+                "removed_owners": removed_owners,
+                "path": path,
+            }
+        if choice == "hp_max_reduction":
+            removed_markers, removed_owners, hp_max_restored = self._remove_hp_max_reductions(
+                target_id
+            )
+            if not removed_markers:
+                return None
+            return {
+                "type": "greater_restoration",
+                "target_id": target_id,
+                "choice": choice,
+                "removed": {},
+                "removed_markers": removed_markers,
+                "removed_owners": removed_owners,
+                "hp_max_restored": hp_max_restored,
+                "path": path,
+            }
+        raise AutomationError(f"unsupported Greater Restoration choice {choice}")
+
+    def _remove_one_exhaustion_level(self, target_id: str) -> tuple[int, list[dict[str, Any]]]:
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            for index, effect in enumerate(effects):
+                if effect.get("condition") != "exhaustion":
+                    continue
+                level_before = max(1, int(effect.get("level", 1)))
+                owner_entry: dict[str, Any] = {
+                    "owner_type": owner_type,
+                    "owner_id": owner_id,
+                    "condition": "exhaustion",
+                    "count": 1,
+                    "level_before": level_before,
+                    "level_after": max(0, level_before - 1),
+                }
+                if level_before > 1:
+                    effect["level"] = level_before - 1
+                else:
+                    del effects[index]
+                return 1, [owner_entry]
+        return 0, []
+
+    def _remove_conditions_for_target(
+        self,
+        target_id: str,
+        conditions: list[str],
+    ) -> tuple[dict[str, int], list[dict[str, Any]]]:
+        removed: dict[str, int] = {}
+        removed_owners: list[dict[str, Any]] = []
+        for condition in conditions:
+            for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+                count = remove_condition(effects, condition)
+                if count:
+                    removed[condition] = removed.get(condition, 0) + count
+                    removed_owners.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "condition": condition,
+                            "count": count,
+                        }
+                    )
+        return removed, removed_owners
+
+    def _remove_effect_markers_for_target(
+        self,
+        target_id: str,
+        markers: list[str],
+    ) -> tuple[dict[str, int], list[dict[str, Any]]]:
+        removed_markers: dict[str, int] = {}
+        removed_owners: list[dict[str, Any]] = []
+        for marker in markers:
+            for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+                count = self._remove_effect_marker(effects, marker)
+                if count:
+                    removed_markers[marker] = removed_markers.get(marker, 0) + count
+                    removed_owners.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_marker": marker,
+                            "count": count,
+                        }
+                    )
+        return removed_markers, removed_owners
+
+    def _remove_hp_max_reductions(
+        self,
+        target_id: str,
+    ) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
+        removed_markers: dict[str, int] = {}
+        removed_owners: list[dict[str, Any]] = []
+        restored_amount = 0
+        seen_effect_ids: set[str] = set()
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            retained: list[dict[str, Any]] = []
+            count = 0
+            for effect in effects:
+                if not self._effect_has_marker(effect, "hp_max_reduction"):
+                    retained.append(effect)
+                    continue
+                count += 1
+                effect_id = effect.get("effect_id")
+                if isinstance(effect_id, str) and effect_id in seen_effect_ids:
+                    continue
+                if isinstance(effect_id, str):
+                    seen_effect_ids.add(effect_id)
+                restored_amount += self._hp_max_reduction_amount(effect)
+            if count:
+                effects[:] = retained
+                removed_markers["hp_max_reduction"] = (
+                    removed_markers.get("hp_max_reduction", 0) + count
+                )
+                removed_owners.append(
+                    {
+                        "owner_type": owner_type,
+                        "owner_id": owner_id,
+                        "effect_marker": "hp_max_reduction",
+                        "count": count,
+                    }
+                )
+        if not removed_markers:
+            return {}, [], []
+        hp_max_restored = self._restore_hp_max_for_target(target_id, restored_amount)
+        return removed_markers, removed_owners, hp_max_restored
+
+    @staticmethod
+    def _hp_max_reduction_amount(effect: dict[str, Any]) -> int:
+        candidates: list[Any] = [effect.get("hp_max_reduction")]
+        for effect_field in ("passive_modifiers", "metadata", "audit"):
+            value = effect.get(effect_field)
+            if isinstance(value, dict):
+                candidates.append(value.get("hp_max_reduction"))
+        for candidate in candidates:
+            if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
+                return candidate
+        return 0
+
+    def _restore_hp_max_for_target(self, target_id: str, amount: int) -> list[dict[str, Any]]:
+        if amount <= 0:
+            return []
+        restored: list[dict[str, Any]] = []
+        seen: set[int] = set()
+
+        def add_entity(owner_type: str, owner_id: str, entity: Any) -> None:
+            entity_identity = id(entity)
+            if entity_identity in seen or not hasattr(entity, "hp_max"):
+                return
+            seen.add(entity_identity)
+            hp_max_before = int(getattr(entity, "hp_max"))
+            hp_current_before = int(getattr(entity, "hp_current", 0))
+            hp_max_after = hp_max_before + amount
+            setattr(entity, "hp_max", hp_max_after)
+            restored.append(
+                {
+                    "owner_type": owner_type,
+                    "owner_id": owner_id,
+                    "amount": amount,
+                    "hp_max_before": hp_max_before,
+                    "hp_max_after": hp_max_after,
+                    "hp_current_before": hp_current_before,
+                    "hp_current_after": int(getattr(entity, "hp_current", hp_current_before)),
+                }
+            )
+
+        if target_id in self.state.characters:
+            add_entity("character", target_id, self.state.characters[target_id])
+        if target_id in self.state.monsters:
+            add_entity("monster", target_id, self.state.monsters[target_id])
+        if self.state.encounter is not None and target_id in self.state.encounter.combatants:
+            combatant = self.state.encounter.combatants[target_id]
+            add_entity("combatant", target_id, combatant)
+            if combatant.entity_id in self.state.characters:
+                add_entity(
+                    "character", combatant.entity_id, self.state.characters[combatant.entity_id]
+                )
+            if combatant.entity_id in self.state.monsters:
+                add_entity("monster", combatant.entity_id, self.state.monsters[combatant.entity_id])
+        return restored
 
     @staticmethod
     def _remove_effect_marker(effects: list[dict[str, Any]], marker: str) -> int:
@@ -5654,6 +5924,25 @@ class AutomationExecutor:
         if normalized not in allowed:
             raise AutomationError(f"damage_type must be one of: {', '.join(allowed)}")
         params["damage_type"] = normalized
+
+    @staticmethod
+    def _validate_greater_restoration_preconditions(
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        for node in action.automation:
+            if node.get("type") != "greater_restoration":
+                continue
+            choice_param = str(node.get("choice_param", "greater_restoration_choice"))
+            if choice_param not in params:
+                raise AutomationError(f"missing required parameter {choice_param}")
+            choice = str(params[choice_param])
+            allowed_choices = {str(item) for item in node.get("choices", [])}
+            if choice not in allowed_choices or choice not in GREATER_RESTORATION_CHOICES:
+                expected = ", ".join(sorted(allowed_choices & GREATER_RESTORATION_CHOICES))
+                raise AutomationError(
+                    f"unsupported Greater Restoration choice {choice}; choose {expected}"
+                )
 
     def _validate_open_hand_technique_preconditions(
         self,

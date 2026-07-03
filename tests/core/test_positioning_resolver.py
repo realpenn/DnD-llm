@@ -409,6 +409,54 @@ def test_resolver_scales_spell_target_cap_with_requested_slot_level(make_state) 
     assert upcast.action_id == "srd.hold_monster"
 
 
+def test_resolver_checks_greater_restoration_choice_and_component_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 9}
+    character.actions.append("srd.greater_restoration")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5},
+        )
+    )
+    no_gold = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5, "greater_restoration_choice": "exhaustion"},
+        )
+    )
+    character.gold = 100
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5, "greater_restoration_choice": "exhaustion"},
+        )
+    )
+
+    assert missing_choice.status == "rejected"
+    assert missing_choice.reason == "missing required parameter greater_restoration_choice"
+    assert no_gold.status == "rejected"
+    assert no_gold.reason == "insufficient gold"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.greater_restoration"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:
