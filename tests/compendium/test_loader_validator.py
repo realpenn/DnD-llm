@@ -132,6 +132,11 @@ def test_compendium_loads_srd_actions() -> None:
         "class": "barbarian",
         "class_level_min": 3,
     }
+    assert compendium.action("srd.mindless_rage").requirements == {
+        "class": "barbarian",
+        "class_level_min": 6,
+        "subclass": "berserker",
+    }
     assert compendium.action("srd.monk_unarmored_defense").requirements == {
         "class": "monk",
         "class_level_min": 1,
@@ -3169,13 +3174,21 @@ def test_compendium_loads_srd_actions() -> None:
         "Barbarian Subclass",
         "Primal Knowledge",
     ]
+    assert compendium.classes["barbarian"].levels["6"]["features"] == ["Subclass Feature"]
+    assert "srd.mindless_rage" in compendium.classes["barbarian"].levels["6"]["actions"]
     assert compendium.action("srd.frenzy").requirements == {
         "class": "barbarian",
         "class_level_min": 3,
         "subclass": "berserker",
     }
-    assert compendium.classes["barbarian"].subclasses["berserker"]["features"] == ["Frenzy"]
-    assert compendium.classes["barbarian"].subclasses["berserker"]["actions"] == ["srd.frenzy"]
+    assert compendium.classes["barbarian"].subclasses["berserker"]["features"] == [
+        "Frenzy",
+        "Mindless Rage",
+    ]
+    assert compendium.classes["barbarian"].subclasses["berserker"]["actions"] == [
+        "srd.frenzy",
+        "srd.mindless_rage",
+    ]
     assert "srd.frenzy" not in compendium.classes["barbarian"].levels["3"]["actions"]
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {

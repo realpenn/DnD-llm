@@ -3774,6 +3774,103 @@ def test_rage_applies_srd_passive_effects_and_blocks_spellcasting(make_state) ->
     assert damage_change["applied"] == 4
 
 
+def test_berserker_mindless_rage_ends_charmed_frightened_and_grants_immunity(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 6}
+    character.subclasses = {"barbarian": "berserker"}
+    character.actions.extend(["srd.rage", "srd.mindless_rage"])
+    character.resources["srd.resource.rage"] = 1
+    state.encounter.combatants["pc1"].status_effects.extend(
+        [
+            {"effect_id": "charm-test", "condition": "charmed"},
+            {"effect_id": "fright-test", "condition": "frightened"},
+        ]
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.rage",
+        [],
+        idempotency_key="mindless-rage",
+    )
+
+    assert result["success"] is True
+    rage_effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert rage_effect["condition"] == "raging"
+    assert rage_effect["passive_modifiers"]["condition_immunities"] == [
+        "charmed",
+        "frightened",
+    ]
+    mindless_change = next(
+        change for change in result["state_changes"] if change["type"] == "mindless_rage"
+    )
+    assert mindless_change["source_action_id"] == "srd.mindless_rage"
+    assert mindless_change["removed"] == {"charmed": 1, "frightened": 1}
+    assert [effect["condition"] for effect in state.encounter.combatants["pc1"].status_effects] == [
+        "raging"
+    ]
+
+    charm_action = ActionDefinition(
+        id="test.charm",
+        name="Test Charm",
+        localization={"en": "Test Charm", "zh": "测试魅惑", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "condition", "condition": "charmed"},
+        ],
+    )
+    charm = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        charm_action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    immune_change = next(
+        change for change in charm.state_changes if change["type"] == "condition_immune"
+    )
+    assert immune_change["condition"] == "charmed"
+    assert immune_change["immunity_sources"][0]["source_action_id"] == "srd.rage"
+    assert [effect["condition"] for effect in state.encounter.combatants["pc1"].status_effects] == [
+        "raging"
+    ]
+
+
+def test_non_berserker_rage_does_not_gain_mindless_rage_immunity(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 6}
+    character.actions.append("srd.rage")
+    character.resources["srd.resource.rage"] = 1
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "charm-test", "condition": "charmed"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action("pc1", "srd.rage", [], idempotency_key="rage-no-mindless")
+
+    rage_effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert "condition_immunities" not in rage_effect["passive_modifiers"]
+    assert not any(change["type"] == "mindless_rage" for change in result["state_changes"])
+    assert [effect["condition"] for effect in state.encounter.combatants["pc1"].status_effects] == [
+        "charmed",
+        "raging",
+    ]
+
+
 def test_reckless_attack_grants_strength_attack_advantage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

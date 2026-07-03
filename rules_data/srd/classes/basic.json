@@ -61,14 +61,27 @@
                         "srd.reckless_attack",
                         "srd.extra_attack"
                     ]
+                },
+                "6": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.mindless_rage"
+                    ]
                 }
             },
             "subclasses": {
                 "berserker": {
                     "name": "Path of the Berserker",
                     "level": 3,
-                    "features": ["Frenzy"],
-                    "actions": ["srd.frenzy"]
+                    "features": ["Frenzy", "Mindless Rage"],
+                    "actions": ["srd.frenzy", "srd.mindless_rage"]
                 }
             }
         },

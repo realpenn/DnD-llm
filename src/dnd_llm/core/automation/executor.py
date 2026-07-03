@@ -68,6 +68,9 @@ CUNNING_STRIKE_EFFECTS = {"poison", "trip", "withdraw"}
 OPEN_HAND_TECHNIQUE_EFFECTS = {"addle", "push", "topple"}
 FOCUS_RESOURCE_ID = "srd.resource.focus_points"
 UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
+RAGE_ACTION_ID = "srd.rage"
+MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
+MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
@@ -1627,6 +1630,14 @@ class AutomationExecutor:
         for target_id in ctx.targets:
             if self._skip_target_for_save_gate(ctx, node, target_id):
                 continue
+            target_modifiers = dict(passive_modifiers)
+            mindless_rage_change = self._apply_mindless_rage_if_available(
+                ctx,
+                node,
+                target_id,
+                target_modifiers,
+                path,
+            )
             effect = EffectInstance(
                 effect_id=self._effect_id(target_id, path),
                 source_ref=ctx.action.source,
@@ -1634,7 +1645,7 @@ class AutomationExecutor:
                 target_id=target_id,
                 applied_by=ctx.actor_id,
                 condition=node.get("condition"),
-                passive_modifiers=passive_modifiers,
+                passive_modifiers=target_modifiers,
                 duration=dict(duration),
                 tick_on=node.get("tick_on"),
                 concentration=concentration,
@@ -1681,6 +1692,8 @@ class AutomationExecutor:
                     "path": path,
                 }
             )
+            if mindless_rage_change is not None:
+                ctx.result.state_changes.append(mindless_rage_change)
 
     def _node_repeat_use_save_before_long_rest(
         self,
@@ -7606,9 +7619,61 @@ class AutomationExecutor:
         target: Character | Monster | Combatant,
         condition: str,
     ) -> list[dict[str, Any]]:
-        if condition != "poisoned":
-            return []
-        return self._condition_sources(target, {"petrified"})
+        sources: list[dict[str, Any]] = []
+        if condition == "poisoned":
+            sources.extend(self._condition_sources(target, {"petrified"}))
+        for effect in self._status_effects_for(target):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            immunities = _string_set(modifiers.get("condition_immunities"))
+            if condition in immunities:
+                sources.append(
+                    {
+                        "condition": effect.get("condition"),
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                        "modifier": "condition_immunities",
+                        "immune_condition": condition,
+                    }
+                )
+        return sources
+
+    def _apply_mindless_rage_if_available(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        passive_modifiers: dict[str, Any],
+        path: str,
+    ) -> dict[str, Any] | None:
+        if ctx.action.id != RAGE_ACTION_ID or node.get("condition") != "raging":
+            return None
+        if target_id != ctx.actor_id:
+            return None
+        actor = self._resource_owner(ctx.actor_id)
+        if not isinstance(actor, Character) or not has_barbarian_berserker_feature(
+            actor,
+            level=6,
+        ):
+            return None
+        existing = _string_set(passive_modifiers.get("condition_immunities"))
+        passive_modifiers["condition_immunities"] = sorted(
+            existing | set(MINDLESS_RAGE_CONDITION_IMMUNITIES)
+        )
+        removed_conditions, removed_owners = self._remove_conditions_for_target(
+            target_id,
+            list(MINDLESS_RAGE_CONDITION_IMMUNITIES),
+        )
+        return {
+            "type": "mindless_rage",
+            "target_id": target_id,
+            "source_action_id": MINDLESS_RAGE_ACTION_ID,
+            "condition_immunities": list(MINDLESS_RAGE_CONDITION_IMMUNITIES),
+            "removed": removed_conditions,
+            "removed_owners": removed_owners,
+            "path": path,
+        }
 
     def _apply_healing(self, target_id: str, amount: int) -> int:
         target = self._entity(target_id)
@@ -9373,3 +9438,13 @@ class AutomationExecutor:
         if not isinstance(inventory, dict):
             raise AutomationError(f"actor has invalid resource store for {resource}")
         inventory[resource] = value
+
+
+def _string_set(value: Any) -> set[str]:
+    if isinstance(value, str):
+        return {value}
+    if isinstance(value, list):
+        return {str(item) for item in value}
+    if isinstance(value, (tuple, set, frozenset)):
+        return {str(item) for item in value}
+    return set()

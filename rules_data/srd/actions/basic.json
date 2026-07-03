@@ -371,6 +371,31 @@
             "audit_label": "Frenzy"
         },
         {
+            "id": "srd.mindless_rage",
+            "name": "Mindless Rage",
+            "localization": {
+                "en": "Mindless Rage",
+                "zh": "无心狂暴",
+                "aliases": ["Berserker Mindless Rage", "狂战士无心狂暴"]
+            },
+            "source": "SRD 5.2.1 Barbarian Subclass: Path of the Berserker, Level 6: Mindless Rage",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 6, "subclass": "berserker"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Berserker Barbarian has Immunity to the Charmed and Frightened conditions while Rage is active, and those conditions end when the Barbarian enters Rage."
+                }
+            ],
+            "audit_label": "Mindless Rage"
+        },
+        {
             "id": "srd.innate_sorcery",
             "name": "Innate Sorcery",
             "localization": {
