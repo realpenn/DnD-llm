@@ -490,6 +490,21 @@
                         "srd.two_extra_attacks",
                         "srd.studied_attacks"
                     ]
+                },
+                "20": {
+                    "features": ["Three Extra Attacks"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind",
+                        "srd.extra_attack",
+                        "srd.indomitable",
+                        "srd.tactical_master",
+                        "srd.two_extra_attacks",
+                        "srd.studied_attacks",
+                        "srd.three_extra_attacks"
+                    ]
                 }
             },
             "subclasses": {

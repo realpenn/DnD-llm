@@ -209,6 +209,7 @@ CLASS_LEVEL_ACTIONS = {
         9: ["srd.indomitable", "srd.tactical_master"],
         11: ["srd.two_extra_attacks"],
         13: ["srd.studied_attacks"],
+        20: ["srd.three_extra_attacks"],
     },
     "barbarian": {
         1: ["srd.rage", "srd.barbarian_unarmored_defense"],

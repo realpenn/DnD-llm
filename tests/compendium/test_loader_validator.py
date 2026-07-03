@@ -123,6 +123,17 @@ def test_compendium_loads_srd_actions() -> None:
         "grants_advantage_on_next_attack_roll_against_target": True,
         "expires": "before_end_of_next_turn",
     }
+    assert "srd.three_extra_attacks" in compendium.actions
+    assert compendium.action("srd.three_extra_attacks").requirements == {
+        "class": "fighter",
+        "class_level_min": 20,
+    }
+    assert compendium.action("srd.three_extra_attacks").action_economy == "none"
+    assert compendium.action("srd.three_extra_attacks").properties == {
+        "attack_action_attack_count": 4,
+        "applies_when_taking_attack_action_on_turn": True,
+        "instead_of_once": True,
+    }
     assert "srd.improved_critical" in compendium.actions
     assert compendium.action("srd.improved_critical").requirements == {
         "class": "fighter",
@@ -3722,6 +3733,8 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert "srd.action_surge" in compendium.classes["fighter"].levels["17"]["actions"]
     assert "srd.indomitable" in compendium.classes["fighter"].levels["17"]["actions"]
+    assert compendium.classes["fighter"].levels["20"]["features"] == ["Three Extra Attacks"]
+    assert "srd.three_extra_attacks" in compendium.classes["fighter"].levels["20"]["actions"]
     assert "srd.rage" in compendium.classes["barbarian"].levels["1"]["actions"]
     assert compendium.classes["barbarian"].levels["1"]["features"] == [
         "Rage",
