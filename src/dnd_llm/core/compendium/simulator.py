@@ -101,6 +101,8 @@ class CompendiumSimulator:
                     params["absorbed_spell_level"] = 1
                     params["targeting_only_you"] = True
                     params["creates_area_of_effect"] = False
+                if action.id == "srd.quivering_palm_release":
+                    params["same_plane"] = True
                 for param_name in action.cost.resource_params.values():
                     params[param_name] = 1
                 for node in action.automation:
@@ -215,6 +217,23 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                     "concentration": True,
                     "stacking_policy": "replace",
                     "audit": {},
+                }
+            ]
+        if action.id == "srd.quivering_palm_release":
+            enemy_status_effects = [
+                {
+                    "effect_id": "simulation-quivering-palm",
+                    "source_ref": "SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 17: Quivering Palm",
+                    "source_action_id": "srd.quivering_palm",
+                    "target_id": "npc_enemy",
+                    "applied_by": "pc_actor",
+                    "condition": "quivering_palm",
+                    "passive_modifiers": {},
+                    "duration": {"until": "duration_monk_level_days", "days": 17},
+                    "tick_on": None,
+                    "concentration": False,
+                    "stacking_policy": "replace",
+                    "audit": {"simulation": True},
                 }
             ]
     actor = Character(

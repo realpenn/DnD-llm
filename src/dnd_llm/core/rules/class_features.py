@@ -85,6 +85,7 @@ WARLOCK_ELDRITCH_SMITE_SELECTED = "selected"
 WARLOCK_ELDRITCH_MIND = "eldritch_mind"
 UNCANNY_METABOLISM_RESOURCE = "srd.resource.uncanny_metabolism"
 WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
+FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
 INDOMITABLE_RESOURCE = "srd.resource.indomitable"
@@ -231,6 +232,10 @@ def has_monk_open_hand_feature(character: Character, *, level: int) -> bool:
 
 def monk_open_hand_fleet_step_applies(character: Character) -> bool:
     return has_monk_open_hand_feature(character, level=11)
+
+
+def monk_open_hand_quivering_palm_applies(character: Character) -> bool:
+    return has_monk_open_hand_feature(character, level=17)
 
 
 def has_paladin_feature(character: Character, *, level: int) -> bool:

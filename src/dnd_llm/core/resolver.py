@@ -55,6 +55,7 @@ RESOLVER_STEP_OF_THE_WIND_ACTION_IDS = frozenset(
 )
 RESOLVER_FLEET_STEP_ACTION_ID = "srd.fleet_step"
 RESOLVER_FLEET_STEP_CONDITION = "fleet_step_available"
+RESOLVER_QUIVERING_PALM_RELEASE_ACTION_ID = "srd.quivering_palm_release"
 RESOLVER_OIL_OF_ETHEREALNESS_ACTION_ID = "srd.apply_oil_of_etherealness"
 RESOLVER_APPLY_OIL_OF_SLIPPERINESS_ACTION_ID = "srd.apply_oil_of_slipperiness"
 RESOLVER_ROD_OF_ABSORPTION_ITEM_ID = "srd.rod_of_absorption"
@@ -226,6 +227,8 @@ class ActionResolver:
         if self._uses_thirsting_blade_extra_attack(draft):
             action_economy = "none"
         if self._uses_fleet_step(draft, actor, action):
+            action_economy = "none"
+        if self._quivering_palm_harmless_release(draft, action):
             action_economy = "none"
         budget = self._action_budget_for_check(draft.actor_id, actor)
         if not budget.can_spend(action_economy):
@@ -555,6 +558,15 @@ class ActionResolver:
             ):
                 return effect
         return None
+
+    @staticmethod
+    def _quivering_palm_harmless_release(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> bool:
+        return action.id == RESOLVER_QUIVERING_PALM_RELEASE_ACTION_ID and (
+            draft.params.get("harmless") is True or draft.params.get("end_harmlessly") is True
+        )
 
     @staticmethod
     def _uses_rod_of_absorption_spell_slot(draft: PlayerActionDraft) -> bool:
@@ -1522,7 +1534,10 @@ class ActionResolver:
         actor_combatant = self.state.encounter.combatants.get(draft.actor_id)
         if actor_combatant is None:
             return None
-        harmful = bool(policy.get("harmful", False))
+        harmful = bool(policy.get("harmful", False)) and not self._quivering_palm_harmless_release(
+            draft,
+            action,
+        )
         allied_targets = []
         for target_id in draft.target_ids:
             target = self.state.encounter.combatants.get(target_id)

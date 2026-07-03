@@ -15,6 +15,7 @@ from dnd_llm.core.rules.class_features import (
     monk_forgoing_food_drink_exhaustion_immunity,
     monk_heightened_focus_applies,
     monk_open_hand_fleet_step_applies,
+    monk_open_hand_quivering_palm_applies,
     monk_self_restoration_applies,
     ranger_roving_climb_speed_ft,
     ranger_roving_speed_bonus,
@@ -1879,6 +1880,35 @@ def test_natural_language_character_edit_does_not_assign_fleet_step_to_plain_mon
     assert result.character.subclasses == {}
     assert "srd.fleet_step" not in result.character.actions
     assert monk_open_hand_fleet_step_applies(result.character) is False
+
+
+def test_natural_language_character_edit_assigns_open_hand_quivering_palm() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk17 子职 open_hand")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 17}
+    assert result.character.subclasses == {"monk": "open_hand"}
+    assert "srd.quivering_palm" in result.character.actions
+    assert "srd.quivering_palm_release" in result.character.actions
+    assert result.character.resources["srd.resource.focus_points"] == 17
+    assert monk_open_hand_quivering_palm_applies(result.character) is True
+
+
+def test_natural_language_character_edit_does_not_assign_quivering_palm_to_plain_monk() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk17")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 17}
+    assert result.character.subclasses == {}
+    assert "srd.quivering_palm" not in result.character.actions
+    assert "srd.quivering_palm_release" not in result.character.actions
+    assert monk_open_hand_quivering_palm_applies(result.character) is False
 
 
 def test_natural_language_character_edit_assigns_ranger_favored_enemy_uses() -> None:

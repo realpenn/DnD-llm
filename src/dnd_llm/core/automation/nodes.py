@@ -31,6 +31,7 @@ NODE_TYPES = {
     "wild_resurgence_restore_wild_shape",
     "resource_delta",
     "heightened_focus_step_of_the_wind",
+    "quivering_palm_release",
     "tactical_shift_move",
     "move",
     "branch",
@@ -60,6 +61,7 @@ STATE_CHANGING_NODE_TYPES = {
     "wild_resurgence_restore_wild_shape",
     "resource_delta",
     "heightened_focus_step_of_the_wind",
+    "quivering_palm_release",
     "tactical_shift_move",
     "move",
 }

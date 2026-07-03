@@ -3794,6 +3794,355 @@ def test_open_hand_technique_rejects_non_open_hand_before_spending_focus(
     assert state.characters["pc1"].resources["srd.resource.focus_points"] == 3
 
 
+def _prepare_open_hand_quivering_palm_state(state) -> None:
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 17}
+    character.subclasses = {"monk": "open_hand"}
+    character.proficiency_bonus = 3
+    character.abilities["wis"] = 16
+    character.actions.extend(
+        [
+            "srd.martial_arts_bonus_unarmed_strike",
+            "srd.monk_unarmed_strike",
+            "srd.quivering_palm",
+            "srd.quivering_palm_release",
+        ]
+    )
+    character.resources["srd.resource.focus_points"] = 17
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["goblin1"].abilities["con"] = 10
+    state.encounter.combatants["goblin1"].hp_current = 200
+    state.encounter.combatants["goblin1"].hp_max = 200
+    state.encounter.combatants["pc2"].armor_class = 1
+    state.encounter.combatants["pc2"].abilities["con"] = 10
+    state.encounter.combatants["pc2"].hp_current = 200
+    state.encounter.combatants["pc2"].hp_max = 200
+
+
+def test_open_hand_quivering_palm_sets_vibrations_after_unarmed_hit(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-apply",
+    )
+
+    quivering = next(
+        change for change in result["state_changes"] if change["type"] == "quivering_palm"
+    )
+    assert result["success"] is True
+    assert state.characters["pc1"].resources["srd.resource.focus_points"] == 13
+    assert quivering["target_id"] == "goblin1"
+    assert quivering["duration"] == {"until": "duration_monk_level_days", "days": 17}
+    effect = state.encounter.combatants["goblin1"].status_effects[-1]
+    assert effect["condition"] == "quivering_palm"
+    assert effect["source_action_id"] == "srd.quivering_palm"
+    assert effect["applied_by"] == "pc1"
+
+
+def test_open_hand_quivering_palm_miss_does_not_spend_focus(make_state) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    state.encounter.combatants["goblin1"].armor_class = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-miss",
+    )
+
+    assert result["success"] is True
+    assert state.characters["pc1"].resources["srd.resource.focus_points"] == 17
+    assert not any(
+        effect["condition"] == "quivering_palm"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_open_hand_quivering_palm_release_failed_save_deals_force_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    apply_tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    )
+    apply_tools.perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-release-setup",
+    )
+    release_tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 60]),
+    )
+
+    result = release_tools.perform_action(
+        "pc1",
+        "srd.quivering_palm_release",
+        ["goblin1"],
+        params={"same_plane": True},
+        idempotency_key="quivering-palm-release",
+    )
+
+    release = next(
+        change for change in result["state_changes"] if change["type"] == "quivering_palm_release"
+    )
+    assert result["success"] is True
+    assert release["saving_throw_success"] is False
+    assert release["amount"] == 60
+    assert release["damage_type"] == "force"
+    assert state.encounter.combatants["goblin1"].hp_current == 134
+    assert result["node_results"]["automation[1]"]["saving_throw"]["dc_source"] == (
+        "monk_focus:wis+proficiency"
+    )
+    assert not any(
+        effect["condition"] == "quivering_palm"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_open_hand_quivering_palm_release_successful_save_halves_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    ).perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-half-setup",
+    )
+    result = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 60]),
+    ).perform_action(
+        "pc1",
+        "srd.quivering_palm_release",
+        ["goblin1"],
+        params={"same_plane": True},
+        idempotency_key="quivering-palm-half",
+    )
+
+    release = next(
+        change for change in result["state_changes"] if change["type"] == "quivering_palm_release"
+    )
+    assert release["saving_throw_success"] is True
+    assert release["amount"] == 30
+    assert state.encounter.combatants["goblin1"].hp_current == 164
+
+
+def test_open_hand_quivering_palm_harmless_release_uses_no_action(make_state) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    )
+    tools.perform_action(
+        "pc1",
+        "srd.monk_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-harmless-setup",
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.quivering_palm_release",
+        ["goblin1"],
+        params={"harmless": True},
+        idempotency_key="quivering-palm-harmless",
+    )
+
+    release = next(
+        change for change in result["state_changes"] if change["type"] == "quivering_palm_release"
+    )
+    assert release["harmless"] is True
+    assert "saving_throw_success" not in release
+    assert not any(change["type"] == "action_economy" for change in result["state_changes"])
+    assert state.encounter.combatants["goblin1"].hp_current == 194
+
+
+def test_open_hand_quivering_palm_release_requires_same_plane_without_clearing(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    ).perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-plane-setup",
+    )
+
+    with pytest.raises(AutomationError, match="same plane"):
+        EngineTools(state, compendium, AuditLog()).perform_action(
+            "pc1",
+            "srd.quivering_palm_release",
+            ["goblin1"],
+            params={"same_plane": False},
+            idempotency_key="quivering-palm-other-plane",
+        )
+
+    assert any(
+        effect["condition"] == "quivering_palm"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_open_hand_quivering_palm_release_requires_explicit_same_plane(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    ).perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-plane-required-setup",
+    )
+
+    with pytest.raises(AutomationError, match="same plane"):
+        EngineTools(state, compendium, AuditLog()).perform_action(
+            "pc1",
+            "srd.quivering_palm_release",
+            ["goblin1"],
+            idempotency_key="quivering-palm-plane-required",
+        )
+
+    assert any(
+        effect["condition"] == "quivering_palm"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_open_hand_quivering_palm_new_target_replaces_old_vibrations(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_open_hand_quivering_palm_state(state)
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    ).perform_action(
+        "pc1",
+        "srd.martial_arts_bonus_unarmed_strike",
+        ["goblin1"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-replace-first",
+    )
+    result = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    ).perform_action(
+        "pc1",
+        "srd.monk_unarmed_strike",
+        ["pc2"],
+        params={"use_quivering_palm": True},
+        idempotency_key="quivering-palm-replace-second",
+    )
+
+    quivering = next(
+        change for change in result["state_changes"] if change["type"] == "quivering_palm"
+    )
+    assert quivering["target_id"] == "pc2"
+    assert quivering["replaced_effects"][0]["owner_id"] == "goblin1"
+    assert not any(
+        effect["condition"] == "quivering_palm"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+    assert any(
+        effect["condition"] == "quivering_palm"
+        for effect in state.encounter.combatants["pc2"].status_effects
+    )
+
+
+def test_open_hand_quivering_palm_requires_open_hand_level_seventeen(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 16}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.martial_arts_bonus_unarmed_strike", "srd.quivering_palm"])
+    character.resources["srd.resource.focus_points"] = 16
+    state.encounter.combatants["goblin1"].armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+
+    with pytest.raises(AutomationError, match="Quivering Palm requires Open Hand Monk level 17"):
+        EngineTools(state, compendium, AuditLog()).perform_action(
+            "pc1",
+            "srd.martial_arts_bonus_unarmed_strike",
+            ["goblin1"],
+            params={"use_quivering_palm": True},
+            idempotency_key="quivering-palm-too-low",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 16
+
+
 def test_step_of_the_wind_focus_uses_speed_and_marks_jump_distance(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

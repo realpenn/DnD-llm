@@ -3992,11 +3992,14 @@ def test_compendium_loads_srd_actions() -> None:
         "Open Hand Technique",
         "Wholeness of Body",
         "Fleet Step",
+        "Quivering Palm",
     ]
     assert compendium.classes["monk"].subclasses["open_hand"]["actions"] == [
         "srd.open_hand_technique",
         "srd.wholeness_of_body",
         "srd.fleet_step",
+        "srd.quivering_palm",
+        "srd.quivering_palm_release",
     ]
     open_hand = compendium.action("srd.open_hand_technique")
     assert open_hand.requirements == {
@@ -4145,6 +4148,41 @@ def test_compendium_loads_srd_actions() -> None:
         "enhances_action": "srd.deflect_attacks",
         "deflect_attacks_damage_types": "any",
         "replaces_basic_weapon_damage_type_limit": True,
+    }
+    assert compendium.classes["monk"].levels["17"]["features"] == ["Subclass Feature"]
+    assert "srd.quivering_palm" in compendium.classes["monk"].levels["17"]["actions"]
+    assert "srd.quivering_palm_release" in compendium.classes["monk"].levels["17"]["actions"]
+    quivering_palm = compendium.action("srd.quivering_palm")
+    assert quivering_palm.action_economy == "none"
+    assert quivering_palm.requirements == {
+        "class": "monk",
+        "class_level_min": 17,
+        "subclass": "open_hand",
+    }
+    assert quivering_palm.properties == {
+        "trigger": "unarmed_strike_hit_creature",
+        "focus_point_cost": 4,
+        "duration_days_from": "monk_level",
+        "maximum_active_targets": 1,
+        "can_end_harmlessly_without_action": True,
+        "release_action": "srd.quivering_palm_release",
+        "release_can_replace_one_attack_during_attack_action": True,
+    }
+    quivering_release = compendium.action("srd.quivering_palm_release")
+    assert quivering_release.action_economy == "action"
+    assert quivering_release.range == {"same_plane": True}
+    assert quivering_release.requirements == {
+        "class": "monk",
+        "class_level_min": 17,
+        "subclass": "open_hand",
+    }
+    assert quivering_release.properties == {
+        "ends_effect_from": "srd.quivering_palm",
+        "requires_same_plane": True,
+        "save": {"ability": "con", "dc_from": "monk_focus"},
+        "damage": {"dice": "10d12", "damage_type": "force", "save_half": True},
+        "can_replace_one_attack_during_attack_action": True,
+        "can_end_harmlessly_without_action": True,
     }
     patient_focus = compendium.action("srd.patient_defense_focus")
     assert patient_focus.automation[3]["if_true"] == [

@@ -4544,6 +4544,71 @@
             "audit_label": "Fleet Step"
         },
         {
+            "id": "srd.quivering_palm",
+            "name": "Quivering Palm",
+            "localization": {
+                "en": "Quivering Palm",
+                "zh": "震颤掌",
+                "aliases": ["Open Hand Quivering Palm", "空手道震颤掌"]
+            },
+            "source": "SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 17: Quivering Palm",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 17, "subclass": "open_hand"},
+            "properties": {
+                "trigger": "unarmed_strike_hit_creature",
+                "focus_point_cost": 4,
+                "duration_days_from": "monk_level",
+                "maximum_active_targets": 1,
+                "can_end_harmlessly_without_action": true,
+                "release_action": "srd.quivering_palm_release",
+                "release_can_replace_one_attack_during_attack_action": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that an Open Hand Monk can spend 4 Focus Points after hitting a creature with an Unarmed Strike to start imperceptible vibrations that last for a number of days equal to Monk level."
+                }
+            ],
+            "audit_label": "Quivering Palm"
+        },
+        {
+            "id": "srd.quivering_palm_release",
+            "name": "End Quivering Palm",
+            "localization": {
+                "en": "End Quivering Palm",
+                "zh": "终止震颤掌",
+                "aliases": ["Release Quivering Palm", "结束震颤掌"]
+            },
+            "source": "SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 17: Quivering Palm",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"same_plane": true},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"class": "monk", "class_level_min": 17, "subclass": "open_hand"},
+            "properties": {
+                "ends_effect_from": "srd.quivering_palm",
+                "requires_same_plane": true,
+                "save": {"ability": "con", "dc_from": "monk_focus"},
+                "damage": {"dice": "10d12", "damage_type": "force", "save_half": true},
+                "can_replace_one_attack_during_attack_action": true,
+                "can_end_harmlessly_without_action": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "quivering_palm_release"}
+            ],
+            "audit_label": "End Quivering Palm"
+        },
+        {
             "id": "srd.evasion",
             "name": "Evasion",
             "localization": {

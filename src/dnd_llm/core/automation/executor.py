@@ -108,6 +108,9 @@ STEP_OF_THE_WIND_ACTION_IDS = frozenset(
 )
 FLEET_STEP_ACTION_ID = "srd.fleet_step"
 FLEET_STEP_CONDITION = "fleet_step_available"
+QUIVERING_PALM_ACTION_ID = "srd.quivering_palm"
+QUIVERING_PALM_RELEASE_ACTION_ID = "srd.quivering_palm_release"
+QUIVERING_PALM_CONDITION = "quivering_palm"
 HEIGHTENED_FOCUS_COMPANION_CONDITION = "heightened_focus_step_of_the_wind_companion"
 OPEN_HAND_TECHNIQUE_ACTION_ID = "srd.open_hand_technique"
 REPELLING_BLAST_ACTION_ID = "srd.repelling_blast"
@@ -300,6 +303,7 @@ class _Context:
     last_attack_node: dict[str, Any] | None = None
     horde_breaker_applied: bool = False
     horde_breaker_resolving: bool = False
+    quivering_palm_applied: bool = False
 
 
 @dataclass
@@ -387,6 +391,7 @@ class AutomationExecutor:
         self._validate_repelling_blast_preconditions(action, actor_id, targets or [], params)
         self._validate_slow_fall_preconditions(action, targets or [], params)
         self._validate_stunning_strike_preconditions(action, actor_id, targets or [], params)
+        self._validate_quivering_palm_preconditions(action, actor_id, targets or [], params)
         self._validate_empowered_strikes_preconditions(action, actor_id, params)
         self._validate_heightened_focus_preconditions(action, actor_id, targets or [], params)
         self._validate_fleet_step_preconditions(action, actor_id, params)
@@ -506,6 +511,8 @@ class AutomationExecutor:
             self._node_resource_delta(ctx, node, path)
         elif node_type == "heightened_focus_step_of_the_wind":
             self._node_heightened_focus_step_of_the_wind(ctx, node, path)
+        elif node_type == "quivering_palm_release":
+            self._node_quivering_palm_release(ctx, node, path)
         elif node_type == "tactical_shift_move":
             self._node_tactical_shift_move(ctx, node, path)
         elif node_type == "move":
@@ -1150,6 +1157,7 @@ class AutomationExecutor:
                 strike_index=open_hand_strike_index,
             )
             self._apply_stunning_strike_if_requested(ctx, target_id, path)
+            self._apply_quivering_palm_if_requested(ctx, target_id, path)
             self._apply_repelling_blast_if_requested(ctx, target_id, path)
             self._apply_eldritch_smite_prone_if_requested(ctx, target_id, path)
             if ctx.attack_critical.get(target_id, False):
@@ -5564,6 +5572,408 @@ class AutomationExecutor:
             change["passive_modifiers"] = passive_modifiers
         ctx.result.state_changes.append(change)
 
+    @staticmethod
+    def _quivering_palm_requested(params: dict[str, Any]) -> bool:
+        return params.get("use_quivering_palm") is True
+
+    @staticmethod
+    def _quivering_palm_harmless_requested(params: dict[str, Any]) -> bool:
+        return params.get("harmless") is True or params.get("end_harmlessly") is True
+
+    def _quivering_palm_harmless_release_waives_action(
+        self,
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> bool:
+        return (
+            action.id == QUIVERING_PALM_RELEASE_ACTION_ID
+            and self._quivering_palm_harmless_requested(params)
+        )
+
+    @staticmethod
+    def _quivering_palm_same_plane(params: dict[str, Any]) -> bool:
+        return params.get("same_plane") is True or params.get("target_same_plane") is True
+
+    def _validate_quivering_palm_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if action.id == QUIVERING_PALM_RELEASE_ACTION_ID:
+            actor_owner = self._resource_owner(actor_id)
+            if not isinstance(actor_owner, Character) or not has_monk_open_hand_feature(
+                actor_owner, level=17
+            ):
+                raise AutomationError("Quivering Palm requires Open Hand Monk level 17")
+            if len(targets) != 1:
+                raise AutomationError("Quivering Palm release requires a single target")
+            release_target_id = str(targets[0])
+            try:
+                self._entity(release_target_id)
+            except KeyError as exc:
+                raise AutomationError(f"unknown target {release_target_id}") from exc
+            if self._quivering_palm_effect(actor_id, release_target_id) is None:
+                raise AutomationError("Quivering Palm release requires that target to be vibrating")
+            if not self._quivering_palm_harmless_requested(
+                params
+            ) and not self._quivering_palm_same_plane(params):
+                raise AutomationError("Quivering Palm release requires the target on same plane")
+            return
+
+        if not self._quivering_palm_requested(params):
+            return
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or not has_monk_open_hand_feature(
+            actor_owner, level=17
+        ):
+            raise AutomationError("Quivering Palm requires Open Hand Monk level 17")
+        if action.action_type != "unarmed_attack":
+            raise AutomationError("Quivering Palm requires an Unarmed Strike")
+        declared_targets = self._declared_quivering_palm_targets(targets, params)
+        target_id = self._quivering_palm_target_id(params, declared_targets)
+        if target_id is None:
+            raise AutomationError("Quivering Palm requires a single target")
+        if target_id not in declared_targets:
+            raise AutomationError("Quivering Palm target must be one of the attack targets")
+        try:
+            self._entity(target_id)
+        except KeyError as exc:
+            raise AutomationError(f"unknown target {target_id}") from exc
+        action_focus_cost = int(action.cost.resources.get(FOCUS_RESOURCE_ID, 0))
+        available = self._get_resource(actor_owner, FOCUS_RESOURCE_ID)
+        if available < action_focus_cost + 4:
+            raise AutomationError(f"resource {FOCUS_RESOURCE_ID} is insufficient")
+
+    @classmethod
+    def _quivering_palm_target_id(
+        cls,
+        params: dict[str, Any],
+        declared_targets: set[str],
+    ) -> str | None:
+        selected = params.get("quivering_palm_target_id")
+        if selected not in (None, "", False):
+            if isinstance(selected, (dict, list)):
+                raise AutomationError("parameter quivering_palm_target_id must be a scalar")
+            return str(selected)
+        if len(declared_targets) == 1:
+            return next(iter(declared_targets))
+        return None
+
+    @staticmethod
+    def _declared_quivering_palm_targets(
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> set[str]:
+        declared = {str(target_id) for target_id in targets}
+        for param_name in ("strike_1_target", "strike_2_target", "strike_3_target"):
+            selected = params.get(param_name)
+            if selected in (None, "", False):
+                continue
+            if isinstance(selected, list):
+                declared.update(str(target_id) for target_id in selected)
+            else:
+                declared.add(str(selected))
+        return declared
+
+    def _apply_quivering_palm_if_requested(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        if not self._quivering_palm_requested(ctx.params):
+            return
+        if ctx.quivering_palm_applied:
+            return
+        declared_targets = self._declared_quivering_palm_targets(ctx.original_targets, ctx.params)
+        selected_target_id = self._quivering_palm_target_id(ctx.params, declared_targets)
+        if selected_target_id != target_id:
+            return
+        if not ctx.attack_hits.get(target_id, False):
+            return
+        actor_owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(actor_owner, Character) or not has_monk_open_hand_feature(
+            actor_owner, level=17
+        ):
+            raise AutomationError("Quivering Palm requires Open Hand Monk level 17")
+        if ctx.action.action_type != "unarmed_attack":
+            raise AutomationError("Quivering Palm requires an Unarmed Strike")
+        before = self._get_resource(actor_owner, FOCUS_RESOURCE_ID)
+        if before < 4:
+            raise AutomationError(f"resource {FOCUS_RESOURCE_ID} is insufficient")
+        self._set_resource(actor_owner, FOCUS_RESOURCE_ID, before - 4)
+        replaced = self._clear_quivering_palm_effects_for_actor(ctx.actor_id)
+        monk_level = int(actor_owner.class_levels.get("monk", 0))
+        target = self._entity(target_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, f"{path}-quivering-palm"),
+            source_ref="SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 17: Quivering Palm",
+            source_action_id=QUIVERING_PALM_ACTION_ID,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=QUIVERING_PALM_CONDITION,
+            duration={"until": "duration_monk_level_days", "days": monk_level},
+            tick_on=None,
+            stacking_policy="replace",
+            audit={
+                "node_path": path,
+                "feature": "quivering_palm",
+                "monk_level": monk_level,
+            },
+        )
+        getattr(target, "status_effects").append(effect.to_dict())
+        ctx.quivering_palm_applied = True
+        ctx.result.state_changes.append(
+            {
+                "type": "cost",
+                "actor_id": ctx.actor_id,
+                "resource": FOCUS_RESOURCE_ID,
+                "before": before,
+                "after": before - 4,
+                "source_action_id": QUIVERING_PALM_ACTION_ID,
+                "path": f"{path}.quivering_palm",
+            }
+        )
+        ctx.result.state_changes.append(
+            {
+                "type": "quivering_palm",
+                "actor_id": ctx.actor_id,
+                "target_id": target_id,
+                "source_action_id": QUIVERING_PALM_ACTION_ID,
+                "effect_id": effect.effect_id,
+                "condition": effect.condition,
+                "duration": effect.duration,
+                "replaced_effects": replaced,
+                "path": f"{path}.quivering_palm",
+            }
+        )
+
+    def _node_quivering_palm_release(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        del node
+        if len(ctx.targets) != 1:
+            raise AutomationError("Quivering Palm release requires a single target")
+        target_id = ctx.targets[0]
+        effect = self._quivering_palm_effect(ctx.actor_id, target_id)
+        if effect is None:
+            raise AutomationError("Quivering Palm release requires that target to be vibrating")
+        harmless = self._quivering_palm_harmless_requested(ctx.params)
+        if not harmless and not self._quivering_palm_same_plane(ctx.params):
+            raise AutomationError("Quivering Palm release requires the target on same plane")
+        removed = self._remove_quivering_palm_effect(ctx.actor_id, target_id)
+        if harmless:
+            ctx.result.state_changes.append(
+                {
+                    "type": "quivering_palm_release",
+                    "actor_id": ctx.actor_id,
+                    "target_id": target_id,
+                    "source_action_id": QUIVERING_PALM_RELEASE_ACTION_ID,
+                    "harmless": True,
+                    "removed_effects": removed,
+                    "path": path,
+                }
+            )
+            return
+
+        dc = self._monk_focus_save_dc(ctx.actor_id)
+        dc_source = "monk_focus:wis+proficiency"
+        save_result = self._roll_quivering_palm_save(ctx, target_id, dc, dc_source, path)
+        damage_roll = self.roll_service.roll("10d12")
+        ctx.result.dice_rolls.append(damage_roll.to_dict())
+        amount_before_save = damage_roll.total
+        amount = amount_before_save // 2 if save_result["success"] else amount_before_save
+        target = self._entity(target_id)
+        hp_before = int(getattr(target, "hp_current"))
+        damage_taken = self._mitigated_damage(target, amount, "force")
+        applied = self._apply_damage(target_id, amount, "force")
+        hp_after = int(getattr(self._entity(target_id), "hp_current"))
+        ctx.last_damage_taken[target_id] = damage_taken
+        ctx.result.node_results[path] = {
+            "target_id": target_id,
+            "dc": dc,
+            "dc_source": dc_source,
+            "saving_throw": save_result,
+            "damage_roll_total": damage_roll.total,
+            "amount_before_save": amount_before_save,
+            "amount": amount,
+            "applied": applied,
+            "damage_type": "force",
+            "hp_before": hp_before,
+            "hp_after": hp_after,
+        }
+        ctx.result.state_changes.append(
+            {
+                "type": "quivering_palm_release",
+                "actor_id": ctx.actor_id,
+                "target_id": target_id,
+                "source_action_id": QUIVERING_PALM_RELEASE_ACTION_ID,
+                "harmless": False,
+                "removed_effects": removed,
+                "dc": dc,
+                "dc_source": dc_source,
+                "saving_throw_success": save_result["success"],
+                "damage_roll_total": damage_roll.total,
+                "amount_before_save": amount_before_save,
+                "amount": amount,
+                "applied": applied,
+                "damage_type": "force",
+                "hp_before": hp_before,
+                "hp_after": hp_after,
+                "path": path,
+            }
+        )
+        concentration = self._concentration_save_after_damage(target_id, damage_taken, path)
+        if concentration is not None:
+            concentration_change, concentration_roll = concentration
+            ctx.result.dice_rolls.append(concentration_roll.to_dict())
+            ctx.result.state_changes.append(concentration_change)
+        if damage_taken > 0:
+            ctx.result.state_changes.extend(
+                self._expire_target_effects_on_damage(
+                    target_id,
+                    path,
+                    damage_source_actor_id=ctx.actor_id,
+                )
+            )
+        if hp_before > 0 and hp_after == 0 and applied > 0:
+            ctx.result.state_changes.extend(
+                self._dark_ones_blessing_changes(
+                    ctx.actor_id,
+                    target_id,
+                    path,
+                )
+            )
+
+    def _roll_quivering_palm_save(
+        self,
+        ctx: _Context,
+        target_id: str,
+        dc: int,
+        dc_source: str,
+        path: str,
+    ) -> dict[str, Any]:
+        target = self._entity(target_id)
+        base_bonus, proficient = self._saving_throw_bonus(target, "con")
+        target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
+        bonus = base_bonus - exhaustion_penalty
+        status_advantage, status_sources = self._saving_throw_status_advantage(target, "con")
+        roll = self.roll_service.roll(d20_expression(bonus), advantage=status_advantage)
+        adjustment, adjustment_rolls, adjustment_sources = self._passive_roll_adjustment(
+            target,
+            bonus_key="saving_throw_bonus_dice",
+            penalty_key="saving_throw_penalty_dice",
+        )
+        ctx.result.dice_rolls.append(roll.to_dict())
+        ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
+        total = roll.total + adjustment
+        return {
+            "target_id": target_id,
+            "ability": "con",
+            "dc": dc,
+            "dc_source": dc_source,
+            "bonus": bonus,
+            "base_bonus": base_bonus,
+            "proficient": proficient,
+            "exhaustion_level": target_exhaustion_level,
+            "d20_penalty": exhaustion_penalty,
+            "base_total": roll.total,
+            "passive_adjustment": adjustment,
+            "passive_sources": adjustment_sources,
+            "status_advantage": status_advantage,
+            "status_sources": status_sources,
+            "total": total,
+            "success": total >= dc,
+            "path": f"{path}.save",
+        }
+
+    def _quivering_palm_effect(
+        self,
+        actor_id: str,
+        target_id: str,
+    ) -> dict[str, Any] | None:
+        for _, _, effects in self._target_effect_lists(target_id):
+            for effect in effects:
+                if self._is_quivering_palm_effect_for_actor(effect, actor_id):
+                    return effect
+        return None
+
+    def _remove_quivering_palm_effect(
+        self,
+        actor_id: str,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if self._is_quivering_palm_effect_for_actor(effect, actor_id):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "target_id": effect.get("target_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                else:
+                    retained.append(effect)
+            effects[:] = retained
+        return removed
+
+    def _clear_quivering_palm_effects_for_actor(self, actor_id: str) -> list[dict[str, Any]]:
+        removed: list[dict[str, Any]] = []
+        effect_lists: list[tuple[str, str, list[dict[str, Any]]]] = []
+        effect_lists.extend(
+            ("character", character_id, character.status_effects)
+            for character_id, character in self.state.characters.items()
+        )
+        effect_lists.extend(
+            ("monster", monster_id, monster.status_effects)
+            for monster_id, monster in self.state.monsters.items()
+        )
+        if self.state.encounter is not None:
+            effect_lists.extend(
+                ("combatant", combatant_id, combatant.status_effects)
+                for combatant_id, combatant in self.state.encounter.combatants.items()
+            )
+        for owner_type, owner_id, effects in effect_lists:
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if self._is_quivering_palm_effect_for_actor(effect, actor_id):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "target_id": effect.get("target_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                else:
+                    retained.append(effect)
+            effects[:] = retained
+        return removed
+
+    def _is_quivering_palm_effect_for_actor(
+        self,
+        effect: dict[str, Any],
+        actor_id: str,
+    ) -> bool:
+        applied_by = effect.get("applied_by")
+        return (
+            effect.get("condition") == QUIVERING_PALM_CONDITION
+            and effect.get("source_action_id") == QUIVERING_PALM_ACTION_ID
+            and isinstance(applied_by, str)
+            and self._entity_ids_match(applied_by, actor_id)
+        )
+
     def _apply_eldritch_smite_prone_if_requested(
         self,
         ctx: _Context,
@@ -9774,6 +10184,8 @@ class AutomationExecutor:
         self._validate_condition_gate(actor, action.action_economy)
         if self._fleet_step_waives_bonus_action(action, actor_id, params):
             return
+        if self._quivering_palm_harmless_release_waives_action(action, params):
+            return
         if (
             self._thirsting_blade_extra_attack_requested(params)
             and action.action_economy == "action"
@@ -9791,6 +10203,8 @@ class AutomationExecutor:
         targets: list[str],
         params: dict[str, Any],
     ) -> None:
+        if self._quivering_palm_harmless_release_waives_action(action, params):
+            return
         if not bool(action.target_policy.get("harmful", False)):
             return
         try:
@@ -10135,6 +10549,8 @@ class AutomationExecutor:
                     "bonus_action_after": after,
                 }
             )
+            return
+        if self._quivering_palm_harmless_release_waives_action(action, params):
             return
         if (
             self._thirsting_blade_extra_attack_requested(params)

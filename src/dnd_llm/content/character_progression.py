@@ -335,6 +335,7 @@ SUBCLASS_ACTIONS = {
             3: ["srd.open_hand_technique"],
             6: ["srd.wholeness_of_body"],
             11: ["srd.fleet_step"],
+            17: ["srd.quivering_palm", "srd.quivering_palm_release"],
         },
     },
     "paladin": {

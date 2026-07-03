@@ -1817,6 +1817,62 @@ def test_resolver_accepts_fleet_step_when_bonus_action_is_spent(make_state) -> N
     assert missing_param.reason == "insufficient action economy"
 
 
+def test_resolver_accepts_harmless_quivering_palm_release_without_action_budget(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 17}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.quivering_palm", "srd.quivering_palm_release"])
+    state.encounter.action_budgets["pc1"] = {
+        "action": 0,
+        "bonus_action": 0,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.encounter.combatants["pc2"].status_effects.append(
+        {
+            "effect_id": "quivering-palm-window",
+            "source_ref": "SRD 5.2.1",
+            "source_action_id": "srd.quivering_palm",
+            "target_id": "pc2",
+            "applied_by": "pc1",
+            "condition": "quivering_palm",
+            "duration": {"until": "duration_monk_level_days", "days": 17},
+            "tick_on": None,
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="结束震颤掌",
+            target_ids=["pc2"],
+            candidate_action_id="srd.quivering_palm_release",
+            params={"harmless": True},
+        )
+    )
+    harmful = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="结束震颤掌",
+            target_ids=["pc2"],
+            candidate_action_id="srd.quivering_palm_release",
+            params={"same_plane": True},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert harmful.status == "rejected"
+    assert harmful.reason == "insufficient action economy"
+
+
 def test_resolver_rejects_font_of_magic_conversion_above_sorcery_point_cap(
     make_state,
 ) -> None:
