@@ -51,6 +51,79 @@
         ],
         "audit_label": "Passwall"
       }
+    },
+    {
+      "id": "srd.spell.move_earth",
+      "name": "Move Earth",
+      "localization": {
+        "en": "Move Earth",
+        "zh": "移土术",
+        "aliases": ["移动土地"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "transmutation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.move_earth",
+        "name": "Move Earth",
+        "localization": {
+          "en": "Move Earth",
+          "zh": "移土术",
+          "aliases": ["移动土地"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "square", "max_side_ft": 40 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a miniature shovel",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "move_earth_terrain_reshaping",
+            "scope": { "target": "terrain_area", "range_ft": 120, "max_side_ft": 40 },
+            "duration": { "until": "concentration_2_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "terrain_types": ["dirt", "sand", "clay"],
+              "max_area_side_ft": 40,
+              "allowed_shapes": [
+                "raise_elevation",
+                "lower_elevation",
+                "create_trench",
+                "fill_trench",
+                "erect_wall",
+                "flatten_wall",
+                "form_pillar"
+              ],
+              "max_change_fraction_of_largest_dimension": 0.5,
+              "changes_complete_after_minutes": 10,
+              "creatures_cannot_usually_be_trapped_or_injured_by_slow_movement": true,
+              "can_choose_new_area_every_minutes": 10,
+              "cannot_manipulate_natural_stone_or_stone_construction": true,
+              "rocks_and_structures_shift_to_accommodate_new_terrain": true,
+              "unstable_structures_might_collapse": true,
+              "does_not_directly_affect_plant_growth": true,
+              "moved_earth_carries_plants_along": true
+            }
+          }
+        ],
+        "audit_label": "Move Earth"
+      }
     }
   ]
 }

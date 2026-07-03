@@ -60,6 +60,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.find_the_path",
         "srd.true_seeing",
         "srd.passwall",
+        "srd.move_earth",
         "srd.tree_stride",
         "srd.wall_of_force",
         "srd.wall_of_stone",
@@ -649,6 +650,49 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "duration_1_hour"},
             "tick_on": "self_turn_end",
         },
+    ]
+    move_earth = compendium.action("srd.move_earth")
+    assert move_earth.requirements == {
+        "spell_level": 6,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert move_earth.properties["spell_classes"] == ["druid", "sorcerer", "wizard"]
+    assert move_earth.properties["material_component"] == {
+        "description": "a miniature shovel",
+        "consumed": False,
+    }
+    assert move_earth.range == {"normal_ft": 120, "shape": "square", "max_side_ft": 40}
+    assert move_earth.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert move_earth.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "move_earth_terrain_reshaping",
+            "scope": {"target": "terrain_area", "range_ft": 120, "max_side_ft": 40},
+            "duration": {"until": "concentration_2_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "terrain_types": ["dirt", "sand", "clay"],
+                "max_area_side_ft": 40,
+                "allowed_shapes": [
+                    "raise_elevation",
+                    "lower_elevation",
+                    "create_trench",
+                    "fill_trench",
+                    "erect_wall",
+                    "flatten_wall",
+                    "form_pillar",
+                ],
+                "max_change_fraction_of_largest_dimension": 0.5,
+                "changes_complete_after_minutes": 10,
+                "creatures_cannot_usually_be_trapped_or_injured_by_slow_movement": True,
+                "can_choose_new_area_every_minutes": 10,
+                "cannot_manipulate_natural_stone_or_stone_construction": True,
+                "rocks_and_structures_shift_to_accommodate_new_terrain": True,
+                "unstable_structures_might_collapse": True,
+                "does_not_directly_affect_plant_growth": True,
+                "moved_earth_carries_plants_along": True,
+            },
+        }
     ]
     tree_stride = compendium.action("srd.tree_stride")
     assert tree_stride.requirements == {

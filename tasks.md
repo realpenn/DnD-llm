@@ -275,6 +275,7 @@ P0 脚手架
   - [x] **P2-1q** SRD 5.2.1 `Word of Recall` 落地：新增 6 环 Conjuration spell 与 `srd.word_of_recall` action；按 SRD 以 Action/5 尺/Instantaneous 记录施法者和最多 5 名 5 尺内 willing creatures 传送到 previously designated sanctuary，未准备 sanctuary 则无效果，并出现在指定点最近空位；复用既有 willing 目标校验，不虚构 sanctuary 解析或地图传送系统；覆盖 compendium、executor、自动模拟与全量门禁测试。
   - [x] **P2-1r** SRD 5.2.1 `True Seeing` 落地：新增 6 环 Divination spell 与 `srd.true_seeing` action；按 SRD 以 Action/Touch 消耗 6 环法术位与 25+ GP 且被消耗的 mushroom powder，为 willing creature 记录 1 小时 120 尺 Truesight；复用既有 `truesight_ft` helper 与 willing 目标校验，不虚构额外视觉/地图判定系统；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
   - [x] **P2-1s** SRD 5.2.1 `Find the Path` 落地：新增 6 环 Divination spell 与 `srd.find_the_path` action；按 SRD 以 1 分钟施法/Self/Concentration 1 day 记录对熟悉具名地点的最直接物理路线感知，同位面时知晓距离与方向，岔路时知晓最直接路径，并记录异位面、移动目的地或不明确目的地会失败；100+ GP divination tools 不消耗且不扣金币；新增 `concentration_1_day` 生命周期 tick 推断，不虚构目的地解析或地图寻路系统；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
+  - [x] **P2-1t** SRD 5.2.1 `Move Earth` 落地：新增 6 环 Transmutation spell 与 `srd.move_earth` action；按 SRD 以 Action/120 尺/Concentration 2 hours 记录最多 40 尺边长 dirt/sand/clay 地形重塑，可升降地面、挖填壕沟、立/平墙和形成柱体，变化幅度不超过最大尺寸一半，10 分钟完成且每 10 分钟可换新区；记录缓慢移动通常不困住/伤害生物、不能操纵天然石或石造、结构可能坍塌、不直接影响植物生长且移动土壤会带走植物；新增 `concentration_2_hours` 生命周期 tick 推断，不虚构地形切割或结构坍塌模拟；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

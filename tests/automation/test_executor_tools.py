@@ -9593,6 +9593,71 @@ def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 599
 
 
+def test_move_earth_spends_slot_and_records_concentration_terrain_reshaping(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.move_earth",
+        [],
+        6,
+        idempotency_key="cast-move-earth",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.move_earth"
+    assert effect["effect_type"] == "move_earth_terrain_reshaping"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "terrain_area", "range_ft": 120, "max_side_ft": 40}
+    assert effect["duration"] == {"until": "concentration_2_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "terrain_types": ["dirt", "sand", "clay"],
+        "max_area_side_ft": 40,
+        "allowed_shapes": [
+            "raise_elevation",
+            "lower_elevation",
+            "create_trench",
+            "fill_trench",
+            "erect_wall",
+            "flatten_wall",
+            "form_pillar",
+        ],
+        "max_change_fraction_of_largest_dimension": 0.5,
+        "changes_complete_after_minutes": 10,
+        "creatures_cannot_usually_be_trapped_or_injured_by_slow_movement": True,
+        "can_choose_new_area_every_minutes": 10,
+        "cannot_manipulate_natural_stone_or_stone_construction": True,
+        "rocks_and_structures_shift_to_accommodate_new_terrain": True,
+        "unstable_structures_might_collapse": True,
+        "does_not_directly_affect_plant_growth": True,
+        "moved_earth_carries_plants_along": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "move_earth_terrain_reshaping"
+    assert world_effect_change["concentration"] is True
+
+    tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert tick.ticked[0]["remaining_ticks_before"] == 1200
+    assert tick.ticked[0]["remaining_ticks_after"] == 1199
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 1199
+
+
 def test_tree_stride_spends_slot_and_applies_concentration_transport_ability(
     make_state,
 ) -> None:
