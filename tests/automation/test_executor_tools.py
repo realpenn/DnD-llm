@@ -8277,6 +8277,34 @@ def test_dehydration_hazard_applies_srd_exhaustion(make_state) -> None:
     assert state.characters["pc1"].status_effects[-1]["condition"] == "exhaustion"
 
 
+def test_monk_self_restoration_blocks_food_drink_exhaustion_only(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"monk": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    dehydration = tools.apply_hazard(["pc1"], "srd.dehydration", {"source": "rules_discrete"})
+
+    immune_change = [
+        change for change in dehydration["state_changes"] if change["type"] == "condition_immune"
+    ][0]
+    assert immune_change["condition"] == "exhaustion"
+    assert immune_change["immunity_sources"] == [
+        {
+            "source_action_id": "srd.self_restoration",
+            "modifier": "forgoing_food_and_drink_does_not_cause_exhaustion",
+            "hazard_id": "srd.dehydration",
+        }
+    ]
+    assert state.characters["pc1"].status_effects == []
+
+    applied = tools.apply_condition("pc1", "exhaustion", "test.non_food_drink_exhaustion")
+
+    assert applied["applied"] is True
+    assert applied["level_after"] == 1
+    assert state.characters["pc1"].status_effects[-1]["condition"] == "exhaustion"
+
+
 def test_strong_wind_hazard_applies_ranged_weapon_disadvantage(make_state) -> None:
     state = make_state()
     compendium = CompendiumLoader("rules_data").load()

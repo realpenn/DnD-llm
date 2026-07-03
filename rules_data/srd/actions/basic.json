@@ -4547,6 +4547,37 @@
             "audit_label": "Acrobatic Movement"
         },
         {
+            "id": "srd.self_restoration",
+            "name": "Self-Restoration",
+            "localization": {
+                "en": "Self-Restoration",
+                "zh": "自我复原",
+                "aliases": ["Monk Self-Restoration", "武僧自我复原"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 10: Self-Restoration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 10},
+            "properties": {
+                "self_turn_end_remove_one_condition": ["charmed", "frightened", "poisoned"],
+                "requires_choice_if_multiple_conditions": true,
+                "forgoing_food_and_drink_does_not_cause_exhaustion": true,
+                "food_drink_exhaustion_hazards": ["srd.dehydration", "srd.malnutrition"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that at the end of each of the Monk's turns, the Monk can remove one of the Charmed, Frightened, or Poisoned conditions from themself, and that forgoing food and drink does not cause Exhaustion."
+                }
+            ],
+            "audit_label": "Self-Restoration"
+        },
+        {
             "id": "srd.patient_defense",
             "name": "Patient Defense",
             "localization": {

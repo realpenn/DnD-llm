@@ -200,6 +200,14 @@ def monk_can_move_across_liquids(character: Character) -> bool:
     return monk_acrobatic_movement_applies(character)
 
 
+def monk_self_restoration_applies(character: Character) -> bool:
+    return has_monk_feature(character, level=10)
+
+
+def monk_forgoing_food_drink_exhaustion_immunity(character: Character) -> bool:
+    return monk_self_restoration_applies(character)
+
+
 def monk_slow_fall_damage_reduction(character: Character) -> int:
     monk_level = int(character.class_levels.get("monk", 0))
     if monk_level < 4:

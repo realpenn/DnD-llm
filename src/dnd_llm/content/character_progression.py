@@ -238,6 +238,7 @@ CLASS_LEVEL_ACTIONS = {
         6: ["srd.empowered_strikes"],
         7: ["srd.evasion"],
         9: ["srd.acrobatic_movement"],
+        10: ["srd.self_restoration"],
     },
     "paladin": {
         1: ["srd.lay_on_hands", "srd.lay_on_hands_remove_poisoned", "srd.cure_wounds"],

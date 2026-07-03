@@ -50,6 +50,7 @@ from ..rules.class_features import (
     is_bloodied,
     is_wearing_armor,
     monk_evasion_applies,
+    monk_forgoing_food_drink_exhaustion_immunity,
     monk_martial_arts_die,
     monk_slow_fall_damage_reduction,
     monk_unarmored_defense_armor_class,
@@ -125,6 +126,7 @@ ROD_OF_ALERTNESS_PROTECTIVE_AURA_USED_RESOURCE = (
 )
 ROBE_OF_USEFUL_ITEMS_PATCH_PREFIX = "srd.robe_of_useful_items.patch."
 ROBE_OF_USEFUL_ITEMS_INITIALIZED_RESOURCE = "srd.robe_of_useful_items.initialized"
+FOOD_DRINK_EXHAUSTION_HAZARD_IDS = frozenset({"srd.dehydration", "srd.malnutrition"})
 THIRSTING_BLADE_EXTRA_ATTACK_USED_CONDITION = "thirsting_blade_extra_attack_used"
 ELDRITCH_SMITE_USED_CONDITION = "eldritch_smite_used"
 SLOW_FALL_ACTION_ID = "srd.slow_fall"
@@ -1380,6 +1382,20 @@ class AutomationExecutor:
                 audit={"node_path": path},
             )
             if condition == "exhaustion":
+                immunity_sources = self._food_drink_exhaustion_immunity_sources(
+                    target, ctx.action.id
+                )
+                if immunity_sources:
+                    ctx.result.state_changes.append(
+                        {
+                            "type": "condition_immune",
+                            "target_id": target_id,
+                            "condition": "exhaustion",
+                            "immunity_sources": immunity_sources,
+                            "path": path,
+                        }
+                    )
+                    continue
                 owner = self._persistent_condition_owner(target)
                 before_level, after_level, applied_effect = apply_exhaustion(
                     getattr(owner, "status_effects"),
@@ -5987,6 +6003,28 @@ class AutomationExecutor:
         if isinstance(target, Combatant) and target.entity_id in self.state.monsters:
             return self.state.monsters[target.entity_id]
         return target
+
+    def _food_drink_exhaustion_immunity_sources(
+        self,
+        target: Character | Monster | Combatant,
+        action_id: str,
+    ) -> list[dict[str, Any]]:
+        if action_id not in FOOD_DRINK_EXHAUSTION_HAZARD_IDS:
+            return []
+        owner = target
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            owner = self.state.characters[target.entity_id]
+        if not isinstance(owner, Character):
+            return []
+        if not monk_forgoing_food_drink_exhaustion_immunity(owner):
+            return []
+        return [
+            {
+                "source_action_id": "srd.self_restoration",
+                "modifier": "forgoing_food_and_drink_does_not_cause_exhaustion",
+                "hazard_id": action_id,
+            }
+        ]
 
     @staticmethod
     def _exhaustion_death_change(

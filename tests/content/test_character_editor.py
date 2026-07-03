@@ -11,6 +11,8 @@ from dnd_llm.core.rules.class_features import (
     has_warlock_thirsting_blade,
     monk_can_move_across_liquids,
     monk_can_move_along_vertical_surfaces,
+    monk_forgoing_food_drink_exhaustion_immunity,
+    monk_self_restoration_applies,
     ranger_roving_climb_speed_ft,
     ranger_roving_speed_bonus,
     ranger_roving_swim_speed_ft,
@@ -1802,6 +1804,22 @@ def test_natural_language_character_edit_does_not_assign_monk_acrobatic_movement
     assert result.character.class_levels == {"monk": 8}
     assert "srd.evasion" in result.character.actions
     assert "srd.acrobatic_movement" not in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_monk_self_restoration() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk10")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 10}
+    assert "srd.acrobatic_movement" in result.character.actions
+    assert "srd.self_restoration" in result.character.actions
+    assert "srd.heightened_focus" not in result.character.actions
+    assert result.character.resources["srd.resource.focus_points"] == 10
+    assert monk_self_restoration_applies(result.character) is True
+    assert monk_forgoing_food_drink_exhaustion_immunity(result.character) is True
 
 
 def test_natural_language_character_edit_assigns_open_hand_wholeness_of_body() -> None:

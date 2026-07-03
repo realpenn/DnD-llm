@@ -4,9 +4,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .dice import RollService
-from .models import GameState
+from .models import Character, GameState
 from .rules.checks import d20_expression
-from .rules.conditions import exhaustion_d20_penalty, exhaustion_level
+from .rules.class_features import monk_self_restoration_applies
+from .rules.conditions import exhaustion_d20_penalty, exhaustion_level, remove_condition
+
+SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
+SELF_RESTORATION_CONDITIONS = ("charmed", "frightened", "poisoned")
 
 
 @dataclass
@@ -15,10 +19,12 @@ class EffectLifecycleResult:
     actor_id: str
     expired: list[dict[str, Any]] = field(default_factory=list)
     ticked: list[dict[str, Any]] = field(default_factory=list)
+    removed: list[dict[str, Any]] = field(default_factory=list)
+    choice_required: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def changed(self) -> bool:
-        return bool(self.expired or self.ticked)
+        return bool(self.expired or self.ticked or self.removed or self.choice_required)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -26,6 +32,8 @@ class EffectLifecycleResult:
             "actor_id": self.actor_id,
             "expired": self.expired,
             "ticked": self.ticked,
+            "removed": self.removed,
+            "choice_required": self.choice_required,
         }
 
 
@@ -92,7 +100,108 @@ def tick_effects(
                 result.ticked.append(entry)
                 retained.append(effect)
         effects[:] = retained
+    if trigger == "self_turn_end":
+        _apply_monk_self_restoration(state, actor_id, result)
     return result
+
+
+def _apply_monk_self_restoration(
+    state: GameState,
+    actor_id: str,
+    result: EffectLifecycleResult,
+) -> None:
+    character = _character_for_actor(state, actor_id)
+    if character is None or not monk_self_restoration_applies(character):
+        return
+    effect_lists = _target_effect_lists(state, actor_id)
+    present = [
+        condition
+        for condition in SELF_RESTORATION_CONDITIONS
+        if any(
+            effect.get("condition") == condition
+            for _, _, effects in effect_lists
+            for effect in effects
+        )
+    ]
+    if not present:
+        return
+    if len(present) > 1:
+        result.choice_required.append(
+            {
+                "type": "self_restoration",
+                "action_id": SELF_RESTORATION_ACTION_ID,
+                "actor_id": actor_id,
+                "conditions": present,
+                "reason": "multiple_eligible_conditions",
+            }
+        )
+        return
+    condition = present[0]
+    removed: dict[str, int] = {}
+    removed_owners: list[dict[str, Any]] = []
+    for owner_type, owner_id, effects in effect_lists:
+        count = remove_condition(effects, condition)
+        if not count:
+            continue
+        removed[condition] = removed.get(condition, 0) + count
+        removed_owners.append(
+            {
+                "owner_type": owner_type,
+                "owner_id": owner_id,
+                "condition": condition,
+                "count": count,
+            }
+        )
+    if removed:
+        result.removed.append(
+            {
+                "type": "self_restoration",
+                "action_id": SELF_RESTORATION_ACTION_ID,
+                "actor_id": actor_id,
+                "removed": removed,
+                "removed_owners": removed_owners,
+            }
+        )
+
+
+def _character_for_actor(state: GameState, actor_id: str) -> Character | None:
+    if actor_id in state.characters:
+        return state.characters[actor_id]
+    if state.encounter is not None and actor_id in state.encounter.combatants:
+        combatant = state.encounter.combatants[actor_id]
+        return state.characters.get(combatant.entity_id)
+    return None
+
+
+def _target_effect_lists(
+    state: GameState, actor_id: str
+) -> list[tuple[str, str, list[dict[str, Any]]]]:
+    effect_lists: list[tuple[str, str, list[dict[str, Any]]]] = []
+    seen: set[int] = set()
+
+    def add(owner_type: str, owner_id: str, effects: list[dict[str, Any]]) -> None:
+        list_id = id(effects)
+        if list_id in seen:
+            return
+        seen.add(list_id)
+        effect_lists.append((owner_type, owner_id, effects))
+
+    if actor_id in state.characters:
+        add("character", actor_id, state.characters[actor_id].status_effects)
+    if actor_id in state.monsters:
+        add("monster", actor_id, state.monsters[actor_id].status_effects)
+    if state.encounter is not None and actor_id in state.encounter.combatants:
+        combatant = state.encounter.combatants[actor_id]
+        add("combatant", actor_id, combatant.status_effects)
+        if combatant.entity_id in state.characters:
+            add(
+                "character",
+                combatant.entity_id,
+                state.characters[combatant.entity_id].status_effects,
+            )
+        if combatant.entity_id in state.monsters:
+            add("monster", combatant.entity_id, state.monsters[combatant.entity_id].status_effects)
+    return effect_lists
 
 
 def _effect_lists(state: GameState) -> list[tuple[str, str, list[dict[str, Any]]]]:

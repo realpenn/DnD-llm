@@ -256,3 +256,89 @@ def test_repeat_save_effect_ends_on_success_with_roll_service(make_state) -> Non
     assert result.expired[0]["condition"] == "poisoned"
     assert result.expired[0]["repeat_save"]["success"] is True
     assert result.expired[0]["repeat_save"]["roll"]["expression"] == "1d20+10"
+
+
+def test_monk_self_restoration_removes_single_eligible_condition(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 10}
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "combat-poison", "condition": "poisoned"}
+    )
+    state.characters["pc1"].status_effects.append(
+        {"effect_id": "character-poison", "condition": "poisoned"}
+    )
+
+    result = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert result.changed is True
+    assert state.encounter.combatants["pc1"].status_effects == []
+    assert state.characters["pc1"].status_effects == []
+    assert result.removed == [
+        {
+            "type": "self_restoration",
+            "action_id": "srd.self_restoration",
+            "actor_id": "pc1",
+            "removed": {"poisoned": 2},
+            "removed_owners": [
+                {
+                    "owner_type": "character",
+                    "owner_id": "pc1",
+                    "condition": "poisoned",
+                    "count": 1,
+                },
+                {
+                    "owner_type": "combatant",
+                    "owner_id": "pc1",
+                    "condition": "poisoned",
+                    "count": 1,
+                },
+            ],
+        }
+    ]
+
+
+def test_monk_self_restoration_requires_choice_for_multiple_conditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 10}
+    state.encounter.combatants["pc1"].status_effects.extend(
+        [
+            {"effect_id": "combat-charm", "condition": "charmed"},
+            {"effect_id": "combat-poison", "condition": "poisoned"},
+        ]
+    )
+
+    result = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert result.changed is True
+    assert [effect["condition"] for effect in state.encounter.combatants["pc1"].status_effects] == [
+        "charmed",
+        "poisoned",
+    ]
+    assert result.removed == []
+    assert result.choice_required == [
+        {
+            "type": "self_restoration",
+            "action_id": "srd.self_restoration",
+            "actor_id": "pc1",
+            "conditions": ["charmed", "poisoned"],
+            "reason": "multiple_eligible_conditions",
+        }
+    ]
+
+
+def test_monk_self_restoration_does_not_apply_before_level_ten(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"monk": 9}
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "combat-fright", "condition": "frightened"}
+    )
+
+    result = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert result.changed is False
+    assert state.encounter.combatants["pc1"].status_effects == [
+        {"effect_id": "combat-fright", "condition": "frightened"}
+    ]

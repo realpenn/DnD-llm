@@ -4057,6 +4057,21 @@ def test_compendium_loads_srd_actions() -> None:
         "does_not_grant_swim_speed": True,
         "does_not_allow_standing_on_liquids_after_movement": True,
     }
+    assert compendium.classes["monk"].levels["10"]["features"] == [
+        "Heightened Focus",
+        "Self-Restoration",
+    ]
+    assert "srd.self_restoration" in compendium.classes["monk"].levels["10"]["actions"]
+    assert "srd.heightened_focus" not in compendium.classes["monk"].levels["10"]["actions"]
+    self_restoration = compendium.action("srd.self_restoration")
+    assert self_restoration.action_economy == "none"
+    assert self_restoration.requirements == {"class": "monk", "class_level_min": 10}
+    assert self_restoration.properties == {
+        "self_turn_end_remove_one_condition": ["charmed", "frightened", "poisoned"],
+        "requires_choice_if_multiple_conditions": True,
+        "forgoing_food_and_drink_does_not_cause_exhaustion": True,
+        "food_drink_exhaustion_hazards": ["srd.dehydration", "srd.malnutrition"],
+    }
     assert "srd.dodge" not in compendium.classes["monk"].levels["2"]["actions"]
     assert "srd.favored_enemy_hunters_mark" in compendium.classes["ranger"].levels["1"]["actions"]
     assert "srd.deft_explorer" not in compendium.classes["ranger"].levels["1"]["actions"]
