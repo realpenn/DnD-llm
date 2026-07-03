@@ -87,6 +87,7 @@ UNCANNY_METABOLISM_RESOURCE = "srd.resource.uncanny_metabolism"
 WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
+INDOMITABLE_RESOURCE = "srd.resource.indomitable"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
 
@@ -200,6 +201,21 @@ def has_fighter_champion_feature(character: Character, *, level: int) -> bool:
         int(character.class_levels.get("fighter", 0)) >= level
         and character.subclasses.get("fighter") == "champion"
     )
+
+
+def has_fighter_feature(character: Character, *, level: int) -> bool:
+    return int(character.class_levels.get("fighter", 0)) >= level
+
+
+def fighter_indomitable_uses(character: Character) -> int:
+    fighter_level = int(character.class_levels.get("fighter", 0))
+    if fighter_level >= 17:
+        return 3
+    if fighter_level >= 13:
+        return 2
+    if fighter_level >= 9:
+        return 1
+    return 0
 
 
 def has_cleric_life_domain_feature(character: Character, *, level: int) -> bool:

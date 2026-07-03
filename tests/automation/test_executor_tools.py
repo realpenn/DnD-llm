@@ -3730,6 +3730,110 @@ def test_dark_ones_own_luck_adds_d10_to_automation_saving_throw(make_state) -> N
     )
 
 
+def test_fighter_indomitable_rerolls_failed_direct_saving_throw(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 9}
+    character.saving_throw_proficiencies = ["con"]
+    character.resources["srd.resource.indomitable"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([3, 2]),
+    )
+
+    result = tools.roll_save(
+        "pc1",
+        "con",
+        difficulty_tier="medium",
+        use_indomitable=True,
+        idempotency_key="indomitable-direct-save",
+    )
+
+    assert result["total"] == 15
+    assert result["success"] is True
+    assert result["roll"]["expression"] == "1d20+13"
+    assert result["indomitable"] == {
+        "resource": "srd.resource.indomitable",
+        "resource_before": 1,
+        "resource_after": 0,
+        "fighter_level_bonus": 9,
+        "original_roll": {
+            "roll_id": "fixed-0",
+            "expression": "1d20+4",
+            "seed": 0,
+            "counter": 0,
+            "advantage": None,
+            "dice": [{"sides": 20, "value": 3, "kept": True}],
+            "modifier_total": 4,
+            "total": 7,
+            "display": "1d20+4: fixed => 7",
+            "replayed": False,
+        },
+        "total_before": 7,
+        "reroll_total": 15,
+        "total_after": 15,
+        "spent": True,
+        "success": True,
+    }
+    assert character.resources["srd.resource.indomitable"] == 0
+
+
+def test_fighter_indomitable_automation_save_must_use_new_roll_even_if_failed(
+    make_state,
+) -> None:
+    state = make_state()
+    target = state.characters["pc2"]
+    target.class_levels = {"fighter": 9}
+    target.resources["srd.resource.indomitable"] = 1
+    action = ActionDefinition(
+        id="test.indomitable_save",
+        name="Indomitable Save",
+        localization={"en": "Indomitable Save", "zh": "不屈豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([14, 1]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+        params={"use_indomitable": True},
+    )
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["total"] == 10
+    assert save_node["success"] is False
+    assert save_node["indomitable"] == {
+        "resource": "srd.resource.indomitable",
+        "resource_before": 1,
+        "resource_after": 0,
+        "fighter_level_bonus": 9,
+        "total_before": 14,
+        "reroll_base_total": 10,
+        "passive_adjustment": 0,
+        "total_after": 10,
+        "spent": True,
+        "success": False,
+    }
+    assert target.resources["srd.resource.indomitable"] == 0
+    assert any(
+        change["type"] == "indomitable" and change["source_action_id"] == "srd.indomitable"
+        for change in result.state_changes
+    )
+
+
 def test_armor_of_shadows_casts_mage_armor_without_spell_slot(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

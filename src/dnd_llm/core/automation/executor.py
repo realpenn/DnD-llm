@@ -12,6 +12,7 @@ from ..positioning import TacticalGraph
 from ..rules.checks import d20_expression
 from ..rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
+    INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     aura_of_protection_saving_throw_bonus,
@@ -33,6 +34,7 @@ from ..rules.class_features import (
     has_condition,
     has_druid_circle_of_the_land_feature,
     has_fighter_champion_feature,
+    has_fighter_feature,
     has_horde_breaker,
     has_monk_feature,
     has_monk_open_hand_feature,
@@ -82,6 +84,7 @@ MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
+INDOMITABLE_ACTION_ID = "srd.indomitable"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
@@ -692,13 +695,24 @@ class AutomationExecutor:
             and len(ctx.targets) > 1
         ):
             raise AutomationError("Dark One's Own Luck saving throw requires an explicit target")
+        if (
+            bool(ctx.params.get("use_indomitable"))
+            and ctx.params.get("indomitable_target_id") is None
+            and len(ctx.targets) > 1
+        ):
+            raise AutomationError("Indomitable saving throw requires an explicit target")
         for target_id in ctx.targets:
             target = self._entity(target_id)
             use_dark_ones_own_luck = self._use_dark_ones_own_luck_for_save(ctx, target_id)
             if use_dark_ones_own_luck:
                 self._validate_dark_ones_own_luck_available(target)
+            use_indomitable = self._use_indomitable_for_save(ctx, target_id)
+            if use_indomitable:
+                self._validate_indomitable_available(target)
             auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
+                if use_indomitable:
+                    raise AutomationError("Indomitable requires a rolled failed saving throw")
                 ctx.save_successes[target_id] = False
                 ctx.result.node_results[path] = {
                     "target_id": target_id,
@@ -739,6 +753,20 @@ class AutomationExecutor:
             if dark_ones_own_luck_result is not None:
                 total = int(dark_ones_own_luck_result["total_after"])
             success = total >= dc
+            indomitable_result = self._apply_indomitable_to_failed_save(
+                ctx,
+                target,
+                total,
+                dc,
+                bonus,
+                adjustment,
+                status_advantage,
+                path,
+                use_indomitable=use_indomitable,
+            )
+            if indomitable_result is not None:
+                total = int(indomitable_result["total_after"])
+                success = bool(indomitable_result["success"])
             ctx.save_successes[target_id] = success
             ctx.result.node_results[path] = {
                 "target_id": target_id,
@@ -760,6 +788,8 @@ class AutomationExecutor:
             }
             if dark_ones_own_luck_result is not None:
                 ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
+            if indomitable_result is not None:
+                ctx.result.node_results[path]["indomitable"] = indomitable_result
 
     def _node_ability_check(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         original_ability = str(node["ability"]).lower()
@@ -2800,6 +2830,14 @@ class AutomationExecutor:
             return str(explicit_target) == target_id
         return len(ctx.targets) == 1
 
+    def _use_indomitable_for_save(self, ctx: _Context, target_id: str) -> bool:
+        if not bool(ctx.params.get("use_indomitable")):
+            return False
+        explicit_target = ctx.params.get("indomitable_target_id")
+        if explicit_target is not None:
+            return str(explicit_target) == target_id
+        return len(ctx.targets) == 1
+
     def _dark_ones_own_luck_character(
         self,
         entity: Character | Monster | Combatant,
@@ -2862,6 +2900,79 @@ class AutomationExecutor:
             "total_before": total,
             "total_after": after_total,
             "spent": True,
+        }
+
+    def _indomitable_character(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> Character | None:
+        if isinstance(entity, Character):
+            return entity
+        if isinstance(entity, Combatant):
+            backing = self.state.characters.get(entity.entity_id)
+            if backing is not None:
+                return backing
+        return None
+
+    def _validate_indomitable_available(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> None:
+        character = self._indomitable_character(entity)
+        if character is None or not has_fighter_feature(character, level=9):
+            raise AutomationError("Indomitable requires Fighter level 9")
+        if int(character.resources.get(INDOMITABLE_RESOURCE, 0)) <= 0:
+            raise AutomationError("Indomitable requires an available use")
+
+    def _apply_indomitable_to_failed_save(
+        self,
+        ctx: _Context,
+        entity: Character | Monster | Combatant,
+        total: int,
+        dc: int,
+        bonus: int,
+        passive_adjustment: int,
+        advantage: str | None,
+        path: str,
+        *,
+        use_indomitable: bool,
+    ) -> dict[str, Any] | None:
+        if not use_indomitable or total >= dc:
+            return None
+        character = self._indomitable_character(entity)
+        if character is None:
+            raise AutomationError("Indomitable requires a character")
+        before_resource = int(character.resources.get(INDOMITABLE_RESOURCE, 0))
+        fighter_level = int(character.class_levels.get("fighter", 0))
+        reroll = self.roll_service.roll(d20_expression(bonus + fighter_level), advantage=advantage)
+        ctx.result.dice_rolls.append(reroll.to_dict())
+        after_total = reroll.total + passive_adjustment
+        after_resource = before_resource - 1
+        character.resources[INDOMITABLE_RESOURCE] = after_resource
+        entity_id = str(getattr(entity, "id", character.id))
+        success = after_total >= dc
+        ctx.result.state_changes.append(
+            {
+                "type": "indomitable",
+                "actor_id": entity_id,
+                "source_action_id": INDOMITABLE_ACTION_ID,
+                "resource": INDOMITABLE_RESOURCE,
+                "before": before_resource,
+                "after": after_resource,
+                "path": path,
+            }
+        )
+        return {
+            "resource": INDOMITABLE_RESOURCE,
+            "resource_before": before_resource,
+            "resource_after": after_resource,
+            "fighter_level_bonus": fighter_level,
+            "total_before": total,
+            "reroll_base_total": reroll.total,
+            "passive_adjustment": passive_adjustment,
+            "total_after": after_total,
+            "spent": True,
+            "success": success,
         }
 
     def _node_pact_magic_recovery(self, ctx: _Context, path: str) -> None:

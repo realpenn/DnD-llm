@@ -25,6 +25,18 @@ def test_default_fighter_equipment_uses_srd_item_ids() -> None:
     assert character.resources == {"srd.resource.second_wind": 2}
 
 
+def test_natural_language_character_edit_assigns_fighter_indomitable_at_level_9() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 战士9")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"fighter": 9}
+    assert "srd.indomitable" in result.character.actions
+    assert result.character.resources["srd.resource.indomitable"] == 1
+
+
 def test_natural_language_character_edit_accepts_standard_array_and_class() -> None:
     character = default_fighter("pc1", "Penn")
 

@@ -3652,6 +3652,18 @@ def test_compendium_loads_srd_actions() -> None:
         "Extra Attack",
         "Tactical Shift",
     ]
+    indomitable = compendium.action("srd.indomitable")
+    assert indomitable.requirements == {"class": "fighter", "class_level_min": 9}
+    assert indomitable.action_economy == "none"
+    assert indomitable.properties == {
+        "saving_throw_reroll": True,
+        "resource": "srd.resource.indomitable",
+        "reroll_bonus": {"class_level": "fighter"},
+        "recharge": "long_rest",
+        "uses_by_fighter_level": {"9": 1, "13": 2, "17": 3},
+    }
+    assert compendium.classes["fighter"].levels["9"]["features"] == ["Indomitable"]
+    assert "srd.indomitable" in compendium.classes["fighter"].levels["9"]["actions"]
     assert "srd.rage" in compendium.classes["barbarian"].levels["1"]["actions"]
     assert compendium.classes["barbarian"].levels["1"]["features"] == [
         "Rage",

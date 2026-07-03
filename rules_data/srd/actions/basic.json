@@ -2713,6 +2713,38 @@
             "audit_label": "Tactical Mind"
         },
         {
+            "id": "srd.indomitable",
+            "name": "Indomitable",
+            "localization": {
+                "en": "Indomitable",
+                "zh": "不屈",
+                "aliases": ["Fighter Indomitable", "战士不屈"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 9: Indomitable",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 9},
+            "properties": {
+                "saving_throw_reroll": true,
+                "resource": "srd.resource.indomitable",
+                "reroll_bonus": {"class_level": "fighter"},
+                "recharge": "long_rest",
+                "uses_by_fighter_level": {"9": 1, "13": 2, "17": 3}
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Fighter who fails a saving throw can expend a use of Indomitable to reroll that saving throw with a bonus equal to Fighter level and must use the new roll. Uses recharge on a Long Rest."
+                }
+            ],
+            "audit_label": "Indomitable"
+        },
+        {
             "id": "srd.improved_critical",
             "name": "Improved Critical",
             "localization": {

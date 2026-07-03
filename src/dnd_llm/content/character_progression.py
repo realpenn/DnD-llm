@@ -206,6 +206,7 @@ CLASS_LEVEL_ACTIONS = {
         1: ["srd.second_wind"],
         2: ["srd.action_surge", "srd.tactical_mind"],
         5: ["srd.extra_attack"],
+        9: ["srd.indomitable"],
     },
     "barbarian": {
         1: ["srd.rage", "srd.barbarian_unarmored_defense"],
@@ -2339,6 +2340,14 @@ def _resources_for_levels(
         resources["srd.resource.second_wind"] = second_wind_uses
     if fighter_level >= 2:
         resources["srd.resource.action_surge"] = 2 if fighter_level >= 17 else 1
+    if fighter_level >= 9:
+        if fighter_level >= 17:
+            indomitable_uses = 3
+        elif fighter_level >= 13:
+            indomitable_uses = 2
+        else:
+            indomitable_uses = 1
+        resources["srd.resource.indomitable"] = indomitable_uses
     barbarian_level = int(class_levels.get("barbarian", 0))
     if barbarian_level > 0:
         if barbarian_level >= 17:

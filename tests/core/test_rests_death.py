@@ -632,6 +632,27 @@ def test_long_rest_restores_second_wind_to_srd_maximum(make_state) -> None:
     assert character.resources["srd.resource.action_surge"] == 1
 
 
+def test_long_rest_restores_fighter_indomitable_uses_by_level(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 13}
+    character.resources["srd.resource.indomitable"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    level_13 = tools.long_rest(["pc1"], idempotency_key="indomitable-level-13-long-rest")
+
+    assert level_13["results"]["pc1"]["restored_resources"]["srd.resource.indomitable"] == 2
+    assert character.resources["srd.resource.indomitable"] == 2
+
+    character.class_levels = {"fighter": 17}
+    character.resources["srd.resource.indomitable"] = 1
+    level_17 = tools.long_rest(["pc1"], idempotency_key="indomitable-level-17-long-rest")
+
+    assert level_17["results"]["pc1"]["restored_resources"]["srd.resource.indomitable"] == 2
+    assert character.resources["srd.resource.indomitable"] == 3
+
+
 def test_long_rest_restores_srd_high_level_spell_slots(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

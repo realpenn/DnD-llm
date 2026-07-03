@@ -14,14 +14,16 @@ from .invariants import require_game_state_invariants
 from .models import Character, Combatant, GameState, Monster
 from .persistence import AuditLog
 from .positioning import TacticalGraph
-from .rules.checks import roll_check
+from .rules.checks import d20_expression, roll_check
 from .rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
+    INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
     druid_magician_check_bonus,
     has_condition,
+    has_fighter_feature,
     has_rogue_thief_feature,
     has_warlock_fiend_feature,
     remarkable_athlete_applies_to_check,
@@ -213,6 +215,7 @@ class EngineTools:
         dc_ref: str | None = None,
         advantage: str | None = None,
         use_dark_ones_own_luck: bool = False,
+        use_indomitable: bool = False,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"roll_save:{self.state.event_counter}"
@@ -238,6 +241,8 @@ class EngineTools:
         passive_bonus, passive_bonus_sources = self._saving_throw_passive_bonus(actor_id, ability)
         if use_dark_ones_own_luck:
             self._validate_dark_ones_own_luck_available(proficiency_source)
+        if use_indomitable:
+            self._validate_indomitable_available(proficiency_source)
         result = roll_check(
             actor_id=actor_id,
             actor=actor,
@@ -271,6 +276,14 @@ class EngineTools:
         if dark_ones_own_luck is not None:
             payload["dark_ones_own_luck"] = dark_ones_own_luck["result"]
             dice_rolls.append(dark_ones_own_luck["roll"])
+        indomitable = self._apply_indomitable_to_save(
+            payload,
+            proficiency_source,
+            use_indomitable=use_indomitable,
+        )
+        if indomitable is not None:
+            payload["indomitable"] = indomitable["result"]
+            dice_rolls.append(indomitable["roll"])
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -282,6 +295,7 @@ class EngineTools:
                 "dc_ref": dc_ref,
                 "advantage": advantage,
                 "use_dark_ones_own_luck": use_dark_ones_own_luck,
+                "use_indomitable": use_indomitable,
             },
             tool_result=payload,
             dice_rolls=dice_rolls,
@@ -1637,6 +1651,52 @@ class EngineTools:
                 "roll_total": roll.total,
                 "total_before": before_total,
                 "total_after": after_total,
+                "spent": True,
+                "success": payload["success"],
+            },
+        }
+
+    @staticmethod
+    def _validate_indomitable_available(actor: Character | Monster | Combatant) -> None:
+        if not isinstance(actor, Character) or not has_fighter_feature(actor, level=9):
+            raise ValueError("Indomitable requires Fighter level 9")
+        if int(actor.resources.get(INDOMITABLE_RESOURCE, 0)) <= 0:
+            raise ValueError("Indomitable requires an available use")
+
+    def _apply_indomitable_to_save(
+        self,
+        payload: dict[str, Any],
+        actor: Character | Monster | Combatant,
+        *,
+        use_indomitable: bool,
+    ) -> dict[str, Any] | None:
+        if not use_indomitable or bool(payload["success"]):
+            return None
+        if not isinstance(actor, Character):
+            raise ValueError("Indomitable requires a character")
+        before_resource = int(actor.resources.get(INDOMITABLE_RESOURCE, 0))
+        fighter_level = int(actor.class_levels.get("fighter", 0))
+        before_total = int(payload["total"])
+        original_roll = dict(payload["roll"])
+        reroll = self.roll_service.roll(
+            d20_expression(int(payload["bonus"]) + fighter_level),
+            advantage=original_roll.get("advantage"),
+        )
+        actor.resources[INDOMITABLE_RESOURCE] = before_resource - 1
+        payload["roll"] = reroll.to_dict()
+        payload["total"] = reroll.total
+        payload["success"] = reroll.total >= int(payload["dc"])
+        return {
+            "roll": reroll.to_dict(),
+            "result": {
+                "resource": INDOMITABLE_RESOURCE,
+                "resource_before": before_resource,
+                "resource_after": actor.resources[INDOMITABLE_RESOURCE],
+                "fighter_level_bonus": fighter_level,
+                "original_roll": original_roll,
+                "total_before": before_total,
+                "reroll_total": reroll.total,
+                "total_after": reroll.total,
                 "spent": True,
                 "success": payload["success"],
             },

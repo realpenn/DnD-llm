@@ -7,11 +7,13 @@ from ..models import Character
 from .class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
     GIFT_OF_DEPTHS_RESOURCE,
+    INDOMITABLE_RESOURCE,
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WHOLENESS_OF_BODY_RESOURCE,
     dark_ones_own_luck_uses,
+    fighter_indomitable_uses,
     has_druid_circle_of_the_land_feature,
     has_monk_open_hand_feature,
     has_warlock_gift_of_depths,
@@ -490,6 +492,9 @@ def resource_maxima(character: Character) -> dict[str, int]:
     dark_ones_own_luck_max = dark_ones_own_luck_uses(character)
     if dark_ones_own_luck_max:
         maxima[DARK_ONES_OWN_LUCK_RESOURCE] = dark_ones_own_luck_max
+    indomitable_max = fighter_indomitable_uses(character)
+    if indomitable_max:
+        maxima[INDOMITABLE_RESOURCE] = indomitable_max
     if has_warlock_gift_of_depths(character):
         maxima[GIFT_OF_DEPTHS_RESOURCE] = 1
     wizard_level = int(character.class_levels.get("wizard", 0))

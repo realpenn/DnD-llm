@@ -437,6 +437,17 @@
                         "srd.tactical_mind",
                         "srd.extra_attack"
                     ]
+                },
+                "9": {
+                    "features": ["Indomitable"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind",
+                        "srd.extra_attack",
+                        "srd.indomitable"
+                    ]
                 }
             },
             "subclasses": {
