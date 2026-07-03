@@ -2374,6 +2374,8 @@ class AutomationExecutor:
             "metadata": metadata,
             "audit": {"node_path": path},
         }
+        if "tick_on" in node:
+            effect["tick_on"] = str(node["tick_on"])
         self.state.world.active_effects.append(effect)
         ctx.result.state_changes.append(
             {

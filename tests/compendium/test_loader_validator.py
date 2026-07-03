@@ -50,6 +50,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.hold_monster",
         "srd.greater_restoration",
         "srd.cloudkill",
+        "srd.teleportation_circle",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -309,6 +310,46 @@ def test_compendium_loads_srd_actions() -> None:
                 },
             },
         },
+    ]
+    teleportation_circle = compendium.action("srd.teleportation_circle")
+    assert teleportation_circle.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert teleportation_circle.properties["spell_classes"] == [
+        "bard",
+        "sorcerer",
+        "warlock",
+        "wizard",
+    ]
+    assert teleportation_circle.properties["casting_time"] == {"minutes": 1}
+    assert teleportation_circle.properties["material_component"] == {
+        "description": "rare inks worth 50+ GP",
+        "consumed": True,
+    }
+    assert teleportation_circle.cost.spell_slot_level == 5
+    assert teleportation_circle.cost.gold == 50
+    assert teleportation_circle.range == {"normal_ft": 10, "shape": "circle", "radius_ft": 5}
+    assert teleportation_circle.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert teleportation_circle.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "teleportation_circle_portal",
+            "scope": {"target": "point", "radius_ft": 5, "range_ft": 10},
+            "duration": {"until": "end_of_next_turn", "remaining_ticks": 2},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "requires_known_sigil_sequence": True,
+                "destination": "permanent_teleportation_circle",
+                "same_plane_required": True,
+                "portal_open_until_end_of_next_turn": True,
+                "entering_creature_appears_within_ft_of_destination_circle": 5,
+                "nearest_unoccupied_space_if_destination_occupied": True,
+                "initial_known_material_plane_destination_count": 2,
+                "learn_new_sigil_sequence_study_minutes": 1,
+                "permanent_circle_daily_castings_required": 365,
+            },
+        }
     ]
     assert "srd.innate_sorcery" in compendium.actions
     assert compendium.action("srd.innate_sorcery").cost.resources == {

@@ -8838,6 +8838,65 @@ def test_cloudkill_upcast_spends_requested_slot_and_adds_damage_die(make_state) 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
 
 
+def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 50
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.teleportation_circle",
+        [],
+        5,
+        idempotency_key="cast-teleportation-circle",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_5", "gold"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.teleportation_circle"
+    assert effect["effect_type"] == "teleportation_circle_portal"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "point", "radius_ft": 5, "range_ft": 10}
+    assert effect["duration"] == {"until": "end_of_next_turn", "remaining_ticks": 2}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "requires_known_sigil_sequence": True,
+        "destination": "permanent_teleportation_circle",
+        "same_plane_required": True,
+        "portal_open_until_end_of_next_turn": True,
+        "entering_creature_appears_within_ft_of_destination_circle": 5,
+        "nearest_unoccupied_space_if_destination_occupied": True,
+        "initial_known_material_plane_destination_count": 2,
+        "learn_new_sigil_sequence_study_minutes": 1,
+        "permanent_circle_daily_castings_required": 365,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "teleportation_circle_portal"
+
+    first_tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert first_tick.ticked[0]["remaining_ticks_before"] == 2
+    assert first_tick.ticked[0]["remaining_ticks_after"] == 1
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 1
+
+    second_tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert second_tick.expired[0]["source_action_id"] == "srd.teleportation_circle"
+    assert state.world.active_effects == []
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:
