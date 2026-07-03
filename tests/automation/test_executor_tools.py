@@ -9049,6 +9049,136 @@ def test_flame_strike_upcast_adds_dice_to_fire_and_radiant_damage(
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d6", "6d6"]
 
 
+def test_harm_uses_cleric_spell_dc_and_half_damage_on_success(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.harm",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-harm-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "necrotic"
+    assert damage_change["amount"] == 4
+    assert damage_change["applied"] == 4
+    assert target.hp_current == 76
+    assert target.hp_max == 80
+    assert not any(change["type"] == "max_hp_delta" for change in result["state_changes"])
+    assert target.status_effects == []
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "14d6"]
+
+
+def test_harm_failed_save_reduces_hp_max_not_below_one_and_marks_reduction(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    caster.spell_slots["6"] = 1
+    caster.gold = 100
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 5
+    target.hp_max = 5
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    harm_result = tools.cast_spell(
+        "pc1",
+        "srd.harm",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-harm-failed-save",
+    )
+
+    assert harm_result["success"] is True
+    save_node = harm_result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    damage_change = next(
+        change for change in harm_result["state_changes"] if change["type"] == "damage"
+    )
+    assert damage_change["amount"] == 8
+    assert damage_change["applied"] == 5
+    max_hp_change = next(
+        change for change in harm_result["state_changes"] if change["type"] == "max_hp_delta"
+    )
+    assert max_hp_change["amount"] == -8
+    assert max_hp_change["hp_max_before"] == 5
+    assert max_hp_change["hp_max_after"] == 1
+    assert max_hp_change["hp_max_reduction"] == 4
+    assert target.hp_current == 0
+    assert target.hp_max == 1
+    marker = target.status_effects[-1]
+    assert marker["effect_markers"] == ["hp_max_reduction"]
+    assert marker["metadata"] == {"hp_max_reduction": 4}
+
+    tools.economy.set("pc1", "action", 1)
+    restoration_result = tools.perform_action(
+        "pc1",
+        "srd.greater_restoration",
+        ["goblin1"],
+        {"slot_level": 5, "greater_restoration_choice": "hp_max_reduction"},
+        idempotency_key="greater-restoration-after-harm",
+    )
+
+    greater_restore = next(
+        change
+        for change in restoration_result["state_changes"]
+        if change["type"] == "greater_restoration"
+    )
+    assert greater_restore["removed_markers"] == {"hp_max_reduction": 1}
+    assert greater_restore["hp_max_restored"] == [
+        {
+            "owner_type": "combatant",
+            "owner_id": "goblin1",
+            "amount": 4,
+            "hp_max_before": 1,
+            "hp_max_after": 5,
+            "hp_current_before": 0,
+            "hp_current_after": 0,
+        }
+    ]
+    assert target.hp_max == 5
+    assert target.status_effects == []
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

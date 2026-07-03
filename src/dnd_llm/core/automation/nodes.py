@@ -402,6 +402,10 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             "-last_damage_taken",
         }:
             errors.append(f"{path}: unsupported max_hp_delta amount_from")
+        if "record_hp_max_reduction_marker" in node and not isinstance(
+            node["record_hp_max_reduction_marker"], bool
+        ):
+            errors.append(f"{path}: record_hp_max_reduction_marker must be a boolean")
     if node_type == "resource_delta":
         if "resource" not in node:
             errors.append(f"{path}: resource_delta requires resource")

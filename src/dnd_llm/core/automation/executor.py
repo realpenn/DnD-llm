@@ -2545,6 +2545,7 @@ class AutomationExecutor:
 
     def _node_max_hp_delta(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         increase_current = bool(node.get("increase_current", False))
+        record_hp_max_reduction_marker = bool(node.get("record_hp_max_reduction_marker", False))
         for target_id in ctx.targets:
             amount = self._max_hp_delta_amount(ctx, node, target_id)
             target = self._entity(target_id)
@@ -2558,18 +2559,36 @@ class AutomationExecutor:
                 after_current = after_max
             setattr(target, "hp_max", after_max)
             setattr(target, "hp_current", after_current)
-            ctx.result.state_changes.append(
-                {
-                    "type": "max_hp_delta",
-                    "target_id": target_id,
-                    "amount": amount,
-                    "hp_max_before": before_max,
-                    "hp_max_after": after_max,
-                    "hp_current_before": before_current,
-                    "hp_current_after": after_current,
-                    "path": path,
-                }
-            )
+            change = {
+                "type": "max_hp_delta",
+                "target_id": target_id,
+                "amount": amount,
+                "hp_max_before": before_max,
+                "hp_max_after": after_max,
+                "hp_current_before": before_current,
+                "hp_current_after": after_current,
+                "path": path,
+            }
+            actual_reduction = max(0, before_max - after_max)
+            if record_hp_max_reduction_marker and actual_reduction:
+                marker_effect_id = self._effect_id(target_id, f"{path}.hp_max_reduction")
+                marker_effect = EffectInstance(
+                    effect_id=marker_effect_id,
+                    source_ref=ctx.action.source,
+                    source_action_id=ctx.action.id,
+                    target_id=target_id,
+                    applied_by=ctx.actor_id,
+                    audit={
+                        "node_path": path,
+                        "hp_max_reduction": actual_reduction,
+                    },
+                ).to_dict()
+                marker_effect["effect_markers"] = ["hp_max_reduction"]
+                marker_effect["metadata"] = {"hp_max_reduction": actual_reduction}
+                getattr(target, "status_effects").append(marker_effect)
+                change["hp_max_reduction_marker_effect_id"] = marker_effect_id
+                change["hp_max_reduction"] = actual_reduction
+            ctx.result.state_changes.append(change)
 
     def _max_hp_delta_amount(
         self,

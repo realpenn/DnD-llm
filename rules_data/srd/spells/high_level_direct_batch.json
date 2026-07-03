@@ -166,12 +166,17 @@
         "action_economy": "action",
         "range": { "normal_ft": 60 },
         "target_policy": { "min": 1, "max": 1, "harmful": true },
-        "requirements": { "spell_level": 6 },
+        "requirements": { "spell_level": 6, "class_any": ["cleric"] },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "hp_max_reduction_equals_necrotic_damage_taken": true,
+          "hp_max_reduction_minimum_hp_max": 1
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 6 },
         "automation": [
           { "type": "target", "mode": "explicit" },
-          { "type": "saving_throw", "ability": "con", "difficulty_tier": "hard" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
           { "type": "damage", "dice": "14d6", "damage_type": "necrotic", "save_half": true },
           {
             "type": "branch",
@@ -180,7 +185,8 @@
             "if_false": [
               {
                 "type": "max_hp_delta",
-                "amount_from": "-last_damage_taken"
+                "amount_from": "-last_damage_taken",
+                "record_hp_max_reduction_marker": true
               }
             ]
           }

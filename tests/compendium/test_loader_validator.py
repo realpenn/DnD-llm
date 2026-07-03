@@ -229,6 +229,30 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "1d6",
         },
     ]
+    harm = compendium.action("srd.harm")
+    assert harm.requirements == {"spell_level": 6, "class_any": ["cleric"]}
+    assert harm.properties["spell_classes"] == ["cleric"]
+    assert harm.properties["hp_max_reduction_equals_necrotic_damage_taken"] is True
+    assert harm.properties["hp_max_reduction_minimum_hp_max"] == 1
+    assert harm.range == {"normal_ft": 60}
+    assert harm.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert harm.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "14d6", "damage_type": "necrotic", "save_half": True},
+        {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [],
+            "if_false": [
+                {
+                    "type": "max_hp_delta",
+                    "amount_from": "-last_damage_taken",
+                    "record_hp_max_reduction_marker": True,
+                }
+            ],
+        },
+    ]
     circle_of_death = compendium.action("srd.circle_of_death")
     assert circle_of_death.requirements == {
         "spell_level": 6,
@@ -3726,7 +3750,11 @@ def test_compendium_loads_srd_actions() -> None:
         "extra_dice_per_slot_above": "3d6",
     }
     assert compendium.action("srd.harm").automation[3]["if_false"] == [
-        {"type": "max_hp_delta", "amount_from": "-last_damage_taken"}
+        {
+            "type": "max_hp_delta",
+            "amount_from": "-last_damage_taken",
+            "record_hp_max_reduction_marker": True,
+        }
     ]
     assert "srd.kobold" in compendium.monsters
     assert {
