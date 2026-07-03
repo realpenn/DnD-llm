@@ -68,6 +68,69 @@
       }
     },
     {
+      "id": "srd.spell.wall_of_force",
+      "name": "Wall of Force",
+      "localization": { "en": "Wall of Force", "zh": "力墙术", "aliases": ["力场墙"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "evocation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.wall_of_force",
+        "name": "Wall of Force",
+        "localization": { "en": "Wall of Force", "zh": "力墙术", "aliases": ["力场墙"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a shard of glass",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "wall_of_force",
+            "scope": { "target": "point", "range_ft": 120 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "invisible": true,
+              "orientation_options": ["horizontal", "vertical", "angled"],
+              "can_be_free_floating": true,
+              "can_rest_on_solid_surface": true,
+              "hemispherical_dome_max_radius_ft": 10,
+              "globe_max_radius_ft": 10,
+              "flat_panel_count": 10,
+              "flat_panel_width_ft": 10,
+              "flat_panel_height_ft": 10,
+              "flat_panels_must_be_contiguous": true,
+              "thickness_inches": 0.25,
+              "pushes_creatures_to_chosen_side_if_cutting_space": true,
+              "blocks_physical_passage": true,
+              "immune_to_all_damage": true,
+              "not_dispelled_by_dispel_magic": true,
+              "destroyed_by_disintegrate": true,
+              "extends_into_ethereal_plane": true,
+              "blocks_ethereal_travel": true
+            }
+          }
+        ],
+        "audit_label": "Wall of Force"
+      }
+    },
+    {
       "id": "srd.spell.chain_lightning",
       "name": "Chain Lightning",
       "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },

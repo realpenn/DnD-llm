@@ -8997,6 +8997,66 @@ def test_tree_stride_spends_slot_and_applies_concentration_transport_ability(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_wall_of_force_spends_slot_and_records_concentration_barrier(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.wall_of_force",
+        [],
+        5,
+        idempotency_key="cast-wall-of-force",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.wall_of_force"
+    assert effect["effect_type"] == "wall_of_force"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "point", "range_ft": 120}
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "invisible": True,
+        "orientation_options": ["horizontal", "vertical", "angled"],
+        "can_be_free_floating": True,
+        "can_rest_on_solid_surface": True,
+        "hemispherical_dome_max_radius_ft": 10,
+        "globe_max_radius_ft": 10,
+        "flat_panel_count": 10,
+        "flat_panel_width_ft": 10,
+        "flat_panel_height_ft": 10,
+        "flat_panels_must_be_contiguous": True,
+        "thickness_inches": 0.25,
+        "pushes_creatures_to_chosen_side_if_cutting_space": True,
+        "blocks_physical_passage": True,
+        "immune_to_all_damage": True,
+        "not_dispelled_by_dispel_magic": True,
+        "destroyed_by_disintegrate": True,
+        "extends_into_ethereal_plane": True,
+        "blocks_ethereal_travel": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "wall_of_force"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:

@@ -53,6 +53,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.teleportation_circle",
         "srd.passwall",
         "srd.tree_stride",
+        "srd.wall_of_force",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -408,6 +409,47 @@ def test_compendium_loads_srd_actions() -> None:
                 "max_depth_ft": 20,
                 "creates_no_structural_instability": True,
                 "ejects_occupants_to_nearest_unoccupied_space_on_expiry": True,
+            },
+        }
+    ]
+    wall_of_force = compendium.action("srd.wall_of_force")
+    assert wall_of_force.requirements == {
+        "spell_level": 5,
+        "class_any": ["wizard"],
+    }
+    assert wall_of_force.properties["spell_classes"] == ["wizard"]
+    assert wall_of_force.properties["material_component"] == {
+        "description": "a shard of glass",
+        "consumed": False,
+    }
+    assert wall_of_force.range == {"normal_ft": 120}
+    assert wall_of_force.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert wall_of_force.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "wall_of_force",
+            "scope": {"target": "point", "range_ft": 120},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "invisible": True,
+                "orientation_options": ["horizontal", "vertical", "angled"],
+                "can_be_free_floating": True,
+                "can_rest_on_solid_surface": True,
+                "hemispherical_dome_max_radius_ft": 10,
+                "globe_max_radius_ft": 10,
+                "flat_panel_count": 10,
+                "flat_panel_width_ft": 10,
+                "flat_panel_height_ft": 10,
+                "flat_panels_must_be_contiguous": True,
+                "thickness_inches": 0.25,
+                "pushes_creatures_to_chosen_side_if_cutting_space": True,
+                "blocks_physical_passage": True,
+                "immune_to_all_damage": True,
+                "not_dispelled_by_dispel_magic": True,
+                "destroyed_by_disintegrate": True,
+                "extends_into_ethereal_plane": True,
+                "blocks_ethereal_travel": True,
             },
         }
     ]
