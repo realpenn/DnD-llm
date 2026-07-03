@@ -1809,6 +1809,11 @@ def test_compendium_loads_srd_actions() -> None:
         "subclass": "life",
     }
     assert compendium.action("srd.disciple_of_life").automation[0]["type"] == "text_result"
+    assert compendium.action("srd.blessed_healer").requirements == {
+        "class": "cleric",
+        "class_level_min": 6,
+        "subclass": "life",
+    }
     preserve_life = compendium.action("srd.preserve_life")
     assert preserve_life.cost.resources == {"srd.resource.channel_divinity": 1}
     assert preserve_life.range == {"normal_ft": 30, "line_of_sight": False}
@@ -3050,6 +3055,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.disciple_of_life" not in compendium.classes["cleric"].levels["3"]["actions"]
     assert "srd.preserve_life" not in compendium.classes["cleric"].levels["3"]["actions"]
     assert compendium.classes["cleric"].levels["5"]["features"] == ["Sear Undead"]
+    assert compendium.classes["cleric"].levels["6"]["features"] == ["Subclass Feature"]
+    assert "srd.blessed_healer" in compendium.classes["cleric"].levels["6"]["actions"]
     assert {
         "srd.druidic",
         "srd.primal_order",
@@ -3206,10 +3213,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["cleric"].subclasses["life"]["features"] == [
         "Disciple of Life",
         "Preserve Life",
+        "Blessed Healer",
     ]
     assert compendium.classes["cleric"].subclasses["life"]["actions"] == [
         "srd.disciple_of_life",
         "srd.preserve_life",
+        "srd.blessed_healer",
     ]
     assert compendium.classes["paladin"].levels["1"]["features"] == [
         "Lay On Hands",

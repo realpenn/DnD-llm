@@ -15,6 +15,7 @@ from ..rules.class_features import (
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     barbarian_rage_damage_bonus,
     barbarian_unarmored_defense_armor_class,
+    blessed_healer_self_healing,
     bloodied_hp_cap,
     class_feature_speed_bonus,
     cleric_thaumaturge_check_bonus,
@@ -71,6 +72,7 @@ UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
 RAGE_ACTION_ID = "srd.rage"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
+BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
@@ -1038,12 +1040,15 @@ class AutomationExecutor:
         self._apply_horde_breaker_if_requested(ctx, node, path)
 
     def _node_healing(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        blessed_healer_triggered = False
         for target_id in ctx.targets:
             amount, rolls = self._roll_amount(ctx, node)
             ctx.result.dice_rolls.extend(roll.to_dict() for roll in rolls)
             disciple_bonus = self._disciple_of_life_bonus(ctx)
             amount += disciple_bonus
             applied = self._apply_healing(target_id, amount)
+            if target_id != ctx.actor_id and applied > 0:
+                blessed_healer_triggered = True
             change: dict[str, Any] = {
                 "type": "healing",
                 "target_id": target_id,
@@ -1055,6 +1060,21 @@ class AutomationExecutor:
                 change["disciple_of_life_bonus"] = disciple_bonus
                 change["disciple_of_life_source"] = "srd.disciple_of_life"
             ctx.result.state_changes.append(change)
+        if blessed_healer_triggered:
+            blessed_bonus = self._blessed_healer_bonus(ctx)
+            if blessed_bonus:
+                applied = self._apply_healing(ctx.actor_id, blessed_bonus)
+                ctx.result.state_changes.append(
+                    {
+                        "type": "healing",
+                        "target_id": ctx.actor_id,
+                        "amount": blessed_bonus,
+                        "applied": applied,
+                        "blessed_healer_bonus": blessed_bonus,
+                        "blessed_healer_source": BLESSED_HEALER_ACTION_ID,
+                        "path": path,
+                    }
+                )
 
     def _node_cutting_words(self, ctx: _Context, path: str) -> None:
         trigger = self._cutting_words_trigger(ctx.params)
@@ -7692,7 +7712,20 @@ class AutomationExecutor:
             return 0
         return disciple_of_life_healing_bonus(
             actor,
-            spell_slot_level=int(ctx.action.cost.spell_slot_level),
+            spell_slot_level=self._spell_slot_level_to_spend(ctx.action, ctx.params),
+        )
+
+    def _blessed_healer_bonus(self, ctx: _Context) -> int:
+        if ctx.action.action_type != "spell":
+            return 0
+        if ctx.action.cost.spell_slot_level is None or bool(ctx.params.get("as_ritual", False)):
+            return 0
+        actor = self._resource_owner(ctx.actor_id)
+        if not isinstance(actor, Character):
+            return 0
+        return blessed_healer_self_healing(
+            actor,
+            spell_slot_level=self._spell_slot_level_to_spend(ctx.action, ctx.params),
         )
 
     def _validate_hunters_lore_preconditions(

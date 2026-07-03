@@ -593,6 +593,18 @@ def disciple_of_life_healing_bonus(
     return 2 + spell_slot_level
 
 
+def blessed_healer_self_healing(
+    character: Character,
+    *,
+    spell_slot_level: int,
+) -> int:
+    if not has_cleric_life_domain_feature(character, level=6):
+        return 0
+    if spell_slot_level <= 0:
+        return 0
+    return 2 + spell_slot_level
+
+
 def preserve_life_healing_pool(character: Character) -> int:
     if not has_cleric_life_domain_feature(character, level=3):
         return 0

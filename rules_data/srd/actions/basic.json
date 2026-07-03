@@ -2646,6 +2646,31 @@
             "audit_label": "Disciple of Life"
         },
         {
+            "id": "srd.blessed_healer",
+            "name": "Blessed Healer",
+            "localization": {
+                "en": "Blessed Healer",
+                "zh": "受祝医者",
+                "aliases": ["Life Domain Blessed Healer", "生命领域受祝医者"]
+            },
+            "source": "SRD 5.2.1 Cleric Subclass: Life Domain, Level 6: Blessed Healer",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 6, "subclass": "life"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that immediately after a Life Domain Cleric casts a spell with a spell slot that restores Hit Points to one or more creatures other than themself, the Cleric regains Hit Points equal to 2 plus the spell slot's level."
+                }
+            ],
+            "audit_label": "Blessed Healer"
+        },
+        {
             "id": "srd.preserve_life",
             "name": "Preserve Life",
             "localization": {

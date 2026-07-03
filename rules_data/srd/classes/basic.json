@@ -205,14 +205,30 @@
                         "srd.divine_spark_necrotic",
                         "srd.turn_undead"
                     ]
+                },
+                "6": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
                 }
             },
             "subclasses": {
                 "life": {
                     "name": "Life Domain",
                     "level": 3,
-                    "features": ["Disciple of Life", "Preserve Life"],
-                    "actions": ["srd.disciple_of_life", "srd.preserve_life"]
+                    "features": ["Disciple of Life", "Preserve Life", "Blessed Healer"],
+                    "actions": [
+                        "srd.disciple_of_life",
+                        "srd.preserve_life",
+                        "srd.blessed_healer"
+                    ]
                 }
             }
         },

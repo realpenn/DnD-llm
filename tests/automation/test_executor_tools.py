@@ -98,6 +98,64 @@ def test_life_domain_disciple_of_life_adds_spell_slot_healing(make_state) -> Non
     assert healing_change["disciple_of_life_source"] == "srd.disciple_of_life"
 
 
+def test_life_domain_blessed_healer_heals_self_after_spell_slot_heals_other(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 6}
+    caster.subclasses = {"cleric": "life"}
+    caster.actions.extend(["srd.disciple_of_life", "srd.blessed_healer"])
+    caster.spell_slots["2"] = 1
+    state.encounter.combatants["pc1"].hp_current = 2
+    state.encounter.combatants["pc1"].hp_max = 20
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell("pc1", "srd.cure_wounds", ["pc2"], 2)
+
+    assert result["success"] is True
+    healing_changes = [change for change in result["state_changes"] if change["type"] == "healing"]
+    target_healing = next(change for change in healing_changes if change["target_id"] == "pc2")
+    self_healing = next(change for change in healing_changes if change.get("blessed_healer_source"))
+    assert target_healing["disciple_of_life_bonus"] == 4
+    assert target_healing["amount"] == result["dice_rolls"][0]["total"] + 4
+    assert self_healing == {
+        "type": "healing",
+        "target_id": "pc1",
+        "amount": 4,
+        "applied": 4,
+        "blessed_healer_bonus": 4,
+        "blessed_healer_source": "srd.blessed_healer",
+        "path": "automation[1]",
+    }
+    assert state.encounter.combatants["pc1"].hp_current == 6
+
+
+def test_life_domain_blessed_healer_does_not_trigger_on_self_only_healing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 6}
+    caster.subclasses = {"cleric": "life"}
+    caster.actions.extend(["srd.disciple_of_life", "srd.blessed_healer"])
+    caster.spell_slots["1"] = 1
+    state.encounter.combatants["pc1"].hp_current = 2
+    state.encounter.combatants["pc1"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell("pc1", "srd.cure_wounds", ["pc1"], 1)
+
+    assert result["success"] is True
+    assert not any(change.get("blessed_healer_source") for change in result["state_changes"])
+
+
 def test_non_life_cleric_cure_wounds_does_not_gain_disciple_of_life(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
