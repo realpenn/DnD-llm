@@ -4559,6 +4559,37 @@
                 }
             ],
             "audit_label": "Two Extra Attacks"
+        },
+        {
+            "id": "srd.studied_attacks",
+            "name": "Studied Attacks",
+            "localization": {
+                "en": "Studied Attacks",
+                "zh": "研习攻击",
+                "aliases": ["Fighter Studied Attacks", "战士研习攻击"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 13: Studied Attacks",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 13},
+            "properties": {
+                "triggers_on_attack_roll_miss": true,
+                "target_scope": "missed_creature",
+                "grants_advantage_on_next_attack_roll_against_target": true,
+                "expires": "before_end_of_next_turn"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Fighter misses a creature with an attack roll, the Fighter has Advantage on their next attack roll against that creature before the end of the Fighter's next turn."
+                }
+            ],
+            "audit_label": "Studied Attacks"
         }
     ]
 }

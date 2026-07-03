@@ -3834,6 +3834,121 @@ def test_fighter_indomitable_automation_save_must_use_new_roll_even_if_failed(
     )
 
 
+def test_fighter_studied_attacks_grants_targeted_advantage_after_miss(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 13}
+    state.encounter.initiative_order = ["pc1", "goblin1", "goblin2"]
+    state.encounter.combatants["goblin1"].armor_class = 30
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=1,
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([5, 10, 4, 12, 5]),
+    )
+
+    miss = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="studied-attacks-miss",
+    )
+
+    assert miss["node_results"]["automation[1]"]["hit"] is False
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["condition"] == "studied_attacks"
+    assert effect["source_action_id"] == "srd.studied_attacks"
+    assert effect["passive_modifiers"] == {
+        "studied_attacks_advantage": True,
+        "studied_attacks_target_id": "goblin1",
+    }
+    assert effect["duration"] == {"until": "end_of_next_turn", "remaining_ticks": 2}
+    assert effect["tick_on"] == "self_turn_end"
+
+    tools.economy.add("pc1", "action", 1)
+    other_target = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin2"],
+        idempotency_key="studied-attacks-other-target",
+    )
+
+    assert other_target["dice_rolls"][0]["advantage"] is None
+    assert any(
+        existing["condition"] == "studied_attacks"
+        for existing in state.encounter.combatants["pc1"].status_effects
+    )
+
+    state.encounter.combatants["goblin1"].armor_class = 1
+    tools.economy.add("pc1", "action", 1)
+    studied_target = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="studied-attacks-target",
+    )
+
+    attack_node = studied_target["node_results"]["automation[1]"]
+    assert studied_target["dice_rolls"][0]["advantage"] == "advantage"
+    assert attack_node["status_advantage"] == "advantage"
+    assert attack_node["status_sources"][0]["modifier"] == "studied_attacks_advantage"
+    assert any(
+        change["type"] == "effect_expired"
+        and change["trigger"] == "studied_attacks_attack"
+        and change["removed"][0]["condition"] == "studied_attacks"
+        for change in studied_target["state_changes"]
+    )
+    assert not any(
+        existing["condition"] == "studied_attacks"
+        for existing in state.encounter.combatants["pc1"].status_effects
+    )
+
+
+def test_fighter_studied_attacks_expires_at_end_of_next_turn(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"fighter": 13}
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.combatants["goblin1"].armor_class = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([5]),
+    )
+
+    tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="studied-attacks-expiry",
+    )
+
+    first_tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert first_tick.ticked[0]["condition"] == "studied_attacks"
+    assert first_tick.ticked[0]["remaining_ticks_after"] == 1
+
+    second_tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert second_tick.expired[0]["condition"] == "studied_attacks"
+    assert not any(
+        effect["condition"] == "studied_attacks"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
 def test_armor_of_shadows_casts_mage_armor_without_spell_slot(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

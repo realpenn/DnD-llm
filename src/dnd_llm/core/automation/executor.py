@@ -85,6 +85,8 @@ BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 INDOMITABLE_ACTION_ID = "srd.indomitable"
+STUDIED_ATTACKS_ACTION_ID = "srd.studied_attacks"
+STUDIED_ATTACKS_CONDITION = "studied_attacks"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
@@ -570,6 +572,7 @@ class AutomationExecutor:
         attack_bonus = base_attack_bonus - exhaustion_penalty
         for target_id in ctx.targets:
             target = self._entity(target_id)
+            studied_attack_effect_ids = self._studied_attacks_effect_ids_for(actor, target_id)
             base_ac, ac, armor_class_sources = self._effective_armor_class(target)
             distance_ft = self._combat_distance(actor, target)
             status_advantage, status_sources = self._attack_status_advantage(
@@ -650,6 +653,13 @@ class AutomationExecutor:
             ctx.result.state_changes.extend(
                 self._expire_target_effects_on_incoming_attack(target_id, path)
             )
+            self._expire_studied_attacks_effects_on_attack(
+                ctx,
+                target_id,
+                studied_attack_effect_ids,
+                path,
+            )
+            self._apply_studied_attacks_on_miss(ctx, target_id, path)
             self._mark_weapon_attack_target_this_turn(ctx, target_id)
             self._mark_thirsting_blade_pact_weapon_attack_this_turn(ctx, target_id)
             self._mark_thirsting_blade_extra_attack_used(ctx, target_id)
@@ -5971,7 +5981,7 @@ class AutomationExecutor:
         advantage_sources.extend(
             self._attack_advantage_by_ability_sources(actor, action, ability=ability)
         )
-        advantage_sources.extend(self._attack_roll_advantage_sources(actor, action))
+        advantage_sources.extend(self._attack_roll_advantage_sources(actor, action, target_id))
         advantage_sources.extend(self._incoming_attack_advantage_sources(target))
         disadvantage_sources = self._condition_sources(
             actor,
@@ -5995,10 +6005,11 @@ class AutomationExecutor:
         self,
         actor: Character | Monster | Combatant,
         action: ActionDefinition,
+        target_id: str,
     ) -> list[dict[str, Any]]:
+        sources = self._studied_attacks_advantage_sources(actor, target_id)
         if action.action_type not in ATTACK_ACTION_TYPES:
-            return []
-        sources: list[dict[str, Any]] = []
+            return sources
         for effect in self._status_effects_for(actor):
             modifiers = effect.get("passive_modifiers", {})
             if not isinstance(modifiers, dict):
@@ -6014,6 +6025,172 @@ class AutomationExecutor:
                 }
             )
         return sources
+
+    def _studied_attacks_advantage_sources(
+        self,
+        actor: Character | Monster | Combatant,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(actor):
+            if effect.get("condition") != STUDIED_ATTACKS_CONDITION:
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("studied_attacks_advantage") is not True:
+                continue
+            studied_target_id = modifiers.get("studied_attacks_target_id")
+            if studied_target_id is None or not self._entity_ids_match(
+                str(studied_target_id),
+                target_id,
+            ):
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "studied_attacks_advantage",
+                    "target_id": str(studied_target_id),
+                }
+            )
+        return sources
+
+    def _studied_attacks_effect_ids_for(
+        self,
+        actor: Character | Monster | Combatant,
+        target_id: str,
+    ) -> set[str]:
+        effect_ids: set[str] = set()
+        for effect in self._status_effects_for(actor):
+            if effect.get("condition") != STUDIED_ATTACKS_CONDITION:
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            studied_target_id = modifiers.get("studied_attacks_target_id")
+            effect_id = effect.get("effect_id")
+            if (
+                studied_target_id is None
+                or effect_id is None
+                or not self._entity_ids_match(str(studied_target_id), target_id)
+            ):
+                continue
+            effect_ids.add(str(effect_id))
+        return effect_ids
+
+    def _expire_studied_attacks_effects_on_attack(
+        self,
+        ctx: _Context,
+        target_id: str,
+        effect_ids: set[str],
+        path: str,
+    ) -> None:
+        if not effect_ids:
+            return
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._actor_effect_lists(ctx.actor_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                effect_id = effect.get("effect_id")
+                if effect_id is not None and str(effect_id) in effect_ids:
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect_id,
+                            "condition": effect.get("condition"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                else:
+                    retained.append(effect)
+            effects[:] = retained
+        if removed:
+            ctx.result.state_changes.append(
+                {
+                    "type": "effect_expired",
+                    "actor_id": ctx.actor_id,
+                    "target_id": target_id,
+                    "trigger": "studied_attacks_attack",
+                    "removed": removed,
+                    "path": path,
+                }
+            )
+
+    def _apply_studied_attacks_on_miss(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        if ctx.attack_hits.get(target_id) is not False:
+            return
+        if not self._actor_has_studied_attacks(ctx.actor_id):
+            return
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=f"{ctx.actor_id}:studied_attacks:{target_id}",
+            source_ref="SRD 5.2.1 Fighter Class Features: Level 13: Studied Attacks",
+            source_action_id=STUDIED_ATTACKS_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=STUDIED_ATTACKS_CONDITION,
+            passive_modifiers={
+                "studied_attacks_advantage": True,
+                "studied_attacks_target_id": target_id,
+            },
+            duration={
+                "until": "end_of_next_turn",
+                "remaining_ticks": self._studied_attacks_remaining_ticks(ctx.actor_id),
+            },
+            tick_on="self_turn_end",
+            audit={"node_path": path, "missed_target_id": target_id},
+        )
+        effects = getattr(actor, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != STUDIED_ATTACKS_CONDITION
+            or not self._studied_attacks_effect_targets(existing, target_id)
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "passive_effect",
+                "target_id": ctx.actor_id,
+                "effect_id": effect.effect_id,
+                "condition": effect.condition,
+                "passive_modifiers": effect.passive_modifiers,
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+                "path": path,
+                "source_action_id": STUDIED_ATTACKS_ACTION_ID,
+            }
+        )
+
+    def _actor_has_studied_attacks(self, actor_id: str) -> bool:
+        owner = self._resource_owner(actor_id)
+        return isinstance(owner, Character) and has_fighter_feature(owner, level=13)
+
+    def _studied_attacks_remaining_ticks(self, actor_id: str) -> int:
+        current_actor_id = (
+            self.state.encounter.current_combatant_id if self.state.encounter is not None else None
+        )
+        if current_actor_id is not None and self._entity_ids_match(current_actor_id, actor_id):
+            return 2
+        return 1
+
+    def _studied_attacks_effect_targets(self, effect: dict[str, Any], target_id: str) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            return False
+        studied_target_id = modifiers.get("studied_attacks_target_id")
+        return studied_target_id is not None and self._entity_ids_match(
+            str(studied_target_id),
+            target_id,
+        )
 
     def _attack_roll_disadvantage_sources(
         self,
@@ -9422,6 +9599,9 @@ class AutomationExecutor:
         if isinstance(entity_ref, str):
             aliases.add(entity_ref)
         return aliases
+
+    def _entity_ids_match(self, left_id: str, right_id: str) -> bool:
+        return bool(self._entity_aliases(left_id) & self._entity_aliases(right_id))
 
     def _creature_type_for(self, entity: Character | Monster | Combatant) -> str:
         if isinstance(entity, Combatant):

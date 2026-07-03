@@ -309,6 +309,7 @@ P0 脚手架
   - [x] **P2-1ay** SRD 5.2.1 Fighter 9 `Indomitable` 落地：新增 `srd.indomitable` class feature marker 与 Fighter 9 级数据；按 SRD 在失败 saving throw 后显式消耗 Indomitable 重掷该豁免，重掷获得等于 Fighter level 的加值并必须使用新结果；每 Long Rest 使用次数按 Fighter 9/13/17 级为 1/2/3 次恢复；覆盖 compendium、direct `roll_save`、automation `saving_throw`、长休恢复与自然语言建角测试。
   - [x] **P2-1az** SRD 5.2.1 Fighter 9 `Tactical Master` 落地：新增 `srd.tactical_master` class feature marker 与 Fighter 9 级数据；按 SRD 记录战士使用可用 weapon mastery property 的武器攻击时，可在该次攻击将该 mastery property 替换为 Push、Sap 或 Slow；当前项目尚无完整 weapon mastery property 结算系统，因此以结构化 metadata 落地，不虚构武器精通调度器或效果结算；覆盖 compendium 与自然语言建角测试。
   - [x] **P2-1ba** SRD 5.2.1 Fighter 11 `Two Extra Attacks` 落地：新增 `srd.two_extra_attacks` class feature marker 与 Fighter 11 级数据；按 SRD 记录战士在自己回合采取 Attack action 时可攻击三次而非一次；当前项目 Extra Attack 仍为规则标记，因此保持同模式结构化 metadata，不虚构多攻击调度器；覆盖 compendium 与自然语言建角测试。
+  - [x] **P2-1bb** SRD 5.2.1 Fighter 13 `Studied Attacks` 落地：新增 `srd.studied_attacks` class feature marker 与 Fighter 13 级数据；按 SRD 在战士对 creature 进行 attack roll 且 miss 后，为该战士记录对该目标下一次 attack roll 的 Advantage，效果在下回合结束前过期且攻击同目标后消费；支持目标限定，不影响其他目标，不虚构额外资源或战术调度器；覆盖 compendium、executor、生命周期与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

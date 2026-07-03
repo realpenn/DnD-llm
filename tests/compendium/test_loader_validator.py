@@ -105,6 +105,18 @@ def test_compendium_loads_srd_actions() -> None:
         "applies_when_taking_attack_action_on_turn": True,
         "instead_of_once": True,
     }
+    assert "srd.studied_attacks" in compendium.actions
+    assert compendium.action("srd.studied_attacks").requirements == {
+        "class": "fighter",
+        "class_level_min": 13,
+    }
+    assert compendium.action("srd.studied_attacks").action_economy == "none"
+    assert compendium.action("srd.studied_attacks").properties == {
+        "triggers_on_attack_roll_miss": True,
+        "target_scope": "missed_creature",
+        "grants_advantage_on_next_attack_roll_against_target": True,
+        "expires": "before_end_of_next_turn",
+    }
     assert "srd.improved_critical" in compendium.actions
     assert compendium.action("srd.improved_critical").requirements == {
         "class": "fighter",
@@ -3693,6 +3705,11 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.tactical_master" in compendium.classes["fighter"].levels["9"]["actions"]
     assert compendium.classes["fighter"].levels["11"]["features"] == ["Two Extra Attacks"]
     assert "srd.two_extra_attacks" in compendium.classes["fighter"].levels["11"]["actions"]
+    assert compendium.classes["fighter"].levels["13"]["features"] == [
+        "Indomitable (Two Uses)",
+        "Studied Attacks",
+    ]
+    assert "srd.studied_attacks" in compendium.classes["fighter"].levels["13"]["actions"]
     assert "srd.rage" in compendium.classes["barbarian"].levels["1"]["actions"]
     assert compendium.classes["barbarian"].levels["1"]["features"] == [
         "Rage",
