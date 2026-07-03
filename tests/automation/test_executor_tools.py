@@ -9956,6 +9956,92 @@ def test_wall_of_stone_spends_slot_and_records_supported_stone_wall(make_state) 
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
 
 
+def test_blade_barrier_deals_force_and_records_concentration_wall(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 10]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.blade_barrier",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-blade-barrier",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "force"
+    assert damage_change["amount"] == 10
+    assert damage_change["applied"] == 10
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d10"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.blade_barrier"
+    assert effect["effect_type"] == "blade_barrier"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "wall", "range_ft": 90}
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "magical_energy_blades": True,
+        "shape_options": ["straight_wall", "ringed_wall"],
+        "straight_wall_max_length_ft": 100,
+        "straight_wall_max_height_ft": 20,
+        "wall_thickness_ft": 5,
+        "ringed_wall_max_diameter_ft": 60,
+        "ringed_wall_max_height_ft": 20,
+        "ringed_wall_thickness_ft": 5,
+        "provides_cover": "three_quarters",
+        "difficult_terrain": True,
+        "initial_save": {
+            "ability": "dex",
+            "damage": "6d10 force",
+            "save_half": True,
+        },
+        "repeat_save_triggers": [
+            "creature_enters_wall_space",
+            "creature_ends_turn_in_wall_space",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "dex",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "6d10 force",
+            "save_half": True,
+        },
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "blade_barrier"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
 def test_wall_of_ice_deals_initial_cold_and_records_concentration_wall(
     make_state,
 ) -> None:

@@ -36,6 +36,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.lightning_bolt",
         "srd.ice_storm",
         "srd.cone_of_cold",
+        "srd.blade_barrier",
         "srd.chain_lightning",
         "srd.fire_storm",
         "srd.meteor_swarm",
@@ -958,6 +959,59 @@ def test_compendium_loads_srd_actions() -> None:
                         "save_half": True,
                         "higher_level_damage_increase": "1d6 per slot above 6",
                     },
+                },
+            },
+        },
+    ]
+    blade_barrier = compendium.action("srd.blade_barrier")
+    assert blade_barrier.requirements == {
+        "spell_level": 6,
+        "class_any": ["cleric"],
+    }
+    assert blade_barrier.properties["spell_classes"] == ["cleric"]
+    assert blade_barrier.range == {"normal_ft": 90}
+    assert blade_barrier.target_policy == {"min": 0, "max": 20, "harmful": True}
+    assert blade_barrier.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "6d10",
+            "damage_type": "force",
+            "save_half": True,
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "blade_barrier",
+            "scope": {"target": "wall", "range_ft": 90},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "magical_energy_blades": True,
+                "shape_options": ["straight_wall", "ringed_wall"],
+                "straight_wall_max_length_ft": 100,
+                "straight_wall_max_height_ft": 20,
+                "wall_thickness_ft": 5,
+                "ringed_wall_max_diameter_ft": 60,
+                "ringed_wall_max_height_ft": 20,
+                "ringed_wall_thickness_ft": 5,
+                "provides_cover": "three_quarters",
+                "difficult_terrain": True,
+                "initial_save": {
+                    "ability": "dex",
+                    "damage": "6d10 force",
+                    "save_half": True,
+                },
+                "repeat_save_triggers": [
+                    "creature_enters_wall_space",
+                    "creature_ends_turn_in_wall_space",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "dex",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "6d10 force",
+                    "save_half": True,
                 },
             },
         },

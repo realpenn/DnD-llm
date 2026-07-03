@@ -292,6 +292,87 @@
       }
     },
     {
+      "id": "srd.spell.blade_barrier",
+      "name": "Blade Barrier",
+      "localization": {
+        "en": "Blade Barrier",
+        "zh": "剑刃障壁",
+        "aliases": ["刀刃屏障"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.blade_barrier",
+        "name": "Blade Barrier",
+        "localization": {
+          "en": "Blade Barrier",
+          "zh": "剑刃障壁",
+          "aliases": ["刀刃屏障"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90 },
+        "target_policy": { "min": 0, "max": 20, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "6d10",
+            "damage_type": "force",
+            "save_half": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "blade_barrier",
+            "scope": { "target": "wall", "range_ft": 90 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "magical_energy_blades": true,
+              "shape_options": ["straight_wall", "ringed_wall"],
+              "straight_wall_max_length_ft": 100,
+              "straight_wall_max_height_ft": 20,
+              "wall_thickness_ft": 5,
+              "ringed_wall_max_diameter_ft": 60,
+              "ringed_wall_max_height_ft": 20,
+              "ringed_wall_thickness_ft": 5,
+              "provides_cover": "three_quarters",
+              "difficult_terrain": true,
+              "initial_save": {
+                "ability": "dex",
+                "damage": "6d10 force",
+                "save_half": true
+              },
+              "repeat_save_triggers": [
+                "creature_enters_wall_space",
+                "creature_ends_turn_in_wall_space"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "6d10 force",
+                "save_half": true
+              }
+            }
+          }
+        ],
+        "audit_label": "Blade Barrier"
+      }
+    },
+    {
       "id": "srd.spell.chain_lightning",
       "name": "Chain Lightning",
       "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },
