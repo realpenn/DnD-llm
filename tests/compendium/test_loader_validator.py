@@ -76,6 +76,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
     assert compendium.action("srd.action_surge").cost.resources == {"srd.resource.action_surge": 1}
+    assert compendium.action("srd.action_surge").properties == {
+        "resource": "srd.resource.action_surge",
+        "recharge": "short_or_long_rest",
+        "uses_by_fighter_level": {"2": 1, "17": 2},
+        "once_per_turn": True,
+    }
     assert "srd.tactical_mind" in compendium.actions
     assert compendium.action("srd.tactical_mind").requirements == {
         "class": "fighter",
@@ -3710,6 +3716,12 @@ def test_compendium_loads_srd_actions() -> None:
         "Studied Attacks",
     ]
     assert "srd.studied_attacks" in compendium.classes["fighter"].levels["13"]["actions"]
+    assert compendium.classes["fighter"].levels["17"]["features"] == [
+        "Action Surge (Two Uses)",
+        "Indomitable (Three Uses)",
+    ]
+    assert "srd.action_surge" in compendium.classes["fighter"].levels["17"]["actions"]
+    assert "srd.indomitable" in compendium.classes["fighter"].levels["17"]["actions"]
     assert "srd.rage" in compendium.classes["barbarian"].levels["1"]["actions"]
     assert compendium.classes["barbarian"].levels["1"]["features"] == [
         "Rage",

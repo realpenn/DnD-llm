@@ -79,6 +79,8 @@ OPEN_HAND_TECHNIQUE_EFFECTS = {"addle", "push", "topple"}
 FOCUS_RESOURCE_ID = "srd.resource.focus_points"
 UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
 RAGE_ACTION_ID = "srd.rage"
+ACTION_SURGE_ACTION_ID = "srd.action_surge"
+ACTION_SURGE_USED_CONDITION = "action_surge_used"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
@@ -354,6 +356,7 @@ class AutomationExecutor:
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
+        self._validate_action_surge_preconditions(action, actor_id)
         self._validate_allowed_action_effects(action, actor_id)
         self._validate_spellcasting_allowed(action, actor_id)
         self._validate_attacks_allowed(action, actor_id)
@@ -406,6 +409,7 @@ class AutomationExecutor:
         )
         for index, node in enumerate(action.automation):
             self._execute_node(ctx, node, f"automation[{index}]", idempotency_key)
+        self._mark_action_surge_used(ctx)
         self._expire_actor_effects_after_action(ctx, preexisting_actor_effect_ids)
         self.audit_log.append(
             self.state,
@@ -4237,6 +4241,56 @@ class AutomationExecutor:
         return any(
             effect.get("condition") == HORDE_BREAKER_USED_CONDITION
             and effect.get("source_action_id") == HORDE_BREAKER_ACTION_ID
+            for effect in self._status_effects_for(actor)
+        )
+
+    def _validate_action_surge_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+    ) -> None:
+        if action.id != ACTION_SURGE_ACTION_ID:
+            return
+        if self._has_action_surge_used_this_turn(actor_id):
+            raise AutomationError("Action Surge already used this turn")
+
+    def _mark_action_surge_used(self, ctx: _Context) -> None:
+        if ctx.action.id != ACTION_SURGE_ACTION_ID:
+            return
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, ACTION_SURGE_USED_CONDITION),
+            source_ref="SRD 5.2.1 Fighter Class Features: Level 2: Action Surge",
+            source_action_id=ACTION_SURGE_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=ACTION_SURGE_USED_CONDITION,
+            duration={"until": "start_of_next_turn"},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+        )
+        effects = getattr(actor, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != ACTION_SURGE_USED_CONDITION
+            or existing.get("source_action_id") != ACTION_SURGE_ACTION_ID
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "action_surge_used",
+                "effect_id": effect.effect_id,
+                "condition": effect.condition,
+                "source_action_id": effect.source_action_id,
+            }
+        )
+
+    def _has_action_surge_used_this_turn(self, actor_id: str) -> bool:
+        actor = self._entity(actor_id)
+        return any(
+            effect.get("condition") == ACTION_SURGE_USED_CONDITION
+            and effect.get("source_action_id") == ACTION_SURGE_ACTION_ID
             for effect in self._status_effects_for(actor)
         )
 

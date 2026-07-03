@@ -476,6 +476,20 @@
                         "srd.two_extra_attacks",
                         "srd.studied_attacks"
                     ]
+                },
+                "17": {
+                    "features": ["Action Surge (Two Uses)", "Indomitable (Three Uses)"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind",
+                        "srd.extra_attack",
+                        "srd.indomitable",
+                        "srd.tactical_master",
+                        "srd.two_extra_attacks",
+                        "srd.studied_attacks"
+                    ]
                 }
             },
             "subclasses": {

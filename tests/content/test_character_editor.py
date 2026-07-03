@@ -64,6 +64,20 @@ def test_natural_language_character_edit_assigns_fighter_studied_attacks_at_leve
     assert result.character.resources["srd.resource.indomitable"] == 2
 
 
+def test_natural_language_character_edit_assigns_fighter_level_17_resource_uses() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 战士17")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"fighter": 17}
+    assert "srd.action_surge" in result.character.actions
+    assert "srd.indomitable" in result.character.actions
+    assert result.character.resources["srd.resource.action_surge"] == 2
+    assert result.character.resources["srd.resource.indomitable"] == 3
+
+
 def test_natural_language_character_edit_accepts_standard_array_and_class() -> None:
     character = default_fighter("pc1", "Penn")
 

@@ -2675,6 +2675,12 @@
             "range": {"self": true},
             "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
             "requirements": {"class": "fighter", "class_level_min": 2},
+            "properties": {
+                "resource": "srd.resource.action_surge",
+                "recharge": "short_or_long_rest",
+                "uses_by_fighter_level": {"2": 1, "17": 2},
+                "once_per_turn": true
+            },
             "friendly_fire_policy": "raw",
             "cost": {"resources": {"srd.resource.action_surge": 1}},
             "automation": [

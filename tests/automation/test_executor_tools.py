@@ -746,6 +746,53 @@ def test_action_surge_spends_class_resource_and_adds_action_budget(make_state) -
     )
 
 
+def test_action_surge_can_be_used_twice_per_rest_but_once_per_turn_at_level_17(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"fighter": 17}
+    state.characters["pc1"].actions.append("srd.action_surge")
+    state.characters["pc1"].resources["srd.resource.action_surge"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    first = tools.perform_action(
+        "pc1",
+        "srd.action_surge",
+        [],
+        idempotency_key="action-surge-level-17-first",
+    )
+
+    assert first["success"] is True
+    assert state.characters["pc1"].resources["srd.resource.action_surge"] == 1
+    assert any(
+        change["type"] == "action_surge_used" and change["source_action_id"] == "srd.action_surge"
+        for change in first["state_changes"]
+    )
+
+    with pytest.raises(AutomationError, match="Action Surge already used this turn"):
+        tools.perform_action(
+            "pc1",
+            "srd.action_surge",
+            [],
+            idempotency_key="action-surge-level-17-same-turn",
+        )
+    assert state.characters["pc1"].resources["srd.resource.action_surge"] == 1
+
+    lifecycle = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert lifecycle.expired[0]["condition"] == "action_surge_used"
+
+    second = tools.perform_action(
+        "pc1",
+        "srd.action_surge",
+        [],
+        idempotency_key="action-surge-level-17-second",
+    )
+
+    assert second["success"] is True
+    assert state.characters["pc1"].resources["srd.resource.action_surge"] == 0
+
+
 def test_bardic_inspiration_spends_resource_and_applies_scaled_die(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

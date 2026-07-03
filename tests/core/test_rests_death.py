@@ -632,6 +632,20 @@ def test_long_rest_restores_second_wind_to_srd_maximum(make_state) -> None:
     assert character.resources["srd.resource.action_surge"] == 1
 
 
+def test_long_rest_restores_fighter_action_surge_two_uses_at_level_17(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 17}
+    character.resources["srd.resource.action_surge"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.long_rest(["pc1"], idempotency_key="action-surge-level-17-long-rest")
+
+    assert result["results"]["pc1"]["restored_resources"]["srd.resource.action_surge"] == 2
+    assert character.resources["srd.resource.action_surge"] == 2
+
+
 def test_long_rest_restores_fighter_indomitable_uses_by_level(make_state) -> None:
     state = make_state()
     character = state.characters["pc1"]
