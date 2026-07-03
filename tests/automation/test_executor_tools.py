@@ -8482,6 +8482,85 @@ def test_blight_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["9d8"]
 
 
+def test_mass_cure_wounds_uses_actor_spellcasting_modifier_for_each_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.abilities["wis"] = 18
+    caster.spell_slots["5"] = 1
+    caster.hp_current = 1
+    caster.hp_max = 20
+    ally = state.characters["pc2"]
+    ally.hp_current = 2
+    ally.hp_max = 20
+    state.encounter.combatants["pc1"].hp_current = 1
+    state.encounter.combatants["pc1"].hp_max = 20
+    state.encounter.combatants["pc2"].hp_current = 2
+    state.encounter.combatants["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mass_cure_wounds",
+        ["pc1", "pc2"],
+        5,
+        idempotency_key="cast-mass-cure-wounds",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    rolls = [roll for roll in result["dice_rolls"] if roll["expression"] == "5d8"]
+    assert len(rolls) == 2
+    healing_changes = [change for change in result["state_changes"] if change["type"] == "healing"]
+    assert [change["target_id"] for change in healing_changes] == ["pc1", "pc2"]
+    for change, roll in zip(healing_changes, rolls, strict=True):
+        assert change["amount"] == roll["total"] + 4
+
+
+def test_mass_cure_wounds_upcast_spends_requested_slot_and_adds_healing_die(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.abilities["wis"] = 18
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    ally = state.characters["pc2"]
+    ally.hp_current = 2
+    ally.hp_max = 20
+    state.encounter.combatants["pc2"].hp_current = 2
+    state.encounter.combatants["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mass_cure_wounds",
+        ["pc2"],
+        6,
+        idempotency_key="cast-mass-cure-wounds-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["6d8"]
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == result["dice_rolls"][0]["total"] + 4
+
+
 def test_max_hp_delta_can_follow_last_damage_taken(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

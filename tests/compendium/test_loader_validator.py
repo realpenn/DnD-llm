@@ -46,6 +46,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.finger_of_death",
         "srd.greater_invisibility",
         "srd.blight",
+        "srd.mass_cure_wounds",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -174,6 +175,24 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "concentration_1_minute"},
             "tick_on": "target_turn_start",
             "concentration": True,
+        },
+    ]
+    mass_cure_wounds = compendium.action("srd.mass_cure_wounds")
+    assert mass_cure_wounds.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "cleric", "druid"],
+    }
+    assert mass_cure_wounds.properties["spell_classes"] == ["bard", "cleric", "druid"]
+    assert mass_cure_wounds.range == {"normal_ft": 60, "shape": "sphere", "radius_ft": 30}
+    assert mass_cure_wounds.target_policy == {"min": 1, "max": 6, "harmful": False}
+    assert mass_cure_wounds.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "healing",
+            "dice": "5d8",
+            "bonus_from": {"spellcasting_ability_modifier": "actor"},
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8",
         },
     ]
     assert "srd.innate_sorcery" in compendium.actions

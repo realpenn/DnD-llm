@@ -138,14 +138,23 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         bonus_from = node["bonus_from"]
         if not isinstance(bonus_from, dict):
             errors.append(f"{path}: bonus_from must be an object")
-        elif not (
-            set(bonus_from) == {"class_level"} and isinstance(bonus_from.get("class_level"), str)
-        ) and not (
-            set(bonus_from) == {"ability_modifier"}
-            and isinstance(bonus_from.get("ability_modifier"), str)
+        elif (
+            not (
+                set(bonus_from) == {"class_level"}
+                and isinstance(bonus_from.get("class_level"), str)
+            )
+            and not (
+                set(bonus_from) == {"ability_modifier"}
+                and isinstance(bonus_from.get("ability_modifier"), str)
+            )
+            and not (
+                set(bonus_from) == {"spellcasting_ability_modifier"}
+                and bonus_from.get("spellcasting_ability_modifier") == "actor"
+            )
         ):
             errors.append(
-                f"{path}: bonus_from supports only class_level or ability_modifier string"
+                f"{path}: bonus_from supports only class_level, ability_modifier string, "
+                "or spellcasting_ability_modifier actor"
             )
     if node_type == "condition" and "condition" not in node:
         errors.append(f"{path}: condition node requires condition")

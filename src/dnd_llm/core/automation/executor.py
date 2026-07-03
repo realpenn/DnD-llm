@@ -2539,6 +2539,11 @@ class AutomationExecutor:
         ability = bonus_from.get("ability_modifier")
         if ability is not None:
             return self._ability_modifier(self._entity(ctx.actor_id), str(ability))
+        spellcasting_ability = bonus_from.get("spellcasting_ability_modifier")
+        if spellcasting_ability is not None:
+            if spellcasting_ability != "actor":
+                raise AutomationError("spellcasting_ability_modifier supports only actor")
+            return self._actor_spellcasting_ability_modifier(ctx)
         raise AutomationError("unsupported bonus_from")
 
     def _resolve_node_dc(self, ctx: _Context, node: dict[str, Any]) -> tuple[int, str]:
@@ -2586,6 +2591,25 @@ class AutomationExecutor:
         return max(
             (self._spell_save_dc_for_class(ctx, class_name) for class_name in matching_classes),
             key=lambda item: (item[0], item[1]),
+        )
+
+    def _actor_spellcasting_ability_modifier(self, ctx: _Context) -> int:
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character):
+            raise AutomationError("spellcasting_ability_modifier requires a character actor")
+        class_levels = {
+            str(class_name).lower(): int(level) for class_name, level in owner.class_levels.items()
+        }
+        candidate_classes = self._spell_save_dc_candidate_classes(ctx.action)
+        matching_classes = [
+            class_name for class_name in candidate_classes if class_levels.get(class_name, 0) > 0
+        ]
+        if not matching_classes:
+            raise AutomationError("actor has no matching spellcasting class for this spell")
+        entity = self._entity(ctx.actor_id)
+        return max(
+            self._ability_modifier(entity, SPELLCASTING_ABILITIES[class_name])
+            for class_name in matching_classes
         )
 
     def _spell_save_dc_candidate_classes(self, action: ActionDefinition) -> list[str]:
