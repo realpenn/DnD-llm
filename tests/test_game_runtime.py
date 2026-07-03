@@ -145,6 +145,83 @@ def test_status_renders_model_usage_totals(tmp_path: Path) -> None:
     assert "total=19" in text
 
 
+def test_status_renders_model_cost_when_pricing_is_configured(tmp_path: Path) -> None:
+    base = _settings(tmp_path)
+    runtime = GameRuntime.build(
+        Settings(
+            rules_data_dir=base.rules_data_dir,
+            save_dir=base.save_dir,
+            gm_user_ids=base.gm_user_ids,
+            rng_seed=base.rng_seed,
+            model_input_cost_per_million=2.0,
+            model_output_cost_per_million=8.0,
+            model_cost_budget=0.01,
+        )
+    )
+    runtime.audit_log.append(
+        runtime.state,
+        idempotency_key="model:cost",
+        tool_name="dm.model_draft",
+        tool_result={"draft": {}},
+        model_id="fake-dm",
+        prompt_version="test-v1",
+        model_usage={"prompt_tokens": 1000, "completion_tokens": 1000, "total_tokens": 2000},
+    )
+
+    text = runtime.status().render()
+
+    assert "模型成本" in text
+    assert "USD 0.010000" in text
+    assert "预算 100.0%" in text
+    assert "已超出" in text
+
+
+def test_gm_cost_command_renders_model_cost_report(tmp_path: Path) -> None:
+    base = _settings(tmp_path)
+    runtime = GameRuntime.build(
+        Settings(
+            rules_data_dir=base.rules_data_dir,
+            save_dir=base.save_dir,
+            gm_user_ids=base.gm_user_ids,
+            rng_seed=base.rng_seed,
+            model_input_cost_per_million=1.0,
+            model_output_cost_per_million=3.0,
+            model_cost_budget=0.01,
+        )
+    )
+    runtime.audit_log.append(
+        runtime.state,
+        idempotency_key="model:cost-command",
+        tool_name="dm.model_draft",
+        tool_result={"draft": {}},
+        model_id="fake-dm",
+        prompt_version="test-v1",
+        model_usage={"prompt_tokens": 2000, "completion_tokens": 1000, "total_tokens": 3000},
+    )
+
+    result = runtime.telegram_runtime.handle_message(
+        IncomingMessage(user_id="gm", chat_id="group", text="/cost"),
+        now=1,
+    )
+
+    assert "成本监控" in result[0].text
+    assert "USD 0.005000" in result[0].text
+    assert "预算：USD 0.010000（50.0%，未超出）" in result[0].text
+    assert "fake-dm" in result[0].text
+    assert result[0].metadata["command"] == "/cost"
+
+
+def test_cost_command_is_gm_only(tmp_path: Path) -> None:
+    runtime = GameRuntime.build(_settings(tmp_path))
+
+    result = runtime.telegram_runtime.handle_message(
+        IncomingMessage(user_id="player", chat_id="group", text="/cost"),
+        now=1,
+    )
+
+    assert result[0].text == "该指令仅 GM 可用。"
+
+
 def test_game_runtime_registers_embedded_campaign_pack_events(tmp_path: Path) -> None:
     pack = starter_campaign_pack()
     pack_path = tmp_path / "generated_pack.json"

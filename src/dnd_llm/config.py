@@ -21,6 +21,10 @@ class Settings:
     rng_seed: int = 20260629
     run_telegram: bool = False
     reaction_mode: str = "interactive"
+    model_input_cost_per_million: float | None = None
+    model_output_cost_per_million: float | None = None
+    model_cost_budget: float | None = None
+    model_cost_currency: str = "USD"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -40,8 +44,22 @@ class Settings:
             rng_seed=int(os.getenv("RNG_SEED", "20260629")),
             run_telegram=os.getenv("RUN_TELEGRAM", "").casefold() in {"1", "true", "yes"},
             reaction_mode=os.getenv("REACTION_MODE", "interactive").casefold(),
+            model_input_cost_per_million=_optional_float(
+                os.getenv("MODEL_INPUT_COST_PER_1M") or os.getenv("MODEL_PROMPT_COST_PER_1M")
+            ),
+            model_output_cost_per_million=_optional_float(
+                os.getenv("MODEL_OUTPUT_COST_PER_1M") or os.getenv("MODEL_COMPLETION_COST_PER_1M")
+            ),
+            model_cost_budget=_optional_float(os.getenv("MODEL_COST_BUDGET")),
+            model_cost_currency=(os.getenv("MODEL_COST_CURRENCY", "USD").strip() or "USD"),
         )
 
 
 def _split_csv(value: str) -> tuple[str, ...]:
     return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def _optional_float(value: str | None) -> float | None:
+    if value is None or not value.strip():
+        return None
+    return float(value)

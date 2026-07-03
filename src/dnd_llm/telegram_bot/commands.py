@@ -23,7 +23,7 @@ class CommandRouter:
             lambda _: (
                 "可用指令：/start /help /newchar /editchar /mychars /usechar /sheet /join "
                 "/leave /spectate /unspectate /react /roll /status\n"
-                "GM 指令：/newcampaign /save /load /saves /kick /forceturn"
+                "GM 指令：/newcampaign /save /load /saves /kick /forceturn /cost"
             ),
         )
         self.handlers.setdefault("/start", lambda _: "私聊已激活。")
@@ -44,7 +44,7 @@ class CommandRouter:
     def dispatch(self, intent: PlayerIntent) -> str:
         command = intent.text.split(maxsplit=1)[0]
         if (
-            command in {"/newcampaign", "/save", "/load", "/saves", "/kick", "/forceturn"}
+            command in {"/newcampaign", "/save", "/load", "/saves", "/kick", "/forceturn", "/cost"}
             and intent.user_id not in self.gm_user_ids
         ):
             return "该指令仅 GM 可用。"

@@ -19,6 +19,7 @@ from dnd_llm.core.models import GameState
 from dnd_llm.core.persistence import AuditLog, load_game, save_game
 from dnd_llm.dm.client import OpenAICompatibleClient
 from dnd_llm.dm.runtime import DMRuntime
+from dnd_llm.dm.usage import CostMonitor, ModelCostConfig, ModelCostReport, render_cost_report
 from dnd_llm.orchestrator.reactions import ReactionManager
 from dnd_llm.orchestrator.session import GameSession, SessionResult
 from dnd_llm.telegram_bot.channels import ChannelDirectory
@@ -39,6 +40,7 @@ class RuntimeStatus:
     roll_counter: int
     combatants: list[dict[str, str]]
     model_usage: dict[str, int]
+    model_cost: ModelCostReport | None = None
 
     def render(self) -> str:
         encounter = self.encounter_id or "无"
@@ -63,6 +65,12 @@ class RuntimeStatus:
                 f"completion={self.model_usage.get('completion_tokens', 0)} "
                 f"total={self.model_usage.get('total_tokens', 0)} tokens"
             )
+        if self.model_cost is not None and self.model_cost.estimated_cost is not None:
+            cost_line = f"模型成本：{self.model_cost.currency} {self.model_cost.estimated_cost:.6f}"
+            if self.model_cost.budget_ratio is not None:
+                status = "已超出" if self.model_cost.budget_exceeded else "未超出"
+                cost_line += f"（预算 {self.model_cost.budget_ratio:.1%}，{status}）"
+            lines.append(cost_line)
         return "\n".join(lines)
 
 
@@ -152,7 +160,18 @@ class GameRuntime:
                 else []
             ),
             model_usage=self.audit_log.model_usage_totals(),
+            model_cost=self.cost_report(),
         )
+
+    def cost_report(self) -> ModelCostReport:
+        return CostMonitor(
+            ModelCostConfig(
+                input_cost_per_million=self.settings.model_input_cost_per_million,
+                output_cost_per_million=self.settings.model_output_cost_per_million,
+                budget=self.settings.model_cost_budget,
+                currency=self.settings.model_cost_currency,
+            )
+        ).report(self.audit_log.events)
 
     def save(self, slot: str) -> Path:
         path = self._save_path(slot)
@@ -195,6 +214,7 @@ class GameRuntime:
             "/newcampaign": self._cmd_newcampaign,
             "/forceturn": self._cmd_forceturn,
             "/kick": self._cmd_kick,
+            "/cost": self._cmd_cost,
         }
 
     def _cmd_status(self, _: PlayerIntent) -> str:
@@ -249,6 +269,9 @@ class GameRuntime:
         if not user_id:
             return "请提供要移出的用户 ID。"
         return "已移出战役。" if self.kick(user_id) else "该用户未加入战役。"
+
+    def _cmd_cost(self, _: PlayerIntent) -> str:
+        return render_cost_report(self.cost_report())
 
     def _replace_state(self, state: GameState, audit_log: AuditLog) -> None:
         self.state = state
