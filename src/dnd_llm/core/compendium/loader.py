@@ -139,6 +139,7 @@ class CompendiumLoader:
                         **action.properties,
                         "spell_definition_id": spell.id,
                         "spell_level": spell.level,
+                        "spell_classes": list(spell.classes),
                     }
                     if spell.ritual:
                         action.properties["ritual"] = True

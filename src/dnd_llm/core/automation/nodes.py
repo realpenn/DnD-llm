@@ -127,6 +127,13 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         and not isinstance(node["shared_roll"], bool)
     ):
         errors.append(f"{path}: shared_roll must be a boolean")
+    if node_type in {"damage", "healing"} and "extra_dice_per_slot_above" in node:
+        extra_dice = node["extra_dice_per_slot_above"]
+        if not isinstance(extra_dice, str) or not extra_dice:
+            errors.append(f"{path}: extra_dice_per_slot_above must be a dice string")
+        base_slot = node.get("base_spell_slot_level")
+        if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
+            errors.append(f"{path}: base_spell_slot_level must be a positive integer")
     if node_type in {"damage", "healing", "temp_hp"} and "bonus_from" in node:
         bonus_from = node["bonus_from"]
         if not isinstance(bonus_from, dict):
@@ -305,4 +312,10 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.append(f"{path}: {node_type} skill must be a string")
         if "tool" in node and not isinstance(node["tool"], str):
             errors.append(f"{path}: {node_type} tool must be a string")
+        if "auto_fail_creature_types" in node:
+            creature_types = node["auto_fail_creature_types"]
+            if not isinstance(creature_types, list) or not all(
+                isinstance(item, str) and item for item in creature_types
+            ):
+                errors.append(f"{path}: auto_fail_creature_types must be a list of strings")
     return errors

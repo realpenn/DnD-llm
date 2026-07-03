@@ -45,6 +45,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.harm",
         "srd.finger_of_death",
         "srd.greater_invisibility",
+        "srd.blight",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -139,6 +140,29 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.detect_magic"
     )
     assert compendium.spell("srd.spell.detect_magic").ritual is True
+    blight = compendium.action("srd.blight")
+    assert blight.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "sorcerer", "warlock", "wizard"],
+    }
+    assert blight.properties["spell_classes"] == ["druid", "sorcerer", "warlock", "wizard"]
+    assert blight.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "saving_throw",
+            "ability": "con",
+            "dc_from": {"spell_save_dc": "actor"},
+            "auto_fail_creature_types": ["plant"],
+        },
+        {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "necrotic",
+            "save_half": True,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d8",
+        },
+    ]
     greater_invisibility = compendium.action("srd.greater_invisibility")
     assert greater_invisibility.requirements == {"spell_level": 4}
     assert greater_invisibility.range == {"touch": True}

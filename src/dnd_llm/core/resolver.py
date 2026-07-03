@@ -212,7 +212,15 @@ class ActionResolver:
                     )
             else:
                 slots = getattr(resource_owner, "spell_slots", {})
-                if slots.get(str(action.cost.spell_slot_level), 0) <= 0:
+                try:
+                    slot_level = self._spell_slot_level_to_spend(draft, action)
+                except ValueError as exc:
+                    return ResolverResult(
+                        status="rejected",
+                        reason=str(exc),
+                        action_id=action.id,
+                    )
+                if slots.get(str(slot_level), 0) <= 0:
                     return ResolverResult(
                         status="rejected", reason="insufficient spell slot", action_id=action.id
                     )
@@ -489,6 +497,18 @@ class ActionResolver:
             raise ValueError(
                 "Rod of Absorption cannot create a lower-level slot than the spell requires"
             )
+        return slot_level
+
+    @staticmethod
+    def _spell_slot_level_to_spend(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> int:
+        base_slot_level = int(action.cost.spell_slot_level or 0)
+        requested_slot_level = _optional_int(draft.params.get("slot_level"))
+        slot_level = requested_slot_level if requested_slot_level is not None else base_slot_level
+        if slot_level < base_slot_level:
+            raise ValueError(f"spell requires level {base_slot_level} slot or higher")
         return slot_level
 
     @staticmethod

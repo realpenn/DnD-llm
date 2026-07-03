@@ -339,6 +339,30 @@ def test_resolver_rejects_insufficient_spell_slot(make_state) -> None:
     assert result.reason == "insufficient spell slot"
 
 
+def test_resolver_rejects_spell_slot_below_spell_base_level(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 7}
+    character.actions.append("srd.blight")
+    character.spell_slots["3"] = 1
+    character.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="枯萎术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.blight",
+            params={"slot_level": 3},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "spell requires level 4 slot or higher"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:

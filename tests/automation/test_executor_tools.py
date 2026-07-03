@@ -8408,6 +8408,80 @@ def test_greater_invisibility_applies_concentration_invisible_without_attack_bre
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_blight_uses_actor_spell_dc_and_plant_auto_fails_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.abilities["wis"] = 16
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "plant"
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.blight",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-blight-plant",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 14
+    assert save_node["dc_source"] == "spell_save_dc:druid"
+    assert save_node["auto_failed"] is True
+    assert save_node["status_sources"][0] == {
+        "kind": "auto_fail",
+        "modifier": "auto_fail_creature_types",
+        "creature_type": "plant",
+    }
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["8d8"]
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "necrotic"
+    assert damage_change["amount"] == damage_change["applied"]
+
+
+def test_blight_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.abilities["wis"] = 16
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "plant"
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.blight",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-blight-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["9d8"]
+
+
 def test_max_hp_delta_can_follow_last_damage_taken(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -652,7 +652,7 @@ class AutomationExecutor:
         dc, dc_source = self._resolve_node_dc(ctx, node)
         for target_id in ctx.targets:
             target = self._entity(target_id)
-            auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability)
+            auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
                 ctx.save_successes[target_id] = False
                 ctx.result.node_results[path] = {
@@ -2472,8 +2472,32 @@ class AutomationExecutor:
         if "dice_from" in node:
             roll = self.roll_service.roll(self._dynamic_dice_expression(ctx, node))
             return roll.total + self._amount_bonus(ctx, node), [roll]
-        roll = self.roll_service.roll(str(node["dice"]))
+        roll = self.roll_service.roll(self._scaled_dice_expression(ctx, node))
         return roll.total + self._amount_bonus(ctx, node), [roll]
+
+    def _scaled_dice_expression(self, ctx: _Context, node: dict[str, Any]) -> str:
+        base_expression = str(node["dice"])
+        extra_dice = node.get("extra_dice_per_slot_above")
+        if extra_dice is None:
+            return base_expression
+        if not isinstance(extra_dice, str):
+            raise AutomationError("extra_dice_per_slot_above must be a dice string")
+        base_slot_level = int(
+            node.get("base_spell_slot_level", ctx.action.cost.spell_slot_level or 0)
+        )
+        slot_level = self._spell_slot_level_to_spend(ctx.action, ctx.params)
+        extra_slots = max(0, slot_level - base_slot_level)
+        if extra_slots == 0:
+            return base_expression
+        extra_match = re.fullmatch(r"([0-9]+)d([0-9]+)", extra_dice)
+        if extra_match is None:
+            raise AutomationError("extra_dice_per_slot_above must be a simple dice string")
+        extra_count = int(extra_match.group(1)) * extra_slots
+        extra_sides = extra_match.group(2)
+        base_match = re.fullmatch(r"([0-9]+)d([0-9]+)", base_expression)
+        if base_match is not None and base_match.group(2) == extra_sides:
+            return f"{int(base_match.group(1)) + extra_count}d{extra_sides}"
+        return f"{base_expression}+{extra_count}d{extra_sides}"
 
     def _dynamic_dice_expression(self, ctx: _Context, node: dict[str, Any]) -> str:
         dice_from = node.get("dice_from")
@@ -2542,6 +2566,45 @@ class AutomationExecutor:
         if not isinstance(class_name, str):
             raise AutomationError("dc_from supports only spell_save_dc")
         class_name = class_name.lower()
+        if class_name == "actor":
+            return self._actor_spell_save_dc(ctx)
+        return self._spell_save_dc_for_class(ctx, class_name)
+
+    def _actor_spell_save_dc(self, ctx: _Context) -> tuple[int, str]:
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character):
+            raise AutomationError("spell_save_dc requires a character actor")
+        class_levels = {
+            str(class_name).lower(): int(level) for class_name, level in owner.class_levels.items()
+        }
+        candidate_classes = self._spell_save_dc_candidate_classes(ctx.action)
+        matching_classes = [
+            class_name for class_name in candidate_classes if class_levels.get(class_name, 0) > 0
+        ]
+        if not matching_classes:
+            raise AutomationError("actor has no matching spellcasting class for this spell")
+        return max(
+            (self._spell_save_dc_for_class(ctx, class_name) for class_name in matching_classes),
+            key=lambda item: (item[0], item[1]),
+        )
+
+    def _spell_save_dc_candidate_classes(self, action: ActionDefinition) -> list[str]:
+        raw_candidates = action.properties.get("spell_classes")
+        if isinstance(raw_candidates, list) and raw_candidates:
+            candidates = [str(item).lower() for item in raw_candidates]
+        else:
+            class_any = action.requirements.get("class_any")
+            if isinstance(class_any, str):
+                candidates = [class_any.lower()]
+            elif isinstance(class_any, list):
+                candidates = [str(item).lower() for item in class_any]
+            else:
+                candidates = list(SPELLCASTING_ABILITIES)
+        return sorted(
+            {class_name for class_name in candidates if class_name in SPELLCASTING_ABILITIES}
+        )
+
+    def _spell_save_dc_for_class(self, ctx: _Context, class_name: str) -> tuple[int, str]:
         ability = SPELLCASTING_ABILITIES.get(class_name)
         if ability is None:
             raise AutomationError(f"unsupported spell_save_dc class: {class_name}")
@@ -5290,14 +5353,32 @@ class AutomationExecutor:
         return [{"modifier": "danger_sense", "ability": "dex"}]
 
     def _saving_throw_auto_failure_sources(
-        self, target: Character | Monster | Combatant, ability: str
+        self,
+        target: Character | Monster | Combatant,
+        ability: str,
+        node: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
-        if ability.lower() not in {"str", "dex"}:
-            return []
-        return self._condition_sources(
-            target,
-            {"paralyzed", "petrified", "stunned", "unconscious"},
-        )
+        sources: list[dict[str, Any]] = []
+        if ability.lower() in {"str", "dex"}:
+            sources.extend(
+                self._condition_sources(
+                    target,
+                    {"paralyzed", "petrified", "stunned", "unconscious"},
+                )
+            )
+        node = node or {}
+        creature_types = node.get("auto_fail_creature_types", [])
+        if isinstance(creature_types, list):
+            allowed = {str(creature_type).lower() for creature_type in creature_types}
+            target_creature_type = self._creature_type_for(target).lower()
+            if target_creature_type in allowed:
+                sources.append(
+                    {
+                        "modifier": "auto_fail_creature_types",
+                        "creature_type": target_creature_type,
+                    }
+                )
+        return sources
 
     def _ability_check_status_advantage(
         self,
@@ -8137,6 +8218,18 @@ class AutomationExecutor:
             )
         return slot_level
 
+    def _spell_slot_level_to_spend(
+        self,
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> int:
+        base_slot_level = int(action.cost.spell_slot_level or 0)
+        requested_slot_level = self._optional_int(params.get("slot_level"))
+        slot_level = requested_slot_level if requested_slot_level is not None else base_slot_level
+        if slot_level < base_slot_level:
+            raise AutomationError(f"spell requires level {base_slot_level} slot or higher")
+        return slot_level
+
     @staticmethod
     def _highest_own_spell_slot_level(actor: Character) -> int:
         levels: set[int] = set()
@@ -8209,7 +8302,7 @@ class AutomationExecutor:
                     params,
                 )
             else:
-                key = str(action.cost.spell_slot_level)
+                key = str(self._spell_slot_level_to_spend(action, params))
                 available = actor.spell_slots.get(key, 0)
                 if available <= 0:
                     raise AutomationError(f"no spell slot level {key} available")
@@ -8290,18 +8383,22 @@ class AutomationExecutor:
                 if depleted is not None:
                     result.state_changes.append(depleted)
             else:
-                key = str(action.cost.spell_slot_level)
+                slot_level = self._spell_slot_level_to_spend(action, params)
+                key = str(slot_level)
+                base_slot_level = int(action.cost.spell_slot_level)
                 before = actor.spell_slots.get(key, 0)
                 actor.spell_slots[key] = before - 1
-                result.state_changes.append(
-                    {
-                        "type": "cost",
-                        "actor_id": actor_id,
-                        "resource": f"spell_slot_{key}",
-                        "before": before,
-                        "after": actor.spell_slots[key],
-                    }
-                )
+                cost_change: dict[str, Any] = {
+                    "type": "cost",
+                    "actor_id": actor_id,
+                    "resource": f"spell_slot_{key}",
+                    "before": before,
+                    "after": actor.spell_slots[key],
+                }
+                if slot_level != base_slot_level:
+                    cost_change["base_spell_slot_level"] = base_slot_level
+                    cost_change["spell_slot_level"] = slot_level
+                result.state_changes.append(cost_change)
         for resource, amount in action.cost.resources.items():
             before = self._get_resource(actor, resource)
             self._set_resource(actor, resource, before - amount)
