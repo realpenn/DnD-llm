@@ -9033,6 +9033,114 @@ def test_circle_of_death_upcast_spends_requested_slot_and_adds_two_damage_dice(
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d8"]
 
 
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("warlock", "cha", "spell_save_dc:warlock"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_finger_of_death_uses_allowed_class_spell_dc_and_half_damage_on_success(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 13}
+    caster.abilities[ability] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.finger_of_death",
+        ["goblin1"],
+        7,
+        idempotency_key=f"cast-finger-of-death-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "necrotic"
+    assert damage_change["amount"] == 19
+    assert damage_change["applied"] == 19
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "7d8+30"]
+
+
+def test_finger_of_death_records_srd_zombie_result_for_killed_humanoid(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.creature_type = "humanoid"
+    target.hp_current = 35
+    target.hp_max = 35
+    compendium = CompendiumLoader("rules_data").load()
+    action = compendium.action("srd.finger_of_death")
+    assert action.properties["humanoid_killed_rises_as"] == "srd.zombie"
+    assert action.properties["humanoid_killed_rises_at"] == "start_of_caster_next_turn"
+    assert action.properties["zombie_follows_verbal_orders"] is True
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.finger_of_death",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-finger-of-death-kill",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert target.hp_current == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "necrotic"
+    assert damage_change["amount"] == 38
+    assert damage_change["applied"] == 35
+    assert result["messages"] == [
+        "If a Humanoid is killed by this spell, it rises at the start of the caster's next turn "
+        "as a Zombie that follows the caster's verbal orders."
+    ]
+
+
 def test_fire_storm_uses_actor_spell_dc_and_records_srd_area_metadata(
     make_state,
 ) -> None:

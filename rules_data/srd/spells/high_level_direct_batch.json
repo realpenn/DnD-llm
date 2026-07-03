@@ -164,16 +164,21 @@
         "action_economy": "action",
         "range": { "normal_ft": 60 },
         "target_policy": { "min": 1, "max": 1, "harmful": true },
-        "requirements": { "spell_level": 7 },
+        "requirements": { "spell_level": 7, "class_any": ["sorcerer", "warlock", "wizard"] },
+        "properties": {
+          "humanoid_killed_rises_as": "srd.zombie",
+          "humanoid_killed_rises_at": "start_of_caster_next_turn",
+          "zombie_follows_verbal_orders": true
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 7 },
         "automation": [
           { "type": "target", "mode": "explicit" },
-          { "type": "saving_throw", "ability": "con", "difficulty_tier": "hard" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
           { "type": "damage", "dice": "7d8+30", "damage_type": "necrotic", "save_half": true },
           {
             "type": "text_result",
-            "text": "If a Humanoid is killed by this spell, raise it as a Zombie at the start of the caster's next turn."
+            "text": "If a Humanoid is killed by this spell, it rises at the start of the caster's next turn as a Zombie that follows the caster's verbal orders."
           }
         ],
         "audit_label": "Finger of Death"

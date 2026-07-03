@@ -218,6 +218,29 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "2d8",
         },
     ]
+    finger_of_death = compendium.action("srd.finger_of_death")
+    assert finger_of_death.requirements == {
+        "spell_level": 7,
+        "class_any": ["sorcerer", "warlock", "wizard"],
+    }
+    assert finger_of_death.properties["spell_classes"] == ["sorcerer", "warlock", "wizard"]
+    assert finger_of_death.properties["humanoid_killed_rises_as"] == "srd.zombie"
+    assert finger_of_death.properties["humanoid_killed_rises_at"] == "start_of_caster_next_turn"
+    assert finger_of_death.properties["zombie_follows_verbal_orders"] is True
+    assert finger_of_death.range == {"normal_ft": 60}
+    assert finger_of_death.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert finger_of_death.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "7d8+30", "damage_type": "necrotic", "save_half": True},
+        {
+            "type": "text_result",
+            "text": (
+                "If a Humanoid is killed by this spell, it rises at the start of the "
+                "caster's next turn as a Zombie that follows the caster's verbal orders."
+            ),
+        },
+    ]
     fire_storm = compendium.action("srd.fire_storm")
     assert fire_storm.requirements == {
         "spell_level": 7,
