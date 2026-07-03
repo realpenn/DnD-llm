@@ -2345,6 +2345,23 @@ class AutomationExecutor:
                     die = str(tier.get("die", die))
         return die
 
+    def _slot_scaled_metadata(self, ctx: _Context, node: dict[str, Any]) -> dict[str, int]:
+        metadata_from_slot = node.get("metadata_from_slot", {})
+        if not isinstance(metadata_from_slot, dict):
+            raise AutomationError("metadata_from_slot must be an object")
+        resolved: dict[str, int] = {}
+        for key, spec in metadata_from_slot.items():
+            if not isinstance(spec, dict):
+                raise AutomationError("metadata_from_slot entries must be objects")
+            base_slot_level = int(
+                spec.get("base_spell_slot_level", ctx.action.cost.spell_slot_level or 0)
+            )
+            base_value = int(spec["base_value"])
+            per_slot = int(spec.get("value_per_slot_above", 1))
+            slot_level = self._spell_slot_level_to_spend(ctx.action, ctx.params)
+            resolved[str(key)] = base_value + max(0, slot_level - base_slot_level) * per_slot
+        return resolved
+
     @staticmethod
     def _skip_target_for_save_gate(
         ctx: _Context,
@@ -2373,6 +2390,7 @@ class AutomationExecutor:
             if len(ctx.targets) == 1:
                 scope["target_id"] = ctx.targets[0]
         metadata = dict(node.get("metadata", {}))
+        metadata.update(self._slot_scaled_metadata(ctx, node))
         metadata.update(self._investment_of_chain_master_familiar_metadata(ctx, node))
         effect = {
             "effect_id": f"world-effect-{self.state.event_counter}-{len(self.state.world.active_effects)}",

@@ -253,6 +253,34 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
                     errors.append(f"{path}: duration_roll.ticks_per_unit must be positive")
     if node_type == "world_effect" and not node.get("effect_type"):
         errors.append(f"{path}: world_effect requires effect_type")
+    if node_type == "world_effect" and "metadata_from_slot" in node:
+        metadata_from_slot = node["metadata_from_slot"]
+        if not isinstance(metadata_from_slot, dict):
+            errors.append(f"{path}: metadata_from_slot must be an object")
+        else:
+            for metadata_key, spec in metadata_from_slot.items():
+                if not isinstance(metadata_key, str) or not metadata_key:
+                    errors.append(f"{path}: metadata_from_slot keys must be non-empty strings")
+                if not isinstance(spec, dict):
+                    errors.append(f"{path}: metadata_from_slot entries must be objects")
+                    continue
+                base_value = spec.get("base_value")
+                if (
+                    not isinstance(base_value, int)
+                    or isinstance(base_value, bool)
+                    or base_value < 0
+                ):
+                    errors.append(f"{path}: metadata_from_slot base_value must be non-negative")
+                base_slot = spec.get("base_spell_slot_level", 1)
+                if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
+                    errors.append(
+                        f"{path}: metadata_from_slot base_spell_slot_level must be positive"
+                    )
+                per_slot = spec.get("value_per_slot_above", 1)
+                if not isinstance(per_slot, int) or isinstance(per_slot, bool) or per_slot < 0:
+                    errors.append(
+                        f"{path}: metadata_from_slot value_per_slot_above must be non-negative"
+                    )
     if node_type == "repeat_use_save_before_long_rest":
         marker = node.get("marker")
         if not isinstance(marker, str) or not marker:

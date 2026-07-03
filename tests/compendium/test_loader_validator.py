@@ -51,6 +51,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.hold_monster",
         "srd.irresistible_dance",
         "srd.greater_restoration",
+        "srd.globe_of_invulnerability",
         "srd.cloudkill",
         "srd.teleportation_circle",
         "srd.insect_plague",
@@ -343,6 +344,51 @@ def test_compendium_loads_srd_actions() -> None:
                 "hp_max_reduction",
             ],
         },
+    ]
+    globe_of_invulnerability = compendium.action("srd.globe_of_invulnerability")
+    assert globe_of_invulnerability.requirements == {
+        "spell_level": 6,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert globe_of_invulnerability.properties["spell_classes"] == ["sorcerer", "wizard"]
+    assert globe_of_invulnerability.properties["material_component"] == {
+        "description": "a glass bead",
+        "consumed": False,
+    }
+    assert globe_of_invulnerability.range == {
+        "self": True,
+        "shape": "emanation",
+        "radius_ft": 10,
+    }
+    assert globe_of_invulnerability.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert globe_of_invulnerability.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "globe_of_invulnerability",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 10},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "immobile": True,
+                "shimmering_barrier": True,
+                "spells_must_be_cast_from_outside_barrier": True,
+                "protected_targets": "creatures_and_objects_within_barrier",
+                "outside_spell_can_target_inside_but_has_no_effect": True,
+                "area_inside_excluded_from_outside_spell_areas": True,
+            },
+            "metadata_from_slot": {
+                "blocks_spell_level_lte": {
+                    "base_spell_slot_level": 6,
+                    "base_value": 5,
+                    "value_per_slot_above": 1,
+                }
+            },
+        }
     ]
     cloudkill = compendium.action("srd.cloudkill")
     assert cloudkill.requirements == {

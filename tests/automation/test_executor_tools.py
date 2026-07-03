@@ -8969,6 +8969,88 @@ def test_greater_restoration_requires_choice_before_spending_cost(make_state) ->
     assert caster.gold == 100
 
 
+def test_globe_of_invulnerability_records_concentration_spell_barrier(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 11}
+    caster.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.globe_of_invulnerability",
+        [],
+        6,
+        idempotency_key="cast-globe-of-invulnerability",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.globe_of_invulnerability"
+    assert effect["effect_type"] == "globe_of_invulnerability"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "self_centered_emanation", "radius_ft": 10}
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "immobile": True,
+        "shimmering_barrier": True,
+        "spells_must_be_cast_from_outside_barrier": True,
+        "protected_targets": "creatures_and_objects_within_barrier",
+        "outside_spell_can_target_inside_but_has_no_effect": True,
+        "area_inside_excluded_from_outside_spell_areas": True,
+        "blocks_spell_level_lte": 5,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "globe_of_invulnerability"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
+def test_globe_of_invulnerability_upcast_records_higher_blocked_spell_level(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 13}
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.globe_of_invulnerability",
+        [],
+        7,
+        idempotency_key="cast-globe-of-invulnerability-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    effect = state.world.active_effects[-1]
+    assert effect["metadata"]["blocks_spell_level_lte"] == 6
+
+
 def test_cloudkill_uses_actor_spell_dc_deals_poison_and_records_fog(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
