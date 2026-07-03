@@ -182,6 +182,13 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         base_slot = node.get("base_spell_slot_level")
         if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
             errors.append(f"{path}: base_spell_slot_level must be a positive integer")
+    if node_type in {"damage", "healing", "temp_hp"} and "extra_amount_per_slot_above" in node:
+        extra_amount = node["extra_amount_per_slot_above"]
+        if not isinstance(extra_amount, int) or isinstance(extra_amount, bool):
+            errors.append(f"{path}: extra_amount_per_slot_above must be an integer")
+        base_slot = node.get("base_spell_slot_level")
+        if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
+            errors.append(f"{path}: base_spell_slot_level must be a positive integer")
     if node_type in {"damage", "healing", "temp_hp"} and "bonus_from" in node:
         bonus_from = node["bonus_from"]
         if not isinstance(bonus_from, dict):

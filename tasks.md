@@ -298,6 +298,7 @@ P0 脚手架
   - [x] **P2-1an** SRD 5.2.1 `Disintegrate` 落地：校准 6 环 Transmutation spell 与 `srd.disintegrate` action；按 SRD 限定 Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，成功无伤害，失败承受 `10d6 + 40` Force damage，且每高一环 `+3d6`；记录目标可为 creature、非魔法物体或魔法力场造物，0 HP 后目标及非魔法穿戴/携带物灰尘化、只能由 True Resurrection 或 Wish 复活，以及大型或更小非魔法物体/魔法力场自动解离、超大则解离 10 尺立方部分等 SRD 元数据，不虚构物体摧毁调度器；覆盖 compendium、executor、升环伤害与全量门禁测试。
   - [x] **P2-1ao** SRD 5.2.1 `Flame Strike` 落地：校准 5 环 Evocation spell 与 `srd.flame_strike` action；按 SRD 限定 Cleric，使用施法者 spell save DC 进行 Dexterity saving throw，10 尺半径、40 尺高 Cylinder 内目标失败承受 `5d6` Fire damage 与 `5d6` Radiant damage、成功两种伤害均半伤；记录 a pinch of sulfur 材料，且每高一环 Fire 与 Radiant 伤害各 `+1d6`；覆盖 compendium、executor、双伤害半伤、升环伤害与全量门禁测试。
   - [x] **P2-1ap** SRD 5.2.1 `Harm` 落地：校准 6 环 Necromancy spell 与 `srd.harm` action；按 SRD 限定 Cleric，使用施法者 spell save DC 进行 Constitution saving throw，失败承受 `14d6` Necrotic damage 并按实际 Necrotic damage 降低 HP maximum、成功只半伤，且 HP maximum 不会低于 1；新增 HP 上限降低 marker 使 `Greater Restoration` 可恢复，不虚构额外疾病或持续伤害；覆盖 compendium、executor、Greater Restoration 联动与全量门禁测试。
+  - [x] **P2-1aq** SRD 5.2.1 `Heal` 落地：校准 6 环 Abjuration spell 与 `srd.heal` action；按 SRD 限定 Cleric/Druid，60 尺内可见 creature 恢复 70 HP，并结束 Blinded、Deafened、Poisoned conditions；新增固定数值升环自动化支持，每高一环恢复量 `+10`，不虚构额外复原项；覆盖 compendium、executor、升环治疗与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

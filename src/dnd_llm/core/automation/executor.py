@@ -3071,26 +3071,39 @@ class AutomationExecutor:
         return self._positive_param_int(ctx.params, param_name)
 
     def _amount_bonus(self, ctx: _Context, node: dict[str, Any]) -> int:
+        bonus = self._slot_scaled_amount_bonus(ctx, node)
         bonus_from = node.get("bonus_from")
         if bonus_from is None:
-            return 0
+            return bonus
         if not isinstance(bonus_from, dict):
             raise AutomationError("bonus_from must be an object")
         class_name = bonus_from.get("class_level")
         if class_name is not None:
             owner = self._resource_owner(ctx.actor_id)
             if not isinstance(owner, Character):
-                return 0
-            return max(0, int(owner.class_levels.get(str(class_name), 0)))
+                return bonus
+            return bonus + max(0, int(owner.class_levels.get(str(class_name), 0)))
         ability = bonus_from.get("ability_modifier")
         if ability is not None:
-            return self._ability_modifier(self._entity(ctx.actor_id), str(ability))
+            return bonus + self._ability_modifier(self._entity(ctx.actor_id), str(ability))
         spellcasting_ability = bonus_from.get("spellcasting_ability_modifier")
         if spellcasting_ability is not None:
             if spellcasting_ability != "actor":
                 raise AutomationError("spellcasting_ability_modifier supports only actor")
-            return self._actor_spellcasting_ability_modifier(ctx)
+            return bonus + self._actor_spellcasting_ability_modifier(ctx)
         raise AutomationError("unsupported bonus_from")
+
+    def _slot_scaled_amount_bonus(self, ctx: _Context, node: dict[str, Any]) -> int:
+        per_slot = node.get("extra_amount_per_slot_above")
+        if per_slot is None:
+            return 0
+        if not isinstance(per_slot, int) or isinstance(per_slot, bool):
+            raise AutomationError("extra_amount_per_slot_above must be an integer")
+        base_slot_level = int(
+            node.get("base_spell_slot_level", ctx.action.cost.spell_slot_level or 0)
+        )
+        slot_level = self._spell_slot_level_to_spend(ctx.action, ctx.params)
+        return max(0, slot_level - base_slot_level) * per_slot
 
     def _resolve_node_dc(self, ctx: _Context, node: dict[str, Any]) -> tuple[int, str]:
         dc_from = node.get("dc_from")

@@ -450,6 +450,24 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "1d8",
         },
     ]
+    heal = compendium.action("srd.heal")
+    assert heal.requirements == {"spell_level": 6, "class_any": ["cleric", "druid"]}
+    assert heal.properties["spell_classes"] == ["cleric", "druid"]
+    assert heal.properties["target_type"] == "creature"
+    assert heal.properties["target_must_be_visible"] is True
+    assert heal.properties["higher_level_healing_increase_per_slot_above_6"] == 10
+    assert heal.range == {"normal_ft": 60}
+    assert heal.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert heal.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "healing",
+            "amount": 70,
+            "base_spell_slot_level": 6,
+            "extra_amount_per_slot_above": 10,
+        },
+        {"type": "remove_condition", "conditions": ["blinded", "deafened", "poisoned"]},
+    ]
     hold_monster = compendium.action("srd.hold_monster")
     assert hold_monster.requirements == {
         "spell_level": 5,

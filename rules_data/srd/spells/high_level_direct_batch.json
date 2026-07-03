@@ -136,12 +136,23 @@
         "action_economy": "action",
         "range": { "normal_ft": 60 },
         "target_policy": { "min": 1, "max": 1, "harmful": false },
-        "requirements": { "spell_level": 6 },
+        "requirements": { "spell_level": 6, "class_any": ["cleric", "druid"] },
+        "properties": {
+          "spell_classes": ["cleric", "druid"],
+          "target_type": "creature",
+          "target_must_be_visible": true,
+          "higher_level_healing_increase_per_slot_above_6": 10
+        },
         "friendly_fire_policy": "raw",
         "cost": { "spell_slot_level": 6 },
         "automation": [
           { "type": "target", "mode": "explicit" },
-          { "type": "healing", "amount": 70 },
+          {
+            "type": "healing",
+            "amount": 70,
+            "base_spell_slot_level": 6,
+            "extra_amount_per_slot_above": 10
+          },
           { "type": "remove_condition", "conditions": ["blinded", "deafened", "poisoned"] }
         ],
         "audit_label": "Heal"

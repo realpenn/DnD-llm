@@ -9746,6 +9746,87 @@ def test_mass_cure_wounds_upcast_spends_requested_slot_and_adds_healing_die(
     assert healing_change["amount"] == result["dice_rolls"][0]["total"] + 4
 
 
+def test_heal_restores_70_hp_and_removes_srd_conditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 4
+    target.hp_max = 100
+    target.status_effects = [
+        {"effect_id": "blind", "condition": "blinded"},
+        {"effect_id": "deaf", "condition": "deafened"},
+        {"effect_id": "poison", "condition": "poisoned"},
+        {"effect_id": "fright", "condition": "frightened"},
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.heal",
+        ["pc2"],
+        6,
+        idempotency_key="cast-heal",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == 70
+    assert healing_change["applied"] == 70
+    assert target.hp_current == 74
+    condition_change = next(
+        change for change in result["state_changes"] if change["type"] == "remove_condition"
+    )
+    assert condition_change["removed"] == {
+        "blinded": 1,
+        "deafened": 1,
+        "poisoned": 1,
+    }
+    assert [effect["condition"] for effect in target.status_effects] == ["frightened"]
+
+
+def test_heal_upcast_increases_healing_by_10_per_slot_above_six(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 4
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.heal",
+        ["pc2"],
+        7,
+        idempotency_key="cast-heal-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == 80
+    assert healing_change["applied"] == 80
+    assert target.hp_current == 84
+
+
 def test_hold_monster_uses_actor_spell_dc_and_repeat_save_duration(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
