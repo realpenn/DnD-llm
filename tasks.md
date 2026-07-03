@@ -300,6 +300,7 @@ P0 脚手架
   - [x] **P2-1ap** SRD 5.2.1 `Harm` 落地：校准 6 环 Necromancy spell 与 `srd.harm` action；按 SRD 限定 Cleric，使用施法者 spell save DC 进行 Constitution saving throw，失败承受 `14d6` Necrotic damage 并按实际 Necrotic damage 降低 HP maximum、成功只半伤，且 HP maximum 不会低于 1；新增 HP 上限降低 marker 使 `Greater Restoration` 可恢复，不虚构额外疾病或持续伤害；覆盖 compendium、executor、Greater Restoration 联动与全量门禁测试。
   - [x] **P2-1aq** SRD 5.2.1 `Heal` 落地：校准 6 环 Abjuration spell 与 `srd.heal` action；按 SRD 限定 Cleric/Druid，60 尺内可见 creature 恢复 70 HP，并结束 Blinded、Deafened、Poisoned conditions；新增固定数值升环自动化支持，每高一环恢复量 `+10`，不虚构额外复原项；覆盖 compendium、executor、升环治疗与全量门禁测试。
   - [x] **P2-1ar** SRD 5.2.1 `Meteor Swarm` 落地：校准 9 环 Evocation spell 与 `srd.meteor_swarm` action；按 SRD 限定 Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，四个 1 mile 内可见点各形成 40 尺半径 Sphere，区域内生物失败承受 `20d6` Fire damage 与 `20d6` Bludgeoning damage、成功两者均半伤；记录同一生物处于多个 Sphere 只受一次影响、非魔法未穿戴/携带物体受伤且可燃物开始燃烧，不虚构四球几何调度器；覆盖 compendium、executor、双伤害半伤与全量门禁测试。
+  - [x] **P2-1as** SRD 5.2.1 `Cone of Cold` 落地：校准 5 环 Evocation spell 与 `srd.cone_of_cold` action；按 SRD 限定 Druid/Sorcerer/Wizard，使用施法者 spell save DC 进行 Constitution saving throw，60 尺 Cone 内目标失败承受 `8d8` Cold damage、成功半伤；支持每高一环 `+1d8` 且记录被此法术杀死的生物会成为 frozen statue until it thaws，不虚构融化调度器；覆盖 compendium、executor、升环伤害与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

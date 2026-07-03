@@ -8958,6 +8958,107 @@ def test_blight_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["9d8"]
 
 
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("druid", "wis", "spell_save_dc:druid"),
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_cone_of_cold_uses_allowed_class_spell_dc_and_half_damage_on_success(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 9}
+    caster.abilities[ability] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.cone_of_cold",
+        ["goblin1"],
+        5,
+        idempotency_key=f"cast-cone-of-cold-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "cold"
+    assert damage_change["amount"] == 4
+    assert damage_change["applied"] == 4
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "8d8"]
+    assert result["messages"] == [
+        "A creature killed by Cone of Cold becomes a frozen statue until it thaws."
+    ]
+
+
+def test_cone_of_cold_upcast_spends_requested_slot_and_adds_damage_die(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.cone_of_cold",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-cone-of-cold-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "cold"
+    assert damage_change["amount"] == 8
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "9d8"]
+
+
 def test_flame_strike_uses_cleric_spell_dc_and_halves_both_damage_types(
     make_state,
 ) -> None:

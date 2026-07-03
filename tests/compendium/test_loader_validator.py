@@ -194,6 +194,35 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "1d8",
         },
     ]
+    cone_of_cold = compendium.action("srd.cone_of_cold")
+    assert cone_of_cold.requirements == {
+        "spell_level": 5,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert cone_of_cold.properties["spell_classes"] == ["druid", "sorcerer", "wizard"]
+    assert cone_of_cold.properties["material_component"] == {
+        "description": "a small crystal or glass cone",
+        "consumed": False,
+    }
+    assert cone_of_cold.properties["creature_killed_becomes_frozen_statue_until_thaws"] is True
+    assert cone_of_cold.range == {"self": True, "shape": "cone", "length_ft": 60}
+    assert cone_of_cold.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert cone_of_cold.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "cold",
+            "save_half": True,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8",
+        },
+        {
+            "type": "text_result",
+            "text": "A creature killed by Cone of Cold becomes a frozen statue until it thaws.",
+        },
+    ]
     flame_strike = compendium.action("srd.flame_strike")
     assert flame_strike.requirements == {"spell_level": 5, "class_any": ["cleric"]}
     assert flame_strike.properties["spell_classes"] == ["cleric"]

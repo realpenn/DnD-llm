@@ -45,7 +45,7 @@
       "rules_version": "srd-5.2.1",
       "level": 5,
       "school": "evocation",
-      "classes": ["sorcerer", "wizard"],
+      "classes": ["druid", "sorcerer", "wizard"],
       "action": {
         "id": "srd.cone_of_cold",
         "name": "Cone of Cold",
@@ -56,13 +56,32 @@
         "action_economy": "action",
         "range": { "self": true, "shape": "cone", "length_ft": 60 },
         "target_policy": { "min": 1, "max": 12, "harmful": true },
-        "requirements": { "spell_level": 5 },
+        "requirements": { "spell_level": 5, "class_any": ["druid", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a small crystal or glass cone",
+            "consumed": false
+          },
+          "creature_killed_becomes_frozen_statue_until_thaws": true
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 5 },
         "automation": [
           { "type": "target", "mode": "area" },
-          { "type": "saving_throw", "ability": "con", "difficulty_tier": "hard" },
-          { "type": "damage", "dice": "8d8", "damage_type": "cold", "save_half": true }
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "cold",
+            "save_half": true,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8"
+          },
+          {
+            "type": "text_result",
+            "text": "A creature killed by Cone of Cold becomes a frozen statue until it thaws."
+          }
         ],
         "audit_label": "Cone of Cold"
       }
