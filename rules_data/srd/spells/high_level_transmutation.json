@@ -1,0 +1,56 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.passwall",
+      "name": "Passwall",
+      "localization": { "en": "Passwall", "zh": "穿墙术", "aliases": ["穿墙"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.passwall",
+        "name": "Passwall",
+        "localization": { "en": "Passwall", "zh": "穿墙术", "aliases": ["穿墙"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a pinch of sesame seeds",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "passwall_passage",
+            "scope": { "target": "point_on_surface", "range_ft": 30 },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "surface_types": ["wooden", "plaster", "stone"],
+              "surface_examples": ["wall", "ceiling", "floor"],
+              "max_width_ft": 5,
+              "max_height_ft": 8,
+              "max_depth_ft": 20,
+              "creates_no_structural_instability": true,
+              "ejects_occupants_to_nearest_unoccupied_space_on_expiry": true
+            }
+          }
+        ],
+        "audit_label": "Passwall"
+      }
+    }
+  ]
+}

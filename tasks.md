@@ -263,6 +263,7 @@ P0 脚手架
   - [x] **P2-1e** SRD 5.2.1 `Greater Restoration` 落地：新增 5 环 Abjuration spell 与 `srd.greater_restoration` action；按 SRD 以 Touch/Action 消耗 5 环法术位与 100 GP 材料成本，并要求选择一种复原项，只移除 1 层 Exhaustion、Charmed/Petrified、curse/cursed item attunement marker、ability score reduction marker 或 HP maximum reduction marker；补充 HP 上限恢复与 Greater Restoration 参数前置校验，覆盖 compendium、executor、resolver、自动模拟与全量门禁测试。
   - [x] **P2-1f** SRD 5.2.1 `Cloudkill` 落地：新增 5 环 Conjuration spell 与 `srd.cloudkill` action；按 SRD 以 120 尺内 20 尺半径 Sphere 造成 Constitution saving throw，失败承受 `5d8` Poison damage、成功半伤，支持每高一环 `+1d8` 且实际扣除请求环位；记录 Concentration 10 minutes 的 heavily obscured yellow-green fog、强风驱散、每回合开始远离施法者 10 尺以及进入/结束回合/雾团移入时每回合一次重复豁免等 SRD 元数据，不虚构雾团移动调度器；覆盖 compendium、executor、自动模拟与全量门禁测试。
   - [x] **P2-1g** SRD 5.2.1 `Teleportation Circle` 落地：新增 5 环 Conjuration spell 与 `srd.teleportation_circle` action；按 SRD 以 1 分钟施法、10 尺内 5 尺半径 circle、消耗 5 环法术位与 50 GP 稀有墨水，记录持续到施法者下回合结束的 portal world effect；保留已知 sigil sequence、同位面永久传送圆、进入 portal 后出现在目的地 5 尺内或最近空位、初学两个 Material Plane 目的地、1 分钟学习新 sigil 与 365 天永久化等 SRD 元数据，不虚构目的地解析；补充 world effect `tick_on` 生命周期透传，覆盖 compendium、executor、自动模拟与全量门禁测试。
+  - [x] **P2-1h** SRD 5.2.1 `Passwall` 落地：新增 5 环 Transmutation spell 与 `srd.passwall` action；按 SRD 以 Action/30 尺/1 小时在木质、灰泥或石质表面创建最多 5 尺宽、8 尺高、20 尺深的 passage world effect，记录不造成结构不稳定以及效果结束时将通道内生物/物体安全弹出到最近空位；不虚构地图切割或寻路规则；覆盖 compendium、executor、自动模拟与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

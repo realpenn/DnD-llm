@@ -51,6 +51,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.greater_restoration",
         "srd.cloudkill",
         "srd.teleportation_circle",
+        "srd.passwall",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -348,6 +349,34 @@ def test_compendium_loads_srd_actions() -> None:
                 "initial_known_material_plane_destination_count": 2,
                 "learn_new_sigil_sequence_study_minutes": 1,
                 "permanent_circle_daily_castings_required": 365,
+            },
+        }
+    ]
+    passwall = compendium.action("srd.passwall")
+    assert passwall.requirements == {"spell_level": 5, "class_any": ["wizard"]}
+    assert passwall.properties["spell_classes"] == ["wizard"]
+    assert passwall.properties["material_component"] == {
+        "description": "a pinch of sesame seeds",
+        "consumed": False,
+    }
+    assert passwall.cost.spell_slot_level == 5
+    assert passwall.range == {"normal_ft": 30}
+    assert passwall.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert passwall.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "passwall_passage",
+            "scope": {"target": "point_on_surface", "range_ft": 30},
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "surface_types": ["wooden", "plaster", "stone"],
+                "surface_examples": ["wall", "ceiling", "floor"],
+                "max_width_ft": 5,
+                "max_height_ft": 8,
+                "max_depth_ft": 20,
+                "creates_no_structural_instability": True,
+                "ejects_occupants_to_nearest_unoccupied_space_on_expiry": True,
             },
         }
     ]

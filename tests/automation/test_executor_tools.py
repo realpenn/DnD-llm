@@ -8897,6 +8897,55 @@ def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state
     assert state.world.active_effects == []
 
 
+def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.passwall",
+        [],
+        5,
+        idempotency_key="cast-passwall",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.passwall"
+    assert effect["effect_type"] == "passwall_passage"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "point_on_surface", "range_ft": 30}
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "surface_types": ["wooden", "plaster", "stone"],
+        "surface_examples": ["wall", "ceiling", "floor"],
+        "max_width_ft": 5,
+        "max_height_ft": 8,
+        "max_depth_ft": 20,
+        "creates_no_structural_instability": True,
+        "ejects_occupants_to_nearest_unoccupied_space_on_expiry": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "passwall_passage"
+
+    tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert tick.ticked[0]["remaining_ticks_before"] == 600
+    assert tick.ticked[0]["remaining_ticks_after"] == 599
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 599
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:
