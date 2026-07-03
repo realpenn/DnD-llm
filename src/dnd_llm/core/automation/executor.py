@@ -2277,6 +2277,7 @@ class AutomationExecutor:
 
     def _resolved_effect_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
+        duration = self._resolved_duration_from_slot(ctx, duration)
         duration_roll = node.get("duration_roll")
         if not isinstance(duration_roll, dict):
             return duration
@@ -2297,6 +2298,7 @@ class AutomationExecutor:
 
     def _resolved_condition_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
+        duration = self._resolved_duration_from_slot(ctx, duration)
         repeat_save = duration.get("repeat_save")
         if not isinstance(repeat_save, dict):
             return duration
@@ -2307,6 +2309,25 @@ class AutomationExecutor:
             resolved_repeat_save["dc"] = dc
             resolved_repeat_save["dc_source"] = dc_source
         duration["repeat_save"] = resolved_repeat_save
+        return duration
+
+    def _resolved_duration_from_slot(
+        self,
+        ctx: _Context,
+        duration: dict[str, Any],
+    ) -> dict[str, Any]:
+        spec = duration.pop("duration_from_slot", None)
+        if spec is None:
+            return duration
+        if not isinstance(spec, dict):
+            raise AutomationError("duration_from_slot must be an object")
+        by_slot = spec.get("by_slot_level", {})
+        if not isinstance(by_slot, dict):
+            raise AutomationError("duration_from_slot.by_slot_level must be an object")
+        slot_level = self._spell_slot_level_to_spend(ctx.action, ctx.params)
+        scaled_until = by_slot.get(str(slot_level))
+        if scaled_until is not None:
+            duration["until"] = str(scaled_until)
         return duration
 
     def _resolved_passive_modifiers(

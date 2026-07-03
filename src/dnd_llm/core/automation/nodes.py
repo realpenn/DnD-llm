@@ -59,6 +59,44 @@ STATE_CHANGING_NODE_TYPES = {
 }
 
 
+def _validate_duration_from_slot(duration: dict[str, Any], path: str) -> list[str]:
+    errors: list[str] = []
+    spec = duration.get("duration_from_slot")
+    if spec is None:
+        return errors
+    if not isinstance(spec, dict):
+        errors.append(f"{path}: duration.duration_from_slot must be an object")
+        return errors
+    base_slot = spec.get("base_spell_slot_level")
+    if base_slot is not None and (
+        not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1
+    ):
+        errors.append(f"{path}: duration.duration_from_slot base_spell_slot_level must be positive")
+    by_slot = spec.get("by_slot_level")
+    if not isinstance(by_slot, dict) or not by_slot:
+        errors.append(
+            f"{path}: duration.duration_from_slot.by_slot_level must be a non-empty object"
+        )
+        return errors
+    for slot_level, until in by_slot.items():
+        valid_slot_level = (
+            isinstance(slot_level, str)
+            and slot_level.isdigit()
+            or isinstance(slot_level, int)
+            and not isinstance(slot_level, bool)
+            and slot_level > 0
+        )
+        if not valid_slot_level:
+            errors.append(
+                f"{path}: duration.duration_from_slot.by_slot_level keys must be slot levels"
+            )
+        if not isinstance(until, str) or not until:
+            errors.append(
+                f"{path}: duration.duration_from_slot.by_slot_level values must be strings"
+            )
+    return errors
+
+
 def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
     errors: list[str] = []
     node_type = node.get("type")
@@ -162,6 +200,8 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         errors.append(f"{path}: condition node requires condition")
     if node_type == "condition":
         duration = node.get("duration")
+        if isinstance(duration, dict):
+            errors.extend(_validate_duration_from_slot(duration, path))
         if isinstance(duration, dict) and "repeat_save" in duration:
             repeat_save = duration["repeat_save"]
             if not isinstance(repeat_save, dict):
@@ -233,6 +273,9 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         modifiers = node.get("passive_modifiers")
         if not isinstance(modifiers, dict) or not modifiers:
             errors.append(f"{path}: passive_effect requires passive_modifiers")
+        duration = node.get("duration")
+        if isinstance(duration, dict):
+            errors.extend(_validate_duration_from_slot(duration, path))
         duration_roll = node.get("duration_roll")
         if duration_roll is not None:
             if not isinstance(duration_roll, dict):

@@ -180,6 +180,44 @@ def test_eight_hour_duration_ticks_from_inferred_remaining_ticks(make_state) -> 
     assert result.ticked[0]["remaining_ticks_after"] == 4799
 
 
+def test_multi_day_duration_variants_tick_from_inferred_remaining_ticks(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    durations = [
+        ("effect-ten-days", "duration_10_days_or_harmed", 144000),
+        ("effect-thirty-days", "duration_30_days_or_harmed", 432000),
+        ("effect-year-and-day", "duration_366_days_or_harmed", 5270400),
+    ]
+    for effect_id, until, _ticks in durations:
+        state.encounter.combatants["pc1"].status_effects.append(
+            {
+                "effect_id": effect_id,
+                "source_ref": "test",
+                "source_action_id": "test.multi_day_duration",
+                "target_id": "pc1",
+                "applied_by": "pc1",
+                "condition": None,
+                "duration": {"until": until},
+                "tick_on": "self_turn_start",
+            }
+        )
+
+    result = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+
+    assert result.changed is True
+    assert [entry["remaining_ticks_before"] for entry in result.ticked] == [
+        ticks for _effect_id, _until, ticks in durations
+    ]
+    assert [entry["remaining_ticks_after"] for entry in result.ticked] == [
+        ticks - 1 for _effect_id, _until, ticks in durations
+    ]
+    assert [
+        effect["duration"]["remaining_ticks"]
+        for effect in state.encounter.combatants["pc1"].status_effects
+    ] == [ticks - 1 for _effect_id, _until, ticks in durations]
+    assert result.expired == []
+
+
 def test_repeat_save_effect_ends_on_success_with_roll_service(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

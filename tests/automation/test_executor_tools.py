@@ -8859,6 +8859,155 @@ def test_irresistible_dance_successful_save_applies_short_dance_only(
     assert target.status_effects == []
 
 
+def test_mass_suggestion_charms_failed_targets_and_ends_on_applier_or_ally_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 11}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    state.encounter.combatants["goblin1"].abilities = {"wis": 10}
+    state.encounter.combatants["goblin1"].hp_current = 20
+    state.encounter.combatants["goblin1"].hp_max = 20
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        abilities={"wis": 10},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mass_suggestion",
+        ["goblin1", "goblin2"],
+        6,
+        idempotency_key="cast-mass-suggestion",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d20+0"]
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["target_id"] == "goblin2"
+    assert save_node["success"] is True
+    condition_changes = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "condition" and change["condition"] == "charmed"
+    ]
+    assert [change["target_id"] for change in condition_changes] == ["goblin1"]
+    assert state.encounter.combatants["goblin2"].status_effects == []
+    effect = state.encounter.combatants["goblin1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.mass_suggestion"
+    assert effect["applied_by"] == "pc1"
+    assert effect["condition"] == "charmed"
+    assert effect["duration"] == {
+        "until": "duration_24_hours_or_harmed",
+        "break_on_damage": True,
+        "break_on_damage_by": "applied_by_or_allies",
+    }
+    assert effect["passive_modifiers"] == {
+        "compelled_suggestion": True,
+        "mass_suggestion": True,
+        "suggestion_word_limit": 25,
+        "targets_must_hear_and_understand": True,
+        "suggestion_must_sound_achievable": True,
+        "suggestion_cannot_obviously_damage_targets_or_allies": True,
+        "pursues_suggestion_to_best_ability": True,
+        "ends_when_suggested_activity_completed": True,
+    }
+    assert effect["tick_on"] == "duration_or_damage"
+
+    enemy_damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="goblin2",
+        targets=["goblin1"],
+        idempotency_key="enemy-damages-mass-suggestion-target",
+    )
+
+    assert not [
+        change for change in enemy_damage.state_changes if change.get("type") == "effect_expired"
+    ]
+    assert any(
+        active_effect.get("condition") == "charmed"
+        for active_effect in state.encounter.combatants["goblin1"].status_effects
+    )
+    ally_damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="pc2",
+        targets=["goblin1"],
+        idempotency_key="ally-damages-mass-suggestion-target",
+    )
+
+    expiry = next(
+        change for change in ally_damage.state_changes if change["type"] == "effect_expired"
+    )
+    assert expiry["trigger"] == "damage"
+    assert expiry["removed"][0]["source_action_id"] == "srd.mass_suggestion"
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
+def test_mass_suggestion_upcast_uses_longer_duration_from_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 13}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mass_suggestion",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-mass-suggestion-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.mass_suggestion"
+    assert effect["condition"] == "charmed"
+    assert effect["duration"] == {
+        "until": "duration_10_days_or_harmed",
+        "break_on_damage": True,
+        "break_on_damage_by": "applied_by_or_allies",
+    }
+
+
 def test_hold_monster_rejects_extra_target_without_upcast_before_spending_slot(
     make_state,
 ) -> None:

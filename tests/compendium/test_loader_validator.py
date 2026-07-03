@@ -51,6 +51,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mass_cure_wounds",
         "srd.hold_monster",
         "srd.irresistible_dance",
+        "srd.mass_suggestion",
         "srd.greater_restoration",
         "srd.globe_of_invulnerability",
         "srd.cloudkill",
@@ -315,6 +316,57 @@ def test_compendium_loads_srd_actions() -> None:
             },
             "tick_on": "target_action",
             "concentration": True,
+        },
+    ]
+    mass_suggestion = compendium.action("srd.mass_suggestion")
+    assert mass_suggestion.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "sorcerer", "wizard"],
+    }
+    assert mass_suggestion.properties["spell_classes"] == ["bard", "sorcerer", "wizard"]
+    assert mass_suggestion.properties["material_component"] == {
+        "description": "a snake's tongue",
+        "consumed": False,
+    }
+    assert mass_suggestion.properties["suggestion_word_limit"] == 25
+    assert mass_suggestion.properties["targets_must_hear_and_understand"] is True
+    assert mass_suggestion.properties["suggestion_must_sound_achievable"] is True
+    assert (
+        mass_suggestion.properties["suggestion_cannot_obviously_damage_targets_or_allies"] is True
+    )
+    assert mass_suggestion.range == {"normal_ft": 60}
+    assert mass_suggestion.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert mass_suggestion.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "compelled_suggestion": True,
+                "mass_suggestion": True,
+                "suggestion_word_limit": 25,
+                "targets_must_hear_and_understand": True,
+                "suggestion_must_sound_achievable": True,
+                "suggestion_cannot_obviously_damage_targets_or_allies": True,
+                "pursues_suggestion_to_best_ability": True,
+                "ends_when_suggested_activity_completed": True,
+            },
+            "duration": {
+                "until": "duration_24_hours_or_harmed",
+                "break_on_damage": True,
+                "break_on_damage_by": "applied_by_or_allies",
+                "duration_from_slot": {
+                    "base_spell_slot_level": 6,
+                    "by_slot_level": {
+                        "7": "duration_10_days_or_harmed",
+                        "8": "duration_30_days_or_harmed",
+                        "9": "duration_366_days_or_harmed",
+                    },
+                },
+            },
+            "tick_on": "duration_or_damage",
         },
     ]
     greater_restoration = compendium.action("srd.greater_restoration")
