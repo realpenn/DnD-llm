@@ -312,6 +312,7 @@ P0 脚手架
   - [x] **P2-1bb** SRD 5.2.1 Fighter 13 `Studied Attacks` 落地：新增 `srd.studied_attacks` class feature marker 与 Fighter 13 级数据；按 SRD 在战士对 creature 进行 attack roll 且 miss 后，为该战士记录对该目标下一次 attack roll 的 Advantage，效果在下回合结束前过期且攻击同目标后消费；支持目标限定，不影响其他目标，不虚构额外资源或战术调度器；覆盖 compendium、executor、生命周期与自然语言建角测试。
   - [x] **P2-1bc** SRD 5.2.1 Fighter 17 `Action Surge (two uses)` 与 `Indomitable (three uses)` 落地：补齐 Fighter 17 级职业数据；按 SRD 记录 Action Surge 在 17 级每 Short/Long Rest 可用两次但同一回合只能使用一次，并保留 Indomitable 17 级每 Long Rest 三次；新增 Action Surge 同回合使用 marker 与前置拒绝，覆盖 compendium、executor、长休资源恢复与自然语言建角测试。
   - [x] **P2-1bd** SRD 5.2.1 Fighter 20 `Three Extra Attacks` 落地：新增 `srd.three_extra_attacks` class feature marker 与 Fighter 20 级数据；按 SRD 记录战士在自己回合采取 Attack action 时可攻击四次而非一次；当前项目 Extra Attack 仍为规则标记，因此保持同模式结构化 metadata，不虚构多攻击调度器；覆盖 compendium 与自然语言建角测试。
+  - [x] **P2-1be** SRD 5.2.1 Fighter Champion 15 `Superior Critical` 落地：新增 `srd.superior_critical` class feature marker、Fighter 15 级 Subclass Feature 数据与 Champion 子职授予；按 SRD 使 Champion 的 weapon 与 Unarmed Strike attack rolls 在 d20 掷出 18-20 时构成 Critical Hit，保留 3 级 Improved Critical 的 19-20 门槛；覆盖 compendium、executor 18/14级反例与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

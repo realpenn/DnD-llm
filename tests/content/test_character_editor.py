@@ -2009,6 +2009,19 @@ def test_natural_language_character_edit_assigns_explicit_champion_subclass() ->
     assert "srd.remarkable_athlete" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_champion_superior_critical_at_level_15() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 战士15 子职 champion")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"fighter": 15}
+    assert result.character.subclasses == {"fighter": "champion"}
+    assert "srd.improved_critical" in result.character.actions
+    assert "srd.superior_critical" in result.character.actions
+
+
 def test_natural_language_character_edit_does_not_assign_champion_by_default() -> None:
     character = default_fighter("pc1", "Penn")
 

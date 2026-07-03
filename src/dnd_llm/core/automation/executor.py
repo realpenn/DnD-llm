@@ -6706,10 +6706,16 @@ class AutomationExecutor:
         owner = self._resource_owner(actor_id)
         if not isinstance(owner, Character):
             return 20, []
-        if (
-            int(owner.class_levels.get("fighter", 0)) >= 3
-            and owner.subclasses.get("fighter") == "champion"
-        ):
+        if has_fighter_champion_feature(owner, level=15):
+            return 18, [
+                {
+                    "source_action_id": "srd.superior_critical",
+                    "class": "fighter",
+                    "subclass": "champion",
+                    "feature": "Superior Critical",
+                }
+            ]
+        if has_fighter_champion_feature(owner, level=3):
             return 19, [
                 {
                     "source_action_id": "srd.improved_critical",

@@ -2832,6 +2832,31 @@
             "audit_label": "Remarkable Athlete"
         },
         {
+            "id": "srd.superior_critical",
+            "name": "Superior Critical",
+            "localization": {
+                "en": "Superior Critical",
+                "zh": "高等重击",
+                "aliases": ["Champion Superior Critical", "冠军高等重击"]
+            },
+            "source": "SRD 5.2.1 Fighter Subclass: Champion, Level 15: Superior Critical",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 15, "subclass": "champion"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Champion's weapon and Unarmed Strike attack rolls can score a Critical Hit on a d20 roll of 18, 19, or 20."
+                }
+            ],
+            "audit_label": "Superior Critical"
+        },
+        {
             "id": "srd.disciple_of_life",
             "name": "Disciple of Life",
             "localization": {

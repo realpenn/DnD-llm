@@ -477,6 +477,21 @@
                         "srd.studied_attacks"
                     ]
                 },
+                "15": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind",
+                        "srd.extra_attack",
+                        "srd.indomitable",
+                        "srd.tactical_master",
+                        "srd.two_extra_attacks",
+                        "srd.studied_attacks",
+                        "srd.superior_critical"
+                    ]
+                },
                 "17": {
                     "features": ["Action Surge (Two Uses)", "Indomitable (Three Uses)"],
                     "actions": [
@@ -511,8 +526,16 @@
                 "champion": {
                     "name": "Champion",
                     "level": 3,
-                    "features": ["Improved Critical", "Remarkable Athlete"],
-                    "actions": ["srd.improved_critical", "srd.remarkable_athlete"]
+                    "features": [
+                        "Improved Critical",
+                        "Remarkable Athlete",
+                        "Superior Critical"
+                    ],
+                    "actions": [
+                        "srd.improved_critical",
+                        "srd.remarkable_athlete",
+                        "srd.superior_critical"
+                    ]
                 }
             }
         },

@@ -14238,6 +14238,71 @@ def test_champion_improved_critical_scores_weapon_critical_on_natural_19(make_st
     assert len(damage_rolls) == 2
 
 
+def test_champion_superior_critical_scores_weapon_critical_on_natural_18(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"fighter": 15}
+    state.characters["pc1"].subclasses = {"fighter": "champion"}
+    state.encounter.combatants["goblin1"].armor_class = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([18, 4, 5]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        idempotency_key="champion-natural-18",
+    )
+
+    attack_node = result["node_results"]["automation[1]"]
+    damage_rolls = [roll for roll in result["dice_rolls"] if roll["expression"] == "1d8+2"]
+    assert attack_node["natural"] == 18
+    assert attack_node["hit"] is True
+    assert attack_node["critical"] is True
+    assert attack_node["critical_threshold"] == 18
+    assert attack_node["critical_threshold_sources"][0]["source_action_id"] == (
+        "srd.superior_critical"
+    )
+    assert len(damage_rolls) == 2
+
+
+def test_champion_before_superior_critical_does_not_crit_on_natural_18(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"fighter": 14}
+    state.characters["pc1"].subclasses = {"fighter": "champion"}
+    state.encounter.combatants["goblin1"].armor_class = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([18]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        idempotency_key="champion-level-14-natural-18",
+    )
+
+    attack_node = result["node_results"]["automation[1]"]
+    assert attack_node["natural"] == 18
+    assert attack_node["hit"] is False
+    assert attack_node["critical"] is False
+    assert attack_node["critical_threshold"] == 19
+    assert attack_node["critical_threshold_sources"][0]["source_action_id"] == (
+        "srd.improved_critical"
+    )
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+
 def test_fighter_without_champion_does_not_crit_on_natural_19(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

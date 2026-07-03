@@ -318,7 +318,10 @@ SUBCLASS_ACTIONS = {
         },
     },
     "fighter": {
-        "champion": {3: ["srd.improved_critical", "srd.remarkable_athlete"]},
+        "champion": {
+            3: ["srd.improved_critical", "srd.remarkable_athlete"],
+            15: ["srd.superior_critical"],
+        },
     },
     "monk": {
         "open_hand": {3: ["srd.open_hand_technique"], 6: ["srd.wholeness_of_body"]},

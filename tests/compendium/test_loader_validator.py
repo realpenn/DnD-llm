@@ -146,6 +146,12 @@ def test_compendium_loads_srd_actions() -> None:
         "class_level_min": 3,
         "subclass": "champion",
     }
+    assert "srd.superior_critical" in compendium.actions
+    assert compendium.action("srd.superior_critical").requirements == {
+        "class": "fighter",
+        "class_level_min": 15,
+        "subclass": "champion",
+    }
     assert "srd.second_wind" in compendium.actions
     assert compendium.action("srd.second_wind").cost.resources == {"srd.resource.second_wind": 1}
     assert compendium.action("srd.second_wind").automation[1] == {
@@ -3695,10 +3701,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["fighter"].subclasses["champion"]["features"] == [
         "Improved Critical",
         "Remarkable Athlete",
+        "Superior Critical",
     ]
     assert compendium.classes["fighter"].subclasses["champion"]["actions"] == [
         "srd.improved_critical",
         "srd.remarkable_athlete",
+        "srd.superior_critical",
     ]
     assert compendium.classes["fighter"].levels["5"]["features"] == [
         "Extra Attack",
@@ -3727,6 +3735,8 @@ def test_compendium_loads_srd_actions() -> None:
         "Studied Attacks",
     ]
     assert "srd.studied_attacks" in compendium.classes["fighter"].levels["13"]["actions"]
+    assert compendium.classes["fighter"].levels["15"]["features"] == ["Subclass Feature"]
+    assert "srd.superior_critical" in compendium.classes["fighter"].levels["15"]["actions"]
     assert compendium.classes["fighter"].levels["17"]["features"] == [
         "Action Surge (Two Uses)",
         "Indomitable (Three Uses)",
