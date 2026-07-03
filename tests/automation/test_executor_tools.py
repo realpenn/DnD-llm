@@ -9432,6 +9432,63 @@ def test_word_of_recall_spends_slot_and_records_instant_sanctuary_teleport(
     assert world_effect_change["scope"] == effect["scope"]
 
 
+def test_true_seeing_spends_component_and_grants_timed_truesight(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    caster.gold = 25
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.true_seeing",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 6},
+            idempotency_key="cast-true-seeing-unwilling",
+        )
+
+    result = tools._execute_action(
+        action_id="srd.true_seeing",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 6, "target_willing": True},
+        idempotency_key="cast-true-seeing",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_6", "gold"]
+
+    effect = state.encounter.combatants["pc2"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.true_seeing"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {"truesight_ft": 120}
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+    assert truesight_range_from_effects(state.encounter.combatants["pc2"].status_effects) == 120
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc2"
+    assert passive_change["passive_modifiers"] == {"truesight_ft": 120}
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+    assert (
+        state.encounter.combatants["pc2"].status_effects[-1]["duration"]["remaining_ticks"] == 599
+    )
+
+
 def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

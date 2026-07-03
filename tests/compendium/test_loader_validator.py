@@ -57,6 +57,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
+        "srd.true_seeing",
         "srd.passwall",
         "srd.tree_stride",
         "srd.wall_of_force",
@@ -576,6 +577,36 @@ def test_compendium_loads_srd_actions() -> None:
                 "designates_sanctuary_by_casting_this_spell_there": True,
                 "destination": "previously_designated_sanctuary",
             },
+        },
+    ]
+    true_seeing = compendium.action("srd.true_seeing")
+    assert true_seeing.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "cleric", "sorcerer", "warlock", "wizard"],
+    }
+    assert true_seeing.properties["spell_classes"] == [
+        "bard",
+        "cleric",
+        "sorcerer",
+        "warlock",
+        "wizard",
+    ]
+    assert true_seeing.properties["requires_willing_target"] is True
+    assert true_seeing.properties["material_component"] == {
+        "description": "mushroom powder worth 25+ GP",
+        "consumed": True,
+    }
+    assert true_seeing.cost.spell_slot_level == 6
+    assert true_seeing.cost.gold == 25
+    assert true_seeing.range == {"touch": True}
+    assert true_seeing.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert true_seeing.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {"truesight_ft": 120},
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
         },
     ]
     tree_stride = compendium.action("srd.tree_stride")

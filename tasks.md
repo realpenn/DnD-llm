@@ -273,6 +273,7 @@ P0 脚手架
   - [x] **P2-1o** SRD 5.2.1 `Transport via Plants` 落地：新增 6 环 Conjuration spell 与 `srd.transport_via_plants` action；按 SRD 以 Action/10 尺/1 minute 记录范围内 Large 或更大的 inanimate plant 与同位面曾见过或触碰过的另一株植物之间的 magical link，任意生物可花费 5 尺移动从目标植物进入并从目的地植物离开；不虚构植物索引、目的地解析或地图寻路系统；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
   - [x] **P2-1p** SRD 5.2.1 `Globe of Invulnerability` 落地：新增 6 环 Abjuration spell 与 `srd.globe_of_invulnerability` action；按 SRD 以 Action/Self/10 尺 Emanation/Concentration 1 minute 记录 immobile shimmering barrier，阻挡从屏障外施放的指定环阶及以下法术影响屏障内生物和物体，并将屏障内区域从这些法术的范围效果中排除；新增 world effect `metadata_from_slot` 让 6 环施法阻挡 5 环及以下、升环每高一环多阻挡 1 个法术环阶；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
   - [x] **P2-1q** SRD 5.2.1 `Word of Recall` 落地：新增 6 环 Conjuration spell 与 `srd.word_of_recall` action；按 SRD 以 Action/5 尺/Instantaneous 记录施法者和最多 5 名 5 尺内 willing creatures 传送到 previously designated sanctuary，未准备 sanctuary 则无效果，并出现在指定点最近空位；复用既有 willing 目标校验，不虚构 sanctuary 解析或地图传送系统；覆盖 compendium、executor、自动模拟与全量门禁测试。
+  - [x] **P2-1r** SRD 5.2.1 `True Seeing` 落地：新增 6 环 Divination spell 与 `srd.true_seeing` action；按 SRD 以 Action/Touch 消耗 6 环法术位与 25+ GP 且被消耗的 mushroom powder，为 willing creature 记录 1 小时 120 尺 Truesight；复用既有 `truesight_ft` helper 与 willing 目标校验，不虚构额外视觉/地图判定系统；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
