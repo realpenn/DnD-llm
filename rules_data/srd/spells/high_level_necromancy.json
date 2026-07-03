@@ -44,6 +44,60 @@
         ],
         "audit_label": "Blight"
       }
+    },
+    {
+      "id": "srd.spell.circle_of_death",
+      "name": "Circle of Death",
+      "localization": {
+        "en": "Circle of Death",
+        "zh": "死亡法阵",
+        "aliases": ["死亡之环"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "necromancy",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.circle_of_death",
+        "name": "Circle of Death",
+        "localization": {
+          "en": "Circle of Death",
+          "zh": "死亡法阵",
+          "aliases": ["死亡之环"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 1, "max": 32, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "the powder of a crushed black pearl worth 500+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "necrotic",
+            "save_half": true,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "2d8"
+          }
+        ],
+        "audit_label": "Circle of Death"
+      }
     }
   ]
 }

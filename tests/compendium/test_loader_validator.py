@@ -40,6 +40,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.fire_storm",
         "srd.meteor_swarm",
         "srd.flame_strike",
+        "srd.circle_of_death",
         "srd.disintegrate",
         "srd.heal",
         "srd.harm",
@@ -172,6 +173,30 @@ def test_compendium_loads_srd_actions() -> None:
             "save_half": True,
             "base_spell_slot_level": 4,
             "extra_dice_per_slot_above": "1d8",
+        },
+    ]
+    circle_of_death = compendium.action("srd.circle_of_death")
+    assert circle_of_death.requirements == {
+        "spell_level": 6,
+        "class_any": ["sorcerer", "warlock", "wizard"],
+    }
+    assert circle_of_death.properties["spell_classes"] == ["sorcerer", "warlock", "wizard"]
+    assert circle_of_death.properties["material_component"] == {
+        "description": "the powder of a crushed black pearl worth 500+ GP",
+        "consumed": False,
+    }
+    assert circle_of_death.range == {"normal_ft": 150, "shape": "sphere", "radius_ft": 60}
+    assert circle_of_death.target_policy == {"min": 1, "max": 32, "harmful": True}
+    assert circle_of_death.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "necrotic",
+            "save_half": True,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "2d8",
         },
     ]
     greater_invisibility = compendium.action("srd.greater_invisibility")

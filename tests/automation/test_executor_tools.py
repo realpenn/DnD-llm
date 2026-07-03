@@ -8482,6 +8482,93 @@ def test_blight_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["9d8"]
 
 
+def test_circle_of_death_uses_actor_spell_dc_and_deals_necrotic_area_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 11}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.circle_of_death",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-circle-of-death",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:warlock"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "necrotic"
+    assert damage_change["amount"] == 4
+    assert damage_change["applied"] == 4
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "8d8"]
+
+
+def test_circle_of_death_upcast_spends_requested_slot_and_adds_two_damage_dice(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 11}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.circle_of_death",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-circle-of-death-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "necrotic"
+    assert damage_change["amount"] == 8
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d8"]
+
+
 def test_mass_cure_wounds_uses_actor_spellcasting_modifier_for_each_target(
     make_state,
 ) -> None:
