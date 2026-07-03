@@ -9251,6 +9251,56 @@ def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state
     assert state.world.active_effects == []
 
 
+def test_transport_via_plants_spends_slot_and_records_timed_plant_link(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.transport_via_plants",
+        [],
+        6,
+        idempotency_key="cast-transport-via-plants",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.transport_via_plants"
+    assert effect["effect_type"] == "transport_via_plants_link"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "large_or_larger_inanimate_plant", "range_ft": 10}
+    assert effect["duration"] == {"until": "duration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "destination": "another_plant",
+        "same_plane_required": True,
+        "destination_must_have_been_seen_or_touched_before": True,
+        "any_creature_can_use": True,
+        "movement_cost_ft": 5,
+        "enter_target_plant_and_exit_destination_plant": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "transport_via_plants_link"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
 def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

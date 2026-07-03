@@ -54,6 +54,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.cloudkill",
         "srd.teleportation_circle",
         "srd.insect_plague",
+        "srd.transport_via_plants",
         "srd.passwall",
         "srd.tree_stride",
         "srd.wall_of_force",
@@ -469,6 +470,31 @@ def test_compendium_loads_srd_actions() -> None:
                 "initial_known_material_plane_destination_count": 2,
                 "learn_new_sigil_sequence_study_minutes": 1,
                 "permanent_circle_daily_castings_required": 365,
+            },
+        }
+    ]
+    transport_via_plants = compendium.action("srd.transport_via_plants")
+    assert transport_via_plants.requirements == {
+        "spell_level": 6,
+        "class_any": ["druid"],
+    }
+    assert transport_via_plants.properties["spell_classes"] == ["druid"]
+    assert transport_via_plants.range == {"normal_ft": 10}
+    assert transport_via_plants.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert transport_via_plants.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "transport_via_plants_link",
+            "scope": {"target": "large_or_larger_inanimate_plant", "range_ft": 10},
+            "duration": {"until": "duration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "destination": "another_plant",
+                "same_plane_required": True,
+                "destination_must_have_been_seen_or_touched_before": True,
+                "any_creature_can_use": True,
+                "movement_cost_ft": 5,
+                "enter_target_plant_and_exit_destination_plant": True,
             },
         }
     ]
