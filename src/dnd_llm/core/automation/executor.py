@@ -21,6 +21,8 @@ from ..rules.class_features import (
     cleric_thaumaturge_check_bonus,
     dark_ones_blessing_temp_hp,
     disciple_of_life_healing_bonus,
+    draconic_elemental_affinity_damage_bonus,
+    draconic_elemental_affinity_damage_type,
     draconic_resilience_armor_class,
     druid_magician_check_bonus,
     has_barbarian_berserker_feature,
@@ -260,6 +262,7 @@ class _Context:
     deflect_attacks_reduction_remaining: dict[str, int] = field(default_factory=dict)
     deflect_attacks_redirect_applied: set[str] = field(default_factory=set)
     slow_fall_reactions_spent: set[str] = field(default_factory=set)
+    elemental_affinity_applied: bool = False
     remarkable_athlete_moved: bool = False
     eldritch_smite_targets: set[str] = field(default_factory=set)
     open_hand_strike_index: int = 0
@@ -3355,6 +3358,11 @@ class AutomationExecutor:
                     "amount": agonizing_blast_bonus,
                 }
             )
+        elemental_affinity_bonus, elemental_affinity_sources = (
+            self._draconic_elemental_affinity_damage_bonus(ctx, node)
+        )
+        total += elemental_affinity_bonus
+        sources.extend(elemental_affinity_sources)
         if ctx.action.action_type not in ATTACK_ACTION_TYPES:
             return total, sources
         pact_weapon_bonus, pact_weapon_sources = self._pact_weapon_damage_adjustment(ctx, node)
@@ -3394,6 +3402,30 @@ class AutomationExecutor:
                 }
             )
         return total, sources
+
+    def _draconic_elemental_affinity_damage_bonus(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> tuple[int, list[dict[str, Any]]]:
+        if ctx.action.action_type != "spell" or ctx.elemental_affinity_applied:
+            return 0, []
+        damage_type = str(node.get("damage_type", "")).lower()
+        actor = self._resource_owner(ctx.actor_id)
+        if not isinstance(actor, Character):
+            return 0, []
+        bonus = draconic_elemental_affinity_damage_bonus(actor, damage_type=damage_type)
+        if bonus <= 0:
+            return 0, []
+        ctx.elemental_affinity_applied = True
+        return bonus, [
+            {
+                "source_action_id": "srd.elemental_affinity",
+                "modifier": "draconic_elemental_affinity",
+                "damage_type": damage_type,
+                "amount": bonus,
+            }
+        ]
 
     def _ability_score_set_damage_adjustment(
         self,
@@ -5272,6 +5304,20 @@ class AutomationExecutor:
         damage_type: str,
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
+        owner = target
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            owner = self.state.characters[target.entity_id]
+        if (
+            isinstance(owner, Character)
+            and draconic_elemental_affinity_damage_type(owner) == damage_type
+        ):
+            sources.append(
+                {
+                    "source_action_id": "srd.elemental_affinity",
+                    "modifier": "draconic_elemental_affinity_resistance",
+                    "damage_type": damage_type,
+                }
+            )
         for effect in self._status_effects_for(target):
             modifiers = effect.get("passive_modifiers", {})
             if not isinstance(modifiers, dict):

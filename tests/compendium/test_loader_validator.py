@@ -3122,16 +3122,28 @@ def test_compendium_loads_srd_actions() -> None:
         "Metamagic",
     ]
     assert compendium.classes["sorcerer"].levels["5"]["features"] == ["Sorcerous Restoration"]
+    assert compendium.classes["sorcerer"].levels["6"]["features"] == ["Subclass Feature"]
     assert "srd.sorcerous_restoration" not in compendium.classes["sorcerer"].levels["4"]["actions"]
     assert "srd.sorcerous_restoration" in compendium.classes["sorcerer"].levels["5"]["actions"]
+    assert "srd.elemental_affinity" in compendium.classes["sorcerer"].levels["6"]["actions"]
     assert compendium.classes["sorcerer"].subclasses["draconic"]["name"] == "Draconic Sorcery"
     assert compendium.action("srd.draconic_resilience").requirements == {
         "class": "sorcerer",
         "class_level_min": 3,
         "subclass": "draconic",
     }
+    assert compendium.action("srd.elemental_affinity").requirements == {
+        "class": "sorcerer",
+        "class_level_min": 6,
+        "subclass": "draconic",
+    }
+    assert compendium.classes["sorcerer"].subclasses["draconic"]["features"] == [
+        "Draconic Resilience",
+        "Elemental Affinity",
+    ]
     assert compendium.classes["sorcerer"].subclasses["draconic"]["actions"] == [
-        "srd.draconic_resilience"
+        "srd.draconic_resilience",
+        "srd.elemental_affinity",
     ]
     assert "srd.draconic_resilience" not in compendium.classes["sorcerer"].levels["3"]["actions"]
     assert "srd.second_wind" in compendium.classes["fighter"].levels["1"]["actions"]

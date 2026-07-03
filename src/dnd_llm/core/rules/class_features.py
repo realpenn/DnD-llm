@@ -17,6 +17,10 @@ DIVINE_ORDER_THAUMATURGE = "thaumaturge"
 DRUID_PRIMAL_ORDER_CHOICE_KEY = "druid.primal_order"
 DRUID_PRIMAL_ORDER_MAGICIAN = "magician"
 DRUID_PRIMAL_ORDER_WARDEN = "warden"
+DRACONIC_ELEMENTAL_AFFINITY_CHOICE_KEY = "sorcerer.draconic.elemental_affinity"
+DRACONIC_ELEMENTAL_AFFINITY_DAMAGE_TYPES = frozenset(
+    {"acid", "cold", "fire", "lightning", "poison"}
+)
 WARLOCK_ELDRITCH_INVOCATION_CHOICE_KEY = "warlock.eldritch_invocation"
 WARLOCK_DEVILS_SIGHT_CHOICE_KEY = "warlock.eldritch_invocation.devils_sight"
 WARLOCK_DEVILS_SIGHT_SELECTED = "selected"
@@ -551,6 +555,26 @@ def draconic_resilience_armor_class(character: Character) -> int | None:
     dexterity = int(character.abilities.get("dex", character.abilities.get("DEX", 10)))
     charisma = int(character.abilities.get("cha", character.abilities.get("CHA", 10)))
     return 10 + ability_modifier(dexterity) + ability_modifier(charisma)
+
+
+def draconic_elemental_affinity_damage_type(character: Character) -> str | None:
+    if not has_sorcerer_draconic_feature(character, level=6):
+        return None
+    choice = character.feature_choices.get(DRACONIC_ELEMENTAL_AFFINITY_CHOICE_KEY)
+    if choice in DRACONIC_ELEMENTAL_AFFINITY_DAMAGE_TYPES:
+        return choice
+    return None
+
+
+def draconic_elemental_affinity_damage_bonus(
+    character: Character,
+    *,
+    damage_type: str,
+) -> int:
+    if draconic_elemental_affinity_damage_type(character) != damage_type:
+        return 0
+    charisma = int(character.abilities.get("cha", character.abilities.get("CHA", 10)))
+    return max(0, ability_modifier(charisma))
 
 
 def barbarian_unarmored_defense_armor_class(character: Character) -> int | None:

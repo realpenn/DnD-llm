@@ -11731,6 +11731,92 @@ def test_draconic_resilience_ac_does_not_apply_while_wearing_armor(make_state) -
     )
 
 
+def test_draconic_elemental_affinity_adds_cha_to_one_matching_spell_damage_roll(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"sorcerer": 6}
+    character.subclasses = {"sorcerer": "draconic"}
+    character.abilities["cha"] = 16
+    character.feature_choices = {"sorcerer.draconic.elemental_affinity": "fire"}
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    action = ActionDefinition(
+        id="test.draconic_fire_spell",
+        name="Test Draconic Fire Spell",
+        localization={"en": "Test Draconic Fire Spell", "zh": "测试龙族火焰法术", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="spell",
+        action_economy="action",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 5, "damage_type": "fire"},
+            {"type": "damage", "amount": 5, "damage_type": "fire"},
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="pc1",
+        targets=["goblin1"],
+    )
+
+    damage_changes = [change for change in result.state_changes if change["type"] == "damage"]
+    assert [change["amount"] for change in damage_changes] == [8, 5]
+    assert damage_changes[0]["passive_damage_bonus"] == 3
+    assert damage_changes[0]["passive_sources"] == [
+        {
+            "source_action_id": "srd.elemental_affinity",
+            "modifier": "draconic_elemental_affinity",
+            "damage_type": "fire",
+            "amount": 3,
+        }
+    ]
+    assert "passive_damage_bonus" not in damage_changes[1]
+
+
+def test_draconic_elemental_affinity_grants_chosen_damage_resistance(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"sorcerer": 6}
+    character.subclasses = {"sorcerer": "draconic"}
+    character.feature_choices = {"sorcerer.draconic.elemental_affinity": "cold"}
+    state.encounter.combatants["pc1"].hp_current = 20
+    state.encounter.combatants["pc1"].hp_max = 20
+    action = ActionDefinition(
+        id="test.cold_damage",
+        name="Test Cold Damage",
+        localization={"en": "Test Cold Damage", "zh": "测试寒冷伤害", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 9, "damage_type": "cold"},
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert state.encounter.combatants["pc1"].hp_current == 16
+
+
 def test_barbarian_unarmored_defense_sets_base_ac_and_allows_shield(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

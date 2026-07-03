@@ -2748,6 +2748,31 @@
             "audit_label": "Draconic Resilience"
         },
         {
+            "id": "srd.elemental_affinity",
+            "name": "Elemental Affinity",
+            "localization": {
+                "en": "Elemental Affinity",
+                "zh": "元素亲和",
+                "aliases": ["Draconic Sorcery Elemental Affinity", "龙族术法元素亲和"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Subclass: Draconic Sorcery, Level 6: Elemental Affinity",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 6, "subclass": "draconic"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Draconic Sorcery Sorcerer chooses Acid, Cold, Fire, Lightning, or Poison for Elemental Affinity; the Sorcerer has Resistance to that damage type and can add Charisma modifier to one damage roll of a spell that deals that type."
+                }
+            ],
+            "audit_label": "Elemental Affinity"
+        },
+        {
             "id": "srd.ritual_adept",
             "name": "Ritual Adept",
             "localization": {

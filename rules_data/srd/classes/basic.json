@@ -775,14 +775,29 @@
                         "srd.font_of_magic_create_slot_3",
                         "srd.sorcerous_restoration"
                     ]
+                },
+                "6": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.fire_bolt",
+                        "srd.innate_sorcery",
+                        "srd.font_of_magic_convert_slot_1",
+                        "srd.font_of_magic_convert_slot_2",
+                        "srd.font_of_magic_convert_slot_3",
+                        "srd.font_of_magic_create_slot_1",
+                        "srd.font_of_magic_create_slot_2",
+                        "srd.font_of_magic_create_slot_3",
+                        "srd.sorcerous_restoration",
+                        "srd.elemental_affinity"
+                    ]
                 }
             },
             "subclasses": {
                 "draconic": {
                     "name": "Draconic Sorcery",
                     "level": 3,
-                    "features": ["Draconic Resilience"],
-                    "actions": ["srd.draconic_resilience"]
+                    "features": ["Draconic Resilience", "Elemental Affinity"],
+                    "actions": ["srd.draconic_resilience", "srd.elemental_affinity"]
                 }
             }
         },
