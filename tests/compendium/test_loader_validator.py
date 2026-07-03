@@ -3482,8 +3482,13 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["druid"].subclasses["land"] == {
         "name": "Circle of the Land",
         "level": 3,
-        "features": ["Circle of the Land Spells", "Land's Aid", "Natural Recovery"],
-        "actions": ["srd.lands_aid", "srd.natural_recovery"],
+        "features": [
+            "Circle of the Land Spells",
+            "Land's Aid",
+            "Natural Recovery",
+            "Nature's Ward",
+        ],
+        "actions": ["srd.lands_aid", "srd.natural_recovery", "srd.natures_ward"],
     }
     assert compendium.classes["druid"].levels["5"]["features"] == ["Wild Resurgence"]
     assert {
@@ -3514,6 +3519,25 @@ def test_compendium_loads_srd_actions() -> None:
     }
     assert compendium.classes["druid"].levels["6"]["features"] == ["Subclass Feature"]
     assert "srd.natural_recovery" in compendium.classes["druid"].levels["6"]["actions"]
+    natures_ward = compendium.action("srd.natures_ward")
+    assert natures_ward.requirements == {
+        "class": "druid",
+        "class_level_min": 10,
+        "subclass": "land",
+    }
+    assert natures_ward.action_economy == "none"
+    assert natures_ward.properties == {
+        "condition_immunities": ["poisoned"],
+        "land_choice_feature": "druid.land.current_land",
+        "resistance_by_land": {
+            "arid": "fire",
+            "polar": "cold",
+            "temperate": "lightning",
+            "tropical": "poison",
+        },
+    }
+    assert compendium.classes["druid"].levels["10"]["features"] == ["Subclass Feature"]
+    assert "srd.natures_ward" in compendium.classes["druid"].levels["10"]["actions"]
     assert compendium.classes["sorcerer"].levels["1"]["features"] == [
         "Spellcasting",
         "Innate Sorcery",

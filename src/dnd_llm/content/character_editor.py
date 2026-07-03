@@ -17,6 +17,7 @@ from .character_progression import (
     normalize_subclass_name,
     replace_class,
     set_divine_order_choice,
+    set_druid_circle_land_choice,
     set_druid_primal_order_choice,
     set_hunters_prey_choice,
     set_multiclass_level,
@@ -95,6 +96,11 @@ DIVINE_ORDER_RE = re.compile(
 )
 DRUID_PRIMAL_ORDER_RE = re.compile(
     r"(?:primal\s+order|原初职责|原初秩序|自然职责)\s*[:=：]?\s*(magician|warden|[A-Za-z_-]+|[\u4e00-\u9fff]+)",
+    re.IGNORECASE,
+)
+DRUID_CIRCLE_LAND_RE = re.compile(
+    r"(?:circle\s+of\s+the\s+land\s+choice|land\s+choice|land\s+type|大地地形|结社地形|地形选择)\s*[:=：]?\s*"
+    r"(arid|polar|temperate|tropical|desert|dry|arctic|[A-Za-z_-]+|[\u4e00-\u9fff]+)",
     re.IGNORECASE,
 )
 WARLOCK_ELDRITCH_INVOCATION_RE = re.compile(
@@ -204,7 +210,7 @@ EXPERTISE_RE = re.compile(
     re.IGNORECASE,
 )
 EDIT_MARKER_RE = re.compile(
-    r"(?:\bfeat\b|专长|\bclass\b|(?<!多)职业|\bmulticlass\b|多职业|兼职|\bsubclass\b|子职|子职业|hunter['’]?s\s+prey|猎人猎物|divine\s+order|神圣职责|神圣秩序|primal\s+order|原初职责|原初秩序|自然职责|eldritch\s+invocation|魔能祈唤|魔能祷唤|异界祈唤|lessons\s+of\s+the\s+first\s+ones|初民训诲|初民教诲|始源训诲|pact\s+of\s+the\s+chain|pact\s+of\s+chain|链契|锁链契约|链之契约|pact\s+of\s+the\s+blade|pact\s+of\s+blade|刃契|刀锋契约|刃之契约|pact\s+of\s+the\s+tome|pact\s+of\s+tome|书契|魔典契约|书之契约|影书契约|investment\s+of\s+the\s+chain\s+master|锁链大师投资|链主投资|链契大师投资|thirsting\s+blade|渴饮魔刃|渴血之刃|饥渴之刃|eldritch\s+smite|魔能斩击|魔能重击|异界斩击|ascendant\s+step|升腾步伐|升阶步伐|飞升步伐|one\s+with\s+shadows|影中合一|与影合一|融入阴影|master\s+of\s+myriad\s+forms|万形大师|千形大师|百变大师|gift\s+of\s+the\s+depths|深海馈赠|深渊馈赠|深海赠礼|gaze\s+of\s+two\s+minds|双心凝视|双重心灵凝视|双心视界|\bexpertise\b|技能专精|专精)",
+    r"(?:\bfeat\b|专长|\bclass\b|(?<!多)职业|\bmulticlass\b|多职业|兼职|\bsubclass\b|子职|子职业|hunter['’]?s\s+prey|猎人猎物|divine\s+order|神圣职责|神圣秩序|primal\s+order|原初职责|原初秩序|自然职责|circle\s+of\s+the\s+land\s+choice|land\s+choice|land\s+type|大地地形|结社地形|地形选择|eldritch\s+invocation|魔能祈唤|魔能祷唤|异界祈唤|lessons\s+of\s+the\s+first\s+ones|初民训诲|初民教诲|始源训诲|pact\s+of\s+the\s+chain|pact\s+of\s+chain|链契|锁链契约|链之契约|pact\s+of\s+the\s+blade|pact\s+of\s+blade|刃契|刀锋契约|刃之契约|pact\s+of\s+the\s+tome|pact\s+of\s+tome|书契|魔典契约|书之契约|影书契约|investment\s+of\s+the\s+chain\s+master|锁链大师投资|链主投资|链契大师投资|thirsting\s+blade|渴饮魔刃|渴血之刃|饥渴之刃|eldritch\s+smite|魔能斩击|魔能重击|异界斩击|ascendant\s+step|升腾步伐|升阶步伐|飞升步伐|one\s+with\s+shadows|影中合一|与影合一|融入阴影|master\s+of\s+myriad\s+forms|万形大师|千形大师|百变大师|gift\s+of\s+the\s+depths|深海馈赠|深渊馈赠|深海赠礼|gaze\s+of\s+two\s+minds|双心凝视|双重心灵凝视|双心视界|\bexpertise\b|技能专精|专精)",
     re.IGNORECASE,
 )
 SKILLED_CHOICE_IGNORE = {
@@ -285,6 +291,13 @@ def apply_natural_language_character_edit(
         result = set_druid_primal_order_choice(
             edited,
             druid_primal_order_match.group(1).strip(),
+        )
+        errors.extend(result.errors)
+
+    for druid_circle_land_match in DRUID_CIRCLE_LAND_RE.finditer(text):
+        result = set_druid_circle_land_choice(
+            edited,
+            druid_circle_land_match.group(1).strip(),
         )
         errors.extend(result.errors)
 

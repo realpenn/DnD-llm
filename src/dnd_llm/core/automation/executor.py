@@ -27,9 +27,11 @@ from ..rules.class_features import (
     draconic_elemental_affinity_damage_type,
     draconic_resilience_armor_class,
     druid_magician_check_bonus,
+    druid_natures_ward_resistance_type,
     has_barbarian_berserker_feature,
     has_colossus_slayer,
     has_condition,
+    has_druid_circle_of_the_land_feature,
     has_fighter_champion_feature,
     has_horde_breaker,
     has_monk_feature,
@@ -5603,6 +5605,17 @@ class AutomationExecutor:
                     "damage_type": damage_type,
                 }
             )
+        if (
+            isinstance(owner, Character)
+            and druid_natures_ward_resistance_type(owner) == damage_type
+        ):
+            sources.append(
+                {
+                    "source_action_id": "srd.natures_ward",
+                    "modifier": "druid_natures_ward_resistance",
+                    "damage_type": damage_type,
+                }
+            )
         for effect in self._status_effects_for(target):
             modifiers = effect.get("passive_modifiers", {})
             if not isinstance(modifiers, dict):
@@ -7973,6 +7986,20 @@ class AutomationExecutor:
         sources: list[dict[str, Any]] = []
         if condition == "poisoned":
             sources.extend(self._condition_sources(target, {"petrified"}))
+            owner = target
+            if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+                owner = self.state.characters[target.entity_id]
+            if isinstance(owner, Character) and has_druid_circle_of_the_land_feature(
+                owner,
+                level=10,
+            ):
+                sources.append(
+                    {
+                        "source_action_id": "srd.natures_ward",
+                        "modifier": "druid_natures_ward_poisoned_immunity",
+                        "immune_condition": condition,
+                    }
+                )
         for effect in self._status_effects_for(target):
             modifiers = effect.get("passive_modifiers", {})
             if not isinstance(modifiers, dict):

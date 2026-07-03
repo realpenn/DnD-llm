@@ -17,6 +17,14 @@ DIVINE_ORDER_THAUMATURGE = "thaumaturge"
 DRUID_PRIMAL_ORDER_CHOICE_KEY = "druid.primal_order"
 DRUID_PRIMAL_ORDER_MAGICIAN = "magician"
 DRUID_PRIMAL_ORDER_WARDEN = "warden"
+DRUID_CIRCLE_LAND_CHOICE_KEY = "druid.land.current_land"
+DRUID_CIRCLE_LAND_TYPES = frozenset({"arid", "polar", "temperate", "tropical"})
+DRUID_NATURES_WARD_RESISTANCE_BY_LAND = {
+    "arid": "fire",
+    "polar": "cold",
+    "temperate": "lightning",
+    "tropical": "poison",
+}
 DRACONIC_ELEMENTAL_AFFINITY_CHOICE_KEY = "sorcerer.draconic.elemental_affinity"
 DRACONIC_ELEMENTAL_AFFINITY_DAMAGE_TYPES = frozenset(
     {"acid", "cold", "fire", "lightning", "poison"}
@@ -260,6 +268,15 @@ def has_druid_circle_of_the_land_feature(character: Character, *, level: int) ->
         int(character.class_levels.get("druid", 0)) >= level
         and character.subclasses.get("druid") == "land"
     )
+
+
+def druid_natures_ward_resistance_type(character: Character) -> str | None:
+    if not has_druid_circle_of_the_land_feature(character, level=10):
+        return None
+    choice = character.feature_choices.get(DRUID_CIRCLE_LAND_CHOICE_KEY)
+    if choice not in DRUID_CIRCLE_LAND_TYPES:
+        return None
+    return DRUID_NATURES_WARD_RESISTANCE_BY_LAND[choice]
 
 
 def has_warlock_fiend_feature(character: Character, *, level: int) -> bool:

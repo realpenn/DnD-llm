@@ -13216,6 +13216,90 @@ def test_draconic_elemental_affinity_grants_chosen_damage_resistance(make_state)
     assert state.encounter.combatants["pc1"].hp_current == 16
 
 
+def test_land_druid_natures_ward_grants_poisoned_immunity(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 10}
+    character.subclasses = {"druid": "land"}
+    character.actions.append("srd.natures_ward")
+    action = ActionDefinition(
+        id="test.poisoned_condition",
+        name="Test Poisoned Condition",
+        localization={"en": "Test Poisoned Condition", "zh": "测试中毒状态", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "condition", "condition": "poisoned"},
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    immune_change = next(
+        change for change in result.state_changes if change["type"] == "condition_immune"
+    )
+    assert immune_change["condition"] == "poisoned"
+    assert immune_change["immunity_sources"] == [
+        {
+            "source_action_id": "srd.natures_ward",
+            "modifier": "druid_natures_ward_poisoned_immunity",
+            "immune_condition": "poisoned",
+        }
+    ]
+    assert not any(
+        effect.get("condition") == "poisoned"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
+def test_land_druid_natures_ward_grants_current_land_damage_resistance(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 10}
+    character.subclasses = {"druid": "land"}
+    character.actions.append("srd.natures_ward")
+    character.feature_choices = {"druid.land.current_land": "polar"}
+    state.encounter.combatants["pc1"].hp_current = 20
+    state.encounter.combatants["pc1"].hp_max = 20
+    action = ActionDefinition(
+        id="test.cold_damage",
+        name="Test Cold Damage",
+        localization={"en": "Test Cold Damage", "zh": "测试寒冷伤害", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 9, "damage_type": "cold"},
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert state.encounter.combatants["pc1"].hp_current == 16
+
+
 def test_barbarian_unarmored_defense_sets_base_ac_and_allows_shield(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

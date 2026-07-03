@@ -2414,6 +2414,41 @@
             "audit_label": "Natural Recovery"
         },
         {
+            "id": "srd.natures_ward",
+            "name": "Nature's Ward",
+            "localization": {
+                "en": "Nature's Ward",
+                "zh": "自然庇护",
+                "aliases": ["Circle of the Land Nature's Ward", "大地结社自然庇护"]
+            },
+            "source": "SRD 5.2.1 Druid Subclass: Circle of the Land, Level 10: Nature's Ward",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 10, "subclass": "land"},
+            "properties": {
+                "condition_immunities": ["poisoned"],
+                "land_choice_feature": "druid.land.current_land",
+                "resistance_by_land": {
+                    "arid": "fire",
+                    "polar": "cold",
+                    "temperate": "lightning",
+                    "tropical": "poison"
+                }
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Circle of the Land Druid is immune to the Poisoned condition and has Resistance based on the current land choice from Circle Spells: Arid Fire, Polar Cold, Temperate Lightning, or Tropical Poison."
+                }
+            ],
+            "audit_label": "Nature's Ward"
+        },
+        {
             "id": "srd.wild_resurgence_restore_wild_shape_slot_1",
             "name": "Wild Resurgence: Restore Wild Shape with Level 1 Slot",
             "localization": {

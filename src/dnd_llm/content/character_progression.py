@@ -10,6 +10,8 @@ from dnd_llm.core.rules.class_features import (
     DIVINE_ORDER_CHOICE_KEY,
     DIVINE_ORDER_PROTECTOR,
     DIVINE_ORDER_THAUMATURGE,
+    DRUID_CIRCLE_LAND_CHOICE_KEY,
+    DRUID_CIRCLE_LAND_TYPES,
     DRUID_PRIMAL_ORDER_CHOICE_KEY,
     DRUID_PRIMAL_ORDER_MAGICIAN,
     DRUID_PRIMAL_ORDER_WARDEN,
@@ -304,7 +306,7 @@ SUBCLASS_ACTIONS = {
         "life": {3: ["srd.disciple_of_life", "srd.preserve_life"]},
     },
     "druid": {
-        "land": {3: ["srd.lands_aid"], 6: ["srd.natural_recovery"]},
+        "land": {3: ["srd.lands_aid"], 6: ["srd.natural_recovery"], 10: ["srd.natures_ward"]},
     },
     "fighter": {
         "champion": {3: ["srd.improved_critical", "srd.remarkable_athlete"]},
@@ -385,6 +387,21 @@ DRUID_PRIMAL_ORDER_ALIASES = {
     "守望者": DRUID_PRIMAL_ORDER_WARDEN,
     "守卫": DRUID_PRIMAL_ORDER_WARDEN,
     "守护者": DRUID_PRIMAL_ORDER_WARDEN,
+}
+DRUID_CIRCLE_LAND_ALIASES = {
+    "arid": "arid",
+    "dry": "arid",
+    "desert": "arid",
+    "沙漠": "arid",
+    "干旱": "arid",
+    "polar": "polar",
+    "arctic": "polar",
+    "寒地": "polar",
+    "极地": "polar",
+    "temperate": "temperate",
+    "温带": "temperate",
+    "tropical": "tropical",
+    "热带": "tropical",
 }
 WARLOCK_ELDRITCH_INVOCATION_CHOICES = {WARLOCK_ELDRITCH_MIND}
 WARLOCK_ELDRITCH_INVOCATION_ALIASES = {
@@ -861,6 +878,10 @@ def normalize_druid_primal_order_choice(raw: str) -> str | None:
     return DRUID_PRIMAL_ORDER_ALIASES.get(_choice_key(raw))
 
 
+def normalize_druid_circle_land_choice(raw: str) -> str | None:
+    return DRUID_CIRCLE_LAND_ALIASES.get(_choice_key(raw))
+
+
 def normalize_warlock_eldritch_invocation_choice(raw: str) -> str | None:
     return WARLOCK_ELDRITCH_INVOCATION_ALIASES.get(_choice_key(raw))
 
@@ -1066,6 +1087,22 @@ def set_druid_primal_order_choice(character: Character, choice: str) -> Progress
         return ProgressionResult(["Primal Order 选项需要 Druid 1"])
     choices = dict(getattr(character, "feature_choices", {}))
     choices[DRUID_PRIMAL_ORDER_CHOICE_KEY] = normalized
+    character.feature_choices = choices
+    _recalculate_progression_fields(character)
+    return ProgressionResult(errors=[])
+
+
+def set_druid_circle_land_choice(character: Character, choice: str) -> ProgressionResult:
+    normalized = normalize_druid_circle_land_choice(choice)
+    if normalized is None:
+        return ProgressionResult([f"Circle of the Land 不支持的 SRD 地形：{choice}"])
+    if (
+        character.subclasses.get("druid") != "land"
+        or int(character.class_levels.get("druid", 0)) < 3
+    ):
+        return ProgressionResult(["Circle of the Land 地形选择需要 Druid/Land 3"])
+    choices = dict(getattr(character, "feature_choices", {}))
+    choices[DRUID_CIRCLE_LAND_CHOICE_KEY] = normalized
     character.feature_choices = choices
     _recalculate_progression_fields(character)
     return ProgressionResult(errors=[])
@@ -1755,6 +1792,14 @@ def _sync_feature_choices(character: Character) -> None:
             choices.pop(DRUID_PRIMAL_ORDER_CHOICE_KEY, None)
     else:
         choices.pop(DRUID_PRIMAL_ORDER_CHOICE_KEY, None)
+    if (
+        character.subclasses.get("druid") == "land"
+        and int(character.class_levels.get("druid", 0)) >= 3
+    ):
+        if choices.get(DRUID_CIRCLE_LAND_CHOICE_KEY) not in DRUID_CIRCLE_LAND_TYPES:
+            choices.pop(DRUID_CIRCLE_LAND_CHOICE_KEY, None)
+    else:
+        choices.pop(DRUID_CIRCLE_LAND_CHOICE_KEY, None)
     if int(character.class_levels.get("warlock", 0)) >= 1:
         if (
             choices.get(WARLOCK_ELDRITCH_INVOCATION_CHOICE_KEY)

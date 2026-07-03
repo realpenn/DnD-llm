@@ -1335,6 +1335,33 @@ def test_natural_language_character_edit_assigns_land_natural_recovery_at_level_
     assert result.character.resources["srd.resource.natural_recovery_circle_spell"] == 1
 
 
+def test_natural_language_character_edit_assigns_land_choice_for_circle_of_land() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 德鲁伊10 子职 land land choice polar",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"druid": 10}
+    assert result.character.subclasses == {"druid": "land"}
+    assert result.character.feature_choices == {"druid.land.current_land": "polar"}
+    assert "srd.natures_ward" in result.character.actions
+
+
+def test_natural_language_character_edit_rejects_land_choice_without_circle_of_land() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 德鲁伊10 land choice polar")
+
+    assert result.accepted is False
+    assert result.character is None
+    assert result.errors is not None
+    assert "Circle of the Land 地形选择需要 Druid/Land 3" in result.errors
+
+
 def test_natural_language_character_edit_does_not_assign_land_by_default() -> None:
     character = default_fighter("pc1", "Penn")
 

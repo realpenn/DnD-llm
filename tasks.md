@@ -304,6 +304,7 @@ P0 脚手架
   - [x] **P2-1at** SRD 5.2.1 `Ice Storm` 落地：校准 4 环 Evocation spell 与 `srd.ice_storm` action；按 SRD 限定 Druid/Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，20 尺半径、40 尺高 Cylinder 内目标失败承受 `2d10` Bludgeoning damage 与 `4d6` Cold damage、成功两者均半伤；记录 hailstones 使 Cylinder 内地面成为 Difficult Terrain 到施法者下回合结束，且每高一环只让 Bludgeoning damage `+1d10`；覆盖 compendium、executor、升环伤害与全量门禁测试。
   - [x] **P2-1au** SRD 5.2.1 `Greater Invisibility` 补校准：按 SRD 限定 Bard/Sorcerer/Wizard 4 环 Illusion spell，补充 creature touch target 与不会因攻击、造成伤害或施法提前结束的元数据；保留现有 Concentration 1 minute Invisible condition 执行语义，覆盖 compendium、executor 与全量门禁测试。
   - [x] **P2-1av** SRD 5.2.1 Druid Circle of the Land 6 `Natural Recovery` 落地：新增 `srd.natural_recovery` class feature marker、Druid 6 级/land 子职数据与一次/长休资源；按 SRD 在短休结束时选择恢复已消耗法术位，合计环阶不超过德鲁伊等级一半向上取整且不能恢复 6 环及以上；记录已准备 Circle Spells 可免法术位施放一次/长休的元数据，不虚构通用 Circle Spell 施法器；覆盖 compendium、短休恢复、长休刷新与自然语言建角测试。
+  - [x] **P2-1aw** SRD 5.2.1 Druid Circle of the Land 10 `Nature's Ward` 落地：新增 `srd.natures_ward` class feature marker、Druid 10 级/land 子职数据与当前 land choice 校验；按 SRD 给予 Poisoned condition Immunity，并按 Circle Spells 当前 land choice 仅映射 Arid/Fire、Polar/Cold、Temperate/Lightning、Tropical/Poison Resistance；未显式选择 land 时不猜测默认抗性；覆盖 compendium、executor condition 免疫、executor 伤害抗性与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
