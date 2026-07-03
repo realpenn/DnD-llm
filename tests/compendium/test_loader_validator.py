@@ -64,6 +64,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.tree_stride",
         "srd.wall_of_force",
         "srd.wall_of_stone",
+        "srd.wall_of_ice",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -845,6 +846,70 @@ def test_compendium_loads_srd_actions() -> None:
                 "disappears_when_spell_ends_unless_permanent": True,
             },
         }
+    ]
+    wall_of_ice = compendium.action("srd.wall_of_ice")
+    assert wall_of_ice.requirements == {
+        "spell_level": 6,
+        "class_any": ["wizard"],
+    }
+    assert wall_of_ice.properties["spell_classes"] == ["wizard"]
+    assert wall_of_ice.properties["material_component"] == {
+        "description": "a piece of quartz",
+        "consumed": False,
+    }
+    assert wall_of_ice.range == {"normal_ft": 120}
+    assert wall_of_ice.target_policy == {"min": 0, "max": 12, "harmful": True}
+    assert wall_of_ice.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "10d6",
+            "damage_type": "cold",
+            "save_half": True,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "2d6",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "wall_of_ice",
+            "scope": {"target": "solid_surface", "range_ft": 120},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "solid_surface_required": True,
+                "shape_options": ["hemispherical_dome", "globe", "flat_panels"],
+                "hemispherical_dome_max_radius_ft": 10,
+                "globe_max_radius_ft": 10,
+                "flat_panel_count": 10,
+                "flat_panel_width_ft": 10,
+                "flat_panel_height_ft": 10,
+                "flat_panels_must_be_contiguous": True,
+                "thickness_ft": 1,
+                "pushes_creatures_to_chosen_side_if_cutting_space": True,
+                "initial_save": {
+                    "ability": "dex",
+                    "damage": "10d6 cold",
+                    "save_half": True,
+                    "higher_level_damage_increase": "2d6 per slot above 6",
+                },
+                "object_ac": 12,
+                "hp_per_10_ft_section": 30,
+                "damage_immunities": ["cold", "poison", "psychic"],
+                "damage_vulnerabilities": ["fire"],
+                "section_destroyed_at_0_hp": True,
+                "destroyed_section_leaves_frigid_air": True,
+                "frigid_air": {
+                    "trigger": "creature_moves_through_first_time_on_turn",
+                    "save": {
+                        "ability": "con",
+                        "damage": "5d6 cold",
+                        "save_half": True,
+                        "higher_level_damage_increase": "1d6 per slot above 6",
+                    },
+                },
+            },
+        },
     ]
     assert "srd.innate_sorcery" in compendium.actions
     assert compendium.action("srd.innate_sorcery").cost.resources == {

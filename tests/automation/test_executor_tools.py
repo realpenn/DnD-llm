@@ -9841,6 +9841,137 @@ def test_wall_of_stone_spends_slot_and_records_supported_stone_wall(make_state) 
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
 
 
+def test_wall_of_ice_deals_initial_cold_and_records_concentration_wall(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 11}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.wall_of_ice",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-wall-of-ice",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "cold"
+    assert damage_change["amount"] == 6
+    assert damage_change["applied"] == 6
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d6"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.wall_of_ice"
+    assert effect["effect_type"] == "wall_of_ice"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "solid_surface", "range_ft": 120}
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "solid_surface_required": True,
+        "shape_options": ["hemispherical_dome", "globe", "flat_panels"],
+        "hemispherical_dome_max_radius_ft": 10,
+        "globe_max_radius_ft": 10,
+        "flat_panel_count": 10,
+        "flat_panel_width_ft": 10,
+        "flat_panel_height_ft": 10,
+        "flat_panels_must_be_contiguous": True,
+        "thickness_ft": 1,
+        "pushes_creatures_to_chosen_side_if_cutting_space": True,
+        "initial_save": {
+            "ability": "dex",
+            "damage": "10d6 cold",
+            "save_half": True,
+            "higher_level_damage_increase": "2d6 per slot above 6",
+        },
+        "object_ac": 12,
+        "hp_per_10_ft_section": 30,
+        "damage_immunities": ["cold", "poison", "psychic"],
+        "damage_vulnerabilities": ["fire"],
+        "section_destroyed_at_0_hp": True,
+        "destroyed_section_leaves_frigid_air": True,
+        "frigid_air": {
+            "trigger": "creature_moves_through_first_time_on_turn",
+            "save": {
+                "ability": "con",
+                "damage": "5d6 cold",
+                "save_half": True,
+                "higher_level_damage_increase": "1d6 per slot above 6",
+            },
+        },
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "wall_of_ice"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
+def test_wall_of_ice_upcast_adds_initial_damage_dice(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.wall_of_ice",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-wall-of-ice-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "12d6"]
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:
