@@ -57,6 +57,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
+        "srd.find_the_path",
         "srd.true_seeing",
         "srd.passwall",
         "srd.tree_stride",
@@ -577,6 +578,46 @@ def test_compendium_loads_srd_actions() -> None:
                 "designates_sanctuary_by_casting_this_spell_there": True,
                 "destination": "previously_designated_sanctuary",
             },
+        },
+    ]
+    find_the_path = compendium.action("srd.find_the_path")
+    assert find_the_path.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "cleric", "druid"],
+    }
+    assert find_the_path.properties["spell_classes"] == ["bard", "cleric", "druid"]
+    assert find_the_path.properties["casting_time"] == {"minutes": 1}
+    assert find_the_path.properties["material_component"] == {
+        "description": "a set of divination tools worth 100+ GP",
+        "consumed": False,
+    }
+    assert find_the_path.cost.spell_slot_level == 6
+    assert find_the_path.cost.gold == 0
+    assert find_the_path.range == {"self": True}
+    assert find_the_path.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert find_the_path.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "find_the_path": True,
+                "senses_most_direct_physical_route": True,
+                "requires_familiar_named_location": True,
+                "fails_for_other_plane_destination": True,
+                "fails_for_moving_destination": True,
+                "fails_for_unspecific_destination": True,
+                "same_plane_required_to_know_distance_and_direction": True,
+                "knows_distance_and_direction_to_destination": True,
+                "knows_most_direct_path_when_choosing_paths": True,
+            },
+            "duration": {"until": "concentration_1_day"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
         },
     ]
     true_seeing = compendium.action("srd.true_seeing")

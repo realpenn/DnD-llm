@@ -274,6 +274,7 @@ P0 脚手架
   - [x] **P2-1p** SRD 5.2.1 `Globe of Invulnerability` 落地：新增 6 环 Abjuration spell 与 `srd.globe_of_invulnerability` action；按 SRD 以 Action/Self/10 尺 Emanation/Concentration 1 minute 记录 immobile shimmering barrier，阻挡从屏障外施放的指定环阶及以下法术影响屏障内生物和物体，并将屏障内区域从这些法术的范围效果中排除；新增 world effect `metadata_from_slot` 让 6 环施法阻挡 5 环及以下、升环每高一环多阻挡 1 个法术环阶；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
   - [x] **P2-1q** SRD 5.2.1 `Word of Recall` 落地：新增 6 环 Conjuration spell 与 `srd.word_of_recall` action；按 SRD 以 Action/5 尺/Instantaneous 记录施法者和最多 5 名 5 尺内 willing creatures 传送到 previously designated sanctuary，未准备 sanctuary 则无效果，并出现在指定点最近空位；复用既有 willing 目标校验，不虚构 sanctuary 解析或地图传送系统；覆盖 compendium、executor、自动模拟与全量门禁测试。
   - [x] **P2-1r** SRD 5.2.1 `True Seeing` 落地：新增 6 环 Divination spell 与 `srd.true_seeing` action；按 SRD 以 Action/Touch 消耗 6 环法术位与 25+ GP 且被消耗的 mushroom powder，为 willing creature 记录 1 小时 120 尺 Truesight；复用既有 `truesight_ft` helper 与 willing 目标校验，不虚构额外视觉/地图判定系统；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
+  - [x] **P2-1s** SRD 5.2.1 `Find the Path` 落地：新增 6 环 Divination spell 与 `srd.find_the_path` action；按 SRD 以 1 分钟施法/Self/Concentration 1 day 记录对熟悉具名地点的最直接物理路线感知，同位面时知晓距离与方向，岔路时知晓最直接路径，并记录异位面、移动目的地或不明确目的地会失败；100+ GP divination tools 不消耗且不扣金币；新增 `concentration_1_day` 生命周期 tick 推断，不虚构目的地解析或地图寻路系统；覆盖 compendium、executor、生命周期 tick、自动模拟与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

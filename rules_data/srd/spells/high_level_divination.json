@@ -1,6 +1,69 @@
 {
   "items": [
     {
+      "id": "srd.spell.find_the_path",
+      "name": "Find the Path",
+      "localization": {
+        "en": "Find the Path",
+        "zh": "寻路术",
+        "aliases": ["寻找路径"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "divination",
+      "classes": ["bard", "cleric", "druid"],
+      "action": {
+        "id": "srd.find_the_path",
+        "name": "Find the Path",
+        "localization": {
+          "en": "Find the Path",
+          "zh": "寻路术",
+          "aliases": ["寻找路径"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "cleric", "druid"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "a set of divination tools worth 100+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "find_the_path": true,
+              "senses_most_direct_physical_route": true,
+              "requires_familiar_named_location": true,
+              "fails_for_other_plane_destination": true,
+              "fails_for_moving_destination": true,
+              "fails_for_unspecific_destination": true,
+              "same_plane_required_to_know_distance_and_direction": true,
+              "knows_distance_and_direction_to_destination": true,
+              "knows_most_direct_path_when_choosing_paths": true
+            },
+            "duration": { "until": "concentration_1_day" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Find the Path"
+      }
+    },
+    {
       "id": "srd.spell.true_seeing",
       "name": "True Seeing",
       "localization": {

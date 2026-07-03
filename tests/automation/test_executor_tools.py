@@ -9489,6 +9489,61 @@ def test_true_seeing_spends_component_and_grants_timed_truesight(make_state) -> 
     )
 
 
+def test_find_the_path_records_concentration_navigation_sense(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    caster.gold = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.find_the_path",
+        ["pc1"],
+        6,
+        idempotency_key="cast-find-the-path",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.gold == 100
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_6"]
+
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.find_the_path"
+    assert effect["condition"] is None
+    assert effect["duration"] == {"until": "concentration_1_day"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+    assert effect["passive_modifiers"] == {
+        "find_the_path": True,
+        "senses_most_direct_physical_route": True,
+        "requires_familiar_named_location": True,
+        "fails_for_other_plane_destination": True,
+        "fails_for_moving_destination": True,
+        "fails_for_unspecific_destination": True,
+        "same_plane_required_to_know_distance_and_direction": True,
+        "knows_distance_and_direction_to_destination": True,
+        "knows_most_direct_path_when_choosing_paths": True,
+    }
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc1"
+    assert passive_change["passive_modifiers"]["find_the_path"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+    assert (
+        state.encounter.combatants["pc1"].status_effects[-1]["duration"]["remaining_ticks"] == 14399
+    )
+
+
 def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
