@@ -19,14 +19,35 @@
         "action_economy": "action",
         "range": { "normal_ft": 60, "shape": "cylinder", "radius_ft": 10, "height_ft": 40 },
         "target_policy": { "min": 1, "max": 8, "harmful": true },
-        "requirements": { "spell_level": 5 },
+        "requirements": { "spell_level": 5, "class_any": ["cleric"] },
+        "properties": {
+          "material_component": {
+            "description": "a pinch of sulfur",
+            "consumed": false
+          },
+          "higher_level_increases_fire_and_radiant_damage": true
+        },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 5 },
         "automation": [
           { "type": "target", "mode": "area" },
-          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
-          { "type": "damage", "dice": "5d6", "damage_type": "fire", "save_half": true },
-          { "type": "damage", "dice": "5d6", "damage_type": "radiant", "save_half": true }
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "5d6",
+            "damage_type": "fire",
+            "save_half": true,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d6"
+          },
+          {
+            "type": "damage",
+            "dice": "5d6",
+            "damage_type": "radiant",
+            "save_half": true,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d6"
+          }
         ],
         "audit_label": "Flame Strike"
       }

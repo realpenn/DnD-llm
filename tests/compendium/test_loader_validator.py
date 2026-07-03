@@ -194,6 +194,41 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_dice_per_slot_above": "1d8",
         },
     ]
+    flame_strike = compendium.action("srd.flame_strike")
+    assert flame_strike.requirements == {"spell_level": 5, "class_any": ["cleric"]}
+    assert flame_strike.properties["spell_classes"] == ["cleric"]
+    assert flame_strike.properties["material_component"] == {
+        "description": "a pinch of sulfur",
+        "consumed": False,
+    }
+    assert flame_strike.properties["higher_level_increases_fire_and_radiant_damage"] is True
+    assert flame_strike.range == {
+        "normal_ft": 60,
+        "shape": "cylinder",
+        "radius_ft": 10,
+        "height_ft": 40,
+    }
+    assert flame_strike.target_policy == {"min": 1, "max": 8, "harmful": True}
+    assert flame_strike.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "5d6",
+            "damage_type": "fire",
+            "save_half": True,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d6",
+        },
+        {
+            "type": "damage",
+            "dice": "5d6",
+            "damage_type": "radiant",
+            "save_half": True,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d6",
+        },
+    ]
     circle_of_death = compendium.action("srd.circle_of_death")
     assert circle_of_death.requirements == {
         "spell_level": 6,

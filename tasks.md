@@ -296,6 +296,7 @@ P0 脚手架
   - [x] **P2-1al** SRD 5.2.1 `Finger of Death` 落地：校准 7 环 Necromancy spell 与 `srd.finger_of_death` action；按 SRD 限定 Sorcerer/Warlock/Wizard，使用施法者 spell save DC 进行 Constitution saving throw，失败承受 `7d8 + 30` Necrotic damage、成功半伤；记录被此法术杀死的 Humanoid 会在施法者下回合开始作为 `srd.zombie` 起身并听从口头命令，不虚构僵尸召唤调度器；覆盖 compendium、executor 与全量门禁测试。
   - [x] **P2-1am** SRD 5.2.1 `Chain Lightning` 落地：校准 6 环 Evocation spell 与 `srd.chain_lightning` action；按 SRD 限定 Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，失败承受 `10d8` Lightning damage、成功半伤；记录第一目标、从第一目标跳向 30 尺内额外目标、目标可为 creature 或 object 且每个目标只能被一道电击命中、three silver pins 材料，以及每高一环额外 1 个目标的规则，不虚构连锁距离调度器；覆盖 compendium、executor、升环目标上限与全量门禁测试。
   - [x] **P2-1an** SRD 5.2.1 `Disintegrate` 落地：校准 6 环 Transmutation spell 与 `srd.disintegrate` action；按 SRD 限定 Sorcerer/Wizard，使用施法者 spell save DC 进行 Dexterity saving throw，成功无伤害，失败承受 `10d6 + 40` Force damage，且每高一环 `+3d6`；记录目标可为 creature、非魔法物体或魔法力场造物，0 HP 后目标及非魔法穿戴/携带物灰尘化、只能由 True Resurrection 或 Wish 复活，以及大型或更小非魔法物体/魔法力场自动解离、超大则解离 10 尺立方部分等 SRD 元数据，不虚构物体摧毁调度器；覆盖 compendium、executor、升环伤害与全量门禁测试。
+  - [x] **P2-1ao** SRD 5.2.1 `Flame Strike` 落地：校准 5 环 Evocation spell 与 `srd.flame_strike` action；按 SRD 限定 Cleric，使用施法者 spell save DC 进行 Dexterity saving throw，10 尺半径、40 尺高 Cylinder 内目标失败承受 `5d6` Fire damage 与 `5d6` Radiant damage、成功两种伤害均半伤；记录 a pinch of sulfur 材料，且每高一环 Fire 与 Radiant 伤害各 `+1d6`；覆盖 compendium、executor、双伤害半伤、升环伤害与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

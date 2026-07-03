@@ -8958,6 +8958,97 @@ def test_blight_upcast_spends_requested_slot_and_adds_damage_die(make_state) -> 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["9d8"]
 
 
+def test_flame_strike_uses_cleric_spell_dc_and_halves_both_damage_types(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 6, 4]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.flame_strike",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-flame-strike",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is True
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["damage_type"] for change in damage_changes] == ["fire", "radiant"]
+    assert [change["amount"] for change in damage_changes] == [3, 2]
+    assert [change["applied"] for change in damage_changes] == [3, 2]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "5d6", "5d6"]
+
+
+def test_flame_strike_upcast_adds_dice_to_fire_and_radiant_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 6, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.flame_strike",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-flame-strike-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["damage_type"] for change in damage_changes] == ["fire", "radiant"]
+    assert [change["amount"] for change in damage_changes] == [6, 6]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d6", "6d6"]
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [
