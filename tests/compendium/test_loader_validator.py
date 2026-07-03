@@ -54,6 +54,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.passwall",
         "srd.tree_stride",
         "srd.wall_of_force",
+        "srd.wall_of_stone",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -450,6 +451,59 @@ def test_compendium_loads_srd_actions() -> None:
                 "destroyed_by_disintegrate": True,
                 "extends_into_ethereal_plane": True,
                 "blocks_ethereal_travel": True,
+            },
+        }
+    ]
+    wall_of_stone = compendium.action("srd.wall_of_stone")
+    assert wall_of_stone.requirements == {
+        "spell_level": 5,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert wall_of_stone.properties["spell_classes"] == ["druid", "sorcerer", "wizard"]
+    assert wall_of_stone.properties["material_component"] == {
+        "description": "a cube of granite",
+        "consumed": False,
+    }
+    assert wall_of_stone.range == {"normal_ft": 120}
+    assert wall_of_stone.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert wall_of_stone.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "wall_of_stone",
+            "scope": {"target": "point", "range_ft": 120},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "nonmagical": True,
+                "material": "solid_stone",
+                "standard_panel_count": 10,
+                "standard_panel_width_ft": 10,
+                "standard_panel_height_ft": 10,
+                "standard_panel_thickness_inches": 6,
+                "thin_panel_width_ft": 10,
+                "thin_panel_height_ft": 20,
+                "thin_panel_thickness_inches": 3,
+                "panels_must_be_contiguous": True,
+                "pushes_creatures_to_chosen_side_if_cutting_space": True,
+                "enclosed_creature_escape_save": {
+                    "ability": "dex",
+                    "on_success": "may_use_reaction_to_move_up_to_speed_out_of_enclosure",
+                },
+                "can_have_any_shape": True,
+                "cannot_occupy_creature_or_object_space": True,
+                "does_not_need_vertical_orientation_or_firm_foundation": True,
+                "must_merge_with_and_be_supported_by_existing_stone": True,
+                "can_bridge_chasm_or_create_ramp": True,
+                "span_over_20_ft_requires_halved_panels_for_support": True,
+                "can_create_crude_battlements": True,
+                "panel_ac": 15,
+                "panel_hp_per_inch_of_thickness": 30,
+                "damage_immunities": ["poison", "psychic"],
+                "panel_destroyed_at_0_hp": True,
+                "connected_panels_may_collapse_at_gm_discretion": True,
+                "permanent_if_concentration_full_duration": True,
+                "cannot_be_dispelled_when_permanent": True,
+                "disappears_when_spell_ends_unless_permanent": True,
             },
         }
     ]

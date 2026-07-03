@@ -266,6 +266,7 @@ P0 脚手架
   - [x] **P2-1h** SRD 5.2.1 `Passwall` 落地：新增 5 环 Transmutation spell 与 `srd.passwall` action；按 SRD 以 Action/30 尺/1 小时在木质、灰泥或石质表面创建最多 5 尺宽、8 尺高、20 尺深的 passage world effect，记录不造成结构不稳定以及效果结束时将通道内生物/物体安全弹出到最近空位；不虚构地图切割或寻路规则；覆盖 compendium、executor、自动模拟与全量门禁测试。
   - [x] **P2-1i** SRD 5.2.1 `Tree Stride` 落地：新增 5 环 Conjuration spell 与 `srd.tree_stride` action；按 SRD 以 Self/Action/Concentration 1 minute 给施法者记录树间移动能力，包含同种活体且至少同体型树、500 尺范围、进入与离开各消耗 5 尺移动、知晓范围内同种树位置、每回合一次、无剩余移动时从进入树旁出现且回合结束必须在树外等 SRD marker；不虚构树木索引或寻路系统；覆盖 compendium、executor、自动模拟与全量门禁测试。
   - [x] **P2-1j** SRD 5.2.1 `Wall of Force` 落地：新增 5 环 Evocation spell 与 `srd.wall_of_force` action；按 SRD 以 Action/120 尺/Concentration 10 minutes 记录 invisible wall of force world effect，包含任意朝向、悬浮或贴固体表面、10 尺半径半球/球体或十块相邻 10×10 尺面板、1/4 英寸厚、切过生物空间时推到一侧、阻挡物理通过、免疫所有伤害、不能被 Dispel Magic 解、可被 Disintegrate 立即摧毁并阻挡 Ethereal travel 等 SRD 元数据；不虚构几何碰撞系统；覆盖 compendium、executor、自动模拟与全量门禁测试。
+  - [x] **P2-1k** SRD 5.2.1 `Wall of Stone` 落地：新增 5 环 Evocation spell 与 `srd.wall_of_stone` action；按 SRD 以 Action/120 尺/Concentration 10 minutes 记录 nonmagical solid stone wall world effect，包含十块 10×10×6 英寸面板或 10×20×3 英寸薄面板、相邻面板、切过生物空间时推到一侧、围困时 Dexterity save 后可用 Reaction 移动脱离、必须与既有石材合并并被支撑、可桥接/造坡/粗略塑形、面板 AC 15 与每英寸 30 HP、Poison/Psychic immunity、0 HP 破坏与 GM 裁定坍塌、集中满时永久且不可驱散等 SRD 元数据；不虚构墙体破坏模拟；覆盖 compendium、executor、自动模拟与全量门禁测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

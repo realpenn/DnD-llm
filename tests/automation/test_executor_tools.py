@@ -9057,6 +9057,78 @@ def test_wall_of_force_spends_slot_and_records_concentration_barrier(make_state)
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
 
 
+def test_wall_of_stone_spends_slot_and_records_supported_stone_wall(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.wall_of_stone",
+        [],
+        5,
+        idempotency_key="cast-wall-of-stone",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.wall_of_stone"
+    assert effect["effect_type"] == "wall_of_stone"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "point", "range_ft": 120}
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "nonmagical": True,
+        "material": "solid_stone",
+        "standard_panel_count": 10,
+        "standard_panel_width_ft": 10,
+        "standard_panel_height_ft": 10,
+        "standard_panel_thickness_inches": 6,
+        "thin_panel_width_ft": 10,
+        "thin_panel_height_ft": 20,
+        "thin_panel_thickness_inches": 3,
+        "panels_must_be_contiguous": True,
+        "pushes_creatures_to_chosen_side_if_cutting_space": True,
+        "enclosed_creature_escape_save": {
+            "ability": "dex",
+            "on_success": "may_use_reaction_to_move_up_to_speed_out_of_enclosure",
+        },
+        "can_have_any_shape": True,
+        "cannot_occupy_creature_or_object_space": True,
+        "does_not_need_vertical_orientation_or_firm_foundation": True,
+        "must_merge_with_and_be_supported_by_existing_stone": True,
+        "can_bridge_chasm_or_create_ramp": True,
+        "span_over_20_ft_requires_halved_panels_for_support": True,
+        "can_create_crude_battlements": True,
+        "panel_ac": 15,
+        "panel_hp_per_inch_of_thickness": 30,
+        "damage_immunities": ["poison", "psychic"],
+        "panel_destroyed_at_0_hp": True,
+        "connected_panels_may_collapse_at_gm_discretion": True,
+        "permanent_if_concentration_full_duration": True,
+        "cannot_be_dispelled_when_permanent": True,
+        "disappears_when_spell_ends_unless_permanent": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "wall_of_stone"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:
