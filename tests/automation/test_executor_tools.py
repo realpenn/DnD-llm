@@ -13300,6 +13300,254 @@ def test_land_druid_natures_ward_grants_current_land_damage_resistance(make_stat
     assert state.encounter.combatants["pc1"].hp_current == 16
 
 
+def test_land_druid_natures_sanctuary_creates_srd_cube_world_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 14}
+    character.subclasses = {"druid": "land"}
+    character.feature_choices = {"druid.land.current_land": "polar"}
+    character.actions.extend(["srd.natures_ward", "srd.natures_sanctuary"])
+    character.resources["srd.resource.wild_shape"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.natures_sanctuary",
+        [],
+        params={"natures_sanctuary_position_node_id": "cover"},
+        idempotency_key="natures-sanctuary",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.wild_shape"] == 0
+    assert state.encounter.action_budgets["pc1"]["action"] == 0
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.natures_sanctuary"
+    assert effect["effect_type"] == "natures_sanctuary"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "shape": "cube",
+        "size_ft": 15,
+        "position_node_id": "cover",
+        "range_ft": 120,
+        "on_ground": True,
+    }
+    assert effect["duration"] == {"until": "duration_1_minute"}
+    assert effect["metadata"] == {
+        "spectral_trees_and_vines": True,
+        "on_ground": True,
+        "cube_size_ft": 15,
+        "created_with_magic_action": True,
+        "cost_resource": "srd.resource.wild_shape",
+        "half_cover_for_caster_and_allies_in_area": True,
+        "allies_gain_current_natures_ward_resistance_in_area": True,
+        "current_natures_ward_resistance": "cold",
+        "ends_if_caster_incapacitated_or_dies": True,
+        "can_move_as_bonus_action": True,
+        "move_distance_ft": 60,
+        "range_from_caster_ft": 120,
+        "position_node_id": "cover",
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "natures_sanctuary"
+    assert world_effect_change["scope"] == effect["scope"]
+
+
+def test_land_druid_natures_sanctuary_move_updates_active_cube(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 14}
+    character.subclasses = {"druid": "land"}
+    character.actions.append("srd.natures_sanctuary_move")
+    state.world.active_effects.append(
+        {
+            "effect_id": "sanctuary",
+            "source_action_id": "srd.natures_sanctuary",
+            "applied_by": "pc1",
+            "effect_type": "natures_sanctuary",
+            "concentration": False,
+            "scope": {
+                "shape": "cube",
+                "size_ft": 15,
+                "position_node_id": "cover",
+                "range_ft": 120,
+                "on_ground": True,
+            },
+            "duration": {"until": "duration_1_minute"},
+            "metadata": {"position_node_id": "cover"},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.natures_sanctuary_move",
+        [],
+        params={"natures_sanctuary_position_node_id": "back"},
+        idempotency_key="natures-sanctuary-move",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    effect = state.world.active_effects[-1]
+    assert effect["scope"]["position_node_id"] == "back"
+    assert effect["metadata"]["position_node_id"] == "back"
+    assert effect["metadata"]["last_moved_by_bonus_action"] is True
+    move_change = next(
+        change for change in result["state_changes"] if change["type"] == "natures_sanctuary_move"
+    )
+    assert move_change == {
+        "type": "natures_sanctuary_move",
+        "actor_id": "pc1",
+        "effect_id": "sanctuary",
+        "from": "cover",
+        "to": "back",
+        "path": "automation[0]",
+    }
+
+
+def test_land_druid_natures_sanctuary_rejects_out_of_range_before_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    graph = state.encounter.tactical_graph
+    assert graph is not None
+    graph["nodes"]["far"] = {
+        "node_id": "far",
+        "name": "Far",
+        "tags": [],
+        "capacity": None,
+        "default_cover": "none",
+        "terrain": "normal",
+    }
+    graph["edges"].append(
+        {
+            "source": "back",
+            "target": "far",
+            "distance_ft": 100,
+            "movement_cost": None,
+            "line_of_sight": True,
+            "cover": "none",
+            "difficult_terrain": False,
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 14}
+    character.subclasses = {"druid": "land"}
+    character.actions.append("srd.natures_sanctuary")
+    character.resources["srd.resource.wild_shape"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="within 120 feet"):
+        tools.perform_action(
+            "pc1",
+            "srd.natures_sanctuary",
+            [],
+            params={"natures_sanctuary_position_node_id": "far"},
+            idempotency_key="natures-sanctuary-too-far",
+        )
+
+    assert character.resources["srd.resource.wild_shape"] == 1
+    assert state.encounter.action_budgets == {}
+    assert state.world.active_effects == []
+
+
+def test_land_druid_natures_sanctuary_move_requires_active_cube_before_bonus_action(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 14}
+    character.subclasses = {"druid": "land"}
+    character.actions.append("srd.natures_sanctuary_move")
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="active Cube"):
+        tools.perform_action(
+            "pc1",
+            "srd.natures_sanctuary_move",
+            [],
+            params={"natures_sanctuary_position_node_id": "back"},
+            idempotency_key="natures-sanctuary-move-no-cube",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
+def test_land_druid_natures_sanctuary_move_rejects_over_sixty_feet_before_bonus_action(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    graph = state.encounter.tactical_graph
+    assert graph is not None
+    graph["nodes"]["far"] = {
+        "node_id": "far",
+        "name": "Far",
+        "tags": [],
+        "capacity": None,
+        "default_cover": "none",
+        "terrain": "normal",
+    }
+    graph["edges"].append(
+        {
+            "source": "back",
+            "target": "far",
+            "distance_ft": 70,
+            "movement_cost": None,
+            "line_of_sight": True,
+            "cover": "none",
+            "difficult_terrain": False,
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 14}
+    character.subclasses = {"druid": "land"}
+    character.actions.append("srd.natures_sanctuary_move")
+    state.world.active_effects.append(
+        {
+            "effect_id": "sanctuary",
+            "source_action_id": "srd.natures_sanctuary",
+            "applied_by": "pc1",
+            "effect_type": "natures_sanctuary",
+            "concentration": False,
+            "scope": {
+                "shape": "cube",
+                "size_ft": 15,
+                "position_node_id": "cover",
+                "range_ft": 120,
+                "on_ground": True,
+            },
+            "duration": {"until": "duration_1_minute"},
+            "metadata": {"position_node_id": "cover"},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="cannot exceed 60 feet"):
+        tools.perform_action(
+            "pc1",
+            "srd.natures_sanctuary_move",
+            [],
+            params={"natures_sanctuary_position_node_id": "far"},
+            idempotency_key="natures-sanctuary-move-too-far",
+        )
+
+    assert state.world.active_effects[-1]["scope"]["position_node_id"] == "cover"
+    assert state.encounter.action_budgets == {}
+
+
 def test_barbarian_unarmored_defense_sets_base_ac_and_allows_shield(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

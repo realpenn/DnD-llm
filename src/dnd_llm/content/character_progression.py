@@ -306,7 +306,12 @@ SUBCLASS_ACTIONS = {
         "life": {3: ["srd.disciple_of_life", "srd.preserve_life"]},
     },
     "druid": {
-        "land": {3: ["srd.lands_aid"], 6: ["srd.natural_recovery"], 10: ["srd.natures_ward"]},
+        "land": {
+            3: ["srd.lands_aid"],
+            6: ["srd.natural_recovery"],
+            10: ["srd.natures_ward"],
+            14: ["srd.natures_sanctuary", "srd.natures_sanctuary_move"],
+        },
     },
     "fighter": {
         "champion": {3: ["srd.improved_critical", "srd.remarkable_athlete"]},

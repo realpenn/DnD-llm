@@ -343,6 +343,27 @@
                         "srd.natural_recovery",
                         "srd.natures_ward"
                     ]
+                },
+                "14": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.druidic",
+                        "srd.primal_order",
+                        "srd.speak_with_animals",
+                        "srd.wild_shape_wolf",
+                        "srd.wild_shape_giant_rat",
+                        "srd.wild_companion_wild_shape",
+                        "srd.wild_companion_spell_slot",
+                        "srd.wild_resurgence_restore_wild_shape_slot_1",
+                        "srd.wild_resurgence_restore_wild_shape_slot_2",
+                        "srd.wild_resurgence_restore_wild_shape_slot_3",
+                        "srd.wild_resurgence_create_spell_slot",
+                        "srd.natural_recovery",
+                        "srd.natures_ward",
+                        "srd.natures_sanctuary",
+                        "srd.natures_sanctuary_move"
+                    ]
                 }
             },
             "subclasses": {
@@ -353,9 +374,16 @@
                         "Circle of the Land Spells",
                         "Land's Aid",
                         "Natural Recovery",
-                        "Nature's Ward"
+                        "Nature's Ward",
+                        "Nature's Sanctuary"
                     ],
-                    "actions": ["srd.lands_aid", "srd.natural_recovery", "srd.natures_ward"]
+                    "actions": [
+                        "srd.lands_aid",
+                        "srd.natural_recovery",
+                        "srd.natures_ward",
+                        "srd.natures_sanctuary",
+                        "srd.natures_sanctuary_move"
+                    ]
                 }
             }
         },

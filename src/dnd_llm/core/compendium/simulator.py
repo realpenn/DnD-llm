@@ -89,6 +89,10 @@ class CompendiumSimulator:
                     params["lands_aid_healing_target_id"] = "pc_ally"
                 if action.id == "srd.sacred_weapon":
                     params["sacred_weapon_action_id"] = "srd.shortsword_attack"
+                if action.properties.get("natures_sanctuary") is True:
+                    params["natures_sanctuary_position_node_id"] = "node_cover"
+                if action.properties.get("natures_sanctuary_move") is True:
+                    params["natures_sanctuary_position_node_id"] = "node_back"
                 if action.properties.get("oil_of_sharpness") is True:
                     params["oil_of_sharpness_action_id"] = "srd.shortsword_attack"
                 if action.properties.get("robe_of_useful_items_detach_patch") is True:
@@ -302,12 +306,34 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
             ),
         },
     )
-    return GameState(
+    state = GameState(
         campaign_id="simulation",
         rng_seed=424242,
         characters={"pc_actor": actor, "pc_ally": ally},
         encounter=encounter,
     )
+    if action_id == "srd.natures_sanctuary_move":
+        state.world.active_effects.append(
+            {
+                "effect_id": "simulation-natures-sanctuary",
+                "source_ref": "SRD 5.2.1 Druid Subclass: Circle of the Land, Level 14: Nature's Sanctuary",
+                "source_action_id": "srd.natures_sanctuary",
+                "applied_by": "pc_actor",
+                "effect_type": "natures_sanctuary",
+                "concentration": False,
+                "scope": {
+                    "shape": "cube",
+                    "size_ft": 15,
+                    "position_node_id": "node_cover",
+                    "range_ft": 120,
+                    "on_ground": True,
+                },
+                "duration": {"until": "duration_1_minute"},
+                "metadata": {"position_node_id": "node_cover"},
+                "audit": {"simulation": True},
+            }
+        )
+    return state
 
 
 def _targets_for_action(target_policy: dict[str, Any]) -> list[str]:

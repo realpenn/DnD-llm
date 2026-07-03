@@ -85,6 +85,8 @@ DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
+NATURES_SANCTUARY_ACTION_ID = "srd.natures_sanctuary"
+NATURES_SANCTUARY_MOVE_ACTION_ID = "srd.natures_sanctuary_move"
 SACRED_WEAPON_ACTION_ID = "srd.sacred_weapon"
 STUNNING_STRIKE_ACTION_ID = "srd.stunning_strike"
 STUNNING_STRIKE_SLOWED_CONDITION = "stunning_strike_slowed"
@@ -368,6 +370,7 @@ class AutomationExecutor:
         self._validate_preserve_life_preconditions(action, actor_id, targets or [], params)
         self._validate_cutting_words_preconditions(action, params)
         self._validate_lands_aid_preconditions(action, targets or [], params)
+        self._validate_natures_sanctuary_preconditions(action, actor_id, params)
         self._validate_sacred_weapon_preconditions(action, params)
         self._validate_oil_of_sharpness_preconditions(action, params)
         self._prepare_size_based_oil_vial_cost(action, targets or [], params)
@@ -450,6 +453,10 @@ class AutomationExecutor:
             self._node_passive_effect(ctx, node, path)
         elif node_type == "world_effect":
             self._node_world_effect(ctx, node, path)
+        elif node_type == "natures_sanctuary":
+            self._node_natures_sanctuary(ctx, node, path)
+        elif node_type == "natures_sanctuary_move":
+            self._node_natures_sanctuary_move(ctx, node, path)
         elif node_type == "repeat_use_save_before_long_rest":
             self._node_repeat_use_save_before_long_rest(ctx, node, path)
         elif node_type == "rod_of_absorption_initialize":
@@ -2541,6 +2548,96 @@ class AutomationExecutor:
                 "effect_type": effect["effect_type"],
                 "concentration": effect["concentration"],
                 "scope": effect["scope"],
+                "path": path,
+            }
+        )
+
+    def _node_natures_sanctuary(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        position_node_id = self._natures_sanctuary_destination(ctx.params, node)
+        actor = self._resource_owner(ctx.actor_id)
+        current_resistance = (
+            druid_natures_ward_resistance_type(actor) if isinstance(actor, Character) else None
+        )
+        metadata = {
+            "spectral_trees_and_vines": True,
+            "on_ground": True,
+            "cube_size_ft": 15,
+            "created_with_magic_action": True,
+            "cost_resource": "srd.resource.wild_shape",
+            "half_cover_for_caster_and_allies_in_area": True,
+            "allies_gain_current_natures_ward_resistance_in_area": True,
+            "current_natures_ward_resistance": current_resistance,
+            "ends_if_caster_incapacitated_or_dies": True,
+            "can_move_as_bonus_action": True,
+            "move_distance_ft": 60,
+            "range_from_caster_ft": 120,
+            "position_node_id": position_node_id,
+        }
+        metadata.update(self._resolved_world_metadata(ctx, dict(node.get("metadata", {}))))
+        effect = {
+            "effect_id": f"world-effect-{self.state.event_counter}-{len(self.state.world.active_effects)}",
+            "source_ref": ctx.action.source,
+            "source_action_id": ctx.action.id,
+            "applied_by": ctx.actor_id,
+            "effect_type": "natures_sanctuary",
+            "concentration": False,
+            "scope": {
+                "shape": "cube",
+                "size_ft": 15,
+                "position_node_id": position_node_id,
+                "range_ft": 120,
+                "on_ground": True,
+            },
+            "duration": {"until": "duration_1_minute"},
+            "metadata": metadata,
+            "audit": {"node_path": path},
+        }
+        self.state.world.active_effects.append(effect)
+        ctx.result.state_changes.append(
+            {
+                "type": "world_effect",
+                "effect_id": effect["effect_id"],
+                "effect_type": effect["effect_type"],
+                "concentration": effect["concentration"],
+                "scope": effect["scope"],
+                "path": path,
+            }
+        )
+
+    def _node_natures_sanctuary_move(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        position_node_id = self._natures_sanctuary_destination(ctx.params, node)
+        effect = self._active_natures_sanctuary_effect(ctx.actor_id)
+        if effect is None:
+            raise AutomationError("Nature's Sanctuary requires an active Cube")
+        scope = effect.setdefault("scope", {})
+        if not isinstance(scope, dict):
+            scope = {}
+            effect["scope"] = scope
+        metadata = effect.setdefault("metadata", {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+            effect["metadata"] = metadata
+        before = self._natures_sanctuary_effect_position(effect) or ""
+        scope["position_node_id"] = position_node_id
+        metadata["position_node_id"] = position_node_id
+        metadata["last_moved_by_bonus_action"] = True
+        ctx.result.state_changes.append(
+            {
+                "type": "natures_sanctuary_move",
+                "actor_id": ctx.actor_id,
+                "effect_id": effect.get("effect_id"),
+                "from": before,
+                "to": position_node_id,
                 "path": path,
             }
         )
@@ -8278,6 +8375,112 @@ class AutomationExecutor:
         if bard_level >= 5:
             return "d8"
         return "d6"
+
+    def _validate_natures_sanctuary_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        sanctuary_nodes = [
+            node
+            for node in self._automation_nodes(action.automation)
+            if node.get("type") in {"natures_sanctuary", "natures_sanctuary_move"}
+        ]
+        if not sanctuary_nodes:
+            return
+        actor = self._resource_owner(actor_id)
+        if not isinstance(actor, Character):
+            raise AutomationError("Nature's Sanctuary requires a character owner")
+        for node in sanctuary_nodes:
+            node_type = str(node.get("type"))
+            destination = self._natures_sanctuary_destination(params, node)
+            origin_position: str | None = None
+            if node_type == "natures_sanctuary_move":
+                effect = self._active_natures_sanctuary_effect(actor_id)
+                if effect is None:
+                    raise AutomationError("Nature's Sanctuary requires an active Cube")
+                origin_position = self._natures_sanctuary_effect_position(effect)
+                if origin_position is None:
+                    raise AutomationError("Nature's Sanctuary active Cube has no position")
+            self._validate_natures_sanctuary_tactical_position(
+                actor_id=actor_id,
+                node_type=node_type,
+                destination=destination,
+                origin_position=origin_position,
+            )
+
+    @staticmethod
+    def _natures_sanctuary_destination(
+        params: dict[str, Any],
+        node: dict[str, Any],
+    ) -> str:
+        param_name = str(node.get("destination_param", "natures_sanctuary_position_node_id"))
+        selected = params.get(param_name)
+        if selected is None:
+            raise AutomationError(f"missing required parameter {param_name}")
+        if isinstance(selected, (dict, list, bool)):
+            raise AutomationError(f"parameter {param_name} must be a scalar")
+        destination = str(selected)
+        if not destination:
+            raise AutomationError(f"parameter {param_name} must be non-empty")
+        return destination
+
+    def _active_natures_sanctuary_effect(self, actor_id: str) -> dict[str, Any] | None:
+        for effect in reversed(self.state.world.active_effects):
+            if not isinstance(effect, dict):
+                continue
+            if effect.get("effect_type") != "natures_sanctuary":
+                continue
+            if effect.get("applied_by") != actor_id:
+                continue
+            return effect
+        return None
+
+    @staticmethod
+    def _natures_sanctuary_effect_position(effect: dict[str, Any]) -> str | None:
+        scope = effect.get("scope")
+        if isinstance(scope, dict):
+            position = scope.get("position_node_id")
+            if isinstance(position, str) and position:
+                return position
+        metadata = effect.get("metadata")
+        if isinstance(metadata, dict):
+            position = metadata.get("position_node_id")
+            if isinstance(position, str) and position:
+                return position
+        return None
+
+    def _validate_natures_sanctuary_tactical_position(
+        self,
+        *,
+        actor_id: str,
+        node_type: str,
+        destination: str,
+        origin_position: str | None,
+    ) -> None:
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return
+        actor = self.state.encounter.combatants.get(actor_id)
+        if actor is None or actor.position_node_id is None:
+            return
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            raise AutomationError("Nature's Sanctuary destination position does not exist")
+        actor_distance = graph.shortest_distance(actor.position_node_id, destination)
+        if actor_distance is None or int(actor_distance) > 120:
+            raise AutomationError(
+                "Nature's Sanctuary destination must be within 120 feet of the Druid"
+            )
+        if node_type != "natures_sanctuary_move":
+            return
+        if origin_position is None:
+            raise AutomationError("Nature's Sanctuary active Cube has no position")
+        if origin_position not in graph.nodes:
+            raise AutomationError("Nature's Sanctuary active Cube position does not exist")
+        move_distance = graph.shortest_distance(origin_position, destination)
+        if move_distance is None or int(move_distance) > 60:
+            raise AutomationError("Nature's Sanctuary move cannot exceed 60 feet")
 
     @staticmethod
     def _validate_sacred_weapon_preconditions(

@@ -3487,8 +3487,15 @@ def test_compendium_loads_srd_actions() -> None:
             "Land's Aid",
             "Natural Recovery",
             "Nature's Ward",
+            "Nature's Sanctuary",
         ],
-        "actions": ["srd.lands_aid", "srd.natural_recovery", "srd.natures_ward"],
+        "actions": [
+            "srd.lands_aid",
+            "srd.natural_recovery",
+            "srd.natures_ward",
+            "srd.natures_sanctuary",
+            "srd.natures_sanctuary_move",
+        ],
     }
     assert compendium.classes["druid"].levels["5"]["features"] == ["Wild Resurgence"]
     assert {
@@ -3538,6 +3545,44 @@ def test_compendium_loads_srd_actions() -> None:
     }
     assert compendium.classes["druid"].levels["10"]["features"] == ["Subclass Feature"]
     assert "srd.natures_ward" in compendium.classes["druid"].levels["10"]["actions"]
+    natures_sanctuary = compendium.action("srd.natures_sanctuary")
+    assert natures_sanctuary.requirements == {
+        "class": "druid",
+        "class_level_min": 14,
+        "subclass": "land",
+    }
+    assert natures_sanctuary.action_economy == "action"
+    assert natures_sanctuary.cost.resources == {"srd.resource.wild_shape": 1}
+    assert natures_sanctuary.properties == {
+        "magic_action": True,
+        "natures_sanctuary": True,
+        "destination_param": "natures_sanctuary_position_node_id",
+    }
+    assert natures_sanctuary.automation[0] == {
+        "type": "natures_sanctuary",
+        "destination_param": "natures_sanctuary_position_node_id",
+    }
+    natures_sanctuary_move = compendium.action("srd.natures_sanctuary_move")
+    assert natures_sanctuary_move.requirements == {
+        "class": "druid",
+        "class_level_min": 14,
+        "subclass": "land",
+    }
+    assert natures_sanctuary_move.action_economy == "bonus_action"
+    assert natures_sanctuary_move.cost.resources == {}
+    assert natures_sanctuary_move.properties == {
+        "natures_sanctuary_move": True,
+        "destination_param": "natures_sanctuary_position_node_id",
+    }
+    assert natures_sanctuary_move.automation[0] == {
+        "type": "natures_sanctuary_move",
+        "destination_param": "natures_sanctuary_position_node_id",
+    }
+    assert compendium.classes["druid"].levels["14"]["features"] == ["Subclass Feature"]
+    assert {
+        "srd.natures_sanctuary",
+        "srd.natures_sanctuary_move",
+    } <= set(compendium.classes["druid"].levels["14"]["actions"])
     assert compendium.classes["sorcerer"].levels["1"]["features"] == [
         "Spellcasting",
         "Innate Sorcery",

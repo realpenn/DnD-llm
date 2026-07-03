@@ -17,6 +17,8 @@ NODE_TYPES = {
     "greater_restoration",
     "passive_effect",
     "world_effect",
+    "natures_sanctuary",
+    "natures_sanctuary_move",
     "repeat_use_save_before_long_rest",
     "rod_of_absorption_initialize",
     "rod_of_absorption_absorb_spell",
@@ -43,6 +45,8 @@ STATE_CHANGING_NODE_TYPES = {
     "greater_restoration",
     "passive_effect",
     "world_effect",
+    "natures_sanctuary",
+    "natures_sanctuary_move",
     "repeat_use_save_before_long_rest",
     "rod_of_absorption_initialize",
     "rod_of_absorption_absorb_spell",
@@ -339,6 +343,13 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
                     errors.append(
                         f"{path}: metadata_from_slot value_per_slot_above must be non-negative"
                     )
+    if node_type in {"natures_sanctuary", "natures_sanctuary_move"}:
+        destination_param = node.get(
+            "destination_param",
+            "natures_sanctuary_position_node_id",
+        )
+        if not isinstance(destination_param, str) or not destination_param:
+            errors.append(f"{path}: {node_type} destination_param must be a string")
     if node_type == "repeat_use_save_before_long_rest":
         marker = node.get("marker")
         if not isinstance(marker, str) or not marker:

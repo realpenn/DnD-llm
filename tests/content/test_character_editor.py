@@ -1351,6 +1351,19 @@ def test_natural_language_character_edit_assigns_land_choice_for_circle_of_land(
     assert "srd.natures_ward" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_land_natures_sanctuary_at_level_14() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 德鲁伊14 子职 land")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"druid": 14}
+    assert result.character.subclasses == {"druid": "land"}
+    assert "srd.natures_sanctuary" in result.character.actions
+    assert "srd.natures_sanctuary_move" in result.character.actions
+
+
 def test_natural_language_character_edit_rejects_land_choice_without_circle_of_land() -> None:
     character = default_fighter("pc1", "Penn")
 

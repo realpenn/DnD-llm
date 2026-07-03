@@ -2449,6 +2449,73 @@
             "audit_label": "Nature's Ward"
         },
         {
+            "id": "srd.natures_sanctuary",
+            "name": "Nature's Sanctuary",
+            "localization": {
+                "en": "Nature's Sanctuary",
+                "zh": "自然圣所",
+                "aliases": ["Circle of the Land Nature's Sanctuary", "大地结社自然圣所"]
+            },
+            "source": "SRD 5.2.1 Druid Subclass: Circle of the Land, Level 14: Nature's Sanctuary",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 120, "shape": "cube", "size_ft": 15},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 14, "subclass": "land"},
+            "properties": {
+                "magic_action": true,
+                "natures_sanctuary": true,
+                "destination_param": "natures_sanctuary_position_node_id"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.wild_shape": 1}},
+            "automation": [
+                {
+                    "type": "natures_sanctuary",
+                    "destination_param": "natures_sanctuary_position_node_id"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The Druid spends a use of Wild Shape to create spectral trees and vines in a 15-foot Cube on the ground within 120 feet for 1 minute, giving the Druid and allies Half Cover and sharing the Druid's current Nature's Ward Resistance with allies in the area."
+                }
+            ],
+            "audit_label": "Nature's Sanctuary"
+        },
+        {
+            "id": "srd.natures_sanctuary_move",
+            "name": "Nature's Sanctuary: Move Cube",
+            "localization": {
+                "en": "Nature's Sanctuary: Move Cube",
+                "zh": "自然圣所：移动立方体",
+                "aliases": ["Move Nature's Sanctuary", "移动自然圣所"]
+            },
+            "source": "SRD 5.2.1 Druid Subclass: Circle of the Land, Level 14: Nature's Sanctuary",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 120, "shape": "cube", "size_ft": 15},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 14, "subclass": "land"},
+            "properties": {
+                "natures_sanctuary_move": true,
+                "destination_param": "natures_sanctuary_position_node_id"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "natures_sanctuary_move",
+                    "destination_param": "natures_sanctuary_position_node_id"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The Druid moves the active Nature's Sanctuary Cube up to 60 feet to ground within 120 feet."
+                }
+            ],
+            "audit_label": "Nature's Sanctuary: Move Cube"
+        },
+        {
             "id": "srd.wild_resurgence_restore_wild_shape_slot_1",
             "name": "Wild Resurgence: Restore Wild Shape with Level 1 Slot",
             "localization": {
