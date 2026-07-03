@@ -17,6 +17,7 @@ from .positioning import TacticalGraph
 from .rules.checks import roll_check
 from .rules.class_features import (
     PRIMAL_KNOWLEDGE_SKILLS,
+    aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
     druid_magician_check_bonus,
     has_condition,
@@ -1424,8 +1425,7 @@ class EngineTools:
         ability: str,
     ) -> tuple[int, list[dict[str, Any]]]:
         ability = ability.lower()
-        bonus = 0
-        sources: list[dict[str, Any]] = []
+        bonus, sources = self._aura_of_protection_saving_throw_bonus(actor_id)
         for effect in self._status_effects_for_actor(actor_id):
             modifiers = effect.get("passive_modifiers", {})
             if not isinstance(modifiers, dict):
@@ -1445,6 +1445,88 @@ class EngineTools:
                 }
             )
         return bonus, sources
+
+    def _aura_of_protection_saving_throw_bonus(
+        self,
+        actor_id: str,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        target = self.state.entity_for_actor(actor_id)
+        target_combatant = target if isinstance(target, Combatant) else self._combatant_for(target)
+        candidates: list[dict[str, Any]] = []
+        if self.state.encounter is not None and target_combatant is not None:
+            graph = (
+                TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+                if self.state.encounter.tactical_graph is not None
+                else None
+            )
+            for paladin in self.state.encounter.combatants.values():
+                if paladin.entity_id not in self.state.characters:
+                    continue
+                if paladin.side != target_combatant.side:
+                    continue
+                owner = self.state.characters[paladin.entity_id]
+                amount = aura_of_protection_saving_throw_bonus(owner)
+                if amount <= 0:
+                    continue
+                if has_condition(self._status_effects_for_actor(paladin.id), "incapacitated"):
+                    continue
+                distance: int | None
+                if paladin.id == target_combatant.id:
+                    distance = 0
+                elif (
+                    graph is None
+                    or paladin.position_node_id is None
+                    or target_combatant.position_node_id is None
+                ):
+                    continue
+                else:
+                    distance = graph.shortest_distance(
+                        paladin.position_node_id,
+                        target_combatant.position_node_id,
+                    )
+                if distance is None or distance > 10:
+                    continue
+                candidates.append(
+                    {
+                        "source_action_id": "srd.aura_of_protection",
+                        "modifier": "aura_of_protection",
+                        "source_actor_id": paladin.id,
+                        "target_id": target_combatant.id,
+                        "distance_ft": distance,
+                        "amount": amount,
+                    }
+                )
+        elif isinstance(target, Character):
+            amount = aura_of_protection_saving_throw_bonus(target)
+            if amount > 0 and not has_condition(target.status_effects, "incapacitated"):
+                candidates.append(
+                    {
+                        "source_action_id": "srd.aura_of_protection",
+                        "modifier": "aura_of_protection",
+                        "source_actor_id": target.id,
+                        "target_id": target.id,
+                        "amount": amount,
+                    }
+                )
+        if not candidates:
+            return 0, []
+        best_amount = max(int(candidate["amount"]) for candidate in candidates)
+        return best_amount, [
+            candidate for candidate in candidates if int(candidate["amount"]) == best_amount
+        ]
+
+    def _combatant_for(self, actor: Character | Monster | Combatant) -> Combatant | None:
+        if isinstance(actor, Combatant):
+            return actor
+        if self.state.encounter is None:
+            return None
+        actor_id = getattr(actor, "id", None)
+        if actor_id is None:
+            return None
+        for combatant in self.state.encounter.combatants.values():
+            if combatant.id == actor_id or combatant.entity_id == actor_id:
+                return combatant
+        return None
 
     def _ability_source(self, actor_id: str) -> Character | Monster | Combatant:
         actor = self.state.entity_for_actor(actor_id)

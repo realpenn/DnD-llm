@@ -1992,6 +1992,10 @@ def test_compendium_loads_srd_actions() -> None:
     faithful_steed = compendium.action("srd.faithful_steed")
     assert faithful_steed.requirements == {"class": "paladin", "class_level_min": 5}
     assert faithful_steed.action_economy == "none"
+    aura_of_protection = compendium.action("srd.aura_of_protection")
+    assert aura_of_protection.requirements == {"class": "paladin", "class_level_min": 6}
+    assert aura_of_protection.action_economy == "none"
+    assert aura_of_protection.range == {"self": True, "shape": "emanation", "radius_ft": 10}
     faithful_steed_cast = compendium.action("srd.faithful_steed_find_steed")
     assert faithful_steed_cast.cost.resources == {"srd.resource.faithful_steed": 1}
     assert faithful_steed_cast.cost.spell_slot_level is None
@@ -3272,6 +3276,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.find_steed",
         "srd.faithful_steed_find_steed",
     } <= set(compendium.classes["paladin"].levels["5"]["actions"])
+    assert compendium.classes["paladin"].levels["6"]["features"] == ["Aura of Protection"]
+    assert "srd.aura_of_protection" in compendium.classes["paladin"].levels["6"]["actions"]
     assert {
         "srd.cunning_action_dash",
         "srd.cunning_action_disengage",

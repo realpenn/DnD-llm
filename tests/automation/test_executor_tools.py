@@ -3539,6 +3539,89 @@ def test_faithful_steed_casts_find_steed_without_spell_slot_once_per_long_rest(
     assert character.resources["srd.resource.faithful_steed"] == 1
 
 
+def test_paladin_aura_of_protection_adds_cha_to_allied_saving_throw(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 6}
+    paladin.abilities["cha"] = 16
+    paladin.actions.append("srd.aura_of_protection")
+    action = ActionDefinition(
+        id="test.aura_save",
+        name="Aura Save",
+        localization={"en": "Aura Save", "zh": "灵光豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc2"])
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["passive_adjustment"] == 3
+    assert save_node["passive_sources"] == [
+        {
+            "source_action_id": "srd.aura_of_protection",
+            "modifier": "aura_of_protection",
+            "source_actor_id": "pc1",
+            "target_id": "pc2",
+            "distance_ft": 0,
+            "amount": 3,
+        }
+    ]
+
+    compendium = CompendiumLoader("rules_data").load()
+    direct_save = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    ).roll_save("pc2", "dex", difficulty_tier="medium", idempotency_key="aura-direct-save")
+    assert direct_save["passive_bonus"] == 3
+    assert direct_save["passive_bonus_sources"][0]["modifier"] == "aura_of_protection"
+
+
+def test_paladin_aura_of_protection_inactive_while_incapacitated(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 6}
+    paladin.abilities["cha"] = 16
+    state.encounter.combatants["pc1"].status_effects.append({"condition": "incapacitated"})
+    action = ActionDefinition(
+        id="test.incapacitated_aura_save",
+        name="Incapacitated Aura Save",
+        localization={"en": "Incapacitated Aura Save", "zh": "失能灵光豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc2"])
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["passive_adjustment"] == 0
+    assert save_node["passive_sources"] == []
+
+
 def test_armor_of_shadows_casts_mage_armor_without_spell_slot(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

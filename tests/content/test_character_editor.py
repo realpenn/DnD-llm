@@ -1487,6 +1487,18 @@ def test_natural_language_character_edit_assigns_paladin_faithful_steed() -> Non
     assert result.character.resources["srd.resource.faithful_steed"] == 1
 
 
+def test_natural_language_character_edit_assigns_paladin_aura_of_protection() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 圣武士6")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"paladin": 6}
+    assert "srd.aura_of_protection" in result.character.actions
+    assert result.character.resources["srd.resource.faithful_steed"] == 1
+
+
 def test_natural_language_character_edit_removes_faithful_steed_when_level_drops() -> None:
     character = default_fighter("pc1", "Penn")
     paladin_result = apply_natural_language_character_edit(character, "职业 圣武士5")

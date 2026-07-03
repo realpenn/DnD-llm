@@ -13,6 +13,7 @@ from ..rules.checks import d20_expression
 from ..rules.class_features import (
     PRIMAL_KNOWLEDGE_SKILLS,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
+    aura_of_protection_saving_throw_bonus,
     barbarian_rage_damage_bonus,
     barbarian_unarmored_defense_armor_class,
     blessed_healer_self_healing,
@@ -75,6 +76,7 @@ RAGE_ACTION_ID = "srd.rage"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
+AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
 LANDS_AID_ACTION_ID = "srd.lands_aid"
@@ -3070,6 +3072,10 @@ class AutomationExecutor:
         adjustment = 0
         rolls: list[RollResult] = []
         sources: list[dict[str, Any]] = []
+        if bonus_key == "saving_throw_bonus_dice":
+            aura_bonus, aura_sources = self._aura_of_protection_saving_throw_adjustment(entity)
+            adjustment += aura_bonus
+            sources.extend(aura_sources)
         for effect in self._status_effects_for(entity):
             modifiers = effect.get("passive_modifiers", {})
             if not isinstance(modifiers, dict):
@@ -3109,6 +3115,77 @@ class AutomationExecutor:
                         }
                     )
         return adjustment, rolls, sources
+
+    def _aura_of_protection_saving_throw_adjustment(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        candidates: list[dict[str, Any]] = []
+        target_combatant = entity if isinstance(entity, Combatant) else self._combatant_for(entity)
+        if self.state.encounter is not None and target_combatant is not None:
+            for paladin in self.state.encounter.combatants.values():
+                if paladin.entity_id not in self.state.characters:
+                    continue
+                if paladin.side != target_combatant.side:
+                    continue
+                source = self.state.characters[paladin.entity_id]
+                bonus = aura_of_protection_saving_throw_bonus(source)
+                if bonus <= 0:
+                    continue
+                if self._condition_sources(paladin, {"incapacitated"}):
+                    continue
+                distance = (
+                    0
+                    if paladin.id == target_combatant.id
+                    else self._combat_distance(paladin, target_combatant)
+                )
+                if distance is None or distance > 10:
+                    continue
+                candidates.append(
+                    {
+                        "source_action_id": AURA_OF_PROTECTION_ACTION_ID,
+                        "modifier": "aura_of_protection",
+                        "source_actor_id": paladin.id,
+                        "target_id": target_combatant.id,
+                        "distance_ft": distance,
+                        "amount": bonus,
+                    }
+                )
+        elif isinstance(entity, Character):
+            bonus = aura_of_protection_saving_throw_bonus(entity)
+            if bonus > 0 and not has_condition(entity.status_effects, "incapacitated"):
+                candidates.append(
+                    {
+                        "source_action_id": AURA_OF_PROTECTION_ACTION_ID,
+                        "modifier": "aura_of_protection",
+                        "source_actor_id": entity.id,
+                        "target_id": entity.id,
+                        "amount": bonus,
+                    }
+                )
+        if not candidates:
+            return 0, []
+        best_amount = max(int(candidate["amount"]) for candidate in candidates)
+        best_sources = [
+            candidate for candidate in candidates if int(candidate["amount"]) == best_amount
+        ]
+        return best_amount, best_sources
+
+    def _combatant_for(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> Combatant | None:
+        if isinstance(entity, Combatant):
+            return entity
+        if self.state.encounter is None:
+            return None
+        entity_id = getattr(entity, "id", None)
+        if entity_id is None:
+            return None
+        for combatant in self.state.encounter.combatants.values():
+            if combatant.entity_id == entity_id or combatant.id == entity_id:
+                return combatant
+        return None
 
     def _sacred_weapon_attack_bonus(
         self,

@@ -3132,6 +3132,31 @@
             "audit_label": "Faithful Steed"
         },
         {
+            "id": "srd.aura_of_protection",
+            "name": "Aura of Protection",
+            "localization": {
+                "en": "Aura of Protection",
+                "zh": "守护灵光",
+                "aliases": ["Paladin Aura of Protection", "圣武士守护灵光"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 6: Aura of Protection",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true, "shape": "emanation", "radius_ft": 10},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 6},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that while the Paladin isn't Incapacitated, the Paladin and allies in a 10-foot Emanation gain a bonus to saving throws equal to the Paladin's Charisma modifier, minimum +1; a creature benefits from only one such aura at a time."
+                }
+            ],
+            "audit_label": "Aura of Protection"
+        },
+        {
             "id": "srd.faithful_steed_find_steed",
             "name": "Faithful Steed: Find Steed",
             "localization": {

@@ -168,6 +168,10 @@ def has_monk_open_hand_feature(character: Character, *, level: int) -> bool:
     )
 
 
+def has_paladin_feature(character: Character, *, level: int) -> bool:
+    return int(character.class_levels.get("paladin", 0)) >= level
+
+
 def has_fighter_champion_feature(character: Character, *, level: int) -> bool:
     return (
         int(character.class_levels.get("fighter", 0)) >= level
@@ -576,6 +580,13 @@ def draconic_elemental_affinity_damage_bonus(
         return 0
     charisma = int(character.abilities.get("cha", character.abilities.get("CHA", 10)))
     return max(0, ability_modifier(charisma))
+
+
+def aura_of_protection_saving_throw_bonus(character: Character) -> int:
+    if not has_paladin_feature(character, level=6):
+        return 0
+    charisma = int(character.abilities.get("cha", character.abilities.get("CHA", 10)))
+    return max(1, ability_modifier(charisma))
 
 
 def barbarian_unarmored_defense_armor_class(character: Character) -> int | None:

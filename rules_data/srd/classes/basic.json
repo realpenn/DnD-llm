@@ -569,6 +569,23 @@
                         "srd.find_steed",
                         "srd.faithful_steed_find_steed"
                     ]
+                },
+                "6": {
+                    "features": ["Aura of Protection"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed",
+                        "srd.aura_of_protection"
+                    ]
                 }
             },
             "subclasses": {
