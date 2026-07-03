@@ -54,6 +54,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mass_suggestion",
         "srd.greater_restoration",
         "srd.globe_of_invulnerability",
+        "srd.forbiddance",
         "srd.cloudkill",
         "srd.teleportation_circle",
         "srd.insect_plague",
@@ -447,6 +448,72 @@ def test_compendium_loads_srd_actions() -> None:
                     "base_value": 5,
                     "value_per_slot_above": 1,
                 }
+            },
+        }
+    ]
+    forbiddance = compendium.action("srd.forbiddance")
+    assert forbiddance.requirements == {
+        "spell_level": 6,
+        "class_any": ["cleric"],
+    }
+    assert compendium.spell("srd.spell.forbiddance").ritual is True
+    assert forbiddance.properties["ritual"] is True
+    assert forbiddance.properties["spell_classes"] == ["cleric"]
+    assert forbiddance.properties["casting_time"] == {"minutes": 10}
+    assert forbiddance.properties["material_component"] == {
+        "description": "ruby dust worth 1,000+ GP",
+        "consumed": False,
+        "consumed_on_permanent_cast": True,
+    }
+    assert forbiddance.properties["allowed_damage_types"] == ["necrotic", "radiant"]
+    assert forbiddance.properties["damage_type_param"] == "forbiddance_damage_type"
+    assert forbiddance.properties["allowed_creature_types"] == [
+        "aberration",
+        "celestial",
+        "elemental",
+        "fey",
+        "fiend",
+        "undead",
+    ]
+    assert forbiddance.properties["creature_types_param"] == "forbiddance_creature_types"
+    assert forbiddance.properties["password_param"] == "forbiddance_password"
+    assert forbiddance.range == {"touch": True}
+    assert forbiddance.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert forbiddance.cost.gold == 0
+    assert forbiddance.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "forbiddance_ward",
+            "scope": {
+                "target": "touched_area",
+                "max_floor_area_sq_ft": 40000,
+                "height_ft": 30,
+            },
+            "duration": {"until": "duration_1_day"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "blocks_teleport_into_area": True,
+                "blocks_portals_into_area": True,
+                "proofs_against_planar_travel": True,
+                "blocked_planar_routes": [
+                    "astral_plane",
+                    "ethereal_plane",
+                    "feywild",
+                    "shadowfell",
+                    "plane_shift",
+                ],
+                "chosen_creature_types": {"param_list": "forbiddance_creature_types"},
+                "damage_type": {"param": "forbiddance_damage_type"},
+                "damage": "5d10",
+                "repeat_damage_triggers": [
+                    "chosen_creature_enters_area_first_time_on_turn",
+                    "chosen_creature_ends_turn_in_area",
+                ],
+                "password_prevents_spell_damage_when_spoken_on_entry": True,
+                "password_param": "forbiddance_password",
+                "area_cannot_overlap_another_forbiddance": True,
+                "permanent_if_cast_daily_same_location_days": 30,
+                "material_components_consumed_on_permanent_cast": True,
             },
         }
     ]

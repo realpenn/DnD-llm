@@ -66,7 +66,16 @@ class CompendiumSimulator:
                 params = {"area_targets": targets, "simulation": True}
                 allowed_damage_types = action.properties.get("allowed_damage_types")
                 if isinstance(allowed_damage_types, list) and allowed_damage_types:
-                    params["damage_type"] = str(allowed_damage_types[0])
+                    damage_type_param = str(
+                        action.properties.get("damage_type_param", "damage_type")
+                    )
+                    params[damage_type_param] = str(allowed_damage_types[0])
+                allowed_creature_types = action.properties.get("allowed_creature_types")
+                if isinstance(allowed_creature_types, list) and allowed_creature_types:
+                    creature_types_param = str(
+                        action.properties.get("creature_types_param", "creature_types")
+                    )
+                    params[creature_types_param] = [str(allowed_creature_types[0])]
                 if action.properties.get("requires_willing_target") is True:
                     params["target_willing"] = True
                 if action.properties.get("pact_of_the_blade_weapon") is True:
@@ -313,6 +322,14 @@ def _targets_for_action(target_policy: dict[str, Any]) -> list[str]:
 
 def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
     params: dict[str, Any] = {}
+    allowed_damage_types = action.properties.get("allowed_damage_types")
+    if isinstance(allowed_damage_types, list) and allowed_damage_types:
+        damage_type_param = str(action.properties.get("damage_type_param", "damage_type"))
+        params[damage_type_param] = str(allowed_damage_types[0])
+    allowed_creature_types = action.properties.get("allowed_creature_types")
+    if isinstance(allowed_creature_types, list) and allowed_creature_types:
+        creature_types_param = str(action.properties.get("creature_types_param", "creature_types"))
+        params[creature_types_param] = [str(allowed_creature_types[0])]
     if action.properties.get("requires_willing_target") is True:
         params["target_willing"] = True
     if action.properties.get("requires_dim_light_or_darkness") is True:

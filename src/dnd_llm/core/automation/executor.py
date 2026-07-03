@@ -362,6 +362,7 @@ class AutomationExecutor:
         self._validate_thirsting_blade_preconditions(action, actor_id, params)
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
         self._validate_allowed_damage_type_param(action, params)
+        self._validate_allowed_creature_types_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
@@ -2349,6 +2350,18 @@ class AutomationExecutor:
             if isinstance(selected, (dict, list)):
                 raise AutomationError(f"parameter {param_name} must be a scalar")
             return str(selected)
+        if isinstance(value, dict) and set(value) == {"param_list"}:
+            param_name = str(value["param_list"])
+            selected = ctx.params.get(param_name)
+            if selected is None:
+                raise AutomationError(f"missing required parameter {param_name}")
+            if isinstance(selected, dict):
+                raise AutomationError(f"parameter {param_name} must be a list")
+            if isinstance(selected, list):
+                if not selected:
+                    raise AutomationError(f"parameter {param_name} must not be empty")
+                return [str(item) for item in selected]
+            return [str(selected)]
         if not isinstance(value, dict) or "class_level_die" not in value:
             return value
         class_name = str(value["class_level_die"])
@@ -2384,6 +2397,16 @@ class AutomationExecutor:
             resolved[str(key)] = base_value + max(0, slot_level - base_slot_level) * per_slot
         return resolved
 
+    def _resolved_world_metadata(
+        self,
+        ctx: _Context,
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            key: self._resolved_passive_modifier_value(ctx, value)
+            for key, value in metadata.items()
+        }
+
     @staticmethod
     def _skip_target_for_save_gate(
         ctx: _Context,
@@ -2411,7 +2434,7 @@ class AutomationExecutor:
             scope["target_ids"] = list(ctx.targets)
             if len(ctx.targets) == 1:
                 scope["target_id"] = ctx.targets[0]
-        metadata = dict(node.get("metadata", {}))
+        metadata = self._resolved_world_metadata(ctx, dict(node.get("metadata", {})))
         metadata.update(self._slot_scaled_metadata(ctx, node))
         metadata.update(self._investment_of_chain_master_familiar_metadata(ctx, node))
         effect = {
@@ -5994,15 +6017,45 @@ class AutomationExecutor:
         if not isinstance(allowed_raw, list) or not allowed_raw:
             return
         allowed = [str(damage_type) for damage_type in allowed_raw]
-        raw = params.get("damage_type")
+        param_name = str(action.properties.get("damage_type_param", "damage_type"))
+        raw = params.get(param_name)
         if raw is None or raw == "":
-            raise AutomationError("missing required parameter damage_type")
+            raise AutomationError(f"missing required parameter {param_name}")
         if isinstance(raw, (dict, list)):
-            raise AutomationError("parameter damage_type must be a scalar")
+            raise AutomationError(f"parameter {param_name} must be a scalar")
         normalized = str(raw).casefold().strip()
         if normalized not in allowed:
-            raise AutomationError(f"damage_type must be one of: {', '.join(allowed)}")
-        params["damage_type"] = normalized
+            raise AutomationError(f"{param_name} must be one of: {', '.join(allowed)}")
+        params[param_name] = normalized
+
+    @staticmethod
+    def _validate_allowed_creature_types_param(
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        allowed_raw = action.properties.get("allowed_creature_types")
+        if not isinstance(allowed_raw, list) or not allowed_raw:
+            return
+        allowed = [str(creature_type) for creature_type in allowed_raw]
+        param_name = str(action.properties.get("creature_types_param", "creature_types"))
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            raise AutomationError(f"missing required parameter {param_name}")
+        if isinstance(raw, dict):
+            raise AutomationError(f"parameter {param_name} must be a list")
+        raw_values = raw if isinstance(raw, list) else [raw]
+        if not raw_values:
+            raise AutomationError(f"parameter {param_name} must not be empty")
+        normalized_values: list[str] = []
+        for value in raw_values:
+            if isinstance(value, (dict, list)):
+                raise AutomationError(f"parameter {param_name} entries must be scalars")
+            normalized = str(value).casefold().strip()
+            if normalized not in allowed:
+                raise AutomationError(f"{param_name} must contain only: {', '.join(allowed)}")
+            if normalized not in normalized_values:
+                normalized_values.append(normalized)
+        params[param_name] = normalized_values
 
     @staticmethod
     def _validate_greater_restoration_preconditions(

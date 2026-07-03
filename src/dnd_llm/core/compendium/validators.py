@@ -157,6 +157,22 @@ class RuleDataValidator:
                         report.errors.append(
                             f"{action.id}: invalid allowed_damage_type {damage_type}"
                         )
+        allowed_creature_types = action.properties.get("allowed_creature_types")
+        if allowed_creature_types is not None:
+            if not isinstance(allowed_creature_types, list) or not allowed_creature_types:
+                report.errors.append(
+                    f"{action.id}: allowed_creature_types must be a non-empty list"
+                )
+            else:
+                for creature_type in allowed_creature_types:
+                    if creature_type not in ALLOWED_CREATURE_TYPES:
+                        report.errors.append(
+                            f"{action.id}: invalid allowed_creature_type {creature_type}"
+                        )
+        for param_property in ("damage_type_param", "creature_types_param"):
+            param_name = action.properties.get(param_property)
+            if param_name is not None and (not isinstance(param_name, str) or not param_name):
+                report.errors.append(f"{action.id}: {param_property} must be a non-empty string")
         if not isinstance(action.cost.resource_params, dict):
             report.errors.append(f"{action.id}: cost.resource_params must be an object")
         else:

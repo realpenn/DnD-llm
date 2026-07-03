@@ -9200,6 +9200,171 @@ def test_globe_of_invulnerability_upcast_records_higher_blocked_spell_level(
     assert effect["metadata"]["blocks_spell_level_lte"] == 6
 
 
+def test_forbiddance_spends_slot_records_ward_and_does_not_consume_ruby_dust(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    caster.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.forbiddance",
+        actor_id="pc1",
+        targets=[],
+        params={
+            "slot_level": 6,
+            "forbiddance_damage_type": "Radiant",
+            "forbiddance_creature_types": ["Fiend", "Undead"],
+        },
+        idempotency_key="cast-forbiddance",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.gold == 1000
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_6"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.forbiddance"
+    assert effect["effect_type"] == "forbiddance_ward"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "touched_area",
+        "max_floor_area_sq_ft": 40000,
+        "height_ft": 30,
+    }
+    assert effect["duration"] == {"until": "duration_1_day"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "blocks_teleport_into_area": True,
+        "blocks_portals_into_area": True,
+        "proofs_against_planar_travel": True,
+        "blocked_planar_routes": [
+            "astral_plane",
+            "ethereal_plane",
+            "feywild",
+            "shadowfell",
+            "plane_shift",
+        ],
+        "chosen_creature_types": ["fiend", "undead"],
+        "damage_type": "radiant",
+        "damage": "5d10",
+        "repeat_damage_triggers": [
+            "chosen_creature_enters_area_first_time_on_turn",
+            "chosen_creature_ends_turn_in_area",
+        ],
+        "password_prevents_spell_damage_when_spoken_on_entry": True,
+        "password_param": "forbiddance_password",
+        "area_cannot_overlap_another_forbiddance": True,
+        "permanent_if_cast_daily_same_location_days": 30,
+        "material_components_consumed_on_permanent_cast": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "forbiddance_ward"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+
+
+def test_forbiddance_can_be_cast_as_ritual_without_spending_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.prepared_spells = ["srd.spell.forbiddance"]
+    caster.spell_slots["6"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.forbiddance",
+        actor_id="pc1",
+        targets=[],
+        params={
+            "slot_level": 6,
+            "as_ritual": True,
+            "forbiddance_damage_type": "necrotic",
+            "forbiddance_creature_types": ["aberration"],
+        },
+        idempotency_key="ritual-forbiddance",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    ritual_change = next(
+        change for change in result["state_changes"] if change["type"] == "ritual_casting"
+    )
+    assert ritual_change == {
+        "type": "ritual_casting",
+        "actor_id": "pc1",
+        "spell_id": "srd.spell.forbiddance",
+        "base_spell_slot_level": 6,
+        "spell_slot_expended": False,
+        "casting_time_extra_minutes": 10,
+        "source": "prepared_spell",
+    }
+    assert not [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "cost" and change["resource"] == "spell_slot_6"
+    ]
+    assert state.world.active_effects[-1]["metadata"]["chosen_creature_types"] == ["aberration"]
+
+
+def test_forbiddance_rejects_non_srd_choices_before_spending_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="forbiddance_damage_type must be one of"):
+        tools._execute_action(
+            action_id="srd.forbiddance",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 6,
+                "forbiddance_damage_type": "fire",
+                "forbiddance_creature_types": ["fiend"],
+            },
+            idempotency_key="forbiddance-bad-damage-type",
+        )
+
+    assert caster.spell_slots["6"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="forbiddance_creature_types must contain only"):
+        tools._execute_action(
+            action_id="srd.forbiddance",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 6,
+                "forbiddance_damage_type": "radiant",
+                "forbiddance_creature_types": ["dragon"],
+            },
+            idempotency_key="forbiddance-bad-creature-type",
+        )
+
+    assert caster.spell_slots["6"] == 1
+    assert state.world.active_effects == []
+
+
 def test_cloudkill_uses_actor_spell_dc_deals_poison_and_records_fog(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

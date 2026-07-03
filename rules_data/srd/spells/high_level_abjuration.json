@@ -171,6 +171,100 @@
         ],
         "audit_label": "Globe of Invulnerability"
       }
+    },
+    {
+      "id": "srd.spell.forbiddance",
+      "name": "Forbiddance",
+      "localization": {
+        "en": "Forbiddance",
+        "zh": "禁制术",
+        "aliases": ["禁制"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "ritual": true,
+      "action": {
+        "id": "srd.forbiddance",
+        "name": "Forbiddance",
+        "localization": {
+          "en": "Forbiddance",
+          "zh": "禁制术",
+          "aliases": ["禁制"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "material_component": {
+            "description": "ruby dust worth 1,000+ GP",
+            "consumed": false,
+            "consumed_on_permanent_cast": true
+          },
+          "allowed_damage_types": ["necrotic", "radiant"],
+          "damage_type_param": "forbiddance_damage_type",
+          "allowed_creature_types": [
+            "aberration",
+            "celestial",
+            "elemental",
+            "fey",
+            "fiend",
+            "undead"
+          ],
+          "creature_types_param": "forbiddance_creature_types",
+          "password_param": "forbiddance_password"
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "forbiddance_ward",
+            "scope": {
+              "target": "touched_area",
+              "max_floor_area_sq_ft": 40000,
+              "height_ft": 30
+            },
+            "duration": { "until": "duration_1_day" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "blocks_teleport_into_area": true,
+              "blocks_portals_into_area": true,
+              "proofs_against_planar_travel": true,
+              "blocked_planar_routes": [
+                "astral_plane",
+                "ethereal_plane",
+                "feywild",
+                "shadowfell",
+                "plane_shift"
+              ],
+              "chosen_creature_types": { "param_list": "forbiddance_creature_types" },
+              "damage_type": { "param": "forbiddance_damage_type" },
+              "damage": "5d10",
+              "repeat_damage_triggers": [
+                "chosen_creature_enters_area_first_time_on_turn",
+                "chosen_creature_ends_turn_in_area"
+              ],
+              "password_prevents_spell_damage_when_spoken_on_entry": true,
+              "password_param": "forbiddance_password",
+              "area_cannot_overlap_another_forbiddance": true,
+              "permanent_if_cast_daily_same_location_days": 30,
+              "material_components_consumed_on_permanent_cast": true
+            }
+          }
+        ],
+        "audit_label": "Forbiddance"
+      }
     }
   ]
 }
