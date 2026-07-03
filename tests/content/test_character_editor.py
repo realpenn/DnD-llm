@@ -12,6 +12,7 @@ from dnd_llm.core.rules.class_features import (
     monk_can_move_across_liquids,
     monk_can_move_along_vertical_surfaces,
     monk_forgoing_food_drink_exhaustion_immunity,
+    monk_heightened_focus_applies,
     monk_self_restoration_applies,
     ranger_roving_climb_speed_ft,
     ranger_roving_speed_bonus,
@@ -1815,9 +1816,10 @@ def test_natural_language_character_edit_assigns_monk_self_restoration() -> None
     assert result.character is not None
     assert result.character.class_levels == {"monk": 10}
     assert "srd.acrobatic_movement" in result.character.actions
+    assert "srd.heightened_focus" in result.character.actions
     assert "srd.self_restoration" in result.character.actions
-    assert "srd.heightened_focus" not in result.character.actions
     assert result.character.resources["srd.resource.focus_points"] == 10
+    assert monk_heightened_focus_applies(result.character) is True
     assert monk_self_restoration_applies(result.character) is True
     assert monk_forgoing_food_drink_exhaustion_immunity(result.character) is True
 

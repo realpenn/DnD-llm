@@ -101,6 +101,8 @@ SACRED_WEAPON_ACTION_ID = "srd.sacred_weapon"
 STUNNING_STRIKE_ACTION_ID = "srd.stunning_strike"
 STUNNING_STRIKE_SLOWED_CONDITION = "stunning_strike_slowed"
 FLURRY_OF_BLOWS_ACTION_ID = "srd.flurry_of_blows"
+STEP_OF_THE_WIND_FOCUS_ACTION_ID = "srd.step_of_the_wind_focus"
+HEIGHTENED_FOCUS_COMPANION_CONDITION = "heightened_focus_step_of_the_wind_companion"
 OPEN_HAND_TECHNIQUE_ACTION_ID = "srd.open_hand_technique"
 REPELLING_BLAST_ACTION_ID = "srd.repelling_blast"
 FAST_HANDS_SLEIGHT_OF_HAND_ACTION_ID = "srd.fast_hands_sleight_of_hand"
@@ -380,6 +382,7 @@ class AutomationExecutor:
         self._validate_slow_fall_preconditions(action, targets or [], params)
         self._validate_stunning_strike_preconditions(action, actor_id, targets or [], params)
         self._validate_empowered_strikes_preconditions(action, actor_id, params)
+        self._validate_heightened_focus_preconditions(action, actor_id, targets or [], params)
         self._validate_preserve_life_preconditions(action, actor_id, targets or [], params)
         self._validate_cutting_words_preconditions(action, params)
         self._validate_lands_aid_preconditions(action, targets or [], params)
@@ -493,6 +496,8 @@ class AutomationExecutor:
             self._node_wild_resurgence_restore_wild_shape(ctx, path)
         elif node_type == "resource_delta":
             self._node_resource_delta(ctx, node, path)
+        elif node_type == "heightened_focus_step_of_the_wind":
+            self._node_heightened_focus_step_of_the_wind(ctx, node, path)
         elif node_type == "tactical_shift_move":
             self._node_tactical_shift_move(ctx, node, path)
         elif node_type == "move":
@@ -561,6 +566,14 @@ class AutomationExecutor:
                 ctx.targets = [str(target_id) for target_id in selected]
             elif selected is not None:
                 ctx.targets = [str(selected)]
+            elif node.get("fallback") == "explicit_index":
+                if not ctx.original_targets:
+                    raise AutomationError(f"target param {param_name} did not resolve targets")
+                fallback_index = int(node.get("fallback_index", 0))
+                if 0 <= fallback_index < len(ctx.original_targets):
+                    ctx.targets = [ctx.original_targets[fallback_index]]
+                else:
+                    ctx.targets = [ctx.original_targets[0]]
             elif node.get("fallback") == "explicit":
                 ctx.targets = list(ctx.original_targets)
             else:
@@ -2829,6 +2842,55 @@ class AutomationExecutor:
             }
         )
 
+    def _node_heightened_focus_step_of_the_wind(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        companion_id = self._heightened_focus_companion_id(ctx.params)
+        if companion_id is None:
+            return
+        plan = self._heightened_focus_companion_plan(ctx.actor_id, companion_id, ctx.params)
+        actor = plan["actor"]
+        assert isinstance(actor, Combatant)
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, path),
+            source_ref=ctx.action.source,
+            source_action_id=ctx.action.id,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=HEIGHTENED_FOCUS_COMPANION_CONDITION,
+            passive_modifiers={
+                "heightened_focus_step_of_the_wind": True,
+                "companion_id": companion_id,
+                "companion_no_opportunity_attacks": True,
+            },
+            duration=dict(node.get("duration", {"until": "end_of_current_turn"})),
+            tick_on=node.get("tick_on", "self_turn_end"),
+            stacking_policy="replace_condition",
+            audit={"node_path": path},
+        )
+        effects = getattr(actor, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != HEIGHTENED_FOCUS_COMPANION_CONDITION
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "heightened_focus_step_of_the_wind",
+                "actor_id": ctx.actor_id,
+                "companion_id": companion_id,
+                "source_action_id": ctx.action.id,
+                "distance_ft": plan["distance_ft"],
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+                "path": path,
+            }
+        )
+
     def _apply_tactical_mind_to_ability_check(
         self,
         ctx: _Context,
@@ -3098,6 +3160,9 @@ class AutomationExecutor:
                     ),
                 }
             )
+            ctx.result.state_changes.extend(
+                self._heightened_focus_step_companion_moves(ctx.actor_id, str(destination))
+            )
         elif isinstance(actor, Character):
             before = actor.zone_id
             actor.zone_id = str(destination)
@@ -3108,6 +3173,45 @@ class AutomationExecutor:
             )
         else:
             raise AutomationError("only characters and combatants can move")
+
+    def _heightened_focus_step_companion_moves(
+        self,
+        actor_id: str,
+        destination: str,
+    ) -> list[dict[str, Any]]:
+        if self.state.encounter is None:
+            return []
+        actor = self._entity(actor_id)
+        if not isinstance(actor, Combatant):
+            return []
+        changes: list[dict[str, Any]] = []
+        for effect in actor.status_effects:
+            if effect.get("condition") != HEIGHTENED_FOCUS_COMPANION_CONDITION:
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            companion_id = modifiers.get("companion_id")
+            if not isinstance(companion_id, str):
+                continue
+            companion = self.state.encounter.combatants.get(companion_id)
+            if companion is None:
+                continue
+            before = companion.position_node_id
+            companion.position_node_id = destination
+            changes.append(
+                {
+                    "type": "heightened_focus_step_of_the_wind_companion_move",
+                    "actor_id": actor_id,
+                    "companion_id": companion_id,
+                    "from": before,
+                    "to": companion.position_node_id,
+                    "movement_cost": 0,
+                    "opportunity_attack_triggers": [],
+                    "source_action_id": effect.get("source_action_id"),
+                }
+            )
+        return changes
 
     def _node_tactical_shift_move(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         destination_param = str(node.get("destination_param", "tactical_shift_to_position_node_id"))
@@ -3313,7 +3417,8 @@ class AutomationExecutor:
             owner = self._resource_owner(ctx.actor_id)
             if not isinstance(owner, Character) or not has_monk_feature(owner, level=1):
                 raise AutomationError("Monk Martial Arts die requires Monk level 1")
-            return f"1{monk_martial_arts_die(owner)}"
+            dice_count = int(node.get("dice_count", 1))
+            return f"{dice_count}{monk_martial_arts_die(owner)}"
         ability = dice_from.get("ability_modifier")
         die = dice_from.get("die")
         if ability is None or not isinstance(die, str) or not re.fullmatch(r"d[0-9]+", die):
@@ -6984,6 +7089,73 @@ class AutomationExecutor:
                     f"unsupported Greater Restoration choice {choice}; choose {expected}"
                 )
 
+    def _validate_heightened_focus_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        flurry_requested = action.id == FLURRY_OF_BLOWS_ACTION_ID and (
+            self._heightened_flurry_requested(targets, params)
+        )
+        companion_id = self._heightened_focus_companion_id(params)
+        if not flurry_requested and companion_id is None:
+            return
+        if companion_id is not None and action.id != STEP_OF_THE_WIND_FOCUS_ACTION_ID:
+            raise AutomationError("Heightened Focus companion requires Step of the Wind: Focus")
+        owner = self._resource_owner(actor_id)
+        has_heightened_focus = isinstance(owner, Character) and has_monk_feature(owner, level=10)
+        if flurry_requested and not has_heightened_focus:
+            raise AutomationError("Heightened Focus requires Monk level 10")
+        if action.id == STEP_OF_THE_WIND_FOCUS_ACTION_ID and companion_id is not None:
+            if not has_heightened_focus:
+                raise AutomationError("Heightened Focus requires Monk level 10")
+            self._heightened_focus_companion_plan(actor_id, companion_id, params)
+
+    @staticmethod
+    def _heightened_flurry_requested(targets: list[str], params: dict[str, Any]) -> bool:
+        if len(targets) > 2:
+            return True
+        selected = params.get("strike_3_target")
+        return selected not in (None, "", False)
+
+    @staticmethod
+    def _heightened_focus_companion_id(params: dict[str, Any]) -> str | None:
+        selected = params.get(
+            "heightened_focus_companion_id",
+            params.get("step_of_the_wind_companion_id"),
+        )
+        if selected in (None, "", False):
+            return None
+        return str(selected)
+
+    def _heightened_focus_companion_plan(
+        self,
+        actor_id: str,
+        companion_id: str,
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
+        if self._entity_ids_match(actor_id, companion_id):
+            raise AutomationError("Heightened Focus companion cannot be self")
+        if not self._target_willing(params, companion_id):
+            raise AutomationError("Heightened Focus companion must be willing")
+        actor = self._entity(actor_id)
+        companion = self._entity(companion_id)
+        if not isinstance(actor, Combatant) or not isinstance(companion, Combatant):
+            raise AutomationError("Heightened Focus companion requires combatants")
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            raise AutomationError("Heightened Focus companion requires a combat tactical graph")
+        if actor.position_node_id is None or companion.position_node_id is None:
+            raise AutomationError("Heightened Focus companion requires current positions")
+        if not self._target_large_or_smaller(companion_id):
+            raise AutomationError("Heightened Focus companion must be Large or smaller")
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        distance = graph.shortest_distance(actor.position_node_id, companion.position_node_id)
+        if distance is None or int(distance) > 5:
+            raise AutomationError("Heightened Focus companion must be within 5 feet")
+        return {"actor": actor, "companion": companion, "distance_ft": int(distance)}
+
     def _validate_open_hand_technique_preconditions(
         self,
         action: ActionDefinition,
@@ -6998,13 +7170,23 @@ class AutomationExecutor:
         actor = self._resource_owner(actor_id)
         if not isinstance(actor, Character) or not has_monk_open_hand_feature(actor, level=3):
             raise AutomationError("Open Hand Technique requires Monk Open Hand level 3")
-        targets_by_strike = self._flurry_targets_by_strike(targets, params)
+        max_strikes = self._flurry_strike_count(actor_id)
+        targets_by_strike = self._flurry_targets_by_strike(
+            targets,
+            params,
+            max_strikes=max_strikes,
+        )
         valid_targets = {
             target_id
             for strike_targets in targets_by_strike.values()
             for target_id in strike_targets
         }
-        self._validate_open_hand_param_keys(params, targets_by_strike, valid_targets)
+        self._validate_open_hand_param_keys(
+            params,
+            targets_by_strike,
+            valid_targets,
+            max_strikes=max_strikes,
+        )
         for strike_index, strike_targets in targets_by_strike.items():
             for target_id in strike_targets:
                 effect = self._open_hand_technique_choice(
@@ -7045,6 +7227,8 @@ class AutomationExecutor:
         params: dict[str, Any],
         targets_by_strike: dict[int, list[str]],
         valid_targets: set[str],
+        *,
+        max_strikes: int,
     ) -> None:
         by_target = params.get("open_hand_technique_by_target")
         if isinstance(by_target, dict):
@@ -7057,9 +7241,9 @@ class AutomationExecutor:
         by_strike = params.get("open_hand_technique_by_strike")
         if isinstance(by_strike, dict):
             for raw_index, raw_effect in by_strike.items():
-                strike_index = self._open_hand_strike_index(raw_index)
+                strike_index = self._open_hand_strike_index(raw_index, max_strikes=max_strikes)
                 if strike_index not in targets_by_strike:
-                    raise AutomationError("Open Hand Technique strike must be 1 or 2")
+                    raise AutomationError(self._open_hand_strike_error(max_strikes))
                 self._normalize_open_hand_technique_effect(raw_effect)
         for param_name in (
             "open_hand_push_to_position_node_id_by_target",
@@ -7077,9 +7261,11 @@ class AutomationExecutor:
         destinations_by_strike = params.get("open_hand_push_to_position_node_id_by_strike")
         if isinstance(destinations_by_strike, dict):
             for raw_index in destinations_by_strike:
-                strike_index = self._open_hand_strike_index(raw_index)
+                strike_index = self._open_hand_strike_index(raw_index, max_strikes=max_strikes)
                 if strike_index not in targets_by_strike:
-                    raise AutomationError("Open Hand Technique Push strike must be 1 or 2")
+                    raise AutomationError(
+                        f"Open Hand Technique Push {self._open_hand_strike_error(max_strikes)}"
+                    )
         self._normalize_open_hand_technique_effect(
             params.get(
                 "open_hand_technique",
@@ -7088,33 +7274,44 @@ class AutomationExecutor:
         )
 
     @staticmethod
-    def _open_hand_strike_index(raw_index: Any) -> int:
+    def _open_hand_strike_index(raw_index: Any, *, max_strikes: int) -> int:
         if isinstance(raw_index, bool):
-            raise AutomationError("Open Hand Technique strike must be 1 or 2")
+            raise AutomationError(AutomationExecutor._open_hand_strike_error(max_strikes))
         try:
             strike_index = int(raw_index)
         except (TypeError, ValueError) as exc:
-            raise AutomationError("Open Hand Technique strike must be 1 or 2") from exc
-        if strike_index not in {1, 2}:
-            raise AutomationError("Open Hand Technique strike must be 1 or 2")
+            raise AutomationError(AutomationExecutor._open_hand_strike_error(max_strikes)) from exc
+        if strike_index < 1 or strike_index > max_strikes:
+            raise AutomationError(AutomationExecutor._open_hand_strike_error(max_strikes))
         return strike_index
+
+    @staticmethod
+    def _open_hand_strike_error(max_strikes: int) -> str:
+        if max_strikes <= 2:
+            return "Open Hand Technique strike must be 1 or 2"
+        return "Open Hand Technique strike must be 1, 2, or 3"
+
+    def _flurry_strike_count(self, actor_id: str) -> int:
+        owner = self._resource_owner(actor_id)
+        if isinstance(owner, Character) and has_monk_feature(owner, level=10):
+            return 3
+        return 2
 
     @staticmethod
     def _flurry_targets_by_strike(
         targets: list[str],
         params: dict[str, Any],
+        *,
+        max_strikes: int = 2,
     ) -> dict[int, list[str]]:
         return {
-            1: AutomationExecutor._flurry_strike_targets(
+            strike_index: AutomationExecutor._flurry_strike_targets(
                 params,
-                "strike_1_target",
+                f"strike_{strike_index}_target",
                 targets,
-            ),
-            2: AutomationExecutor._flurry_strike_targets(
-                params,
-                "strike_2_target",
-                targets,
-            ),
+                fallback_index=strike_index - 1,
+            )
+            for strike_index in range(1, max_strikes + 1)
         }
 
     @staticmethod
@@ -7122,13 +7319,19 @@ class AutomationExecutor:
         params: dict[str, Any],
         param_name: str,
         fallback_targets: list[str],
+        *,
+        fallback_index: int = 0,
     ) -> list[str]:
         selected = params.get(param_name)
         if isinstance(selected, list):
             return [str(target_id) for target_id in selected]
         if selected not in (None, "", False):
             return [str(selected)]
-        return [str(target_id) for target_id in fallback_targets]
+        if not fallback_targets:
+            return []
+        if 0 <= fallback_index < len(fallback_targets):
+            return [str(fallback_targets[fallback_index])]
+        return [str(fallback_targets[0])]
 
     def _validate_deflect_attacks_preconditions(
         self,

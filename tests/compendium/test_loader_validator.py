@@ -3955,6 +3955,31 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.action("srd.flurry_of_blows").automation[5]["dice_from"] == {
         "class_feature": "monk_martial_arts_die"
     }
+    assert compendium.action("srd.flurry_of_blows").target_policy["max"] == 3
+    assert compendium.action("srd.flurry_of_blows").automation[6] == {
+        "type": "branch",
+        "condition": "actor_class_level_min",
+        "class": "monk",
+        "level": 10,
+        "if_true": [
+            {
+                "type": "target",
+                "mode": "param",
+                "param": "strike_3_target",
+                "fallback": "explicit_index",
+                "fallback_index": 2,
+            },
+            {"type": "attack_roll", "ability": "dex"},
+            {
+                "type": "damage",
+                "dice_from": {"class_feature": "monk_martial_arts_die"},
+                "bonus_from": {"ability_modifier": "dex"},
+                "damage_type": "bludgeoning",
+                "ability": "dex",
+                "requires_hit": True,
+            },
+        ],
+    }
     assert compendium.classes["monk"].levels["2"]["features"] == [
         "Monk's Focus",
         "Unarmored Movement",
@@ -4061,8 +4086,26 @@ def test_compendium_loads_srd_actions() -> None:
         "Heightened Focus",
         "Self-Restoration",
     ]
+    assert "srd.heightened_focus" in compendium.classes["monk"].levels["10"]["actions"]
     assert "srd.self_restoration" in compendium.classes["monk"].levels["10"]["actions"]
-    assert "srd.heightened_focus" not in compendium.classes["monk"].levels["10"]["actions"]
+    heightened_focus = compendium.action("srd.heightened_focus")
+    assert heightened_focus.action_economy == "none"
+    assert heightened_focus.requirements == {"class": "monk", "class_level_min": 10}
+    assert heightened_focus.properties == {
+        "enhances_actions": [
+            "srd.flurry_of_blows",
+            "srd.patient_defense_focus",
+            "srd.step_of_the_wind_focus",
+        ],
+        "flurry_of_blows_unarmed_strikes": 3,
+        "patient_defense_focus_temp_hp_dice_count": 2,
+        "patient_defense_focus_temp_hp_dice_from": "monk_martial_arts_die",
+        "step_of_the_wind_focus_companion_param": "heightened_focus_companion_id",
+        "step_of_the_wind_focus_companion_within_ft": 5,
+        "step_of_the_wind_focus_companion_size_max": "large",
+        "step_of_the_wind_focus_companion_must_be_willing": True,
+        "step_of_the_wind_focus_companion_no_opportunity_attacks": True,
+    }
     self_restoration = compendium.action("srd.self_restoration")
     assert self_restoration.action_economy == "none"
     assert self_restoration.requirements == {"class": "monk", "class_level_min": 10}
@@ -4072,6 +4115,23 @@ def test_compendium_loads_srd_actions() -> None:
         "forgoing_food_and_drink_does_not_cause_exhaustion": True,
         "food_drink_exhaustion_hazards": ["srd.dehydration", "srd.malnutrition"],
     }
+    patient_focus = compendium.action("srd.patient_defense_focus")
+    assert patient_focus.automation[3]["if_true"] == [
+        {
+            "type": "temp_hp",
+            "dice_from": {"class_feature": "monk_martial_arts_die"},
+            "dice_count": 2,
+        }
+    ]
+    step_focus = compendium.action("srd.step_of_the_wind_focus")
+    assert step_focus.automation[4]["if_true"] == [
+        {
+            "type": "heightened_focus_step_of_the_wind",
+            "companion_param": "heightened_focus_companion_id",
+            "duration": {"until": "end_of_current_turn"},
+            "tick_on": "self_turn_end",
+        }
+    ]
     assert "srd.dodge" not in compendium.classes["monk"].levels["2"]["actions"]
     assert "srd.favored_enemy_hunters_mark" in compendium.classes["ranger"].levels["1"]["actions"]
     assert "srd.deft_explorer" not in compendium.classes["ranger"].levels["1"]["actions"]

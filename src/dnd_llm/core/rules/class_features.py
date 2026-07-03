@@ -204,6 +204,10 @@ def monk_self_restoration_applies(character: Character) -> bool:
     return has_monk_feature(character, level=10)
 
 
+def monk_heightened_focus_applies(character: Character) -> bool:
+    return has_monk_feature(character, level=10)
+
+
 def monk_forgoing_food_drink_exhaustion_immunity(character: Character) -> bool:
     return monk_self_restoration_applies(character)
 

@@ -1144,13 +1144,15 @@ class EngineTools:
         )
         if movement_cost is None:
             raise ValueError("destination position node is not reachable")
-        enemy_positions = {
-            combatant_id: other.position_node_id
-            for combatant_id, other in self.state.encounter.combatants.items()
-            if other.side != actor_combatant.side
-            and other.position_node_id is not None
-            and not self._cannot_make_opportunity_attacks(other)
-        }
+        enemy_positions: dict[str, str] = {}
+        if not has_condition(actor_combatant.status_effects, "disengaged"):
+            enemy_positions = {
+                combatant_id: other.position_node_id
+                for combatant_id, other in self.state.encounter.combatants.items()
+                if other.side != actor_combatant.side
+                and other.position_node_id is not None
+                and not self._cannot_make_opportunity_attacks(other)
+            }
         enemy_reach = {
             combatant_id: other.reach_ft
             for combatant_id, other in self.state.encounter.combatants.items()

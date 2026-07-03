@@ -30,6 +30,7 @@ NODE_TYPES = {
     "preserve_life_healing",
     "wild_resurgence_restore_wild_shape",
     "resource_delta",
+    "heightened_focus_step_of_the_wind",
     "tactical_shift_move",
     "move",
     "branch",
@@ -58,6 +59,7 @@ STATE_CHANGING_NODE_TYPES = {
     "preserve_life_healing",
     "wild_resurgence_restore_wild_shape",
     "resource_delta",
+    "heightened_focus_step_of_the_wind",
     "tactical_shift_move",
     "move",
 }
@@ -159,6 +161,10 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             minimum = dice_from.get("minimum", 0)
             if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 1:
                 errors.append(f"{path}: dice_from minimum must be a positive integer")
+    if node_type in {"damage", "healing", "temp_hp"} and "dice_count" in node:
+        dice_count = node["dice_count"]
+        if not isinstance(dice_count, int) or isinstance(dice_count, bool) or dice_count < 1:
+            errors.append(f"{path}: dice_count must be a positive integer")
     if (
         node_type == "damage"
         and "breaks_on_damage" in node

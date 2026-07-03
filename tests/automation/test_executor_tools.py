@@ -2979,6 +2979,75 @@ def test_patient_defense_focus_spends_focus_and_dodges(make_state) -> None:
     assert conditions == {"disengaged", "dodging"}
 
 
+def test_heightened_focus_patient_defense_grants_two_martial_arts_dice_temp_hp(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    combatant = state.encounter.combatants["pc1"]
+    character.class_levels = {"monk": 10}
+    character.actions.extend(["srd.heightened_focus", "srd.patient_defense_focus"])
+    character.resources["srd.resource.focus_points"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([9]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.patient_defense_focus",
+        [],
+        idempotency_key="heightened-patient-defense",
+    )
+
+    temp_hp_change = next(
+        change for change in result["state_changes"] if change["type"] == "temp_hp"
+    )
+    assert result["success"] is True
+    assert character.resources["srd.resource.focus_points"] == 9
+    assert result["dice_rolls"][-1]["expression"] == "2d8"
+    assert temp_hp_change["before"] == 0
+    assert temp_hp_change["after"] == 9
+    assert combatant.temp_hp == 9
+
+
+def test_heightened_focus_patient_defense_keeps_higher_existing_temp_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    combatant = state.encounter.combatants["pc1"]
+    character.class_levels = {"monk": 10}
+    character.actions.extend(["srd.heightened_focus", "srd.patient_defense_focus"])
+    character.resources["srd.resource.focus_points"] = 10
+    combatant.temp_hp = 15
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.patient_defense_focus",
+        [],
+        idempotency_key="heightened-patient-defense-higher-temp-hp",
+    )
+
+    temp_hp_change = next(
+        change for change in result["state_changes"] if change["type"] == "temp_hp"
+    )
+    assert result["success"] is True
+    assert temp_hp_change["before"] == 15
+    assert temp_hp_change["after"] == 15
+    assert combatant.temp_hp == 15
+
+
 def test_monk_unarmed_strike_uses_martial_arts_die_and_dexterity(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -3168,6 +3237,97 @@ def test_level_five_flurry_of_blows_uses_scaled_martial_arts_die(make_state) -> 
     ]
 
 
+def test_heightened_focus_flurry_of_blows_makes_three_unarmed_strikes(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["zombie1"] = Combatant(
+        id="zombie1",
+        entity_id="zombie1",
+        name="Zombie",
+        side="monsters",
+        hp_current=22,
+        hp_max=22,
+        armor_class=1,
+        position_node_id="cover",
+    )
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=1,
+        position_node_id="back",
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 10}
+    character.actions.extend(["srd.flurry_of_blows", "srd.heightened_focus"])
+    character.resources["srd.resource.focus_points"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 3, 10, 4, 10, 5]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.flurry_of_blows",
+        ["goblin1"],
+        params={
+            "strike_1_target": "goblin1",
+            "strike_2_target": "zombie1",
+            "strike_3_target": "skeleton1",
+        },
+        idempotency_key="heightened-flurry-of-blows",
+    )
+
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert result["success"] is True
+    assert character.resources["srd.resource.focus_points"] == 9
+    assert [change["target_id"] for change in damage_changes] == [
+        "goblin1",
+        "zombie1",
+        "skeleton1",
+    ]
+    assert result["node_results"]["automation[1]"]["target_id"] == "goblin1"
+    assert result["node_results"]["automation[4]"]["target_id"] == "zombie1"
+    assert result["node_results"]["automation[6].if_true[1]"]["target_id"] == "skeleton1"
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+4",
+        "1d8",
+        "1d20+4",
+        "1d8",
+        "1d20+4",
+        "1d8",
+    ]
+
+
+def test_flurry_of_blows_rejects_third_strike_before_heightened_focus(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 9}
+    character.actions.append("srd.flurry_of_blows")
+    character.resources["srd.resource.focus_points"] = 9
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="Heightened Focus requires Monk level 10"):
+        tools.perform_action(
+            "pc1",
+            "srd.flurry_of_blows",
+            ["goblin1"],
+            params={"strike_1_target": "goblin1", "strike_3_target": "goblin1"},
+            idempotency_key="flurry-third-strike-too-low",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 9
+
+
 def test_open_hand_wholeness_of_body_heals_self_and_spends_resource(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -3325,6 +3485,48 @@ def test_open_hand_technique_topple_applies_prone_on_failed_dex_save(make_state)
     assert save_result["dc_source"] == "monk_focus:wis+proficiency"
 
 
+def test_heightened_focus_third_flurry_strike_can_use_open_hand_technique(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 10}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(
+        ["srd.flurry_of_blows", "srd.heightened_focus", "srd.open_hand_technique"]
+    )
+    character.resources["srd.resource.focus_points"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4, 10, 4, 10, 4, 1]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.flurry_of_blows",
+        ["goblin1"],
+        params={
+            "strike_1_target": "goblin1",
+            "strike_2_target": "goblin1",
+            "strike_3_target": "goblin1",
+            "open_hand_technique_by_strike": {"3": "topple"},
+        },
+        idempotency_key="heightened-open-hand-third-strike",
+    )
+
+    open_hand_change = next(
+        change for change in result["state_changes"] if change["type"] == "open_hand_technique"
+    )
+    assert result["success"] is True
+    assert open_hand_change["strike_index"] == 3
+    assert open_hand_change["effect"] == "topple"
+    assert open_hand_change["saving_throw_success"] is False
+    assert state.encounter.combatants["goblin1"].status_effects[-1]["condition"] == "prone"
+
+
 def test_open_hand_technique_push_moves_target_away_on_failed_str_save(
     make_state,
 ) -> None:
@@ -3444,6 +3646,130 @@ def test_step_of_the_wind_focus_uses_speed_and_marks_jump_distance(make_state) -
         and change["after"] == 100
         for change in result["state_changes"]
     )
+
+
+def test_heightened_focus_step_of_the_wind_moves_willing_companion_without_opportunity_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 10}
+    character.actions.extend(["srd.heightened_focus", "srd.step_of_the_wind_focus"])
+    character.resources["srd.resource.focus_points"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.step_of_the_wind_focus",
+        [],
+        params={"heightened_focus_companion_id": "pc2", "target_willing": True},
+        idempotency_key="heightened-step-of-the-wind",
+    )
+
+    heightened_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "heightened_focus_step_of_the_wind"
+    )
+    assert result["success"] is True
+    assert heightened_change["companion_id"] == "pc2"
+    assert heightened_change["distance_ft"] == 0
+    assert {effect["condition"] for effect in state.encounter.combatants["pc1"].status_effects} == {
+        "disengaged",
+        "jump_distance_doubled",
+        "heightened_focus_step_of_the_wind_companion",
+    }
+
+    move = tools.move(
+        "pc1",
+        to_position_node_id="back",
+        idempotency_key="heightened-step-of-the-wind-move",
+    )
+
+    move_change = next(change for change in move["state_changes"] if change["type"] == "move")
+    companion_move = next(
+        change
+        for change in move["state_changes"]
+        if change["type"] == "heightened_focus_step_of_the_wind_companion_move"
+    )
+    assert move_change["opportunity_attack_triggers"] == []
+    assert companion_move == {
+        "type": "heightened_focus_step_of_the_wind_companion_move",
+        "actor_id": "pc1",
+        "companion_id": "pc2",
+        "from": "front",
+        "to": "back",
+        "movement_cost": 0,
+        "opportunity_attack_triggers": [],
+        "source_action_id": "srd.step_of_the_wind_focus",
+    }
+    assert state.encounter.combatants["pc1"].position_node_id == "back"
+    assert state.encounter.combatants["pc2"].position_node_id == "back"
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert any(
+        entry["condition"] == "heightened_focus_step_of_the_wind_companion"
+        for entry in lifecycle.expired
+    )
+
+
+def test_heightened_focus_step_of_the_wind_requires_willing_large_or_smaller_companion(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 10}
+    character.actions.extend(["srd.heightened_focus", "srd.step_of_the_wind_focus"])
+    character.resources["srd.resource.focus_points"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="companion must be willing"):
+        tools.perform_action(
+            "pc1",
+            "srd.step_of_the_wind_focus",
+            [],
+            params={"heightened_focus_companion_id": "pc2"},
+            idempotency_key="heightened-step-unwilling",
+        )
+
+    state.encounter.combatants["pc2"].size = "huge"
+    with pytest.raises(AutomationError, match="Large or smaller"):
+        tools.perform_action(
+            "pc1",
+            "srd.step_of_the_wind_focus",
+            [],
+            params={"heightened_focus_companion_id": "pc2", "target_willing": True},
+            idempotency_key="heightened-step-huge",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 10
+
+
+def test_step_of_the_wind_rejects_companion_before_heightened_focus(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 9}
+    character.actions.append("srd.step_of_the_wind_focus")
+    character.resources["srd.resource.focus_points"] = 9
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="Heightened Focus requires Monk level 10"):
+        tools.perform_action(
+            "pc1",
+            "srd.step_of_the_wind_focus",
+            [],
+            params={"heightened_focus_companion_id": "pc2", "target_willing": True},
+            idempotency_key="heightened-step-too-low",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 9
 
 
 def test_lay_on_hands_spends_chosen_pool_points_and_heals(make_state) -> None:

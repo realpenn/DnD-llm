@@ -4280,8 +4280,12 @@
             "action_type": "unarmed_attack",
             "action_economy": "bonus_action",
             "range": {"normal_ft": 5},
-            "target_policy": {"min": 1, "max": 2, "harmful": true},
+            "target_policy": {"min": 1, "max": 3, "harmful": true},
             "requirements": {"class": "monk", "class_level_min": 2},
+            "properties": {
+                "heightened_focus_unarmed_strikes_at_monk_level": 10,
+                "heightened_focus_unarmed_strikes": 3
+            },
             "friendly_fire_policy": "confirm",
             "cost": {"resources": {"srd.resource.focus_points": 1}},
             "automation": [
@@ -4289,7 +4293,8 @@
                     "type": "target",
                     "mode": "param",
                     "param": "strike_1_target",
-                    "fallback": "explicit"
+                    "fallback": "explicit_index",
+                    "fallback_index": 0
                 },
                 {"type": "attack_roll", "ability": "dex"},
                 {
@@ -4304,7 +4309,8 @@
                     "type": "target",
                     "mode": "param",
                     "param": "strike_2_target",
-                    "fallback": "explicit"
+                    "fallback": "explicit_index",
+                    "fallback_index": 1
                 },
                 {"type": "attack_roll", "ability": "dex"},
                 {
@@ -4316,8 +4322,32 @@
                     "requires_hit": true
                 },
                 {
+                    "type": "branch",
+                    "condition": "actor_class_level_min",
+                    "class": "monk",
+                    "level": 10,
+                    "if_true": [
+                        {
+                            "type": "target",
+                            "mode": "param",
+                            "param": "strike_3_target",
+                            "fallback": "explicit_index",
+                            "fallback_index": 2
+                        },
+                        {"type": "attack_roll", "ability": "dex"},
+                        {
+                            "type": "damage",
+                            "dice_from": {"class_feature": "monk_martial_arts_die"},
+                            "bonus_from": {"ability_modifier": "dex"},
+                            "damage_type": "bludgeoning",
+                            "ability": "dex",
+                            "requires_hit": true
+                        }
+                    ]
+                },
+                {
                     "type": "text_result",
-                    "text": "The monk spends 1 Focus Point to make two Unarmed Strikes as a Bonus Action."
+                    "text": "The monk spends 1 Focus Point to make two Unarmed Strikes as a Bonus Action, or three Unarmed Strikes with Heightened Focus at Monk level 10."
                 }
             ],
             "audit_label": "Flurry of Blows"
@@ -4578,6 +4608,46 @@
             "audit_label": "Self-Restoration"
         },
         {
+            "id": "srd.heightened_focus",
+            "name": "Heightened Focus",
+            "localization": {
+                "en": "Heightened Focus",
+                "zh": "精进专注",
+                "aliases": ["Monk Heightened Focus", "武僧精进专注"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 10: Heightened Focus",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 10},
+            "properties": {
+                "enhances_actions": [
+                    "srd.flurry_of_blows",
+                    "srd.patient_defense_focus",
+                    "srd.step_of_the_wind_focus"
+                ],
+                "flurry_of_blows_unarmed_strikes": 3,
+                "patient_defense_focus_temp_hp_dice_count": 2,
+                "patient_defense_focus_temp_hp_dice_from": "monk_martial_arts_die",
+                "step_of_the_wind_focus_companion_param": "heightened_focus_companion_id",
+                "step_of_the_wind_focus_companion_within_ft": 5,
+                "step_of_the_wind_focus_companion_size_max": "large",
+                "step_of_the_wind_focus_companion_must_be_willing": true,
+                "step_of_the_wind_focus_companion_no_opportunity_attacks": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Heightened Focus improves Flurry of Blows, Patient Defense when spending Focus, and Step of the Wind when spending Focus."
+                }
+            ],
+            "audit_label": "Heightened Focus"
+        },
+        {
             "id": "srd.patient_defense",
             "name": "Patient Defense",
             "localization": {
@@ -4624,6 +4694,11 @@
             "range": {"self": true},
             "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
             "requirements": {"class": "monk", "class_level_min": 2},
+            "properties": {
+                "heightened_focus_temp_hp_at_monk_level": 10,
+                "heightened_focus_temp_hp_dice_from": "monk_martial_arts_die",
+                "heightened_focus_temp_hp_dice_count": 2
+            },
             "friendly_fire_policy": "raw",
             "cost": {"resources": {"srd.resource.focus_points": 1}},
             "automation": [
@@ -4641,8 +4716,21 @@
                     "tick_on": "self_turn_start"
                 },
                 {
+                    "type": "branch",
+                    "condition": "actor_class_level_min",
+                    "class": "monk",
+                    "level": 10,
+                    "if_true": [
+                        {
+                            "type": "temp_hp",
+                            "dice_from": {"class_feature": "monk_martial_arts_die"},
+                            "dice_count": 2
+                        }
+                    ]
+                },
+                {
                     "type": "text_result",
-                    "text": "The monk spends 1 Focus Point to take both Disengage and Dodge as a Bonus Action."
+                    "text": "The monk spends 1 Focus Point to take both Disengage and Dodge as a Bonus Action, and with Heightened Focus gains Temporary Hit Points equal to two Martial Arts die rolls."
                 }
             ],
             "audit_label": "Patient Defense: Focus"
@@ -4689,6 +4777,14 @@
             "range": {"self": true},
             "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
             "requirements": {"class": "monk", "class_level_min": 2},
+            "properties": {
+                "heightened_focus_companion_at_monk_level": 10,
+                "heightened_focus_companion_param": "heightened_focus_companion_id",
+                "heightened_focus_companion_within_ft": 5,
+                "heightened_focus_companion_size_max": "large",
+                "heightened_focus_companion_must_be_willing": true,
+                "heightened_focus_companion_no_opportunity_attacks": true
+            },
             "friendly_fire_policy": "raw",
             "cost": {"resources": {"srd.resource.focus_points": 1}},
             "automation": [
@@ -4708,8 +4804,22 @@
                     "tick_on": "self_turn_end"
                 },
                 {
+                    "type": "branch",
+                    "condition": "actor_class_level_min",
+                    "class": "monk",
+                    "level": 10,
+                    "if_true": [
+                        {
+                            "type": "heightened_focus_step_of_the_wind",
+                            "companion_param": "heightened_focus_companion_id",
+                            "duration": {"until": "end_of_current_turn"},
+                            "tick_on": "self_turn_end"
+                        }
+                    ]
+                },
+                {
                     "type": "text_result",
-                    "text": "The monk spends 1 Focus Point to take both Disengage and Dash as a Bonus Action, and the monk's jump distance is doubled for the turn."
+                    "text": "The monk spends 1 Focus Point to take both Disengage and Dash as a Bonus Action, the monk's jump distance is doubled for the turn, and with Heightened Focus the monk can move one willing Large or smaller creature within 5 feet with them until the end of the turn."
                 }
             ],
             "audit_label": "Step of the Wind: Focus"

@@ -113,6 +113,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.gift_of_the_depths",
     "srd.gift_of_the_depths_water_breathing",
     "srd.help",
+    "srd.heightened_focus",
     "srd.hide",
     "srd.hunters_lore",
     "srd.hunters_prey_colossus_slayer",
