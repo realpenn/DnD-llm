@@ -14,9 +14,10 @@ from .invariants import require_game_state_invariants
 from .models import Character, Combatant, GameState, Monster
 from .persistence import AuditLog
 from .positioning import TacticalGraph
-from .rules.checks import d20_expression, roll_check
+from .rules.checks import actor_ability_modifier, d20_expression, roll_check
 from .rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
+    FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     aura_of_protection_saving_throw_bonus,
@@ -26,12 +27,15 @@ from .rules.class_features import (
     has_fighter_feature,
     has_rogue_thief_feature,
     has_warlock_fiend_feature,
+    monk_disciplined_survivor_applies,
     remarkable_athlete_applies_to_check,
+    saving_throw_proficiency_sources,
 )
 from .rules.combat import apply_damage as apply_damage_rule
 from .rules.combat import apply_healing as apply_healing_rule
 from .rules.conditions import apply_exhaustion, exhaustion_d20_penalty, exhaustion_level
 from .rules.death import roll_death_save as roll_death_save_rule
+from .rules.difficulty import resolve_dc
 from .rules.rests import long_rest as long_rest_rule
 from .rules.rests import short_rest as short_rest_rule
 
@@ -216,6 +220,7 @@ class EngineTools:
         advantage: str | None = None,
         use_dark_ones_own_luck: bool = False,
         use_indomitable: bool = False,
+        use_disciplined_survivor: bool = False,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"roll_save:{self.state.event_counter}"
@@ -224,10 +229,10 @@ class EngineTools:
             return cached
         actor = self._ability_source(actor_id)
         proficiency_source = self._proficiency_source(actor_id)
-        proficient = ability.lower() in {
-            str(item).lower()
-            for item in getattr(proficiency_source, "saving_throw_proficiencies", [])
-        }
+        proficient, proficiency_sources = self._saving_throw_proficiency(
+            proficiency_source,
+            ability,
+        )
         d20_penalty, d20_penalty_sources = self._exhaustion_penalty_for(actor_id)
         danger_sense_advantage = self._danger_sense_advantage(
             actor_id,
@@ -243,6 +248,65 @@ class EngineTools:
             self._validate_dark_ones_own_luck_available(proficiency_source)
         if use_indomitable:
             self._validate_indomitable_available(proficiency_source)
+        if use_disciplined_survivor:
+            self._validate_disciplined_survivor_available(proficiency_source)
+        if use_indomitable and use_disciplined_survivor:
+            raise ValueError("choose only one failed saving throw reroll feature")
+        auto_fail_sources = self._saving_throw_auto_failure_sources(actor_id, ability)
+        if auto_fail_sources and (use_indomitable or use_disciplined_survivor):
+            raise ValueError("failed saving throw reroll features require a rolled failed save")
+        dc, dc_source = resolve_dc(difficulty_tier=difficulty_tier, dc_ref=dc_ref)
+        bonus = (
+            actor_ability_modifier(
+                actor,
+                ability,
+                status_effects=self._status_effects_for_actor(actor_id),
+            )
+            + (int(getattr(proficiency_source, "proficiency_bonus", 2)) if proficient else 0)
+            + passive_bonus
+            - d20_penalty
+        )
+        if auto_fail_sources:
+            payload = {
+                "actor_id": actor_id,
+                "ability": ability,
+                "skill": None,
+                "dc": dc,
+                "dc_source": dc_source,
+                "roll": None,
+                "success": False,
+                "total": None,
+                "bonus": bonus,
+                "proficient": proficient,
+                "d20_penalty": d20_penalty,
+                "d20_penalty_sources": d20_penalty_sources,
+                "tool": "roll_save",
+                "status_advantage": status_advantage,
+                "status_sources": [{"kind": "auto_fail", **source} for source in auto_fail_sources],
+                "auto_failed": True,
+                "passive_bonus": passive_bonus,
+                "passive_bonus_sources": passive_bonus_sources,
+                "proficiency_sources": proficiency_sources,
+            }
+            self.audit_log.append(
+                self.state,
+                idempotency_key=idempotency_key,
+                tool_name="roll_save",
+                tool_args={
+                    "actor_id": actor_id,
+                    "ability": ability,
+                    "difficulty_tier": difficulty_tier,
+                    "dc_ref": dc_ref,
+                    "advantage": advantage,
+                    "use_dark_ones_own_luck": use_dark_ones_own_luck,
+                    "use_indomitable": use_indomitable,
+                    "use_disciplined_survivor": use_disciplined_survivor,
+                },
+                tool_result=payload,
+                dice_rolls=[],
+            )
+            require_game_state_invariants(self.state)
+            return payload
         result = roll_check(
             actor_id=actor_id,
             actor=actor,
@@ -266,6 +330,7 @@ class EngineTools:
         payload["status_sources"] = status_sources
         payload["passive_bonus"] = passive_bonus
         payload["passive_bonus_sources"] = passive_bonus_sources
+        payload["proficiency_sources"] = proficiency_sources
         dice_rolls = [result.roll.to_dict()]
         dark_ones_own_luck = self._apply_dark_ones_own_luck_to_roll(
             actor_id,
@@ -284,6 +349,14 @@ class EngineTools:
         if indomitable is not None:
             payload["indomitable"] = indomitable["result"]
             dice_rolls.append(indomitable["roll"])
+        disciplined_survivor = self._apply_disciplined_survivor_to_save(
+            payload,
+            proficiency_source,
+            use_disciplined_survivor=use_disciplined_survivor,
+        )
+        if disciplined_survivor is not None:
+            payload["disciplined_survivor"] = disciplined_survivor["result"]
+            dice_rolls.append(disciplined_survivor["roll"])
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -296,6 +369,7 @@ class EngineTools:
                 "advantage": advantage,
                 "use_dark_ones_own_luck": use_dark_ones_own_luck,
                 "use_indomitable": use_indomitable,
+                "use_disciplined_survivor": use_disciplined_survivor,
             },
             tool_result=payload,
             dice_rolls=dice_rolls,
@@ -1698,6 +1772,81 @@ class EngineTools:
                 "resource_before": before_resource,
                 "resource_after": actor.resources[INDOMITABLE_RESOURCE],
                 "fighter_level_bonus": fighter_level,
+                "original_roll": original_roll,
+                "total_before": before_total,
+                "reroll_total": reroll.total,
+                "total_after": reroll.total,
+                "spent": True,
+                "success": payload["success"],
+            },
+        }
+
+    @staticmethod
+    def _saving_throw_proficiency(
+        actor: Character | Monster | Combatant,
+        ability: str,
+    ) -> tuple[bool, list[dict[str, Any]]]:
+        sources = saving_throw_proficiency_sources(actor, ability)
+        return bool(sources), sources
+
+    def _saving_throw_auto_failure_sources(
+        self,
+        actor_id: str,
+        ability: str,
+    ) -> list[dict[str, Any]]:
+        if ability.lower() not in {"str", "dex"}:
+            return []
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for_actor(actor_id):
+            condition = effect.get("condition")
+            if condition in {"paralyzed", "petrified", "stunned", "unconscious"}:
+                sources.append(
+                    {
+                        "condition": condition,
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                    }
+                )
+        return sources
+
+    @staticmethod
+    def _validate_disciplined_survivor_available(
+        actor: Character | Monster | Combatant,
+    ) -> None:
+        if not isinstance(actor, Character) or not monk_disciplined_survivor_applies(actor):
+            raise ValueError("Disciplined Survivor requires Monk level 14")
+        if int(actor.resources.get(FOCUS_POINTS_RESOURCE, 0)) <= 0:
+            raise ValueError("Disciplined Survivor requires an available Focus Point")
+
+    def _apply_disciplined_survivor_to_save(
+        self,
+        payload: dict[str, Any],
+        actor: Character | Monster | Combatant,
+        *,
+        use_disciplined_survivor: bool,
+    ) -> dict[str, Any] | None:
+        if not use_disciplined_survivor or bool(payload["success"]):
+            return None
+        if not isinstance(actor, Character):
+            raise ValueError("Disciplined Survivor requires a character")
+        before_resource = int(actor.resources.get(FOCUS_POINTS_RESOURCE, 0))
+        before_total = int(payload["total"])
+        original_roll = dict(payload["roll"])
+        reroll = self.roll_service.roll(
+            d20_expression(int(payload["bonus"])),
+            advantage=original_roll.get("advantage"),
+        )
+        actor.resources[FOCUS_POINTS_RESOURCE] = before_resource - 1
+        payload["roll"] = reroll.to_dict()
+        payload["total"] = reroll.total
+        payload["success"] = reroll.total >= int(payload["dc"])
+        return {
+            "roll": reroll.to_dict(),
+            "result": {
+                "resource": FOCUS_POINTS_RESOURCE,
+                "resource_before": before_resource,
+                "resource_after": actor.resources[FOCUS_POINTS_RESOURCE],
+                "source_action_id": "srd.disciplined_survivor",
                 "original_roll": original_roll,
                 "total_before": before_total,
                 "reroll_total": reroll.total,

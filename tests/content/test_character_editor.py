@@ -12,6 +12,7 @@ from dnd_llm.core.rules.class_features import (
     monk_can_move_across_liquids,
     monk_can_move_along_vertical_surfaces,
     monk_deflect_energy_applies,
+    monk_disciplined_survivor_applies,
     monk_forgoing_food_drink_exhaustion_immunity,
     monk_heightened_focus_applies,
     monk_open_hand_fleet_step_applies,
@@ -1839,6 +1840,20 @@ def test_natural_language_character_edit_assigns_monk_deflect_energy() -> None:
     assert "srd.deflect_energy" in result.character.actions
     assert result.character.resources["srd.resource.focus_points"] == 13
     assert monk_deflect_energy_applies(result.character) is True
+
+
+def test_natural_language_character_edit_assigns_monk_disciplined_survivor() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk14")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 14}
+    assert "srd.deflect_energy" in result.character.actions
+    assert "srd.disciplined_survivor" in result.character.actions
+    assert result.character.resources["srd.resource.focus_points"] == 14
+    assert monk_disciplined_survivor_applies(result.character) is True
 
 
 def test_natural_language_character_edit_assigns_open_hand_wholeness_of_body() -> None:

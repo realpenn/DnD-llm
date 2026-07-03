@@ -6,7 +6,7 @@ from typing import Any
 from .dice import RollService
 from .models import Character, GameState
 from .rules.checks import d20_expression
-from .rules.class_features import monk_self_restoration_applies
+from .rules.class_features import monk_self_restoration_applies, saving_throw_proficiency_sources
 from .rules.conditions import exhaustion_d20_penalty, exhaustion_level, remove_condition
 
 SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
@@ -330,7 +330,7 @@ def _roll_repeat_save(
 ) -> dict[str, Any]:
     target = state.entity_for_actor(str(effect.get("target_id") or actor_id))
     ability = str(repeat_save["ability"]).lower()
-    base_bonus, proficient = _saving_throw_bonus(state, target, ability)
+    base_bonus, proficient, proficiency_sources = _saving_throw_bonus(state, target, ability)
     status_effects = getattr(target, "status_effects", [])
     exhaustion = exhaustion_level(status_effects)
     penalty = exhaustion_d20_penalty(status_effects)
@@ -345,6 +345,7 @@ def _roll_repeat_save(
         "base_bonus": base_bonus,
         "bonus": bonus,
         "proficient": proficient,
+        "proficiency_sources": proficiency_sources,
         "exhaustion_level": exhaustion,
         "d20_penalty": penalty,
         "roll": roll.to_dict(),
@@ -353,16 +354,17 @@ def _roll_repeat_save(
     }
 
 
-def _saving_throw_bonus(state: GameState, target: Any, ability: str) -> tuple[int, bool]:
+def _saving_throw_bonus(
+    state: GameState, target: Any, ability: str
+) -> tuple[int, bool, list[dict[str, Any]]]:
     source = _ability_source(state, target)
     proficiency_source = _proficiency_source(state, target)
-    proficient = ability.lower() in {
-        str(item).lower() for item in getattr(proficiency_source, "saving_throw_proficiencies", [])
-    }
+    proficiency_sources = saving_throw_proficiency_sources(proficiency_source, ability)
+    proficient = bool(proficiency_sources)
     bonus = _ability_modifier(source, ability)
     if proficient:
         bonus += int(getattr(proficiency_source, "proficiency_bonus", 2))
-    return bonus, proficient
+    return bonus, proficient, proficiency_sources
 
 
 def _ability_source(state: GameState, target: Any) -> Any:

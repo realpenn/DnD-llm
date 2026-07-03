@@ -258,6 +258,59 @@ def test_repeat_save_effect_ends_on_success_with_roll_service(make_state) -> Non
     assert result.expired[0]["repeat_save"]["roll"]["expression"] == "1d20+10"
 
 
+def test_disciplined_survivor_grants_proficiency_on_repeat_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    monk = state.characters["pc1"]
+    monk.class_levels = {"monk": 14}
+    monk.proficiency_bonus = 5
+    monk.abilities["wis"] = 10
+    monk.resources["srd.resource.focus_points"] = 1
+    target = state.encounter.combatants["pc1"]
+    target.status_effects.append(
+        {
+            "effect_id": "repeat-save-test",
+            "source_ref": "test",
+            "source_action_id": "test.repeat_save",
+            "target_id": "pc1",
+            "applied_by": "goblin1",
+            "condition": "frightened",
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc": 1,
+                    "dc_source": "test",
+                    "end_on_success": True,
+                },
+            },
+            "tick_on": "self_turn_end",
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="self_turn_end",
+        actor_id="pc1",
+        roll_service=RollService(state),
+    )
+
+    repeat_save = result.expired[0]["repeat_save"]
+    assert repeat_save["base_bonus"] == 5
+    assert repeat_save["bonus"] == 5
+    assert repeat_save["proficient"] is True
+    assert repeat_save["proficiency_sources"] == [
+        {
+            "kind": "disciplined_survivor",
+            "source_action_id": "srd.disciplined_survivor",
+            "ability": "wis",
+        }
+    ]
+    assert repeat_save["roll"]["expression"] == "1d20+5"
+    assert monk.resources["srd.resource.focus_points"] == 1
+    assert "disciplined_survivor" not in repeat_save
+
+
 def test_monk_self_restoration_removes_single_eligible_condition(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

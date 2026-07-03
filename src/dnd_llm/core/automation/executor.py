@@ -12,6 +12,7 @@ from ..positioning import TacticalGraph
 from ..rules.checks import d20_expression
 from ..rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
+    FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
@@ -49,6 +50,7 @@ from ..rules.class_features import (
     has_wizard_evocation_feature,
     is_bloodied,
     is_wearing_armor,
+    monk_disciplined_survivor_applies,
     monk_evasion_applies,
     monk_forgoing_food_drink_exhaustion_immunity,
     monk_martial_arts_die,
@@ -56,6 +58,7 @@ from ..rules.class_features import (
     monk_unarmored_defense_armor_class,
     preserve_life_healing_pool,
     remarkable_athlete_applies_to_check,
+    saving_throw_proficiency_sources,
     warlock_agonizing_blast_bonus,
 )
 from ..rules.conditions import (
@@ -89,6 +92,7 @@ BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 INDOMITABLE_ACTION_ID = "srd.indomitable"
+DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
 STUDIED_ATTACKS_ACTION_ID = "srd.studied_attacks"
 STUDIED_ATTACKS_CONDITION = "studied_attacks"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
@@ -748,6 +752,19 @@ class AutomationExecutor:
             and len(ctx.targets) > 1
         ):
             raise AutomationError("Indomitable saving throw requires an explicit target")
+        if (
+            bool(ctx.params.get("use_disciplined_survivor"))
+            and ctx.params.get("disciplined_survivor_target_id") is None
+            and len(ctx.targets) > 1
+        ):
+            raise AutomationError("Disciplined Survivor saving throw requires an explicit target")
+        disciplined_survivor_target_id = ctx.params.get("disciplined_survivor_target_id")
+        if (
+            bool(ctx.params.get("use_disciplined_survivor"))
+            and disciplined_survivor_target_id is not None
+            and str(disciplined_survivor_target_id) not in ctx.targets
+        ):
+            raise AutomationError("Disciplined Survivor target must be one of the action targets")
         for target_id in ctx.targets:
             target = self._entity(target_id)
             use_dark_ones_own_luck = self._use_dark_ones_own_luck_for_save(ctx, target_id)
@@ -756,10 +773,19 @@ class AutomationExecutor:
             use_indomitable = self._use_indomitable_for_save(ctx, target_id)
             if use_indomitable:
                 self._validate_indomitable_available(target)
+            use_disciplined_survivor = self._use_disciplined_survivor_for_save(ctx, target_id)
+            if use_disciplined_survivor:
+                self._validate_disciplined_survivor_available(target)
+            if use_indomitable and use_disciplined_survivor:
+                raise AutomationError("choose only one failed saving throw reroll feature")
             auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
                 if use_indomitable:
                     raise AutomationError("Indomitable requires a rolled failed saving throw")
+                if use_disciplined_survivor:
+                    raise AutomationError(
+                        "Disciplined Survivor requires a rolled failed saving throw"
+                    )
                 ctx.save_successes[target_id] = False
                 ctx.save_abilities[target_id] = ability.lower()
                 ctx.result.node_results[path] = {
@@ -774,7 +800,10 @@ class AutomationExecutor:
                     "success": False,
                 }
                 continue
-            base_bonus, proficient = self._saving_throw_bonus(target, ability)
+            base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(
+                target,
+                ability,
+            )
             target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
             bonus = base_bonus - exhaustion_penalty
             status_advantage, status_sources = self._saving_throw_status_advantage(
@@ -815,6 +844,20 @@ class AutomationExecutor:
             if indomitable_result is not None:
                 total = int(indomitable_result["total_after"])
                 success = bool(indomitable_result["success"])
+            disciplined_survivor_result = self._apply_disciplined_survivor_to_failed_save(
+                ctx,
+                target,
+                total,
+                dc,
+                bonus,
+                adjustment,
+                status_advantage,
+                path,
+                use_disciplined_survivor=use_disciplined_survivor,
+            )
+            if disciplined_survivor_result is not None:
+                total = int(disciplined_survivor_result["total_after"])
+                success = bool(disciplined_survivor_result["success"])
             ctx.save_successes[target_id] = success
             ctx.save_abilities[target_id] = ability.lower()
             ctx.result.node_results[path] = {
@@ -825,6 +868,7 @@ class AutomationExecutor:
                 "bonus": bonus,
                 "base_bonus": base_bonus,
                 "proficient": proficient,
+                "proficiency_sources": proficiency_sources,
                 "exhaustion_level": target_exhaustion_level,
                 "d20_penalty": exhaustion_penalty,
                 "base_total": roll.total,
@@ -839,6 +883,8 @@ class AutomationExecutor:
                 ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
             if indomitable_result is not None:
                 ctx.result.node_results[path]["indomitable"] = indomitable_result
+            if disciplined_survivor_result is not None:
+                ctx.result.node_results[path]["disciplined_survivor"] = disciplined_survivor_result
 
     def _node_ability_check(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         original_ability = str(node["ability"]).lower()
@@ -1897,7 +1943,7 @@ class AutomationExecutor:
             save_entry: dict[str, Any] | None = None
             condition_entry: dict[str, Any] | None = None
             if had_prior_use:
-                base_bonus, proficient = self._saving_throw_bonus(target, ability)
+                base_bonus, proficient, _ = self._saving_throw_bonus(target, ability)
                 target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
                 bonus = base_bonus - exhaustion_penalty
                 status_advantage, status_sources = self._saving_throw_status_advantage(
@@ -2965,6 +3011,14 @@ class AutomationExecutor:
             return str(explicit_target) == target_id
         return len(ctx.targets) == 1
 
+    def _use_disciplined_survivor_for_save(self, ctx: _Context, target_id: str) -> bool:
+        if not bool(ctx.params.get("use_disciplined_survivor")):
+            return False
+        explicit_target = ctx.params.get("disciplined_survivor_target_id")
+        if explicit_target is not None:
+            return str(explicit_target) == target_id
+        return len(ctx.targets) == 1
+
     def _dark_ones_own_luck_character(
         self,
         entity: Character | Monster | Combatant,
@@ -3051,6 +3105,28 @@ class AutomationExecutor:
         if int(character.resources.get(INDOMITABLE_RESOURCE, 0)) <= 0:
             raise AutomationError("Indomitable requires an available use")
 
+    def _disciplined_survivor_character(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> Character | None:
+        if isinstance(entity, Character):
+            return entity
+        if isinstance(entity, Combatant):
+            backing = self.state.characters.get(entity.entity_id)
+            if backing is not None:
+                return backing
+        return None
+
+    def _validate_disciplined_survivor_available(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> None:
+        character = self._disciplined_survivor_character(entity)
+        if character is None or not monk_disciplined_survivor_applies(character):
+            raise AutomationError("Disciplined Survivor requires Monk level 14")
+        if int(character.resources.get(FOCUS_POINTS_RESOURCE, 0)) <= 0:
+            raise AutomationError("Disciplined Survivor requires an available Focus Point")
+
     def _apply_indomitable_to_failed_save(
         self,
         ctx: _Context,
@@ -3094,6 +3170,56 @@ class AutomationExecutor:
             "resource_before": before_resource,
             "resource_after": after_resource,
             "fighter_level_bonus": fighter_level,
+            "total_before": total,
+            "reroll_base_total": reroll.total,
+            "passive_adjustment": passive_adjustment,
+            "total_after": after_total,
+            "spent": True,
+            "success": success,
+        }
+
+    def _apply_disciplined_survivor_to_failed_save(
+        self,
+        ctx: _Context,
+        entity: Character | Monster | Combatant,
+        total: int,
+        dc: int,
+        bonus: int,
+        passive_adjustment: int,
+        advantage: str | None,
+        path: str,
+        *,
+        use_disciplined_survivor: bool,
+    ) -> dict[str, Any] | None:
+        if not use_disciplined_survivor or total >= dc:
+            return None
+        character = self._disciplined_survivor_character(entity)
+        if character is None:
+            raise AutomationError("Disciplined Survivor requires a character")
+        before_resource = int(character.resources.get(FOCUS_POINTS_RESOURCE, 0))
+        reroll = self.roll_service.roll(d20_expression(bonus), advantage=advantage)
+        ctx.result.dice_rolls.append(reroll.to_dict())
+        after_total = reroll.total + passive_adjustment
+        after_resource = before_resource - 1
+        character.resources[FOCUS_POINTS_RESOURCE] = after_resource
+        entity_id = str(getattr(entity, "id", character.id))
+        success = after_total >= dc
+        ctx.result.state_changes.append(
+            {
+                "type": "disciplined_survivor",
+                "actor_id": entity_id,
+                "source_action_id": DISCIPLINED_SURVIVOR_ACTION_ID,
+                "resource": FOCUS_POINTS_RESOURCE,
+                "before": before_resource,
+                "after": after_resource,
+                "path": path,
+            }
+        )
+        return {
+            "resource": FOCUS_POINTS_RESOURCE,
+            "resource_before": before_resource,
+            "resource_after": after_resource,
+            "source_action_id": DISCIPLINED_SURVIVOR_ACTION_ID,
             "total_before": total,
             "reroll_base_total": reroll.total,
             "passive_adjustment": passive_adjustment,
@@ -4927,7 +5053,7 @@ class AutomationExecutor:
         effect: str,
     ) -> bool:
         target = self._entity(target_id)
-        base_bonus, proficient = self._saving_throw_bonus(target, ability)
+        base_bonus, proficient, _ = self._saving_throw_bonus(target, ability)
         target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
         bonus = base_bonus - exhaustion_penalty
         status_advantage, status_sources = self._saving_throw_status_advantage(target, ability)
@@ -5158,7 +5284,7 @@ class AutomationExecutor:
         effect: str,
     ) -> bool:
         target = self._entity(target_id)
-        base_bonus, proficient = self._saving_throw_bonus(target, ability)
+        base_bonus, proficient, _ = self._saving_throw_bonus(target, ability)
         target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
         bonus = base_bonus - exhaustion_penalty
         status_advantage, status_sources = self._saving_throw_status_advantage(target, ability)
@@ -5480,7 +5606,7 @@ class AutomationExecutor:
         path: str,
     ) -> bool:
         target = self._entity(target_id)
-        base_bonus, proficient = self._saving_throw_bonus(target, "con")
+        base_bonus, proficient, _ = self._saving_throw_bonus(target, "con")
         target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
         bonus = base_bonus - exhaustion_penalty
         status_advantage, status_sources = self._saving_throw_status_advantage(target, "con")
@@ -5859,7 +5985,7 @@ class AutomationExecutor:
         path: str,
     ) -> dict[str, Any]:
         target = self._entity(target_id)
-        base_bonus, proficient = self._saving_throw_bonus(target, "con")
+        base_bonus, proficient, _ = self._saving_throw_bonus(target, "con")
         target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
         bonus = base_bonus - exhaustion_penalty
         status_advantage, status_sources = self._saving_throw_status_advantage(target, "con")
@@ -8093,7 +8219,7 @@ class AutomationExecutor:
         path: str,
     ) -> bool:
         target = self._entity(target_id)
-        base_bonus, proficient = self._saving_throw_bonus(target, "dex")
+        base_bonus, proficient, _ = self._saving_throw_bonus(target, "dex")
         target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
         bonus = base_bonus - exhaustion_penalty
         status_advantage, status_sources = self._saving_throw_status_advantage(target, "dex")
@@ -9045,8 +9171,7 @@ class AutomationExecutor:
             return None
         actor = self._entity(actor_id)
         dc = max(10, damage_taken // 2)
-        ability_source = self._ability_source(actor)
-        base_bonus = self._ability_modifier(ability_source, "con")
+        base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(actor, "con")
         actor_exhaustion_level, exhaustion_penalty = self._exhaustion_details(actor)
         bonus = base_bonus - exhaustion_penalty
         advantage = None
@@ -9072,6 +9197,8 @@ class AutomationExecutor:
                 "roll_id": roll.roll_id,
                 "bonus": bonus,
                 "base_bonus": base_bonus,
+                "proficient": proficient,
+                "proficiency_sources": proficiency_sources,
                 "exhaustion_level": actor_exhaustion_level,
                 "d20_penalty": exhaustion_penalty,
                 "advantage": advantage,
@@ -11089,17 +11216,15 @@ class AutomationExecutor:
         self,
         target: Character | Monster | Combatant,
         ability: str,
-    ) -> tuple[int, bool]:
+    ) -> tuple[int, bool, list[dict[str, Any]]]:
         source = self._ability_source(target)
         proficiency_source = self._proficiency_source(target)
-        proficient = ability.lower() in {
-            str(item).lower()
-            for item in getattr(proficiency_source, "saving_throw_proficiencies", [])
-        }
+        proficiency_sources = saving_throw_proficiency_sources(proficiency_source, ability)
+        proficient = bool(proficiency_sources)
         bonus = self._ability_modifier(source, ability)
         if proficient:
             bonus += int(getattr(proficiency_source, "proficiency_bonus", 2))
-        return bonus, proficient
+        return bonus, proficient, proficiency_sources
 
     def _ability_check_bonus(
         self,

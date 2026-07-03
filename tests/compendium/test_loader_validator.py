@@ -4149,6 +4149,18 @@ def test_compendium_loads_srd_actions() -> None:
         "deflect_attacks_damage_types": "any",
         "replaces_basic_weapon_damage_type_limit": True,
     }
+    assert compendium.classes["monk"].levels["14"]["features"] == ["Disciplined Survivor"]
+    assert "srd.disciplined_survivor" in compendium.classes["monk"].levels["14"]["actions"]
+    assert "srd.disciplined_survivor" in compendium.classes["monk"].levels["17"]["actions"]
+    disciplined_survivor = compendium.action("srd.disciplined_survivor")
+    assert disciplined_survivor.action_economy == "none"
+    assert disciplined_survivor.requirements == {"class": "monk", "class_level_min": 14}
+    assert disciplined_survivor.properties == {
+        "saving_throw_proficiency": "all",
+        "failed_saving_throw_reroll": True,
+        "reroll_cost": {"resource": "srd.resource.focus_points", "amount": 1},
+        "must_use_new_roll": True,
+    }
     assert compendium.classes["monk"].levels["17"]["features"] == ["Subclass Feature"]
     assert "srd.quivering_palm" in compendium.classes["monk"].levels["17"]["actions"]
     assert "srd.quivering_palm_release" in compendium.classes["monk"].levels["17"]["actions"]

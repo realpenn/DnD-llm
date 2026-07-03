@@ -4736,6 +4736,261 @@ def test_fighter_indomitable_automation_save_must_use_new_roll_even_if_failed(
     )
 
 
+def test_monk_disciplined_survivor_grants_all_save_proficiency_and_rerolls_failed_direct_save(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 14}
+    character.saving_throw_proficiencies = ["str", "dex"]
+    character.resources["srd.resource.focus_points"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([3, 2]),
+    )
+
+    result = tools.roll_save(
+        "pc1",
+        "wis",
+        difficulty_tier="medium",
+        use_disciplined_survivor=True,
+        idempotency_key="disciplined-survivor-direct-save",
+    )
+
+    assert result["success"] is False
+    assert result["total"] == 5
+    assert result["roll"]["expression"] == "1d20+3"
+    assert result["proficiency_sources"] == [
+        {
+            "kind": "disciplined_survivor",
+            "source_action_id": "srd.disciplined_survivor",
+            "ability": "wis",
+        }
+    ]
+    assert result["disciplined_survivor"]["resource_before"] == 2
+    assert result["disciplined_survivor"]["resource_after"] == 1
+    assert result["disciplined_survivor"]["total_before"] == 6
+    assert result["disciplined_survivor"]["total_after"] == 5
+    assert character.resources["srd.resource.focus_points"] == 1
+
+
+def test_monk_disciplined_survivor_successful_save_does_not_spend_focus(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 14}
+    character.resources["srd.resource.focus_points"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([18]),
+    )
+
+    result = tools.roll_save(
+        "pc1",
+        "wis",
+        difficulty_tier="medium",
+        use_disciplined_survivor=True,
+        idempotency_key="disciplined-survivor-success",
+    )
+
+    assert result["success"] is True
+    assert "disciplined_survivor" not in result
+    assert character.resources["srd.resource.focus_points"] == 2
+
+
+def test_monk_disciplined_survivor_direct_auto_failed_save_cannot_reroll(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 14}
+    character.resources["srd.resource.focus_points"] = 1
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "paralyzed-test", "condition": "paralyzed"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.roll_save(
+        "pc1",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="disciplined-survivor-direct-auto-fail",
+    )
+
+    assert result["auto_failed"] is True
+    assert result["roll"] is None
+    assert result["total"] is None
+    assert result["success"] is False
+    assert result["status_sources"][0]["condition"] == "paralyzed"
+
+    with pytest.raises(ValueError, match="rolled failed save"):
+        tools.roll_save(
+            "pc1",
+            "dex",
+            difficulty_tier="medium",
+            use_disciplined_survivor=True,
+            idempotency_key="disciplined-survivor-direct-auto-fail-reroll",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 1
+
+
+def test_monk_disciplined_survivor_automation_save_must_use_new_roll(
+    make_state,
+) -> None:
+    state = make_state()
+    target = state.characters["pc2"]
+    target.class_levels = {"monk": 14}
+    target.resources["srd.resource.focus_points"] = 2
+    action = ActionDefinition(
+        id="test.disciplined_survivor_save",
+        name="Disciplined Survivor Save",
+        localization={"en": "Disciplined Survivor Save", "zh": "严律生还者豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "wis", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([3, 2]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+        params={"use_disciplined_survivor": True},
+    )
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["success"] is False
+    assert save_node["total"] == 4
+    assert save_node["base_bonus"] == 2
+    assert save_node["proficient"] is True
+    assert save_node["proficiency_sources"] == [
+        {
+            "kind": "disciplined_survivor",
+            "source_action_id": "srd.disciplined_survivor",
+            "ability": "wis",
+        }
+    ]
+    assert save_node["disciplined_survivor"] == {
+        "resource": "srd.resource.focus_points",
+        "resource_before": 2,
+        "resource_after": 1,
+        "source_action_id": "srd.disciplined_survivor",
+        "total_before": 5,
+        "reroll_base_total": 4,
+        "passive_adjustment": 0,
+        "total_after": 4,
+        "spent": True,
+        "success": False,
+    }
+    assert target.resources["srd.resource.focus_points"] == 1
+    assert any(
+        change["type"] == "disciplined_survivor"
+        and change["source_action_id"] == "srd.disciplined_survivor"
+        for change in result.state_changes
+    )
+
+
+def test_monk_disciplined_survivor_automation_requires_explicit_target_for_multi_save(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"monk": 14}
+    state.characters["pc1"].resources["srd.resource.focus_points"] = 1
+    state.characters["pc2"].class_levels = {"monk": 14}
+    state.characters["pc2"].resources["srd.resource.focus_points"] = 1
+    action = ActionDefinition(
+        id="test.disciplined_survivor_multi_save",
+        name="Disciplined Survivor Multi Save",
+        localization={
+            "en": "Disciplined Survivor Multi Save",
+            "zh": "严律生还者群体豁免",
+            "aliases": [],
+        },
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 2, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "wis", "difficulty_tier": "medium"}],
+    )
+
+    with pytest.raises(AutomationError, match="explicit target"):
+        AutomationExecutor(state, _FixedSingleDieRollService([3, 3]), AuditLog()).execute(
+            action,
+            actor_id="goblin1",
+            targets=["pc1", "pc2"],
+            params={"use_disciplined_survivor": True},
+        )
+    with pytest.raises(AutomationError, match="one of the action targets"):
+        AutomationExecutor(state, _FixedSingleDieRollService([3, 3]), AuditLog()).execute(
+            action,
+            actor_id="goblin1",
+            targets=["pc1", "pc2"],
+            params={"use_disciplined_survivor": True, "disciplined_survivor_target_id": "pc3"},
+        )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([3, 2, 3]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1", "pc2"],
+        params={"use_disciplined_survivor": True, "disciplined_survivor_target_id": "pc1"},
+    )
+
+    assert any(
+        change["type"] == "disciplined_survivor" and change["actor_id"] == "pc1"
+        for change in result.state_changes
+    )
+    assert state.characters["pc1"].resources["srd.resource.focus_points"] == 0
+    assert state.characters["pc2"].resources["srd.resource.focus_points"] == 1
+
+
+def test_monk_disciplined_survivor_rejects_indomitable_combo(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 14, "fighter": 9}
+    character.resources["srd.resource.focus_points"] = 1
+    character.resources["srd.resource.indomitable"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(ValueError, match="choose only one"):
+        tools.roll_save(
+            "pc1",
+            "wis",
+            difficulty_tier="medium",
+            use_disciplined_survivor=True,
+            use_indomitable=True,
+            idempotency_key="disciplined-survivor-indomitable-combo",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 1
+    assert character.resources["srd.resource.indomitable"] == 1
+
+
 def test_fighter_studied_attacks_grants_targeted_advantage_after_miss(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -14031,6 +14286,54 @@ def test_eldritch_mind_grants_advantage_on_concentration_saves(make_state) -> No
     assert concentration_roll["advantage"] == "advantage"
     assert len(concentration_roll["dice"]) == 2
     assert state.encounter.combatants["pc2"].status_effects[0]["source_action_id"] == "srd.bless"
+
+
+def test_disciplined_survivor_grants_proficiency_on_concentration_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    monk = state.characters["pc1"]
+    monk.class_levels = {"monk": 14}
+    monk.proficiency_bonus = 5
+    monk.abilities["con"] = 10
+    monk.resources["srd.resource.focus_points"] = 1
+    state.encounter.combatants["pc2"].status_effects.append(
+        {
+            "effect_id": "old-bless",
+            "source_action_id": "srd.bless",
+            "applied_by": "pc1",
+            "concentration": True,
+            "passive_modifiers": {"attack_roll_bonus_dice": "1d4"},
+        }
+    )
+    action = _damage_action(1)
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([4]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    concentration_change = [
+        change for change in result.state_changes if change["type"] == "concentration_save"
+    ][0]
+    concentration_roll = result.dice_rolls[-1]
+    assert concentration_change["base_bonus"] == 5
+    assert concentration_change["bonus"] == 5
+    assert concentration_change["proficient"] is True
+    assert concentration_change["proficiency_sources"] == [
+        {
+            "kind": "disciplined_survivor",
+            "source_action_id": "srd.disciplined_survivor",
+            "ability": "con",
+        }
+    ]
+    assert concentration_roll["expression"] == "1d20+5"
+    assert monk.resources["srd.resource.focus_points"] == 1
+    assert "disciplined_survivor" not in concentration_change
 
 
 def test_agonizing_blast_adds_charisma_modifier_to_eldritch_blast_damage(make_state) -> None:

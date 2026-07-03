@@ -240,6 +240,7 @@ CLASS_LEVEL_ACTIONS = {
         9: ["srd.acrobatic_movement"],
         10: ["srd.heightened_focus", "srd.self_restoration"],
         13: ["srd.deflect_energy"],
+        14: ["srd.disciplined_survivor"],
     },
     "paladin": {
         1: ["srd.lay_on_hands", "srd.lay_on_hands_remove_poisoned", "srd.cure_wounds"],

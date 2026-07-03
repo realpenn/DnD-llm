@@ -88,6 +88,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.divine_spark_radiant",
     "srd.divine_sense",
     "srd.divine_smite",
+    "srd.disciplined_survivor",
     "srd.druidic",
     "srd.extra_attack",
     "srd.favored_enemy_hunters_mark",

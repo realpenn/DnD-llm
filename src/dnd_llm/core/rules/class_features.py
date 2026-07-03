@@ -92,6 +92,8 @@ INDOMITABLE_RESOURCE = "srd.resource.indomitable"
 HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
+SAVING_THROW_ABILITIES = frozenset({"str", "dex", "con", "int", "wis", "cha"})
+DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -211,6 +213,32 @@ def monk_heightened_focus_applies(character: Character) -> bool:
 
 def monk_deflect_energy_applies(character: Character) -> bool:
     return has_monk_feature(character, level=13)
+
+
+def monk_disciplined_survivor_applies(character: Character) -> bool:
+    return has_monk_feature(character, level=14)
+
+
+def saving_throw_proficiency_sources(actor: Any, ability: str) -> list[dict[str, Any]]:
+    ability_key = ability.lower()
+    sources: list[dict[str, Any]] = []
+    if ability_key in {
+        str(item).lower() for item in getattr(actor, "saving_throw_proficiencies", [])
+    }:
+        sources.append({"kind": "saving_throw_proficiency", "ability": ability_key})
+    if (
+        isinstance(actor, Character)
+        and ability_key in SAVING_THROW_ABILITIES
+        and monk_disciplined_survivor_applies(actor)
+    ):
+        sources.append(
+            {
+                "kind": "disciplined_survivor",
+                "source_action_id": DISCIPLINED_SURVIVOR_ACTION_ID,
+                "ability": ability_key,
+            }
+        )
+    return sources
 
 
 def monk_forgoing_food_drink_exhaustion_immunity(character: Character) -> bool:

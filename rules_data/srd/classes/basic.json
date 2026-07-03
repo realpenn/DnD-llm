@@ -847,6 +847,35 @@
                         "srd.deflect_energy"
                     ]
                 },
+                "14": {
+                    "features": ["Disciplined Survivor"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.monk_unarmed_strike",
+                        "srd.martial_arts_bonus_unarmed_strike",
+                        "srd.monk_unarmored_defense",
+                        "srd.uncanny_metabolism",
+                        "srd.monk_unarmored_movement",
+                        "srd.deflect_attacks",
+                        "srd.flurry_of_blows",
+                        "srd.patient_defense",
+                        "srd.patient_defense_focus",
+                        "srd.step_of_the_wind",
+                        "srd.step_of_the_wind_focus",
+                        "srd.slow_fall",
+                        "srd.stunning_strike",
+                        "srd.extra_attack",
+                        "srd.empowered_strikes",
+                        "srd.wholeness_of_body",
+                        "srd.evasion",
+                        "srd.acrobatic_movement",
+                        "srd.heightened_focus",
+                        "srd.self_restoration",
+                        "srd.fleet_step",
+                        "srd.deflect_energy",
+                        "srd.disciplined_survivor"
+                    ]
+                },
                 "17": {
                     "features": ["Subclass Feature"],
                     "actions": [
@@ -873,6 +902,7 @@
                         "srd.self_restoration",
                         "srd.fleet_step",
                         "srd.deflect_energy",
+                        "srd.disciplined_survivor",
                         "srd.quivering_palm",
                         "srd.quivering_palm_release"
                     ]
