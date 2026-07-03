@@ -3482,8 +3482,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["druid"].subclasses["land"] == {
         "name": "Circle of the Land",
         "level": 3,
-        "features": ["Circle of the Land Spells", "Land's Aid"],
-        "actions": ["srd.lands_aid"],
+        "features": ["Circle of the Land Spells", "Land's Aid", "Natural Recovery"],
+        "actions": ["srd.lands_aid", "srd.natural_recovery"],
     }
     assert compendium.classes["druid"].levels["5"]["features"] == ["Wild Resurgence"]
     assert {
@@ -3492,6 +3492,28 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.wild_resurgence_restore_wild_shape_slot_3",
         "srd.wild_resurgence_create_spell_slot",
     } <= set(compendium.classes["druid"].levels["5"]["actions"])
+    natural_recovery = compendium.action("srd.natural_recovery")
+    assert natural_recovery.requirements == {
+        "class": "druid",
+        "class_level_min": 6,
+        "subclass": "land",
+    }
+    assert natural_recovery.action_economy == "none"
+    assert natural_recovery.properties["free_circle_spell"] == {
+        "minimum_spell_level": 1,
+        "requires_prepared_from_circle_spells": True,
+        "without_expending_spell_slot": True,
+        "resource": "srd.resource.natural_recovery_circle_spell",
+        "recharge": "long_rest",
+    }
+    assert natural_recovery.properties["short_rest_spell_slot_recovery"] == {
+        "combined_level_cap_from": {"half_class_level_round_up": "druid"},
+        "maximum_slot_level": 5,
+        "resource": "srd.resource.natural_recovery_spell_slots",
+        "recharge": "long_rest",
+    }
+    assert compendium.classes["druid"].levels["6"]["features"] == ["Subclass Feature"]
+    assert "srd.natural_recovery" in compendium.classes["druid"].levels["6"]["actions"]
     assert compendium.classes["sorcerer"].levels["1"]["features"] == [
         "Spellcasting",
         "Innate Sorcery",

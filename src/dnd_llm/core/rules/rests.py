@@ -7,9 +7,12 @@ from ..models import Character
 from .class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
     GIFT_OF_DEPTHS_RESOURCE,
+    NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
+    NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WHOLENESS_OF_BODY_RESOURCE,
     dark_ones_own_luck_uses,
+    has_druid_circle_of_the_land_feature,
     has_monk_open_hand_feature,
     has_warlock_gift_of_depths,
 )
@@ -58,6 +61,7 @@ def short_rest(
     hit_dice_to_spend: dict[str, int],
     roll_service: RollService,
     arcane_recovery_slots: dict[str, int] | None = None,
+    natural_recovery_slots: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     con_modifier = _ability_modifier(character, "con")
     before_hp = character.hp_current
@@ -112,6 +116,9 @@ def short_rest(
     restored_spell_slots = _restore_short_rest_spell_slots(character)
     spent_resources.update(
         _apply_arcane_recovery(character, arcane_recovery_slots, restored_spell_slots)
+    )
+    spent_resources.update(
+        _apply_natural_recovery(character, natural_recovery_slots, restored_spell_slots)
     )
     if character.hp_current > 0:
         _clear_death_save_state(character)
@@ -337,6 +344,51 @@ def _apply_arcane_recovery(
     return {ARCANE_RECOVERY_RESOURCE: 1}
 
 
+def _apply_natural_recovery(
+    character: Character,
+    requested_slots: dict[str, int] | None,
+    restored_spell_slots: dict[str, int],
+) -> dict[str, int]:
+    requested = {str(level): int(count) for level, count in (requested_slots or {}).items()}
+    requested = {level: count for level, count in requested.items() if count > 0}
+    if not requested:
+        return {}
+    maxima = resource_maxima(character)
+    if not maxima.get(NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE):
+        raise ValueError("Natural Recovery is not available")
+    feature_uses = min(
+        int(character.resources.get(NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE, 0)),
+        maxima[NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE],
+    )
+    if feature_uses <= 0:
+        raise ValueError("Natural Recovery has already been used")
+    druid_level = int(character.class_levels.get("druid", 0))
+    recovery_cap = (druid_level + 1) // 2
+    total_recovered_levels = 0
+    spell_slot_maxima = _recoverable_spell_slot_maxima(character)
+    for slot_level, count in requested.items():
+        level = int(slot_level)
+        if level >= 6:
+            raise ValueError("Natural Recovery cannot recover level 6 or higher spell slots")
+        total_recovered_levels += level * count
+        maximum = spell_slot_maxima.get(slot_level, 0)
+        before = max(0, int(character.spell_slots.get(slot_level, 0)))
+        if before + count > maximum:
+            raise ValueError(f"Natural Recovery cannot recover {count} level {slot_level} slots")
+    if total_recovered_levels > recovery_cap:
+        raise ValueError(f"Natural Recovery cannot recover more than {recovery_cap} spell levels")
+    for slot_level, count in requested.items():
+        before = max(0, int(character.spell_slots.get(slot_level, 0)))
+        character.spell_slots[slot_level] = before + count
+        character.spell_slots_max[slot_level] = max(
+            int(character.spell_slots_max.get(slot_level, 0)),
+            spell_slot_maxima.get(slot_level, 0),
+        )
+        restored_spell_slots[slot_level] = restored_spell_slots.get(slot_level, 0) + count
+    character.resources[NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE] = feature_uses - 1
+    return {NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE: 1}
+
+
 def _restore_long_rest_resources(character: Character) -> dict[str, int]:
     restored: dict[str, int] = {}
     maxima = resource_maxima(character)
@@ -422,6 +474,9 @@ def resource_maxima(character: Character) -> dict[str, int]:
         maxima[WILD_SHAPE_RESOURCE] = 2
     if druid_level >= 5:
         maxima[WILD_RESURGENCE_SPELL_SLOT_RESOURCE] = 1
+    if has_druid_circle_of_the_land_feature(character, level=6):
+        maxima[NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE] = 1
+        maxima[NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE] = 1
     sorcerer_level = int(character.class_levels.get("sorcerer", 0))
     if sorcerer_level >= 1:
         maxima[INNATE_SORCERY_RESOURCE] = 2

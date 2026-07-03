@@ -1321,6 +1321,20 @@ def test_natural_language_character_edit_assigns_explicit_land_subclass() -> Non
     assert "srd.lands_aid" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_land_natural_recovery_at_level_6() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 德鲁伊6 子职 land")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"druid": 6}
+    assert result.character.subclasses == {"druid": "land"}
+    assert "srd.natural_recovery" in result.character.actions
+    assert result.character.resources["srd.resource.natural_recovery_spell_slots"] == 1
+    assert result.character.resources["srd.resource.natural_recovery_circle_spell"] == 1
+
+
 def test_natural_language_character_edit_does_not_assign_land_by_default() -> None:
     character = default_fighter("pc1", "Penn")
 

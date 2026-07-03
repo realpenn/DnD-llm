@@ -599,6 +599,7 @@ class EngineTools:
         hit_dice_to_spend: dict[str, int],
         *,
         arcane_recovery_slots: dict[str, int] | None = None,
+        natural_recovery_slots: dict[str, int] | None = None,
         memorize_spell: dict[str, str] | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
@@ -615,6 +616,7 @@ class EngineTools:
             hit_dice_to_spend,
             self.roll_service,
             arcane_recovery_slots,
+            natural_recovery_slots,
         )
         if memorize_spell_plan is not None:
             result["memorize_spell"] = self._apply_wizard_memorize_spell_plan(
@@ -632,6 +634,7 @@ class EngineTools:
                 "actor_id": actor_id,
                 "hit_dice_to_spend": hit_dice_to_spend,
                 "arcane_recovery_slots": arcane_recovery_slots or {},
+                "natural_recovery_slots": natural_recovery_slots or {},
                 "memorize_spell": memorize_spell or {},
             },
             tool_result=result,

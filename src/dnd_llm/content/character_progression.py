@@ -17,6 +17,8 @@ from dnd_llm.core.rules.class_features import (
     HUNTERS_PREY_CHOICE_KEY,
     HUNTERS_PREY_COLOSSUS_SLAYER,
     HUNTERS_PREY_HORDE_BREAKER,
+    NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
+    NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WARLOCK_AGONIZING_BLAST_CANTRIP_KEY,
     WARLOCK_AGONIZING_BLAST_ELDRITCH_BLAST,
@@ -302,7 +304,7 @@ SUBCLASS_ACTIONS = {
         "life": {3: ["srd.disciple_of_life", "srd.preserve_life"]},
     },
     "druid": {
-        "land": {3: ["srd.lands_aid"]},
+        "land": {3: ["srd.lands_aid"], 6: ["srd.natural_recovery"]},
     },
     "fighter": {
         "champion": {3: ["srd.improved_critical", "srd.remarkable_athlete"]},
@@ -2338,6 +2340,9 @@ def _resources_for_levels(
         resources["srd.resource.wild_shape"] = 2
     if druid_level >= 5:
         resources["srd.resource.wild_resurgence_spell_slot"] = 1
+    if druid_level >= 6 and subclasses.get("druid") == "land":
+        resources[NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE] = 1
+        resources[NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE] = 1
     sorcerer_level = int(class_levels.get("sorcerer", 0))
     if sorcerer_level >= 1:
         resources["srd.resource.innate_sorcery"] = 2

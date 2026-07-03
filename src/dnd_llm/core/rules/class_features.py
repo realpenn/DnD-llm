@@ -79,6 +79,8 @@ UNCANNY_METABOLISM_RESOURCE = "srd.resource.uncanny_metabolism"
 WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
+NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
+NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -251,6 +253,13 @@ def druid_magician_check_bonus(
         return 0
     wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
     return max(1, ability_modifier(wisdom))
+
+
+def has_druid_circle_of_the_land_feature(character: Character, *, level: int) -> bool:
+    return (
+        int(character.class_levels.get("druid", 0)) >= level
+        and character.subclasses.get("druid") == "land"
+    )
 
 
 def has_warlock_fiend_feature(character: Character, *, level: int) -> bool:

@@ -228,6 +228,94 @@ def test_arcane_recovery_restores_chosen_spell_slots_once_per_long_rest(make_sta
     assert character.resources["srd.resource.arcane_recovery"] == 1
 
 
+def test_natural_recovery_restores_chosen_spell_slots_once_per_long_rest(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 6}
+    character.subclasses = {"druid": "land"}
+    character.resources["srd.resource.natural_recovery_spell_slots"] = 1
+    character.resources["srd.resource.natural_recovery_circle_spell"] = 0
+    character.spell_slots = {"1": 0, "2": 0, "3": 0}
+    character.spell_slots_max = {"1": 4, "2": 3, "3": 3}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    short = tools.short_rest(
+        "pc1",
+        {},
+        natural_recovery_slots={"1": 1, "2": 1},
+        idempotency_key="natural-recovery-short",
+    )
+
+    assert short["restored_spell_slots"] == {"1": 1, "2": 1}
+    assert short["spent_resources"] == {"srd.resource.natural_recovery_spell_slots": 1}
+    assert character.spell_slots == {"1": 1, "2": 1, "3": 0}
+    assert character.resources["srd.resource.natural_recovery_spell_slots"] == 0
+
+    with pytest.raises(ValueError, match="Natural Recovery has already been used"):
+        tools.short_rest(
+            "pc1",
+            {},
+            natural_recovery_slots={"1": 1},
+            idempotency_key="natural-recovery-spent",
+        )
+
+    long = tools.long_rest(["pc1"], idempotency_key="natural-recovery-long")
+
+    assert (
+        long["results"]["pc1"]["restored_resources"]["srd.resource.natural_recovery_spell_slots"]
+        == 1
+    )
+    assert (
+        long["results"]["pc1"]["restored_resources"]["srd.resource.natural_recovery_circle_spell"]
+        == 1
+    )
+    assert character.resources["srd.resource.natural_recovery_spell_slots"] == 1
+    assert character.resources["srd.resource.natural_recovery_circle_spell"] == 1
+
+
+def test_natural_recovery_rejects_over_cap_and_level_6_slots_before_spending(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 6}
+    character.subclasses = {"druid": "land"}
+    character.resources["srd.resource.natural_recovery_spell_slots"] = 1
+    character.spell_slots = {"3": 0, "6": 0}
+    character.spell_slots_max = {"3": 3, "6": 1}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        ValueError,
+        match="Natural Recovery cannot recover more than 3 spell levels",
+    ):
+        tools.short_rest(
+            "pc1",
+            {},
+            natural_recovery_slots={"3": 2},
+            idempotency_key="natural-recovery-over-cap",
+        )
+
+    assert character.spell_slots == {"3": 0, "6": 0}
+    assert character.resources["srd.resource.natural_recovery_spell_slots"] == 1
+
+    with pytest.raises(
+        ValueError,
+        match="Natural Recovery cannot recover level 6 or higher spell slots",
+    ):
+        tools.short_rest(
+            "pc1",
+            {},
+            natural_recovery_slots={"6": 1},
+            idempotency_key="natural-recovery-level-6",
+        )
+
+    assert character.spell_slots == {"3": 0, "6": 0}
+    assert character.resources["srd.resource.natural_recovery_spell_slots"] == 1
+
+
 def test_wizard_memorize_spell_replaces_prepared_spell_on_short_rest(make_state) -> None:
     state = make_state()
     character = state.characters["pc1"]

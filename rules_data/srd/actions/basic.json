@@ -2374,6 +2374,46 @@
             "audit_label": "Land's Aid"
         },
         {
+            "id": "srd.natural_recovery",
+            "name": "Natural Recovery",
+            "localization": {
+                "en": "Natural Recovery",
+                "zh": "自然恢复",
+                "aliases": ["Circle of the Land Natural Recovery", "大地结社自然恢复"]
+            },
+            "source": "SRD 5.2.1 Druid Subclass: Circle of the Land, Level 6: Natural Recovery",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 6, "subclass": "land"},
+            "properties": {
+                "free_circle_spell": {
+                    "minimum_spell_level": 1,
+                    "requires_prepared_from_circle_spells": true,
+                    "without_expending_spell_slot": true,
+                    "resource": "srd.resource.natural_recovery_circle_spell",
+                    "recharge": "long_rest"
+                },
+                "short_rest_spell_slot_recovery": {
+                    "combined_level_cap_from": {"half_class_level_round_up": "druid"},
+                    "maximum_slot_level": 5,
+                    "resource": "srd.resource.natural_recovery_spell_slots",
+                    "recharge": "long_rest"
+                }
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Circle of the Land Druid can cast one prepared level 1+ Circle Spell without expending a spell slot once before a Long Rest, and can recover expended spell slots after a Short Rest once before a Long Rest."
+                }
+            ],
+            "audit_label": "Natural Recovery"
+        },
+        {
             "id": "srd.wild_resurgence_restore_wild_shape_slot_1",
             "name": "Wild Resurgence: Restore Wild Shape with Level 1 Slot",
             "localization": {
