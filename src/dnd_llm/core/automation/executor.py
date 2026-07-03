@@ -331,6 +331,7 @@ class AutomationExecutor:
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
+        self._validate_allowed_action_effects(action, actor_id)
         self._validate_spellcasting_allowed(action, actor_id)
         self._validate_attacks_allowed(action, actor_id)
         self._validate_mage_armor_unarmored_targets(action, actor_id, targets or [])
@@ -8479,6 +8480,32 @@ class AutomationExecutor:
             if modifiers.get("blocks_spellcasting") is True:
                 source = effect.get("source_action_id") or effect.get("condition") or "effect"
                 raise AutomationError(f"actor cannot cast spells while affected by {source}")
+
+    def _validate_allowed_action_effects(self, action: ActionDefinition, actor_id: str) -> None:
+        try:
+            actor = self._entity(actor_id)
+        except KeyError:
+            return
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            allowed = modifiers.get("allowed_action_ids")
+            if allowed is None:
+                continue
+            if isinstance(allowed, str):
+                allowed_ids = {allowed}
+            elif isinstance(allowed, list):
+                allowed_ids = {str(item) for item in allowed}
+            else:
+                continue
+            if action.id not in allowed_ids:
+                source = effect.get("source_action_id") or effect.get("condition") or "effect"
+                allowed_text = ", ".join(sorted(allowed_ids))
+                raise AutomationError(
+                    f"actor can only take allowed actions ({allowed_text}) "
+                    f"while affected by {source}"
+                )
 
     def _validate_attacks_allowed(self, action: ActionDefinition, actor_id: str) -> None:
         if action.action_type not in ATTACK_ACTION_TYPES:

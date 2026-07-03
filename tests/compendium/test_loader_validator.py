@@ -61,6 +61,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.true_seeing",
         "srd.passwall",
         "srd.move_earth",
+        "srd.wind_walk",
         "srd.tree_stride",
         "srd.wall_of_force",
         "srd.wall_of_stone",
@@ -695,6 +696,55 @@ def test_compendium_loads_srd_actions() -> None:
                 "moved_earth_carries_plants_along": True,
             },
         }
+    ]
+    wind_walk = compendium.action("srd.wind_walk")
+    assert wind_walk.requirements == {
+        "spell_level": 6,
+        "class_any": ["druid"],
+    }
+    assert wind_walk.properties["spell_classes"] == ["druid"]
+    assert wind_walk.properties["casting_time"] == {"minutes": 1}
+    assert wind_walk.properties["requires_willing_target"] is True
+    assert wind_walk.properties["material_component"] == {
+        "description": "a candle",
+        "consumed": False,
+    }
+    assert wind_walk.range == {"normal_ft": 30}
+    assert wind_walk.target_policy == {"min": 1, "max": 11, "self": True, "harmful": False}
+    assert wind_walk.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "wind_walk_cloud_form": True,
+                "gaseous_form": True,
+                "fly_speed_ft": 300,
+                "can_hover": True,
+                "condition_immunities": ["prone"],
+                "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+                "allowed_action_ids": ["srd.dash"],
+                "allowed_unimplemented_magic_actions": [
+                    "begin_reverting_to_normal_form",
+                ],
+                "revert_to_normal_form": {
+                    "action_economy": "magic_action",
+                    "transformation_duration": "duration_1_minute",
+                    "condition_during_transformation": "stunned",
+                },
+                "revert_to_cloud_form": {
+                    "action_economy": "magic_action",
+                    "transformation_duration": "duration_1_minute",
+                },
+                "cloud_form_end_descent": {
+                    "descent_ft_per_round": 60,
+                    "duration_rounds": 10,
+                    "lands_safely_if_reaches_ground": True,
+                    "falls_remaining_distance_after_rounds": 10,
+                },
+            },
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
+        },
     ]
     tree_stride = compendium.action("srd.tree_stride")
     assert tree_stride.requirements == {

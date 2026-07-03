@@ -135,6 +135,13 @@ class ActionResolver:
                 reason=requirements_error,
                 action_id=action.id,
             )
+        allowed_action_error = self._allowed_action_error(actor, action)
+        if allowed_action_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=allowed_action_error,
+                action_id=action.id,
+            )
         spellcasting_error = self._spellcasting_error(actor, action)
         if spellcasting_error is not None:
             return ResolverResult(
@@ -786,6 +793,33 @@ class ActionResolver:
             if modifiers.get("blocks_spellcasting") is True:
                 source = effect.get("source_action_id") or effect.get("condition") or "effect"
                 return f"actor cannot cast spells while affected by {source}"
+        return None
+
+    def _allowed_action_error(
+        self,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> str | None:
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            allowed = modifiers.get("allowed_action_ids")
+            if allowed is None:
+                continue
+            if isinstance(allowed, str):
+                allowed_ids = {allowed}
+            elif isinstance(allowed, list):
+                allowed_ids = {str(item) for item in allowed}
+            else:
+                continue
+            if action.id not in allowed_ids:
+                source = effect.get("source_action_id") or effect.get("condition") or "effect"
+                allowed_text = ", ".join(sorted(allowed_ids))
+                return (
+                    f"actor can only take allowed actions ({allowed_text}) "
+                    f"while affected by {source}"
+                )
         return None
 
     def _attack_error(

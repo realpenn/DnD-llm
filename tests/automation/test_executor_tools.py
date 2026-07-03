@@ -9658,6 +9658,121 @@ def test_move_earth_spends_slot_and_records_concentration_terrain_reshaping(
     assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 1199
 
 
+def test_wind_walk_applies_cloud_form_and_allows_only_dash(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.spell_slots["6"] = 1
+    state.encounter.combatants["pc2"].hp_current = 20
+    state.encounter.combatants["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.wind_walk",
+            actor_id="pc1",
+            targets=["pc1", "pc2"],
+            params={"slot_level": 6},
+            idempotency_key="cast-wind-walk-unwilling",
+        )
+
+    result = tools._execute_action(
+        action_id="srd.wind_walk",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 6, "target_willing": True},
+        idempotency_key="cast-wind-walk",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    expected_modifiers = {
+        "wind_walk_cloud_form": True,
+        "gaseous_form": True,
+        "fly_speed_ft": 300,
+        "can_hover": True,
+        "condition_immunities": ["prone"],
+        "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+        "allowed_action_ids": ["srd.dash"],
+        "allowed_unimplemented_magic_actions": [
+            "begin_reverting_to_normal_form",
+        ],
+        "revert_to_normal_form": {
+            "action_economy": "magic_action",
+            "transformation_duration": "duration_1_minute",
+            "condition_during_transformation": "stunned",
+        },
+        "revert_to_cloud_form": {
+            "action_economy": "magic_action",
+            "transformation_duration": "duration_1_minute",
+        },
+        "cloud_form_end_descent": {
+            "descent_ft_per_round": 60,
+            "duration_rounds": 10,
+            "lands_safely_if_reaches_ground": True,
+            "falls_remaining_distance_after_rounds": 10,
+        },
+    }
+    pc1_effect = state.encounter.combatants["pc1"].status_effects[-1]
+    pc2_effect = state.encounter.combatants["pc2"].status_effects[-1]
+    assert pc1_effect["source_action_id"] == "srd.wind_walk"
+    assert pc1_effect["condition"] is None
+    assert pc1_effect["passive_modifiers"] == expected_modifiers
+    assert pc1_effect["duration"] == {"until": "duration_8_hours"}
+    assert pc1_effect["tick_on"] == "self_turn_end"
+    assert pc1_effect["concentration"] is False
+    assert pc2_effect["passive_modifiers"] == expected_modifiers
+    assert fly_speed_from_effects(30, state.encounter.combatants["pc1"].status_effects) == 300
+    assert can_hover_from_effects(state.encounter.combatants["pc1"].status_effects) is True
+
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="slashing"),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="slashing-damage-after-wind-walk",
+    )
+    damage_change = next(change for change in damage.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert state.encounter.combatants["pc2"].hp_current == 16
+
+    with pytest.raises(AutomationError, match="can only take allowed actions"):
+        tools.perform_action(
+            "pc2",
+            "srd.dodge",
+            [],
+            idempotency_key="wind-walk-blocks-dodge",
+        )
+    dash = tools.perform_action(
+        "pc2",
+        "srd.dash",
+        [],
+        idempotency_key="wind-walk-allows-dash",
+    )
+    assert dash["success"] is True
+
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc2",
+            verb="dodge",
+            target_ids=[],
+            candidate_action_id="srd.dodge",
+        )
+    )
+    assert rejected.status == "rejected"
+    assert "can only take allowed actions" in str(rejected.reason)
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert len(lifecycle.ticked) == 2
+    assert {entry["remaining_ticks_before"] for entry in lifecycle.ticked} == {4800}
+    assert {entry["remaining_ticks_after"] for entry in lifecycle.ticked} == {4799}
+
+
 def test_tree_stride_spends_slot_and_applies_concentration_transport_ability(
     make_state,
 ) -> None:

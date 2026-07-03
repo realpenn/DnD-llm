@@ -124,6 +124,85 @@
         ],
         "audit_label": "Move Earth"
       }
+    },
+    {
+      "id": "srd.spell.wind_walk",
+      "name": "Wind Walk",
+      "localization": {
+        "en": "Wind Walk",
+        "zh": "风行术",
+        "aliases": ["风行"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "transmutation",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.wind_walk",
+        "name": "Wind Walk",
+        "localization": {
+          "en": "Wind Walk",
+          "zh": "风行术",
+          "aliases": ["风行"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 11, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "requires_willing_target": true,
+          "material_component": {
+            "description": "a candle",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "wind_walk_cloud_form": true,
+              "gaseous_form": true,
+              "fly_speed_ft": 300,
+              "can_hover": true,
+              "condition_immunities": ["prone"],
+              "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+              "allowed_action_ids": ["srd.dash"],
+              "allowed_unimplemented_magic_actions": [
+                "begin_reverting_to_normal_form"
+              ],
+              "revert_to_normal_form": {
+                "action_economy": "magic_action",
+                "transformation_duration": "duration_1_minute",
+                "condition_during_transformation": "stunned"
+              },
+              "revert_to_cloud_form": {
+                "action_economy": "magic_action",
+                "transformation_duration": "duration_1_minute"
+              },
+              "cloud_form_end_descent": {
+                "descent_ft_per_round": 60,
+                "duration_rounds": 10,
+                "lands_safely_if_reaches_ground": true,
+                "falls_remaining_distance_after_rounds": 10
+              }
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Wind Walk"
+      }
     }
   ]
 }
