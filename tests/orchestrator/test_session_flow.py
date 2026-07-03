@@ -314,6 +314,56 @@ def test_champion_survivor_heroic_rally_heals_on_turn_start(make_state) -> None:
     assert audit.events[-1].tool_result["heroic_rally"]["source_action_id"] == "srd.survivor"
 
 
+def test_champion_heroic_warrior_grants_heroic_inspiration_on_turn_start(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 10}
+    character.subclasses = {"fighter": "champion"}
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    audit = AuditLog()
+    session = GameSession(state, CompendiumLoader("rules_data").load(), audit)
+
+    advanced = session.advance_turn("advance-to-heroic-warrior")
+
+    assert isinstance(advanced, SessionResult)
+    assert advanced.accepted is True
+    assert character.resources["srd.resource.heroic_inspiration"] == 1
+    assert advanced.payload["heroic_inspiration"] == {
+        "combatant_id": "pc1",
+        "character_id": "pc1",
+        "source_action_id": "srd.heroic_warrior",
+        "resource": "srd.resource.heroic_inspiration",
+        "before": 0,
+        "after": 1,
+    }
+    assert audit.events[-1].tool_result["heroic_inspiration"]["source_action_id"] == (
+        "srd.heroic_warrior"
+    )
+
+
+def test_champion_heroic_warrior_does_not_grant_when_already_inspired(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 10}
+    character.subclasses = {"fighter": "champion"}
+    character.resources["srd.resource.heroic_inspiration"] = 1
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    advanced = session.advance_turn("advance-to-already-inspired-heroic-warrior")
+
+    assert isinstance(advanced, SessionResult)
+    assert advanced.accepted is True
+    assert character.resources["srd.resource.heroic_inspiration"] == 1
+    assert "heroic_inspiration" not in advanced.payload
+
+
 def test_session_rejects_out_of_turn_action(make_state) -> None:
     state = make_state()
     compendium = CompendiumLoader("rules_data").load()

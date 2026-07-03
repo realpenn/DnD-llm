@@ -2022,6 +2022,19 @@ def test_natural_language_character_edit_assigns_champion_superior_critical_at_l
     assert "srd.superior_critical" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_champion_heroic_warrior_at_level_10() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 战士10 子职 champion")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"fighter": 10}
+    assert result.character.subclasses == {"fighter": "champion"}
+    assert "srd.heroic_warrior" in result.character.actions
+    assert "srd.superior_critical" not in result.character.actions
+
+
 def test_natural_language_character_edit_assigns_champion_survivor_at_level_18() -> None:
     character = default_fighter("pc1", "Penn")
 

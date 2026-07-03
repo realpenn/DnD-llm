@@ -2832,6 +2832,39 @@
             "audit_label": "Remarkable Athlete"
         },
         {
+            "id": "srd.heroic_warrior",
+            "name": "Heroic Warrior",
+            "localization": {
+                "en": "Heroic Warrior",
+                "zh": "英雄战士",
+                "aliases": ["Champion Heroic Warrior", "冠军英雄战士"]
+            },
+            "source": "SRD 5.2.1 Fighter Subclass: Champion, Level 10: Heroic Warrior",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 10, "subclass": "champion"},
+            "properties": {
+                "grants_heroic_inspiration": true,
+                "resource": "srd.resource.heroic_inspiration",
+                "trigger": "self_turn_start",
+                "requires_combat": true,
+                "requires_without_resource": true,
+                "maximum_instances": 1
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that during combat, a Champion can give themself Heroic Inspiration whenever they start their turn without it."
+                }
+            ],
+            "audit_label": "Heroic Warrior"
+        },
+        {
             "id": "srd.superior_critical",
             "name": "Superior Critical",
             "localization": {

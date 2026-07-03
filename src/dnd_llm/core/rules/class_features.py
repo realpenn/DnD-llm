@@ -88,6 +88,7 @@ WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
 INDOMITABLE_RESOURCE = "srd.resource.indomitable"
+HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
 
@@ -719,6 +720,13 @@ def preserve_life_healing_pool(character: Character) -> int:
     if not has_cleric_life_domain_feature(character, level=3):
         return 0
     return int(character.class_levels.get("cleric", 0)) * 5
+
+
+def champion_heroic_warrior_can_grant_inspiration(character: Character) -> bool:
+    return (
+        has_fighter_champion_feature(character, level=10)
+        and int(character.resources.get(HEROIC_INSPIRATION_RESOURCE, 0)) <= 0
+    )
 
 
 def champion_survivor_death_save_advantage(character: Character) -> bool:

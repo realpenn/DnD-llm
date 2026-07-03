@@ -146,6 +146,12 @@ def test_compendium_loads_srd_actions() -> None:
         "class_level_min": 3,
         "subclass": "champion",
     }
+    assert "srd.heroic_warrior" in compendium.actions
+    assert compendium.action("srd.heroic_warrior").requirements == {
+        "class": "fighter",
+        "class_level_min": 10,
+        "subclass": "champion",
+    }
     assert "srd.superior_critical" in compendium.actions
     assert compendium.action("srd.superior_critical").requirements == {
         "class": "fighter",
@@ -3701,12 +3707,14 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["fighter"].subclasses["champion"]["features"] == [
         "Improved Critical",
         "Remarkable Athlete",
+        "Heroic Warrior",
         "Superior Critical",
         "Survivor",
     ]
     assert compendium.classes["fighter"].subclasses["champion"]["actions"] == [
         "srd.improved_critical",
         "srd.remarkable_athlete",
+        "srd.heroic_warrior",
         "srd.superior_critical",
         "srd.survivor",
     ]
@@ -3730,6 +3738,17 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert "srd.indomitable" in compendium.classes["fighter"].levels["9"]["actions"]
     assert "srd.tactical_master" in compendium.classes["fighter"].levels["9"]["actions"]
+    heroic_warrior = compendium.action("srd.heroic_warrior")
+    assert heroic_warrior.properties == {
+        "grants_heroic_inspiration": True,
+        "resource": "srd.resource.heroic_inspiration",
+        "trigger": "self_turn_start",
+        "requires_combat": True,
+        "requires_without_resource": True,
+        "maximum_instances": 1,
+    }
+    assert compendium.classes["fighter"].levels["10"]["features"] == ["Subclass Feature"]
+    assert "srd.heroic_warrior" in compendium.classes["fighter"].levels["10"]["actions"]
     assert compendium.classes["fighter"].levels["11"]["features"] == ["Two Extra Attacks"]
     assert "srd.two_extra_attacks" in compendium.classes["fighter"].levels["11"]["actions"]
     assert compendium.classes["fighter"].levels["13"]["features"] == [

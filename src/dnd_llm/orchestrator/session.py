@@ -18,6 +18,8 @@ from ..core.persistence import AuditLog
 from ..core.positioning import TacticalGraph
 from ..core.resolver import ActionResolver, PlayerActionDraft
 from ..core.rules.class_features import (
+    HEROIC_INSPIRATION_RESOURCE,
+    champion_heroic_warrior_can_grant_inspiration,
     champion_survivor_heroic_rally_healing,
     class_feature_speed_bonus,
 )
@@ -663,11 +665,14 @@ class GameSession:
                 ),
             ]
         )
+        heroic_inspiration = _apply_champion_heroic_warrior(self.state, current)
         heroic_rally = _apply_champion_survivor_heroic_rally(self.state, current)
         result = {
             "round_number": self.state.encounter.round_number,
             "current_combatant_id": current,
         }
+        if heroic_inspiration is not None:
+            result["heroic_inspiration"] = heroic_inspiration
         if heroic_rally is not None:
             result["heroic_rally"] = heroic_rally
         changed_lifecycle = [item.to_dict() for item in lifecycle_results if item.changed]
@@ -1090,6 +1095,30 @@ def _effective_combatant_speed(state: GameState, combatant: Combatant) -> int:
     if combatant.entity_id in state.monsters:
         effects.extend(state.monsters[combatant.entity_id].status_effects)
     return effective_speed(base_speed, effects)
+
+
+def _apply_champion_heroic_warrior(
+    state: GameState,
+    combatant_id: str,
+) -> dict[str, Any] | None:
+    if state.encounter is None:
+        return None
+    combatant = state.encounter.combatants.get(combatant_id)
+    if combatant is None:
+        return None
+    character = state.characters.get(combatant.entity_id)
+    if character is None or not champion_heroic_warrior_can_grant_inspiration(character):
+        return None
+    before = int(character.resources.get(HEROIC_INSPIRATION_RESOURCE, 0))
+    character.resources[HEROIC_INSPIRATION_RESOURCE] = 1
+    return {
+        "combatant_id": combatant_id,
+        "character_id": character.id,
+        "source_action_id": "srd.heroic_warrior",
+        "resource": HEROIC_INSPIRATION_RESOURCE,
+        "before": before,
+        "after": 1,
+    }
 
 
 def _apply_champion_survivor_heroic_rally(

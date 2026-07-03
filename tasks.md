@@ -314,6 +314,7 @@ P0 脚手架
   - [x] **P2-1bd** SRD 5.2.1 Fighter 20 `Three Extra Attacks` 落地：新增 `srd.three_extra_attacks` class feature marker 与 Fighter 20 级数据；按 SRD 记录战士在自己回合采取 Attack action 时可攻击四次而非一次；当前项目 Extra Attack 仍为规则标记，因此保持同模式结构化 metadata，不虚构多攻击调度器；覆盖 compendium 与自然语言建角测试。
   - [x] **P2-1be** SRD 5.2.1 Fighter Champion 15 `Superior Critical` 落地：新增 `srd.superior_critical` class feature marker、Fighter 15 级 Subclass Feature 数据与 Champion 子职授予；按 SRD 使 Champion 的 weapon 与 Unarmed Strike attack rolls 在 d20 掷出 18-20 时构成 Critical Hit，保留 3 级 Improved Critical 的 19-20 门槛；覆盖 compendium、executor 18/14级反例与自然语言建角测试。
   - [x] **P2-1bf** SRD 5.2.1 Fighter Champion 18 `Survivor` 落地：新增 `srd.survivor` class feature marker、Fighter 18 级 Subclass Feature 数据与 Champion 子职授予；按 SRD 的 `Defy Death` 使 Champion 18 死亡豁免获得 Advantage，且 Death Saving Throw 掷出 18-20 时获得掷出 20 的收益；按 `Heroic Rally` 在战斗中自己回合开始时，若 Bloodied 且至少 1 HP，则恢复 `5 + Constitution modifier` HP，并同步角色卡与战斗实体；覆盖 compendium、死亡豁免、orchestrator 回合推进与自然语言建角测试。
+  - [x] **P2-1bg** SRD 5.2.1 Fighter Champion 10 `Heroic Warrior` 落地：新增 `srd.heroic_warrior` class feature marker、Fighter 10 级 Subclass Feature 数据与 Champion 子职授予；按 SRD 在战斗中自己回合开始时，若没有 Heroic Inspiration，则授予自己 1 个 `srd.resource.heroic_inspiration`，并保持最多 1 个、不重复授予；当前项目尚无通用“任意骰后重掷”交互窗口，因此本项只接入 Heroic Warrior 的授予语义，不虚构额外重掷 UI；覆盖 compendium、orchestrator 回合推进与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

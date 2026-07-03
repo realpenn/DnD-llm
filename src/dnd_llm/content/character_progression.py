@@ -320,6 +320,7 @@ SUBCLASS_ACTIONS = {
     "fighter": {
         "champion": {
             3: ["srd.improved_critical", "srd.remarkable_athlete"],
+            10: ["srd.heroic_warrior"],
             15: ["srd.superior_critical"],
             18: ["srd.survivor"],
         },
