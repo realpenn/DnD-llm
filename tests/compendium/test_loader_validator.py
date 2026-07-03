@@ -65,6 +65,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.wall_of_force",
         "srd.wall_of_stone",
         "srd.wall_of_ice",
+        "srd.wall_of_thorns",
     } <= set(compendium.actions)
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
@@ -907,6 +908,67 @@ def test_compendium_loads_srd_actions() -> None:
                         "save_half": True,
                         "higher_level_damage_increase": "1d6 per slot above 6",
                     },
+                },
+            },
+        },
+    ]
+    wall_of_thorns = compendium.action("srd.wall_of_thorns")
+    assert wall_of_thorns.requirements == {
+        "spell_level": 6,
+        "class_any": ["druid"],
+    }
+    assert wall_of_thorns.properties["spell_classes"] == ["druid"]
+    assert wall_of_thorns.properties["material_component"] == {
+        "description": "a handful of thorns",
+        "consumed": False,
+    }
+    assert wall_of_thorns.range == {"normal_ft": 120}
+    assert wall_of_thorns.target_policy == {"min": 0, "max": 12, "harmful": True}
+    assert wall_of_thorns.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "7d8",
+            "damage_type": "piercing",
+            "save_half": True,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "1d8",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "wall_of_thorns",
+            "scope": {"target": "solid_surface", "range_ft": 120},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "solid_surface_required": True,
+                "shape_options": ["wall", "circle"],
+                "wall_max_length_ft": 60,
+                "wall_max_height_ft": 10,
+                "wall_thickness_ft": 5,
+                "circle_diameter_ft": 20,
+                "circle_max_height_ft": 20,
+                "circle_thickness_ft": 5,
+                "blocks_line_of_sight": True,
+                "initial_save": {
+                    "ability": "dex",
+                    "damage": "7d8 piercing",
+                    "save_half": True,
+                    "higher_level_damage_increase": "1d8 per slot above 6",
+                },
+                "movement_cost_per_foot": 4,
+                "repeat_save_triggers": [
+                    "creature_enters_wall",
+                    "creature_ends_turn_in_wall",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "dex",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "7d8 slashing",
+                    "save_half": True,
+                    "higher_level_damage_increase": "1d8 per slot above 6",
                 },
             },
         },

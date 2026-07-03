@@ -9972,6 +9972,140 @@ def test_wall_of_ice_upcast_adds_initial_damage_dice(make_state) -> None:
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "12d6"]
 
 
+def test_wall_of_thorns_deals_initial_piercing_and_records_concentration_wall(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.wall_of_thorns",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-wall-of-thorns",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:druid"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "piercing"
+    assert damage_change["amount"] == 8
+    assert damage_change["applied"] == 8
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "7d8"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.wall_of_thorns"
+    assert effect["effect_type"] == "wall_of_thorns"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "solid_surface", "range_ft": 120}
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "solid_surface_required": True,
+        "shape_options": ["wall", "circle"],
+        "wall_max_length_ft": 60,
+        "wall_max_height_ft": 10,
+        "wall_thickness_ft": 5,
+        "circle_diameter_ft": 20,
+        "circle_max_height_ft": 20,
+        "circle_thickness_ft": 5,
+        "blocks_line_of_sight": True,
+        "initial_save": {
+            "ability": "dex",
+            "damage": "7d8 piercing",
+            "save_half": True,
+            "higher_level_damage_increase": "1d8 per slot above 6",
+        },
+        "movement_cost_per_foot": 4,
+        "repeat_save_triggers": [
+            "creature_enters_wall",
+            "creature_ends_turn_in_wall",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "dex",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "7d8 slashing",
+            "save_half": True,
+            "higher_level_damage_increase": "1d8 per slot above 6",
+        },
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "wall_of_thorns"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
+def test_wall_of_thorns_upcast_adds_both_damage_dice_metadata_and_initial_roll(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.wall_of_thorns",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-wall-of-thorns-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "8d8"]
+    effect = state.world.active_effects[-1]
+    assert (
+        effect["metadata"]["repeat_save"]["higher_level_damage_increase"] == "1d8 per slot above 6"
+    )
+
+
 def test_greater_restoration_removes_one_exhaustion_level_and_spends_component(
     make_state,
 ) -> None:
