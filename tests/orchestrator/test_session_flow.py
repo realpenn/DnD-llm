@@ -276,6 +276,44 @@ def test_advance_turn_budget_uses_ranger_roving_when_not_in_heavy_armor(make_sta
     assert state.encounter.action_budgets["pc1"]["movement"] == 40
 
 
+def test_champion_survivor_heroic_rally_heals_on_turn_start(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    combatant = state.encounter.combatants["pc1"]
+    character.class_levels = {"fighter": 18}
+    character.subclasses = {"fighter": "champion"}
+    character.abilities["con"] = 14
+    character.hp_max = 20
+    character.hp_current = 9
+    combatant.hp_max = 20
+    combatant.hp_current = 9
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    audit = AuditLog()
+    session = GameSession(state, CompendiumLoader("rules_data").load(), audit)
+
+    advanced = session.advance_turn("advance-to-survivor")
+
+    assert isinstance(advanced, SessionResult)
+    assert advanced.accepted is True
+    assert state.encounter.current_combatant_id == "pc1"
+    assert combatant.hp_current == 16
+    assert character.hp_current == 16
+    assert advanced.payload["heroic_rally"] == {
+        "combatant_id": "pc1",
+        "character_id": "pc1",
+        "source_action_id": "srd.survivor",
+        "healing": 7,
+        "applied": 7,
+        "combatant_hp_before": 9,
+        "combatant_hp_after": 16,
+        "character_hp_before": 9,
+        "character_hp_after": 16,
+    }
+    assert audit.events[-1].tool_result["heroic_rally"]["source_action_id"] == "srd.survivor"
+
+
 def test_session_rejects_out_of_turn_action(make_state) -> None:
     state = make_state()
     compendium = CompendiumLoader("rules_data").load()

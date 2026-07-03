@@ -751,3 +751,31 @@ def test_death_save_rolls_deterministically_audits_and_syncs_character(make_stat
     assert state.characters["pc1"].death_save_successes == 1
     assert audit.events[-1].tool_name == "death_save"
     assert audit.events[-1].dice_rolls[0]["expression"] == "1d20"
+
+
+def test_champion_survivor_defy_death_advantage_and_18_to_20(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.rng_seed = 21
+    state.characters["pc1"].class_levels = {"fighter": 18}
+    state.characters["pc1"].subclasses = {"fighter": "champion"}
+    state.characters["pc1"].hp_current = 0
+    state.characters["pc1"].death_save_failures = 2
+    state.encounter.combatants["pc1"].hp_current = 0
+    state.encounter.combatants["pc1"].death_save_failures = 2
+    compendium = CompendiumLoader("rules_data").load()
+    audit = AuditLog()
+    tools = EngineTools(state, compendium, audit)
+
+    result = tools.roll_death_save("pc1", idempotency_key="champion-survivor-death")
+
+    assert result["roll"]["advantage"] == "advantage"
+    assert result["natural"] == 19
+    assert result["effective_natural"] == 20
+    assert result["advantage_sources"] == ["srd.survivor"]
+    assert result["defy_death_counts_as_20"] is True
+    assert result["hp_after"] == 1
+    assert result["after"]["failures"] == 0
+    assert state.encounter.combatants["pc1"].hp_current == 1
+    assert state.characters["pc1"].hp_current == 1
+    assert audit.events[-1].dice_rolls[0]["advantage"] == "advantage"

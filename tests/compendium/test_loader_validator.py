@@ -3702,11 +3702,13 @@ def test_compendium_loads_srd_actions() -> None:
         "Improved Critical",
         "Remarkable Athlete",
         "Superior Critical",
+        "Survivor",
     ]
     assert compendium.classes["fighter"].subclasses["champion"]["actions"] == [
         "srd.improved_critical",
         "srd.remarkable_athlete",
         "srd.superior_critical",
+        "srd.survivor",
     ]
     assert compendium.classes["fighter"].levels["5"]["features"] == [
         "Extra Attack",
@@ -3743,6 +3745,24 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert "srd.action_surge" in compendium.classes["fighter"].levels["17"]["actions"]
     assert "srd.indomitable" in compendium.classes["fighter"].levels["17"]["actions"]
+    survivor = compendium.action("srd.survivor")
+    assert survivor.requirements == {
+        "class": "fighter",
+        "class_level_min": 18,
+        "subclass": "champion",
+    }
+    assert survivor.properties == {
+        "death_saves_advantage": True,
+        "death_save_roll_18_to_20_counts_as_20": True,
+        "heroic_rally": {
+            "trigger": "self_turn_start",
+            "healing": "5 + constitution_modifier",
+            "requires_bloodied": True,
+            "requires_hp_minimum": 1,
+        },
+    }
+    assert compendium.classes["fighter"].levels["18"]["features"] == ["Subclass Feature"]
+    assert "srd.survivor" in compendium.classes["fighter"].levels["18"]["actions"]
     assert compendium.classes["fighter"].levels["20"]["features"] == ["Three Extra Attacks"]
     assert "srd.three_extra_attacks" in compendium.classes["fighter"].levels["20"]["actions"]
     assert "srd.rage" in compendium.classes["barbarian"].levels["1"]["actions"]

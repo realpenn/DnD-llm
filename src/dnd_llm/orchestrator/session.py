@@ -17,7 +17,10 @@ from ..core.models import Combatant, Encounter, GameState
 from ..core.persistence import AuditLog
 from ..core.positioning import TacticalGraph
 from ..core.resolver import ActionResolver, PlayerActionDraft
-from ..core.rules.class_features import class_feature_speed_bonus
+from ..core.rules.class_features import (
+    champion_survivor_heroic_rally_healing,
+    class_feature_speed_bonus,
+)
 from ..core.rules.conditions import effective_speed
 from ..core.tools import EngineTools
 from .queue import EventQueue, QueuedEvent
@@ -660,10 +663,13 @@ class GameSession:
                 ),
             ]
         )
+        heroic_rally = _apply_champion_survivor_heroic_rally(self.state, current)
         result = {
             "round_number": self.state.encounter.round_number,
             "current_combatant_id": current,
         }
+        if heroic_rally is not None:
+            result["heroic_rally"] = heroic_rally
         changed_lifecycle = [item.to_dict() for item in lifecycle_results if item.changed]
         if changed_lifecycle:
             result["effect_lifecycle"] = changed_lifecycle
@@ -1084,6 +1090,43 @@ def _effective_combatant_speed(state: GameState, combatant: Combatant) -> int:
     if combatant.entity_id in state.monsters:
         effects.extend(state.monsters[combatant.entity_id].status_effects)
     return effective_speed(base_speed, effects)
+
+
+def _apply_champion_survivor_heroic_rally(
+    state: GameState,
+    combatant_id: str,
+) -> dict[str, Any] | None:
+    if state.encounter is None:
+        return None
+    combatant = state.encounter.combatants.get(combatant_id)
+    if combatant is None:
+        return None
+    character = state.characters.get(combatant.entity_id)
+    if character is None:
+        return None
+    hp_before = int(combatant.hp_current)
+    healing = champion_survivor_heroic_rally_healing(
+        character,
+        hp_current=hp_before,
+        hp_max=int(combatant.hp_max),
+    )
+    if healing <= 0:
+        return None
+    character_hp_before = int(character.hp_current)
+    combatant.hp_current = min(int(combatant.hp_max), hp_before + healing)
+    character.hp_current = combatant.hp_current
+    applied = int(combatant.hp_current) - hp_before
+    return {
+        "combatant_id": combatant_id,
+        "character_id": character.id,
+        "source_action_id": "srd.survivor",
+        "healing": healing,
+        "applied": applied,
+        "combatant_hp_before": hp_before,
+        "combatant_hp_after": combatant.hp_current,
+        "character_hp_before": character_hp_before,
+        "character_hp_after": character.hp_current,
+    }
 
 
 def _generated_tactical_graph(state: GameState, zone_id: str) -> TacticalGraph | None:

@@ -721,6 +721,34 @@ def preserve_life_healing_pool(character: Character) -> int:
     return int(character.class_levels.get("cleric", 0)) * 5
 
 
+def champion_survivor_death_save_advantage(character: Character) -> bool:
+    return has_fighter_champion_feature(character, level=18)
+
+
+def champion_survivor_death_save_counts_as_20(
+    character: Character,
+    *,
+    natural: int,
+) -> bool:
+    return has_fighter_champion_feature(character, level=18) and int(natural) in {18, 19}
+
+
+def champion_survivor_heroic_rally_healing(
+    character: Character,
+    *,
+    hp_current: int,
+    hp_max: int,
+) -> int:
+    if not has_fighter_champion_feature(character, level=18):
+        return 0
+    if int(hp_current) < 1:
+        return 0
+    if not is_bloodied(hp_current=hp_current, hp_max=hp_max):
+        return 0
+    constitution = int(character.abilities.get("con", character.abilities.get("CON", 10)))
+    return max(0, 5 + ability_modifier(constitution))
+
+
 def bloodied_hp_cap(hp_max: int) -> int:
     return max(0, int(hp_max) // 2)
 

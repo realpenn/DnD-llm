@@ -796,7 +796,10 @@ class EngineTools:
         entity = self.state.entity_for_actor(actor_id)
         if not isinstance(entity, (Character, Combatant)):
             raise ValueError("death saving throws require a character or combatant")
-        result = roll_death_save_rule(entity, self.roll_service)
+        feature_source = (
+            self.state.characters.get(entity.entity_id) if isinstance(entity, Combatant) else entity
+        )
+        result = roll_death_save_rule(entity, self.roll_service, feature_source=feature_source)
         result["actor_id"] = actor_id
         if isinstance(entity, Combatant) and entity.entity_id in self.state.characters:
             character = self.state.characters[entity.entity_id]

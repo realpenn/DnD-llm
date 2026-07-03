@@ -321,6 +321,7 @@ SUBCLASS_ACTIONS = {
         "champion": {
             3: ["srd.improved_critical", "srd.remarkable_athlete"],
             15: ["srd.superior_critical"],
+            18: ["srd.survivor"],
         },
     },
     "monk": {
