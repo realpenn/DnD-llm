@@ -4511,6 +4511,42 @@
             "audit_label": "Evasion"
         },
         {
+            "id": "srd.acrobatic_movement",
+            "name": "Acrobatic Movement",
+            "localization": {
+                "en": "Acrobatic Movement",
+                "zh": "杂技移动",
+                "aliases": ["Monk Acrobatic Movement", "武僧杂技移动"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 9: Acrobatic Movement",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 9},
+            "properties": {
+                "requires_no_armor_or_shield": true,
+                "turn_only": true,
+                "during_movement_only": true,
+                "can_move_along_vertical_surfaces": true,
+                "can_move_across_liquids": true,
+                "without_falling_during_movement": true,
+                "does_not_grant_climb_speed": true,
+                "does_not_grant_swim_speed": true,
+                "does_not_allow_standing_on_liquids_after_movement": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that while unarmored and not wielding a Shield, a Monk can move along vertical surfaces and across liquids on their turn without falling during the movement."
+                }
+            ],
+            "audit_label": "Acrobatic Movement"
+        },
+        {
             "id": "srd.patient_defense",
             "name": "Patient Defense",
             "localization": {

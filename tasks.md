@@ -317,6 +317,7 @@ P0 脚手架
   - [x] **P2-1bg** SRD 5.2.1 Fighter Champion 10 `Heroic Warrior` 落地：新增 `srd.heroic_warrior` class feature marker、Fighter 10 级 Subclass Feature 数据与 Champion 子职授予；按 SRD 在战斗中自己回合开始时，若没有 Heroic Inspiration，则授予自己 1 个 `srd.resource.heroic_inspiration`，并保持最多 1 个、不重复授予；当前项目尚无通用“任意骰后重掷”交互窗口，因此本项只接入 Heroic Warrior 的授予语义，不虚构额外重掷 UI；覆盖 compendium、orchestrator 回合推进与自然语言建角测试。
   - [x] **P2-1bh** SRD 5.2.1 Fighter Champion 7 `Additional Fighting Style` 落地：新增 `srd.additional_fighting_style` class feature marker、Fighter 7 级 Subclass Feature 数据与 Champion 子职授予；按 SRD 记录 Champion 获得另一个 Fighting Style feat of your choice，并列明 SRD Fighting Style feat 候选与 Fighting Style Feature 前置；当前项目尚无完整 Fighting Style feat 选择/效果系统，因此只记录必须显式选择，不默认代选 Defense 或任何战斗风格；覆盖 compendium 与自然语言建角测试。
   - [x] **P2-1bi** SRD 5.2.1 Monk 7 `Evasion` 落地：新增 `srd.evasion` class feature marker 与 Monk 7 级职业数据；按 SRD 在受到允许 Dexterity saving throw 成功半伤的效果时，成功改为不受伤害、失败只受半伤，并在 Incapacitated 时不生效；严格限定 Dex save + save half，不泛化到其他豁免或非半伤效果；覆盖 compendium、executor 成功/失败/非 Dex/失能反例与自然语言建角测试。
+  - [x] **P2-1bj** SRD 5.2.1 Monk 9 `Acrobatic Movement` 落地：新增 `srd.acrobatic_movement` class feature marker、Monk 8/9 级职业数据与角色成长授予；按 SRD 在未穿 armor 且未 wielding Shield 时，记录武僧在自己回合移动期间可沿垂直表面和液体表面移动且移动期间不会坠落；当前项目尚无完整墙面/液面战术图物理系统，因此提供结构化 marker 与 helper，不虚构 Climb/Swim Speed、Water Walk 或 Spider Climb 等额外效果；覆盖 compendium 与自然语言建角/提前等级/穿甲持盾 helper 测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

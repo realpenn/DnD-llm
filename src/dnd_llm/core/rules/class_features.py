@@ -184,6 +184,22 @@ def monk_evasion_applies(character: Character) -> bool:
     return has_monk_feature(character, level=7)
 
 
+def monk_acrobatic_movement_applies(character: Character) -> bool:
+    return (
+        has_monk_feature(character, level=9)
+        and not is_wearing_armor(character)
+        and not is_wielding_shield(character)
+    )
+
+
+def monk_can_move_along_vertical_surfaces(character: Character) -> bool:
+    return monk_acrobatic_movement_applies(character)
+
+
+def monk_can_move_across_liquids(character: Character) -> bool:
+    return monk_acrobatic_movement_applies(character)
+
+
 def monk_slow_fall_damage_reduction(character: Character) -> int:
     monk_level = int(character.class_levels.get("monk", 0))
     if monk_level < 4:

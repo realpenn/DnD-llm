@@ -4039,6 +4039,24 @@ def test_compendium_loads_srd_actions() -> None:
         "failure_damage": "half",
         "disabled_by_condition": "incapacitated",
     }
+    assert compendium.classes["monk"].levels["8"]["features"] == ["Ability Score Improvement"]
+    assert "srd.acrobatic_movement" not in compendium.classes["monk"].levels["8"]["actions"]
+    assert compendium.classes["monk"].levels["9"]["features"] == ["Acrobatic Movement"]
+    assert "srd.acrobatic_movement" in compendium.classes["monk"].levels["9"]["actions"]
+    acrobatic_movement = compendium.action("srd.acrobatic_movement")
+    assert acrobatic_movement.action_economy == "none"
+    assert acrobatic_movement.requirements == {"class": "monk", "class_level_min": 9}
+    assert acrobatic_movement.properties == {
+        "requires_no_armor_or_shield": True,
+        "turn_only": True,
+        "during_movement_only": True,
+        "can_move_along_vertical_surfaces": True,
+        "can_move_across_liquids": True,
+        "without_falling_during_movement": True,
+        "does_not_grant_climb_speed": True,
+        "does_not_grant_swim_speed": True,
+        "does_not_allow_standing_on_liquids_after_movement": True,
+    }
     assert "srd.dodge" not in compendium.classes["monk"].levels["2"]["actions"]
     assert "srd.favored_enemy_hunters_mark" in compendium.classes["ranger"].levels["1"]["actions"]
     assert "srd.deft_explorer" not in compendium.classes["ranger"].levels["1"]["actions"]
