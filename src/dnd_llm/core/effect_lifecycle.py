@@ -158,7 +158,7 @@ def _matches_trigger(effect: dict[str, Any], *, trigger: str, actor_id: str) -> 
     applied_by = effect.get("applied_by")
     if trigger.startswith("self_turn"):
         return target_id == actor_id or applied_by == actor_id
-    if trigger.startswith("target_turn"):
+    if trigger.startswith("target_"):
         return target_id == actor_id
     return False
 

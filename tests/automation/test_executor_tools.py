@@ -8620,6 +8620,158 @@ def test_hold_monster_uses_actor_spell_dc_and_repeat_save_duration(make_state) -
     assert lifecycle.expired[0]["repeat_save"]["success"] is True
 
 
+def test_irresistible_dance_failed_save_charms_and_applies_combat_modifiers(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 11}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 8, "dex": 14}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.irresistible_dance",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-irresistible-dance-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    effect = target.status_effects[-1]
+    assert effect["condition"] == "charmed"
+    assert effect["source_action_id"] == "srd.irresistible_dance"
+    assert effect["passive_modifiers"] == {
+        "must_spend_all_movement_dancing_in_place": True,
+        "saving_throw_disadvantage_abilities": ["dex"],
+        "attack_roll_disadvantage": True,
+        "incoming_attack_advantage": True,
+    }
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 16,
+            "dc_source": "spell_save_dc:wizard",
+            "end_on_success": True,
+            "trigger": "target_action",
+        },
+    }
+    assert effect["tick_on"] == "target_action"
+    assert effect["concentration"] is True
+    condition_change = next(
+        change for change in result["state_changes"] if change["type"] == "condition"
+    )
+    assert condition_change["passive_modifiers"]["attack_roll_disadvantage"] is True
+
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(
+        _weapon_attack_action(),
+        actor_id="goblin1",
+        targets=["pc2"],
+    )
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack.dice_rolls[0]["advantage"] == "disadvantage"
+    assert attack_node["status_advantage"] == "disadvantage"
+    assert attack_node["status_sources"][0]["modifier"] == "attack_roll_disadvantage"
+
+    incoming_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(
+        _weapon_attack_action(),
+        actor_id="pc1",
+        targets=["goblin1"],
+    )
+
+    incoming_attack_node = incoming_attack.node_results["automation[1]"]
+    assert incoming_attack.dice_rolls[0]["advantage"] == "advantage"
+    assert incoming_attack_node["status_advantage"] == "advantage"
+    assert incoming_attack_node["status_sources"][0]["modifier"] == "incoming_attack_advantage"
+
+    lifecycle = tick_effects(
+        state,
+        trigger="target_action",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert lifecycle.expired[0]["condition"] == "charmed"
+    assert lifecycle.expired[0]["repeat_save"]["dc"] == 16
+    assert lifecycle.expired[0]["repeat_save"]["success"] is True
+
+
+def test_irresistible_dance_successful_save_applies_short_dance_only(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 11}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.irresistible_dance",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-irresistible-dance-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["success"] is True
+    effect = target.status_effects[-1]
+    assert effect["condition"] is None
+    assert effect["source_action_id"] == "srd.irresistible_dance"
+    assert effect["passive_modifiers"] == {
+        "must_spend_all_movement_dancing_in_place": True,
+    }
+    assert effect["duration"] == {"until": "end_of_next_turn"}
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is True
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+
+    lifecycle = tick_effects(state, trigger="target_turn_end", actor_id="goblin1")
+    assert lifecycle.expired[0]["source_action_id"] == "srd.irresistible_dance"
+    assert target.status_effects == []
+
+
 def test_hold_monster_rejects_extra_target_without_upcast_before_spending_slot(
     make_state,
 ) -> None:
@@ -9975,6 +10127,31 @@ def _attack_action(attack_bonus: int = 99) -> ActionDefinition:
             },
         ],
         audit_label="Test Attack",
+    )
+
+
+def _weapon_attack_action(attack_bonus: int = 99) -> ActionDefinition:
+    return ActionDefinition(
+        id="test.weapon_attack",
+        name="Test Weapon Attack",
+        localization={"en": "Test Weapon Attack", "zh": "测试武器攻击", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="weapon_attack",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "attack_roll", "attack_bonus": attack_bonus},
+            {
+                "type": "damage",
+                "dice": "1d6",
+                "damage_type": "force",
+                "requires_hit": True,
+            },
+        ],
+        audit_label="Test Weapon Attack",
     )
 
 

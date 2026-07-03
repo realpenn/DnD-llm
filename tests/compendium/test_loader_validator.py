@@ -48,6 +48,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.hold_monster",
+        "srd.irresistible_dance",
         "srd.greater_restoration",
         "srd.cloudkill",
         "srd.teleportation_circle",
@@ -234,6 +235,50 @@ def test_compendium_loads_srd_actions() -> None:
                 },
             },
             "tick_on": "target_turn_end",
+            "concentration": True,
+        },
+    ]
+    irresistible_dance = compendium.action("srd.irresistible_dance")
+    assert irresistible_dance.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "wizard"],
+    }
+    assert irresistible_dance.properties["spell_classes"] == ["bard", "wizard"]
+    assert irresistible_dance.range == {"normal_ft": 30}
+    assert irresistible_dance.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert irresistible_dance.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "passive_effect",
+            "requires_successful_save": True,
+            "passive_modifiers": {
+                "must_spend_all_movement_dancing_in_place": True,
+            },
+            "duration": {"until": "end_of_next_turn"},
+            "tick_on": "target_turn_end",
+            "concentration": True,
+        },
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "must_spend_all_movement_dancing_in_place": True,
+                "saving_throw_disadvantage_abilities": ["dex"],
+                "attack_roll_disadvantage": True,
+                "incoming_attack_advantage": True,
+            },
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "target_action",
+                },
+            },
+            "tick_on": "target_action",
             "concentration": True,
         },
     ]

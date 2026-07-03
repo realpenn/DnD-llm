@@ -60,6 +60,78 @@
         ],
         "audit_label": "Hold Monster"
       }
+    },
+    {
+      "id": "srd.spell.irresistible_dance",
+      "name": "Irresistible Dance",
+      "localization": {
+        "en": "Irresistible Dance",
+        "zh": "难抗之舞",
+        "aliases": ["不可抗拒之舞"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "enchantment",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.irresistible_dance",
+        "name": "Irresistible Dance",
+        "localization": {
+          "en": "Irresistible Dance",
+          "zh": "难抗之舞",
+          "aliases": ["不可抗拒之舞"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "wizard"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "passive_effect",
+            "requires_successful_save": true,
+            "passive_modifiers": {
+              "must_spend_all_movement_dancing_in_place": true
+            },
+            "duration": { "until": "end_of_next_turn" },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "must_spend_all_movement_dancing_in_place": true,
+              "saving_throw_disadvantage_abilities": ["dex"],
+              "attack_roll_disadvantage": true,
+              "incoming_attack_advantage": true
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_action"
+              }
+            },
+            "tick_on": "target_action",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Irresistible Dance"
+      }
     }
   ]
 }

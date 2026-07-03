@@ -185,6 +185,26 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         and not isinstance(node["requires_failed_save"], bool)
     ):
         errors.append(f"{path}: requires_failed_save must be a boolean")
+    if (
+        node_type in {"damage", "condition", "passive_effect"}
+        and "requires_successful_save" in node
+        and not isinstance(node["requires_successful_save"], bool)
+    ):
+        errors.append(f"{path}: requires_successful_save must be a boolean")
+    if (
+        node_type in {"damage", "condition", "passive_effect"}
+        and node.get("requires_failed_save") is True
+        and node.get("requires_successful_save") is True
+    ):
+        errors.append(
+            f"{path}: requires_failed_save and requires_successful_save cannot both be true"
+        )
+    if (
+        node_type == "condition"
+        and "passive_modifiers" in node
+        and not isinstance(node["passive_modifiers"], dict)
+    ):
+        errors.append(f"{path}: passive_modifiers must be an object")
     if node_type == "remove_condition":
         conditions = node.get("conditions")
         effect_markers = node.get("effect_markers")

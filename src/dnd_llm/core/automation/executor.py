@@ -814,7 +814,7 @@ class AutomationExecutor:
         shared_amount: int | None = None
         for target_id in ctx.targets:
             force_potent_half = bool(node.get("potent_cantrip_force_half", False))
-            if self._skip_target_for_failed_save(ctx, node, target_id) and not force_potent_half:
+            if self._skip_target_for_save_gate(ctx, node, target_id) and not force_potent_half:
                 continue
             potent_cantrip = self._potent_cantrip_half_damage(
                 ctx,
@@ -1201,8 +1201,12 @@ class AutomationExecutor:
         concentration = bool(node.get("concentration", False))
         self._clear_existing_concentration_if_needed(ctx, concentration, path)
         condition = str(node["condition"])
+        passive_modifiers = self._resolved_passive_modifiers(
+            ctx,
+            dict(node.get("passive_modifiers", {})),
+        )
         for target_id in ctx.targets:
-            if self._skip_target_for_failed_save(ctx, node, target_id):
+            if self._skip_target_for_save_gate(ctx, node, target_id):
                 continue
             target = self._entity(target_id)
             immunity_sources = self._condition_immunity_sources(target, condition)
@@ -1224,6 +1228,7 @@ class AutomationExecutor:
                 target_id=target_id,
                 applied_by=ctx.actor_id,
                 condition=condition,
+                passive_modifiers=passive_modifiers,
                 duration=self._resolved_condition_duration(ctx, node),
                 tick_on=node.get("tick_on"),
                 concentration=concentration,
@@ -1280,6 +1285,8 @@ class AutomationExecutor:
                     "path": path,
                 }
             )
+            if effect.passive_modifiers:
+                ctx.result.state_changes[-1]["passive_modifiers"] = effect.passive_modifiers
 
     def _node_remove_condition(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         conditions = [str(condition) for condition in node.get("conditions", [])]
@@ -1616,7 +1623,7 @@ class AutomationExecutor:
             ctx, concentration or clears_concentration, path
         )
         for target_id in ctx.targets:
-            if self._skip_target_for_failed_save(ctx, node, target_id):
+            if self._skip_target_for_save_gate(ctx, node, target_id):
                 continue
             effect = EffectInstance(
                 effect_id=self._effect_id(target_id, path),
@@ -2339,14 +2346,19 @@ class AutomationExecutor:
         return die
 
     @staticmethod
-    def _skip_target_for_failed_save(
+    def _skip_target_for_save_gate(
         ctx: _Context,
         node: dict[str, Any],
         target_id: str,
     ) -> bool:
-        if not bool(node.get("requires_failed_save", False)):
-            return False
-        return ctx.save_successes.get(target_id) is not False
+        if (
+            bool(node.get("requires_failed_save", False))
+            and ctx.save_successes.get(target_id) is not False
+        ):
+            return True
+        return bool(node.get("requires_successful_save", False)) and (
+            ctx.save_successes.get(target_id) is not True
+        )
 
     def _effect_id(self, target_id: str, path: str) -> str:
         safe_path = re.sub(r"[^a-zA-Z0-9]+", "-", path).strip("-") or "effect"
@@ -5317,6 +5329,7 @@ class AutomationExecutor:
             actor,
             {"blinded", "frightened", "poisoned", "prone", "restrained"},
         )
+        disadvantage_sources.extend(self._attack_roll_disadvantage_sources(actor, action))
         disadvantage_sources.extend(self._grappled_non_grappler_sources(actor, target, target_id))
         disadvantage_sources.extend(self._condition_sources(target, {"invisible"}))
         if distance_ft is not None and distance_ft > 5:
@@ -5350,6 +5363,30 @@ class AutomationExecutor:
                     "effect_id": effect.get("effect_id"),
                     "source_action_id": effect.get("source_action_id"),
                     "modifier": "attack_roll_advantage",
+                }
+            )
+        return sources
+
+    def _attack_roll_disadvantage_sources(
+        self,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> list[dict[str, Any]]:
+        if action.action_type not in ATTACK_ACTION_TYPES:
+            return []
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("attack_roll_disadvantage") is not True:
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "attack_roll_disadvantage",
                 }
             )
         return sources

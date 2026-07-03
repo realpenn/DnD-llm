@@ -375,6 +375,10 @@ class RuleDataValidator:
             ALLOWED_CONDITIONS | ALLOWED_ACTION_MARKERS
         ):
             report.errors.append(f"{owner_id}: invalid condition {node.get('condition')}")
+        if node_type == "condition" and "passive_modifiers" in node:
+            modifiers = node.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                report.errors.append(f"{owner_id}: passive_modifiers must be an object")
         if node_type == "remove_condition":
             conditions = node.get("conditions", [])
             for condition in conditions:
