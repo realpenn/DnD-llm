@@ -419,6 +419,31 @@ def test_compendium_loads_srd_actions() -> None:
             ),
         },
     ]
+    meteor_swarm = compendium.action("srd.meteor_swarm")
+    assert meteor_swarm.requirements == {
+        "spell_level": 9,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert meteor_swarm.properties["spell_classes"] == ["sorcerer", "wizard"]
+    assert meteor_swarm.properties["points"] == 4
+    assert meteor_swarm.properties["points_must_be_visible"] is True
+    assert meteor_swarm.properties["sphere_radius_ft"] == 40
+    assert meteor_swarm.properties["creature_in_multiple_spheres_affected_once"] is True
+    assert meteor_swarm.properties["nonmagical_objects_not_worn_or_carried_take_damage"] is True
+    assert meteor_swarm.properties["flammable_objects_not_worn_or_carried_start_burning"] is True
+    assert meteor_swarm.range == {"normal_ft": 5280, "shape": "sphere", "radius_ft": 40}
+    assert meteor_swarm.target_policy == {"min": 1, "max": 24, "harmful": True}
+    assert meteor_swarm.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "20d6", "damage_type": "fire", "save_half": True},
+        {
+            "type": "damage",
+            "dice": "20d6",
+            "damage_type": "bludgeoning",
+            "save_half": True,
+        },
+    ]
     greater_invisibility = compendium.action("srd.greater_invisibility")
     assert greater_invisibility.requirements == {"spell_level": 4}
     assert greater_invisibility.range == {"touch": True}

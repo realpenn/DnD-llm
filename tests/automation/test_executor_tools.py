@@ -9667,6 +9667,63 @@ def test_fire_storm_uses_actor_spell_dc_and_records_srd_area_metadata(
     ]
 
 
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_meteor_swarm_uses_allowed_class_spell_dc_and_halves_both_damage_types(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 17}
+    caster.abilities[ability] = 20
+    caster.proficiency_bonus = 6
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 6, 4]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.meteor_swarm",
+        ["goblin1"],
+        9,
+        idempotency_key=f"cast-meteor-swarm-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 19
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["damage_type"] for change in damage_changes] == ["fire", "bludgeoning"]
+    assert [change["amount"] for change in damage_changes] == [3, 2]
+    assert [change["applied"] for change in damage_changes] == [3, 2]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "20d6",
+        "20d6",
+    ]
+
+
 def test_mass_cure_wounds_uses_actor_spellcasting_modifier_for_each_target(
     make_state,
 ) -> None:
