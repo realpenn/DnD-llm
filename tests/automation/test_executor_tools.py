@@ -9383,6 +9383,55 @@ def test_transport_via_plants_spends_slot_and_records_timed_plant_link(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_word_of_recall_spends_slot_and_records_instant_sanctuary_teleport(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.word_of_recall",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 6, "target_willing": True},
+        idempotency_key="cast-word-of-recall",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.word_of_recall"
+    assert effect["effect_type"] == "word_of_recall_teleport"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "explicit", "range_ft": 5, "target_ids": ["pc1", "pc2"]}
+    assert "target_id" not in effect["scope"]
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "teleports_actor": True,
+        "max_willing_companions": 5,
+        "companions_must_be_within_ft": 5,
+        "requires_previously_designated_sanctuary": True,
+        "no_effect_without_prepared_sanctuary": True,
+        "appears_nearest_unoccupied_space_to_designated_spot": True,
+        "designates_sanctuary_by_casting_this_spell_there": True,
+        "destination": "previously_designated_sanctuary",
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "word_of_recall_teleport"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+
+
 def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

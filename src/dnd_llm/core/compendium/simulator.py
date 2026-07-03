@@ -313,6 +313,8 @@ def _targets_for_action(target_policy: dict[str, Any]) -> list[str]:
 
 def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
     params: dict[str, Any] = {}
+    if action.properties.get("requires_willing_target") is True:
+        params["target_willing"] = True
     if action.properties.get("requires_dim_light_or_darkness") is True:
         params["in_dim_light_or_darkness"] = True
     if action.properties.get("greater_restoration") is True:

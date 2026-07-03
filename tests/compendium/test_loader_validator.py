@@ -56,6 +56,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.teleportation_circle",
         "srd.insect_plague",
         "srd.transport_via_plants",
+        "srd.word_of_recall",
         "srd.passwall",
         "srd.tree_stride",
         "srd.wall_of_force",
@@ -543,6 +544,39 @@ def test_compendium_loads_srd_actions() -> None:
                 "enter_target_plant_and_exit_destination_plant": True,
             },
         }
+    ]
+    word_of_recall = compendium.action("srd.word_of_recall")
+    assert word_of_recall.requirements == {
+        "spell_level": 6,
+        "class_any": ["cleric"],
+    }
+    assert word_of_recall.properties["spell_classes"] == ["cleric"]
+    assert word_of_recall.properties["requires_willing_target"] is True
+    assert word_of_recall.range == {"normal_ft": 5}
+    assert word_of_recall.target_policy == {
+        "min": 1,
+        "max": 6,
+        "self": True,
+        "harmful": False,
+    }
+    assert word_of_recall.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "world_effect",
+            "effect_type": "word_of_recall_teleport",
+            "scope": {"target": "explicit", "range_ft": 5},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "teleports_actor": True,
+                "max_willing_companions": 5,
+                "companions_must_be_within_ft": 5,
+                "requires_previously_designated_sanctuary": True,
+                "no_effect_without_prepared_sanctuary": True,
+                "appears_nearest_unoccupied_space_to_designated_spot": True,
+                "designates_sanctuary_by_casting_this_spell_there": True,
+                "destination": "previously_designated_sanctuary",
+            },
+        },
     ]
     tree_stride = compendium.action("srd.tree_stride")
     assert tree_stride.requirements == {
