@@ -229,6 +229,10 @@ def has_monk_open_hand_feature(character: Character, *, level: int) -> bool:
     )
 
 
+def monk_open_hand_fleet_step_applies(character: Character) -> bool:
+    return has_monk_open_hand_feature(character, level=11)
+
+
 def has_paladin_feature(character: Character, *, level: int) -> bool:
     return int(character.class_levels.get("paladin", 0)) >= level
 

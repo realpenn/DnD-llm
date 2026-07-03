@@ -101,7 +101,13 @@ SACRED_WEAPON_ACTION_ID = "srd.sacred_weapon"
 STUNNING_STRIKE_ACTION_ID = "srd.stunning_strike"
 STUNNING_STRIKE_SLOWED_CONDITION = "stunning_strike_slowed"
 FLURRY_OF_BLOWS_ACTION_ID = "srd.flurry_of_blows"
+STEP_OF_THE_WIND_ACTION_ID = "srd.step_of_the_wind"
 STEP_OF_THE_WIND_FOCUS_ACTION_ID = "srd.step_of_the_wind_focus"
+STEP_OF_THE_WIND_ACTION_IDS = frozenset(
+    {STEP_OF_THE_WIND_ACTION_ID, STEP_OF_THE_WIND_FOCUS_ACTION_ID}
+)
+FLEET_STEP_ACTION_ID = "srd.fleet_step"
+FLEET_STEP_CONDITION = "fleet_step_available"
 HEIGHTENED_FOCUS_COMPANION_CONDITION = "heightened_focus_step_of_the_wind_companion"
 OPEN_HAND_TECHNIQUE_ACTION_ID = "srd.open_hand_technique"
 REPELLING_BLAST_ACTION_ID = "srd.repelling_blast"
@@ -383,6 +389,7 @@ class AutomationExecutor:
         self._validate_stunning_strike_preconditions(action, actor_id, targets or [], params)
         self._validate_empowered_strikes_preconditions(action, actor_id, params)
         self._validate_heightened_focus_preconditions(action, actor_id, targets or [], params)
+        self._validate_fleet_step_preconditions(action, actor_id, params)
         self._validate_preserve_life_preconditions(action, actor_id, targets or [], params)
         self._validate_cutting_words_preconditions(action, params)
         self._validate_lands_aid_preconditions(action, targets or [], params)
@@ -419,6 +426,7 @@ class AutomationExecutor:
             self._execute_node(ctx, node, f"automation[{index}]", idempotency_key)
         self._mark_action_surge_used(ctx)
         self._expire_actor_effects_after_action(ctx, preexisting_actor_effect_ids)
+        self._record_fleet_step_window(ctx)
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -7156,6 +7164,115 @@ class AutomationExecutor:
             raise AutomationError("Heightened Focus companion must be within 5 feet")
         return {"actor": actor, "companion": companion, "distance_ft": int(distance)}
 
+    def _validate_fleet_step_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        if not self._fleet_step_requested(params):
+            return
+        if action.id not in STEP_OF_THE_WIND_ACTION_IDS:
+            raise AutomationError("Fleet Step can only be used with Step of the Wind")
+        owner = self._resource_owner(actor_id)
+        if not isinstance(owner, Character) or not has_monk_open_hand_feature(owner, level=11):
+            raise AutomationError("Fleet Step requires Open Hand Monk level 11")
+        if self._current_fleet_step_window(actor_id) is None:
+            raise AutomationError(
+                "Fleet Step requires an immediately preceding non-Step Bonus Action"
+            )
+
+    @staticmethod
+    def _fleet_step_requested(params: dict[str, Any]) -> bool:
+        return params.get("use_fleet_step") is True or params.get("fleet_step") is True
+
+    def _fleet_step_waives_bonus_action(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> bool:
+        return (
+            action.action_economy == "bonus_action"
+            and action.id in STEP_OF_THE_WIND_ACTION_IDS
+            and self._fleet_step_requested(params)
+            and self._current_fleet_step_window(actor_id) is not None
+        )
+
+    def _current_fleet_step_window(self, actor_id: str) -> dict[str, Any] | None:
+        actor = self._entity(actor_id)
+        for effect in self._status_effects_for(actor):
+            if (
+                effect.get("condition") == FLEET_STEP_CONDITION
+                and effect.get("source_action_id") == FLEET_STEP_ACTION_ID
+            ):
+                return effect
+        return None
+
+    def _fleet_step_effect_containers(self, actor_id: str) -> list[list[dict[str, Any]]]:
+        containers: list[list[dict[str, Any]]] = [getattr(self._entity(actor_id), "status_effects")]
+        entity = self._entity(actor_id)
+        if isinstance(entity, Combatant) and entity.entity_id in self.state.characters:
+            containers.append(self.state.characters[entity.entity_id].status_effects)
+        if isinstance(entity, Combatant) and entity.entity_id in self.state.monsters:
+            containers.append(self.state.monsters[entity.entity_id].status_effects)
+        return containers
+
+    def _clear_fleet_step_window(self, actor_id: str) -> dict[str, Any] | None:
+        removed: dict[str, Any] | None = None
+        for effects in self._fleet_step_effect_containers(actor_id):
+            kept: list[dict[str, Any]] = []
+            for effect in effects:
+                if (
+                    effect.get("condition") == FLEET_STEP_CONDITION
+                    and effect.get("source_action_id") == FLEET_STEP_ACTION_ID
+                ):
+                    if removed is None:
+                        removed = effect
+                    continue
+                kept.append(effect)
+            effects[:] = kept
+        return removed
+
+    def _record_fleet_step_window(self, ctx: _Context) -> None:
+        try:
+            owner = self._resource_owner(ctx.actor_id)
+        except KeyError:
+            return
+        if not isinstance(owner, Character) or not has_monk_open_hand_feature(owner, level=11):
+            return
+        self._clear_fleet_step_window(ctx.actor_id)
+        if ctx.action.action_economy != "bonus_action":
+            return
+        if ctx.action.id in STEP_OF_THE_WIND_ACTION_IDS:
+            return
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, FLEET_STEP_CONDITION),
+            source_ref="SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 11: Fleet Step",
+            source_action_id=FLEET_STEP_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=FLEET_STEP_CONDITION,
+            duration={"until": "end_of_current_turn"},
+            tick_on="self_turn_end",
+            stacking_policy="replace",
+            audit={"trigger_action_id": ctx.action.id},
+        )
+        getattr(actor, "status_effects").append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "fleet_step_window",
+                "actor_id": ctx.actor_id,
+                "effect_id": effect.effect_id,
+                "condition": effect.condition,
+                "source_action_id": FLEET_STEP_ACTION_ID,
+                "trigger_action_id": ctx.action.id,
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+            }
+        )
+
     def _validate_open_hand_technique_preconditions(
         self,
         action: ActionDefinition,
@@ -9655,6 +9772,8 @@ class AutomationExecutor:
             return
         actor = self._entity(actor_id)
         self._validate_condition_gate(actor, action.action_economy)
+        if self._fleet_step_waives_bonus_action(action, actor_id, params):
+            return
         if (
             self._thirsting_blade_extra_attack_requested(params)
             and action.action_economy == "action"
@@ -9998,6 +10117,24 @@ class AutomationExecutor:
         result: AutomationResult,
     ) -> None:
         if action.action_economy == "none":
+            return
+        if self._fleet_step_waives_bonus_action(action, actor_id, params):
+            ticket = self._clear_fleet_step_window(actor_id) or {}
+            actor = self._entity(actor_id)
+            before = self.economy.budget_for(actor_id, self._effective_speed(actor)).to_dict()
+            after = self.economy.budget_for(actor_id).to_dict()
+            result.state_changes.append(
+                {
+                    "type": "fleet_step",
+                    "actor_id": actor_id,
+                    "source_action_id": FLEET_STEP_ACTION_ID,
+                    "step_of_the_wind_action_id": action.id,
+                    "trigger_action_id": ticket.get("audit", {}).get("trigger_action_id"),
+                    "bonus_action_waived": True,
+                    "bonus_action_before": before,
+                    "bonus_action_after": after,
+                }
+            )
             return
         if (
             self._thirsting_blade_extra_attack_requested(params)

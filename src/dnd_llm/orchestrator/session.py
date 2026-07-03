@@ -13,7 +13,7 @@ from ..core.dice import RollService
 from ..core.economy import EconomyTracker
 from ..core.effect_lifecycle import EffectLifecycleResult, tick_effects
 from ..core.memory import remember_fragment
-from ..core.models import Combatant, Encounter, GameState
+from ..core.models import Character, Combatant, Encounter, GameState, Monster
 from ..core.persistence import AuditLog
 from ..core.positioning import TacticalGraph
 from ..core.resolver import ActionResolver, PlayerActionDraft
@@ -22,6 +22,7 @@ from ..core.rules.class_features import (
     champion_heroic_warrior_can_grant_inspiration,
     champion_survivor_heroic_rally_healing,
     class_feature_speed_bonus,
+    has_monk_open_hand_feature,
 )
 from ..core.rules.conditions import effective_speed
 from ..core.tools import EngineTools
@@ -34,6 +35,8 @@ from .turn import advance_turn as advance_encounter_turn
 from .turn import roll_initiative
 
 GENERATED_TACTICAL_GRAPHS_FLAG = "generated_tactical_graphs"
+FLEET_STEP_ACTION_ID = "srd.fleet_step"
+FLEET_STEP_CONDITION = "fleet_step_available"
 TimeoutTakeoverPlanner = Callable[[str, int, str], PlayerActionDraft | None]
 MonsterTurnPlanner = Callable[[str, int, str], PlayerActionDraft | None]
 
@@ -1060,6 +1063,11 @@ class GameSession:
                 else None
             )
             return
+        fleet_step_actor = self._fleet_step_actor_waiting()
+        if fleet_step_actor is not None:
+            result["fleet_step_available"] = True
+            result["next_combatant_id"] = fleet_step_actor
+            return
         next_turn = self._advance_turn_unqueued(idempotency_key, now=now)
         result["next_combatant_id"] = next_turn.payload.get("current_combatant_id")
 
@@ -1074,8 +1082,29 @@ class GameSession:
                 window.to_dict() for window in self.reactions.pending_windows(self.state)
             ]
             return
+        fleet_step_actor = self._fleet_step_actor_waiting()
+        if fleet_step_actor is not None:
+            payload["fleet_step_available"] = True
+            payload["next_combatant_id"] = fleet_step_actor
+            return
         next_turn = self._advance_turn_unqueued(idempotency_key, now=now)
         payload["next_combatant_id"] = next_turn.payload.get("current_combatant_id")
+
+    def _fleet_step_actor_waiting(self) -> str | None:
+        if self.state.encounter is None or self.state.encounter.current_combatant_id is None:
+            return None
+        actor_id = self.state.encounter.current_combatant_id
+        owner = _resource_owner(self.state, actor_id)
+        if not isinstance(owner, Character) or not has_monk_open_hand_feature(owner, level=11):
+            return None
+        actor = _actor_entity(self.state, actor_id)
+        if any(
+            effect.get("condition") == FLEET_STEP_CONDITION
+            and effect.get("source_action_id") == FLEET_STEP_ACTION_ID
+            for effect in _status_effects_for(self.state, actor)
+        ):
+            return actor_id
+        return None
 
 
 def _optional_text(value: Any) -> str | None:
@@ -1083,6 +1112,36 @@ def _optional_text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _actor_entity(state: GameState, actor_id: str) -> Character | Monster | Combatant | None:
+    try:
+        return state.entity_for_actor(actor_id)
+    except KeyError:
+        return None
+
+
+def _resource_owner(state: GameState, actor_id: str) -> Character | Monster | Combatant | None:
+    actor = _actor_entity(state, actor_id)
+    if isinstance(actor, Combatant) and actor.entity_id in state.characters:
+        return state.characters[actor.entity_id]
+    if isinstance(actor, Combatant) and actor.entity_id in state.monsters:
+        return state.monsters[actor.entity_id]
+    return actor
+
+
+def _status_effects_for(
+    state: GameState,
+    actor: Character | Monster | Combatant | None,
+) -> list[dict[str, Any]]:
+    if actor is None:
+        return []
+    effects = list(getattr(actor, "status_effects", []))
+    if isinstance(actor, Combatant) and actor.entity_id in state.characters:
+        effects.extend(state.characters[actor.entity_id].status_effects)
+    if isinstance(actor, Combatant) and actor.entity_id in state.monsters:
+        effects.extend(state.monsters[actor.entity_id].status_effects)
+    return effects
 
 
 def _effective_combatant_speed(state: GameState, combatant: Combatant) -> int:

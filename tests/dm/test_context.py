@@ -73,6 +73,42 @@ def test_dm_context_combat_affordances_are_current_actor_only(make_state) -> Non
     assert out_of_turn.affordances == []
 
 
+def test_dm_context_shows_step_of_the_wind_during_fleet_step_window(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "pc2", "goblin1"]
+    state.encounter.turn_index = 0
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.step_of_the_wind", "srd.fleet_step"])
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 0,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "fleet-step-window",
+            "source_ref": "SRD 5.2.1",
+            "source_action_id": "srd.fleet_step",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "fleet_step_available",
+            "duration": {"until": "end_of_current_turn"},
+            "tick_on": "self_turn_end",
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+
+    context = build_context_slice(state, actor_id="pc1", actions=compendium.actions)
+
+    assert any(item["action_id"] == "srd.step_of_the_wind" for item in context.affordances)
+
+
 def test_dm_context_exploration_keeps_affordances_lazy(make_state) -> None:
     state = make_state()
     state.encounter = None

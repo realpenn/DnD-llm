@@ -11,6 +11,7 @@ from .rules.class_features import (
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     bloodied_hp_cap,
     class_feature_speed_bonus,
+    has_monk_open_hand_feature,
     has_rogue_thief_feature,
     has_warlock_eldritch_smite,
     has_warlock_investment_of_chain_master,
@@ -49,6 +50,11 @@ RESOLVER_PACT_OF_BLADE_WEAPON_ACTION_ID = "srd.pact_of_the_blade_weapon"
 RESOLVER_PACT_OF_CHAIN_FIND_FAMILIAR_ACTION_ID = "srd.pact_of_the_chain_find_familiar"
 RESOLVER_THIRSTING_BLADE_ACTION_ID = "srd.thirsting_blade"
 RESOLVER_ELDRITCH_SMITE_ACTION_ID = "srd.eldritch_smite"
+RESOLVER_STEP_OF_THE_WIND_ACTION_IDS = frozenset(
+    {"srd.step_of_the_wind", "srd.step_of_the_wind_focus"}
+)
+RESOLVER_FLEET_STEP_ACTION_ID = "srd.fleet_step"
+RESOLVER_FLEET_STEP_CONDITION = "fleet_step_available"
 RESOLVER_OIL_OF_ETHEREALNESS_ACTION_ID = "srd.apply_oil_of_etherealness"
 RESOLVER_APPLY_OIL_OF_SLIPPERINESS_ACTION_ID = "srd.apply_oil_of_slipperiness"
 RESOLVER_ROD_OF_ABSORPTION_ITEM_ID = "srd.rod_of_absorption"
@@ -201,6 +207,13 @@ class ActionResolver:
         action_economy = (
             "bonus_action" if self._uses_fast_hands_item(draft) else action.action_economy
         )
+        fleet_step_error = self._fleet_step_error(draft, actor, action)
+        if fleet_step_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=fleet_step_error,
+                action_id=action.id,
+            )
         thirsting_blade_check = self._check_thirsting_blade_extra_attack(draft, actor, action)
         if thirsting_blade_check is not None:
             return thirsting_blade_check
@@ -211,6 +224,8 @@ class ActionResolver:
         if rod_alertness_check is not None:
             return rod_alertness_check
         if self._uses_thirsting_blade_extra_attack(draft):
+            action_economy = "none"
+        if self._uses_fleet_step(draft, actor, action):
             action_economy = "none"
         budget = self._action_budget_for_check(draft.actor_id, actor)
         if not budget.can_spend(action_economy):
@@ -493,6 +508,53 @@ class ActionResolver:
     @staticmethod
     def _uses_fast_hands_item(draft: PlayerActionDraft) -> bool:
         return draft.verb == "use_item" and draft.params.get("fast_hands") is True
+
+    @staticmethod
+    def _fleet_step_requested(draft: PlayerActionDraft) -> bool:
+        return draft.params.get("use_fleet_step") is True or draft.params.get("fleet_step") is True
+
+    def _uses_fleet_step(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> bool:
+        return (
+            self._fleet_step_requested(draft)
+            and action.id in RESOLVER_STEP_OF_THE_WIND_ACTION_IDS
+            and self._current_fleet_step_window(draft.actor_id) is not None
+            and isinstance(self._resource_owner(draft.actor_id, actor), Character)
+        )
+
+    def _fleet_step_error(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> str | None:
+        if not self._fleet_step_requested(draft):
+            return None
+        if action.id not in RESOLVER_STEP_OF_THE_WIND_ACTION_IDS:
+            return "Fleet Step can only be used with Step of the Wind"
+        owner = self._resource_owner(draft.actor_id, actor)
+        if not isinstance(owner, Character) or not has_monk_open_hand_feature(owner, level=11):
+            return "Fleet Step requires Open Hand Monk level 11"
+        if self._current_fleet_step_window(draft.actor_id) is None:
+            return "Fleet Step requires an immediately preceding non-Step Bonus Action"
+        return None
+
+    def _current_fleet_step_window(self, actor_id: str) -> dict[str, Any] | None:
+        try:
+            actor = self.state.entity_for_actor(actor_id)
+        except KeyError:
+            return None
+        for effect in self._status_effects_for(actor):
+            if (
+                effect.get("condition") == RESOLVER_FLEET_STEP_CONDITION
+                and effect.get("source_action_id") == RESOLVER_FLEET_STEP_ACTION_ID
+            ):
+                return effect
+        return None
 
     @staticmethod
     def _uses_rod_of_absorption_spell_slot(draft: PlayerActionDraft) -> bool:

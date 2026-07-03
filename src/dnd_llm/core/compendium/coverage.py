@@ -98,6 +98,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.fast_hands_utilize",
     "srd.fiendish_vigor",
     "srd.fiendish_vigor_false_life",
+    "srd.fleet_step",
     "srd.flurry_of_blows",
     "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
     "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",

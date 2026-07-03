@@ -2979,6 +2979,186 @@ def test_patient_defense_focus_spends_focus_and_dodges(make_state) -> None:
     assert conditions == {"disengaged", "dodging"}
 
 
+def test_open_hand_fleet_step_allows_step_after_other_bonus_action(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.patient_defense", "srd.step_of_the_wind", "srd.fleet_step"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    patient = tools.perform_action(
+        "pc1",
+        "srd.patient_defense",
+        [],
+        idempotency_key="fleet-step-trigger",
+    )
+    step = tools.perform_action(
+        "pc1",
+        "srd.step_of_the_wind",
+        [],
+        params={"use_fleet_step": True},
+        idempotency_key="fleet-step-step",
+    )
+
+    assert patient["success"] is True
+    assert step["success"] is True
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    assert state.encounter.action_budgets["pc1"]["movement"] == 100
+    fleet_change = next(
+        change for change in step["state_changes"] if change["type"] == "fleet_step"
+    )
+    assert fleet_change["bonus_action_waived"] is True
+    assert fleet_change["trigger_action_id"] == "srd.patient_defense"
+    assert not any(
+        effect.get("condition") == "fleet_step_available"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
+def test_open_hand_fleet_step_focus_still_spends_focus(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(
+        ["srd.patient_defense", "srd.step_of_the_wind_focus", "srd.fleet_step"]
+    )
+    character.resources["srd.resource.focus_points"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action(
+        "pc1",
+        "srd.patient_defense",
+        [],
+        idempotency_key="fleet-step-focus-trigger",
+    )
+    result = tools.perform_action(
+        "pc1",
+        "srd.step_of_the_wind_focus",
+        [],
+        params={"use_fleet_step": True},
+        idempotency_key="fleet-step-focus",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.focus_points"] == 1
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    assert state.encounter.action_budgets["pc1"]["movement"] == 100
+
+
+def test_step_of_the_wind_does_not_trigger_fleet_step(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.step_of_the_wind", "srd.fleet_step"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    first = tools.perform_action(
+        "pc1",
+        "srd.step_of_the_wind",
+        [],
+        idempotency_key="fleet-step-self-trigger-first",
+    )
+
+    assert first["success"] is True
+    assert not any(
+        effect.get("condition") == "fleet_step_available"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+    with pytest.raises(
+        AutomationError,
+        match="Fleet Step requires an immediately preceding non-Step Bonus Action",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.step_of_the_wind",
+            [],
+            params={"use_fleet_step": True},
+            idempotency_key="fleet-step-self-trigger-second",
+        )
+
+
+def test_fleet_step_window_expires_after_intervening_action(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.patient_defense", "srd.step_of_the_wind", "srd.fleet_step"])
+    state.encounter.combatants["goblin1"].armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action(
+        "pc1",
+        "srd.patient_defense",
+        [],
+        idempotency_key="fleet-step-intervening-trigger",
+    )
+    attack = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="fleet-step-intervening-attack",
+    )
+
+    assert attack["success"] is True
+    assert not any(
+        effect.get("condition") == "fleet_step_available"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+    with pytest.raises(
+        AutomationError,
+        match="Fleet Step requires an immediately preceding non-Step Bonus Action",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.step_of_the_wind",
+            [],
+            params={"use_fleet_step": True},
+            idempotency_key="fleet-step-intervening-step",
+        )
+
+
+def test_fleet_step_requires_open_hand_level_eleven_even_with_marker(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.actions.extend(["srd.step_of_the_wind", "srd.fleet_step"])
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "forged-fleet-step",
+            "source_ref": "test",
+            "source_action_id": "srd.fleet_step",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "fleet_step_available",
+            "duration": {"until": "end_of_current_turn"},
+            "tick_on": "self_turn_end",
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="Fleet Step requires Open Hand Monk level 11"):
+        tools.perform_action(
+            "pc1",
+            "srd.step_of_the_wind",
+            [],
+            params={"use_fleet_step": True},
+            idempotency_key="fleet-step-forged-marker",
+        )
+
+
 def test_heightened_focus_patient_defense_grants_two_martial_arts_dice_temp_hp(
     make_state,
 ) -> None:

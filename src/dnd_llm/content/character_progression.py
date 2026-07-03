@@ -331,7 +331,11 @@ SUBCLASS_ACTIONS = {
         },
     },
     "monk": {
-        "open_hand": {3: ["srd.open_hand_technique"], 6: ["srd.wholeness_of_body"]},
+        "open_hand": {
+            3: ["srd.open_hand_technique"],
+            6: ["srd.wholeness_of_body"],
+            11: ["srd.fleet_step"],
+        },
     },
     "paladin": {
         "devotion": {3: ["srd.sacred_weapon"]},

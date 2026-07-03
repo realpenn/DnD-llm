@@ -90,6 +90,48 @@ def test_session_queue_dedupes_concurrent_player_action_resource_spend(make_stat
     assert state.roll_counter == 1
 
 
+def test_session_pauses_auto_advance_for_open_hand_fleet_step(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "pc2", "goblin1"]
+    state.encounter.turn_index = 0
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.patient_defense", "srd.step_of_the_wind", "srd.fleet_step"])
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    trigger = session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="patient defense",
+            candidate_action_id="srd.patient_defense",
+            raw_text="DD 我用忍耐防御",
+        ),
+        "fleet-step-session-trigger",
+    )
+
+    assert trigger.accepted is True
+    assert trigger.payload["fleet_step_available"] is True
+    assert trigger.payload["next_combatant_id"] == "pc1"
+    assert state.encounter.current_combatant_id == "pc1"
+
+    step = session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="step of the wind",
+            candidate_action_id="srd.step_of_the_wind",
+            params={"use_fleet_step": True},
+            raw_text="DD 我立刻风步",
+        ),
+        "fleet-step-session-step",
+    )
+
+    assert step.accepted is True
+    assert step.payload["next_combatant_id"] == "pc2"
+    assert state.encounter.current_combatant_id == "pc2"
+
+
 def test_start_combat_initial_budget_uses_exhaustion_adjusted_speed(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

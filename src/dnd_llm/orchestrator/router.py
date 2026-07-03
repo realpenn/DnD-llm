@@ -5,10 +5,16 @@ from typing import Any
 
 from ..core.automation.definitions import ActionDefinition
 from ..core.memory import retrieve_memory
-from ..core.models import GameState
+from ..core.models import Character, Combatant, GameState, Monster
 from ..core.positioning import TacticalGraph
+from ..core.rules.class_features import has_monk_open_hand_feature
 
 VISIBLE_WORLD_FLAG_KEYS = {"dynamic_zones"}
+ROUTER_STEP_OF_THE_WIND_ACTION_IDS = frozenset(
+    {"srd.step_of_the_wind", "srd.step_of_the_wind_focus"}
+)
+ROUTER_FLEET_STEP_ACTION_ID = "srd.fleet_step"
+ROUTER_FLEET_STEP_CONDITION = "fleet_step_available"
 
 
 @dataclass
@@ -187,9 +193,59 @@ def _action_budget_available(
     budget = state.encounter.action_budgets.get(actor_id)
     if budget is None:
         return True
+    if _fleet_step_makes_step_available(state, actor_id, action):
+        return True
     if action.action_economy == "movement":
         return int(budget.get("movement", 0)) > 0
     return int(budget.get(action.action_economy, 0)) > 0
+
+
+def _fleet_step_makes_step_available(
+    state: GameState,
+    actor_id: str,
+    action: ActionDefinition,
+) -> bool:
+    if action.id not in ROUTER_STEP_OF_THE_WIND_ACTION_IDS:
+        return False
+    owner = _resource_owner(state, actor_id)
+    if not isinstance(owner, Character) or not has_monk_open_hand_feature(owner, level=11):
+        return False
+    actor = _actor_entity(state, actor_id)
+    return any(
+        effect.get("condition") == ROUTER_FLEET_STEP_CONDITION
+        and effect.get("source_action_id") == ROUTER_FLEET_STEP_ACTION_ID
+        for effect in _status_effects_for(state, actor)
+    )
+
+
+def _actor_entity(state: GameState, actor_id: str) -> Character | Monster | Combatant | None:
+    try:
+        return state.entity_for_actor(actor_id)
+    except KeyError:
+        return None
+
+
+def _resource_owner(state: GameState, actor_id: str) -> Character | Monster | Combatant | None:
+    actor = _actor_entity(state, actor_id)
+    if isinstance(actor, Combatant) and actor.entity_id in state.characters:
+        return state.characters[actor.entity_id]
+    if isinstance(actor, Combatant) and actor.entity_id in state.monsters:
+        return state.monsters[actor.entity_id]
+    return actor
+
+
+def _status_effects_for(
+    state: GameState,
+    actor: Character | Monster | Combatant | None,
+) -> list[dict[str, Any]]:
+    if actor is None:
+        return []
+    effects = list(getattr(actor, "status_effects", []))
+    if isinstance(actor, Combatant) and actor.entity_id in state.characters:
+        effects.extend(state.characters[actor.entity_id].status_effects)
+    if isinstance(actor, Combatant) and actor.entity_id in state.monsters:
+        effects.extend(state.monsters[actor.entity_id].status_effects)
+    return effects
 
 
 def _target_type(action: ActionDefinition) -> str:

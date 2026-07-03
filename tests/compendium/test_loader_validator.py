@@ -3991,10 +3991,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["monk"].subclasses["open_hand"]["features"] == [
         "Open Hand Technique",
         "Wholeness of Body",
+        "Fleet Step",
     ]
     assert compendium.classes["monk"].subclasses["open_hand"]["actions"] == [
         "srd.open_hand_technique",
         "srd.wholeness_of_body",
+        "srd.fleet_step",
     ]
     open_hand = compendium.action("srd.open_hand_technique")
     assert open_hand.requirements == {
@@ -4053,6 +4055,24 @@ def test_compendium_loads_srd_actions() -> None:
         "subclass": "open_hand",
     }
     assert wholeness.automation[1]["minimum_amount"] == 1
+    assert compendium.classes["monk"].levels["11"]["features"] == ["Subclass Feature"]
+    assert "srd.fleet_step" in compendium.classes["monk"].levels["11"]["actions"]
+    fleet_step = compendium.action("srd.fleet_step")
+    assert fleet_step.action_economy == "none"
+    assert fleet_step.requirements == {
+        "class": "monk",
+        "class_level_min": 11,
+        "subclass": "open_hand",
+    }
+    assert fleet_step.properties == {
+        "trigger": "bonus_action_other_than_step_of_the_wind",
+        "allows_immediate_step_of_the_wind": True,
+        "step_of_the_wind_actions": [
+            "srd.step_of_the_wind",
+            "srd.step_of_the_wind_focus",
+        ],
+        "does_not_waive_focus_cost": True,
+    }
     assert compendium.classes["monk"].levels["7"]["features"] == ["Evasion"]
     assert "srd.evasion" in compendium.classes["monk"].levels["7"]["actions"]
     evasion = compendium.action("srd.evasion")

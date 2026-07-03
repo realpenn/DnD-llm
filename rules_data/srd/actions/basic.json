@@ -4510,6 +4510,40 @@
             "audit_label": "Wholeness of Body"
         },
         {
+            "id": "srd.fleet_step",
+            "name": "Fleet Step",
+            "localization": {
+                "en": "Fleet Step",
+                "zh": "迅捷步伐",
+                "aliases": ["Open Hand Fleet Step", "空手道迅捷步伐"]
+            },
+            "source": "SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 11: Fleet Step",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 11, "subclass": "open_hand"},
+            "properties": {
+                "trigger": "bonus_action_other_than_step_of_the_wind",
+                "allows_immediate_step_of_the_wind": true,
+                "step_of_the_wind_actions": [
+                    "srd.step_of_the_wind",
+                    "srd.step_of_the_wind_focus"
+                ],
+                "does_not_waive_focus_cost": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when an Open Hand Monk takes a Bonus Action other than Step of the Wind, the Monk can also use Step of the Wind immediately after that Bonus Action."
+                }
+            ],
+            "audit_label": "Fleet Step"
+        },
+        {
             "id": "srd.evasion",
             "name": "Evasion",
             "localization": {

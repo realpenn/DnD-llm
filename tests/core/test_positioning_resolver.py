@@ -1766,6 +1766,57 @@ def test_resolver_uses_encounter_budget_for_steady_aim_bonus_action(make_state) 
     assert result.reason == "insufficient action economy"
 
 
+def test_resolver_accepts_fleet_step_when_bonus_action_is_spent(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.step_of_the_wind", "srd.fleet_step"])
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 0,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "fleet-step-window",
+            "source_ref": "SRD 5.2.1",
+            "source_action_id": "srd.fleet_step",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "fleet_step_available",
+            "duration": {"until": "end_of_current_turn"},
+            "tick_on": "self_turn_end",
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="step",
+            candidate_action_id="srd.step_of_the_wind",
+            params={"use_fleet_step": True},
+        )
+    )
+    missing_param = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="step",
+            candidate_action_id="srd.step_of_the_wind",
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert missing_param.status == "rejected"
+    assert missing_param.reason == "insufficient action economy"
+
+
 def test_resolver_rejects_font_of_magic_conversion_above_sorcery_point_cap(
     make_state,
 ) -> None:

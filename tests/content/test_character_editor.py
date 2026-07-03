@@ -14,6 +14,7 @@ from dnd_llm.core.rules.class_features import (
     monk_deflect_energy_applies,
     monk_forgoing_food_drink_exhaustion_immunity,
     monk_heightened_focus_applies,
+    monk_open_hand_fleet_step_applies,
     monk_self_restoration_applies,
     ranger_roving_climb_speed_ft,
     ranger_roving_speed_bonus,
@@ -1852,6 +1853,32 @@ def test_natural_language_character_edit_assigns_open_hand_wholeness_of_body() -
     assert "srd.empowered_strikes" in result.character.actions
     assert "srd.wholeness_of_body" in result.character.actions
     assert result.character.resources["srd.resource.wholeness_of_body"] == 3
+
+
+def test_natural_language_character_edit_assigns_open_hand_fleet_step() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk11 子职 open_hand")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 11}
+    assert result.character.subclasses == {"monk": "open_hand"}
+    assert "srd.fleet_step" in result.character.actions
+    assert monk_open_hand_fleet_step_applies(result.character) is True
+
+
+def test_natural_language_character_edit_does_not_assign_fleet_step_to_plain_monk() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 monk11")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 11}
+    assert result.character.subclasses == {}
+    assert "srd.fleet_step" not in result.character.actions
+    assert monk_open_hand_fleet_step_applies(result.character) is False
 
 
 def test_natural_language_character_edit_assigns_ranger_favored_enemy_uses() -> None:
