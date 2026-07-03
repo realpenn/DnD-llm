@@ -39,6 +39,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blade_barrier",
         "srd.chain_lightning",
         "srd.fire_storm",
+        "srd.forcecage",
         "srd.meteor_swarm",
         "srd.flame_strike",
         "srd.circle_of_death",
@@ -1134,6 +1135,52 @@ def test_compendium_loads_srd_actions() -> None:
                 },
             },
         },
+    ]
+    forcecage = compendium.action("srd.forcecage")
+    assert forcecage.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "warlock", "wizard"],
+    }
+    assert forcecage.properties["spell_classes"] == ["bard", "warlock", "wizard"]
+    assert forcecage.properties["material_component"] == {
+        "description": "ruby dust worth 1,500+ GP",
+        "consumed": True,
+    }
+    assert forcecage.range == {"normal_ft": 100, "shape": "cube"}
+    assert forcecage.target_policy == {"min": 0, "max": 0, "harmful": True}
+    assert forcecage.cost.gold == 1500
+    assert forcecage.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "forcecage_prison",
+            "scope": {"target": "area", "range_ft": 100, "shape": "cube"},
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "immobile": True,
+                "invisible": True,
+                "composed_of_magical_force": True,
+                "form_options": ["cage", "solid_box"],
+                "cage_max_side_ft": 20,
+                "cage_bar_diameter_inches": 0.5,
+                "cage_bar_spacing_inches": 0.5,
+                "solid_box_max_side_ft": 10,
+                "solid_box_blocks_matter": True,
+                "solid_box_blocks_spells_in_or_out": True,
+                "creatures_completely_inside_area_are_trapped": True,
+                "pushes_partial_or_too_large_creatures_outward": True,
+                "cannot_leave_by_nonmagical_means": True,
+                "teleport_or_interplanar_exit_requires_save": {
+                    "ability": "cha",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "success": "magic_can_exit_cage",
+                    "failure": "does_not_exit_and_spell_or_effect_is_wasted",
+                },
+                "extends_into_ethereal_plane": True,
+                "blocks_ethereal_travel": True,
+                "not_dispelled_by_dispel_magic": True,
+            },
+        }
     ]
     wall_of_thorns = compendium.action("srd.wall_of_thorns")
     assert wall_of_thorns.requirements == {
@@ -3349,6 +3396,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.cone_of_cold",
         "srd.spell.chain_lightning",
         "srd.spell.fire_storm",
+        "srd.spell.forcecage",
         "srd.spell.meteor_swarm",
         "srd.spell.flame_strike",
         "srd.spell.disintegrate",

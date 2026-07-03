@@ -10198,6 +10198,100 @@ def test_wall_of_force_spends_slot_and_records_concentration_barrier(make_state)
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
 
 
+def test_forcecage_consumes_ruby_dust_and_records_concentration_prison(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 1500
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.forcecage",
+        [],
+        7,
+        idempotency_key="cast-forcecage",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_7", "gold"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.forcecage"
+    assert effect["effect_type"] == "forcecage_prison"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "area", "range_ft": 100, "shape": "cube"}
+    assert effect["duration"] == {"until": "concentration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "immobile": True,
+        "invisible": True,
+        "composed_of_magical_force": True,
+        "form_options": ["cage", "solid_box"],
+        "cage_max_side_ft": 20,
+        "cage_bar_diameter_inches": 0.5,
+        "cage_bar_spacing_inches": 0.5,
+        "solid_box_max_side_ft": 10,
+        "solid_box_blocks_matter": True,
+        "solid_box_blocks_spells_in_or_out": True,
+        "creatures_completely_inside_area_are_trapped": True,
+        "pushes_partial_or_too_large_creatures_outward": True,
+        "cannot_leave_by_nonmagical_means": True,
+        "teleport_or_interplanar_exit_requires_save": {
+            "ability": "cha",
+            "dc_from": {"spell_save_dc": "actor"},
+            "success": "magic_can_exit_cage",
+            "failure": "does_not_exit_and_spell_or_effect_is_wasted",
+        },
+        "extends_into_ethereal_plane": True,
+        "blocks_ethereal_travel": True,
+        "not_dispelled_by_dispel_magic": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "forcecage_prison"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
+def test_forcecage_requires_consumed_component_before_spending_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 1499
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools.cast_spell(
+            "pc1",
+            "srd.forcecage",
+            [],
+            7,
+            idempotency_key="cast-forcecage-no-ruby-dust",
+        )
+
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 1499
+    assert state.world.active_effects == []
+
+
 def test_wall_of_stone_spends_slot_and_records_supported_stone_wall(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

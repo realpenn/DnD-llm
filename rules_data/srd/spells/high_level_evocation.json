@@ -433,6 +433,81 @@
       }
     },
     {
+      "id": "srd.spell.forcecage",
+      "name": "Forcecage",
+      "localization": {
+        "en": "Forcecage",
+        "zh": "力场牢笼",
+        "aliases": ["力牢术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "evocation",
+      "classes": ["bard", "warlock", "wizard"],
+      "action": {
+        "id": "srd.forcecage",
+        "name": "Forcecage",
+        "localization": {
+          "en": "Forcecage",
+          "zh": "力场牢笼",
+          "aliases": ["力牢术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 100, "shape": "cube" },
+        "target_policy": { "min": 0, "max": 0, "harmful": true },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "warlock", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "ruby dust worth 1,500+ GP",
+            "consumed": true
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7, "gold": 1500 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "forcecage_prison",
+            "scope": { "target": "area", "range_ft": 100, "shape": "cube" },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "immobile": true,
+              "invisible": true,
+              "composed_of_magical_force": true,
+              "form_options": ["cage", "solid_box"],
+              "cage_max_side_ft": 20,
+              "cage_bar_diameter_inches": 0.5,
+              "cage_bar_spacing_inches": 0.5,
+              "solid_box_max_side_ft": 10,
+              "solid_box_blocks_matter": true,
+              "solid_box_blocks_spells_in_or_out": true,
+              "creatures_completely_inside_area_are_trapped": true,
+              "pushes_partial_or_too_large_creatures_outward": true,
+              "cannot_leave_by_nonmagical_means": true,
+              "teleport_or_interplanar_exit_requires_save": {
+                "ability": "cha",
+                "dc_from": { "spell_save_dc": "actor" },
+                "success": "magic_can_exit_cage",
+                "failure": "does_not_exit_and_spell_or_effect_is_wasted"
+              },
+              "extends_into_ethereal_plane": true,
+              "blocks_ethereal_travel": true,
+              "not_dispelled_by_dispel_magic": true
+            }
+          }
+        ],
+        "audit_label": "Forcecage"
+      }
+    },
+    {
       "id": "srd.spell.meteor_swarm",
       "name": "Meteor Swarm",
       "localization": { "en": "Meteor Swarm", "zh": "流星爆", "aliases": [] },
