@@ -1,0 +1,4122 @@
+{
+    "items": [
+        {
+            "id": "srd.move",
+            "name": "Move",
+            "localization": {"en": "Move", "zh": "移动", "aliases": ["走到", "移动到", "前进"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "movement",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "move"},
+                {"type": "text_result", "text": "The actor moves along a validated route."}
+            ],
+            "audit_label": "Move"
+        },
+        {
+            "id": "srd.shortsword_attack",
+            "name": "Shortsword Attack",
+            "localization": {
+                "en": "Shortsword Attack",
+                "zh": "短剑攻击",
+                "aliases": ["短剑", "刺击"]
+            },
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.shortsword",
+                "weapon_category": "melee",
+                "weapon_properties": ["finesse", "light"]
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "attack_bonus": 5, "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice": "1d6+3",
+                    "damage_type": "piercing",
+                    "ability": "dex",
+                    "requires_hit": true
+                },
+                {"type": "text_result", "text": "A clean weapon attack was resolved."}
+            ],
+            "audit_label": "Shortsword Attack"
+        },
+        {
+            "id": "srd.longsword_attack",
+            "name": "Longsword Attack",
+            "localization": {
+                "en": "Longsword Attack",
+                "zh": "长剑攻击",
+                "aliases": ["长剑", "挥砍"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Longsword",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {"weapon_item_id": "srd.longsword", "weapon_category": "melee"},
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "attack_bonus": 4, "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d8+2",
+                    "damage_type": "slashing",
+                    "ability": "str",
+                    "requires_hit": true
+                },
+                {"type": "text_result", "text": "A longsword weapon attack was resolved."}
+            ],
+            "audit_label": "Longsword Attack"
+        },
+        {
+            "id": "srd.monk_unarmed_strike",
+            "name": "Monk Unarmed Strike",
+            "localization": {
+                "en": "Monk Unarmed Strike",
+                "zh": "武僧徒手打击",
+                "aliases": ["Unarmed Strike", "徒手打击", "武术徒手打击"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 1: Martial Arts",
+            "rules_version": "srd-5.2.1",
+            "action_type": "unarmed_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"class": "monk", "class_level_min": 1},
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice_from": {"class_feature": "monk_martial_arts_die"},
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "bludgeoning",
+                    "ability": "dex",
+                    "requires_hit": true
+                },
+                {
+                    "type": "text_result",
+                    "text": "The monk makes an Unarmed Strike using Martial Arts."
+                }
+            ],
+            "audit_label": "Monk Unarmed Strike"
+        },
+        {
+            "id": "srd.monk_unarmored_defense",
+            "name": "Unarmored Defense",
+            "localization": {
+                "en": "Monk Unarmored Defense",
+                "zh": "武僧无甲防御",
+                "aliases": ["Monk Unarmored Defense", "武僧无甲防御"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 1: Unarmored Defense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Monk who is not wearing armor or wielding a Shield uses a base Armor Class of 10 plus Dexterity and Wisdom modifiers."
+                }
+            ],
+            "audit_label": "Monk Unarmored Defense"
+        },
+        {
+            "id": "srd.monk_unarmored_movement",
+            "name": "Unarmored Movement",
+            "localization": {
+                "en": "Monk Unarmored Movement",
+                "zh": "武僧无甲移动",
+                "aliases": ["Unarmored Movement", "武僧无甲移动"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Unarmored Movement",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Monk's Speed increases while the Monk isn't wearing armor or wielding a Shield."
+                }
+            ],
+            "audit_label": "Monk Unarmored Movement"
+        },
+        {
+            "id": "srd.uncanny_metabolism",
+            "name": "Uncanny Metabolism",
+            "localization": {
+                "en": "Uncanny Metabolism",
+                "zh": "奇异代谢",
+                "aliases": ["Uncanny Metabolism", "武僧奇异代谢"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Uncanny Metabolism",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Monk rolls Initiative, the Monk can regain all expended Focus Points and regain Hit Points equal to Monk level plus a Martial Arts die roll once before a Long Rest."
+                }
+            ],
+            "audit_label": "Uncanny Metabolism"
+        },
+        {
+            "id": "srd.rage",
+            "name": "Rage",
+            "localization": {
+                "en": "Rage",
+                "zh": "狂暴",
+                "aliases": ["Barbarian Rage", "进入狂暴", "野蛮人狂暴"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 1: Rage",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.rage": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "raging",
+                    "duration": {"until": "end_of_next_turn", "remaining_ticks": 2},
+                    "tick_on": "self_turn_end",
+                    "passive_modifiers": {
+                        "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+                        "weapon_damage_bonus_by_ability": {"str": 2},
+                        "ability_check_advantage_abilities": ["str"],
+                        "saving_throw_advantage_abilities": ["str"],
+                        "blocks_spellcasting": true,
+                        "clear_existing_concentration": true
+                    }
+                },
+                {"type": "text_result", "text": "The barbarian enters Rage as a Bonus Action."}
+            ],
+            "audit_label": "Rage"
+        },
+        {
+            "id": "srd.barbarian_unarmored_defense",
+            "name": "Unarmored Defense",
+            "localization": {
+                "en": "Barbarian Unarmored Defense",
+                "zh": "野蛮人无甲防御",
+                "aliases": ["Barbarian Unarmored Defense", "野蛮人无甲防御"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 1: Unarmored Defense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Barbarian who is not wearing armor uses a base Armor Class of 10 plus Dexterity and Constitution modifiers, and can use a Shield."
+                }
+            ],
+            "audit_label": "Barbarian Unarmored Defense"
+        },
+        {
+            "id": "srd.danger_sense",
+            "name": "Danger Sense",
+            "localization": {
+                "en": "Danger Sense",
+                "zh": "危险感知",
+                "aliases": ["Barbarian Danger Sense", "危险感知"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 2: Danger Sense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Barbarian has Advantage on Dexterity saving throws unless they have the Incapacitated condition."
+                }
+            ],
+            "audit_label": "Danger Sense"
+        },
+        {
+            "id": "srd.reckless_attack",
+            "name": "Reckless Attack",
+            "localization": {
+                "en": "Reckless Attack",
+                "zh": "鲁莽攻击",
+                "aliases": ["Barbarian Reckless Attack", "鲁莽进攻"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 2: Reckless Attack",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "reckless_attack",
+                    "duration": {"until": "start_of_next_turn"},
+                    "tick_on": "self_turn_start",
+                    "passive_modifiers": {
+                        "weapon_attack_advantage_by_ability": ["str"],
+                        "incoming_attack_advantage": true
+                    }
+                },
+                {
+                    "type": "text_result",
+                    "text": "The barbarian attacks recklessly until the start of their next turn."
+                }
+            ],
+            "audit_label": "Reckless Attack"
+        },
+        {
+            "id": "srd.primal_knowledge",
+            "name": "Primal Knowledge",
+            "localization": {
+                "en": "Primal Knowledge",
+                "zh": "原初知识",
+                "aliases": ["Barbarian Primal Knowledge", "野蛮人原初知识"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 3: Primal Knowledge",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 3},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Barbarian gains another Barbarian skill proficiency and, while Rage is active, can make Acrobatics, Intimidation, Perception, Stealth, or Survival checks as Strength checks."
+                }
+            ],
+            "audit_label": "Primal Knowledge"
+        },
+        {
+            "id": "srd.frenzy",
+            "name": "Frenzy",
+            "localization": {
+                "en": "Frenzy",
+                "zh": "狂乱",
+                "aliases": ["Berserker Frenzy", "狂战士狂乱"]
+            },
+            "source": "SRD 5.2.1 Barbarian Subclass: Path of the Berserker, Level 3: Frenzy",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 3, "subclass": "berserker"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Berserker Barbarian who uses Reckless Attack while Rage is active deals extra damage to the first target hit with a Strength-based weapon or Unarmed Strike on their turn."
+                }
+            ],
+            "audit_label": "Frenzy"
+        },
+        {
+            "id": "srd.innate_sorcery",
+            "name": "Innate Sorcery",
+            "localization": {
+                "en": "Innate Sorcery",
+                "zh": "天赋术法",
+                "aliases": ["Innate Sorcery", "术法天赋", "释放天赋术法"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 1: Innate Sorcery",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.innate_sorcery": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "innate_sorcery",
+                    "duration": {"until": "duration_1_minute"},
+                    "tick_on": "self_turn_end",
+                    "passive_modifiers": {
+                        "spell_save_dc_bonus": {"sorcerer": 1},
+                        "spell_attack_advantage_classes": ["sorcerer"]
+                    }
+                },
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer unleashes Innate Sorcery for 1 minute."
+                }
+            ],
+            "audit_label": "Innate Sorcery"
+        },
+        {
+            "id": "srd.font_of_magic_convert_slot_1",
+            "name": "Font of Magic: Convert Level 1 Slot",
+            "localization": {
+                "en": "Font of Magic: Convert Level 1 Slot",
+                "zh": "魔力泉源：转化1环法术位",
+                "aliases": ["转化1环法术位", "1环法术位转术法点"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 2: Font of Magic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 1},
+            "automation": [
+                {
+                    "type": "resource_delta",
+                    "resource": "srd.resource.sorcery_points",
+                    "delta": 1,
+                    "max_from": {"class_level": "sorcerer"}
+                },
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer converts a level 1 spell slot into 1 Sorcery Point."
+                }
+            ],
+            "audit_label": "Font of Magic: Convert Level 1 Slot"
+        },
+        {
+            "id": "srd.font_of_magic_convert_slot_2",
+            "name": "Font of Magic: Convert Level 2 Slot",
+            "localization": {
+                "en": "Font of Magic: Convert Level 2 Slot",
+                "zh": "魔力泉源：转化2环法术位",
+                "aliases": ["转化2环法术位", "2环法术位转术法点"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 2: Font of Magic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 3},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 2},
+            "automation": [
+                {
+                    "type": "resource_delta",
+                    "resource": "srd.resource.sorcery_points",
+                    "delta": 2,
+                    "max_from": {"class_level": "sorcerer"}
+                },
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer converts a level 2 spell slot into 2 Sorcery Points."
+                }
+            ],
+            "audit_label": "Font of Magic: Convert Level 2 Slot"
+        },
+        {
+            "id": "srd.font_of_magic_convert_slot_3",
+            "name": "Font of Magic: Convert Level 3 Slot",
+            "localization": {
+                "en": "Font of Magic: Convert Level 3 Slot",
+                "zh": "魔力泉源：转化3环法术位",
+                "aliases": ["转化3环法术位", "3环法术位转术法点"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 2: Font of Magic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 3},
+            "automation": [
+                {
+                    "type": "resource_delta",
+                    "resource": "srd.resource.sorcery_points",
+                    "delta": 3,
+                    "max_from": {"class_level": "sorcerer"}
+                },
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer converts a level 3 spell slot into 3 Sorcery Points."
+                }
+            ],
+            "audit_label": "Font of Magic: Convert Level 3 Slot"
+        },
+        {
+            "id": "srd.font_of_magic_create_slot_1",
+            "name": "Font of Magic: Create Level 1 Slot",
+            "localization": {
+                "en": "Font of Magic: Create Level 1 Slot",
+                "zh": "魔力泉源：创造1环法术位",
+                "aliases": ["创造1环法术位", "术法点造1环法术位"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 2: Font of Magic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.sorcery_points": 2}},
+            "automation": [
+                {"type": "resource_delta", "resource": "spell_slot_1", "delta": 1},
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer transforms 2 Sorcery Points into one level 1 spell slot."
+                }
+            ],
+            "audit_label": "Font of Magic: Create Level 1 Slot"
+        },
+        {
+            "id": "srd.font_of_magic_create_slot_2",
+            "name": "Font of Magic: Create Level 2 Slot",
+            "localization": {
+                "en": "Font of Magic: Create Level 2 Slot",
+                "zh": "魔力泉源：创造2环法术位",
+                "aliases": ["创造2环法术位", "术法点造2环法术位"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 2: Font of Magic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 3},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.sorcery_points": 3}},
+            "automation": [
+                {"type": "resource_delta", "resource": "spell_slot_2", "delta": 1},
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer transforms 3 Sorcery Points into one level 2 spell slot."
+                }
+            ],
+            "audit_label": "Font of Magic: Create Level 2 Slot"
+        },
+        {
+            "id": "srd.font_of_magic_create_slot_3",
+            "name": "Font of Magic: Create Level 3 Slot",
+            "localization": {
+                "en": "Font of Magic: Create Level 3 Slot",
+                "zh": "魔力泉源：创造3环法术位",
+                "aliases": ["创造3环法术位", "术法点造3环法术位"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 2: Font of Magic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.sorcery_points": 5}},
+            "automation": [
+                {"type": "resource_delta", "resource": "spell_slot_3", "delta": 1},
+                {
+                    "type": "text_result",
+                    "text": "The sorcerer transforms 5 Sorcery Points into one level 3 spell slot."
+                }
+            ],
+            "audit_label": "Font of Magic: Create Level 3 Slot"
+        },
+        {
+            "id": "srd.sorcerous_restoration",
+            "name": "Sorcerous Restoration",
+            "localization": {
+                "en": "Sorcerous Restoration",
+                "zh": "术法恢复",
+                "aliases": ["Sorcerous Restoration", "术法师术法恢复"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Class Features: Level 5: Sorcerous Restoration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Sorcerer can regain expended Sorcery Points when finishing a Short Rest, up to half Sorcerer level rounded down, once before a Long Rest."
+                }
+            ],
+            "audit_label": "Sorcerous Restoration"
+        },
+        {
+            "id": "srd.eldritch_invocations",
+            "name": "Eldritch Invocations",
+            "localization": {
+                "en": "Eldritch Invocations",
+                "zh": "魔能祈唤",
+                "aliases": ["Eldritch Invocation", "魔能祷唤", "异界祈唤"]
+            },
+            "source": "SRD 5.2.1 Warlock Class Features: Level 1: Eldritch Invocations",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Warlock has Eldritch Invocations and must explicitly choose invocation options for their benefits."
+                }
+            ],
+            "audit_label": "Eldritch Invocations"
+        },
+        {
+            "id": "srd.eldritch_mind",
+            "name": "Eldritch Mind",
+            "localization": {
+                "en": "Eldritch Mind",
+                "zh": "魔能心智",
+                "aliases": ["Eldritch Mind", "异界心智", "专注优势"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Eldritch Mind",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "The Warlock has Advantage on Constitution saving throws made to maintain Concentration."
+                }
+            ],
+            "audit_label": "Eldritch Mind"
+        },
+        {
+            "id": "srd.agonizing_blast",
+            "name": "Agonizing Blast",
+            "localization": {
+                "en": "Agonizing Blast",
+                "zh": "苦痛魔爆",
+                "aliases": ["Agonizing Blast", "痛苦魔爆"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Agonizing Blast",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock add Charisma modifier to the damage rolls of the explicitly chosen damaging Warlock cantrip."
+                }
+            ],
+            "audit_label": "Agonizing Blast"
+        },
+        {
+            "id": "srd.eldritch_spear",
+            "name": "Eldritch Spear",
+            "localization": {
+                "en": "Eldritch Spear",
+                "zh": "魔能长矛",
+                "aliases": ["Eldritch Spear", "异界长矛"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Eldritch Spear",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation increases the range of the explicitly chosen damaging Warlock cantrip with range 10+ feet by 30 feet times Warlock level."
+                }
+            ],
+            "audit_label": "Eldritch Spear"
+        },
+        {
+            "id": "srd.repelling_blast",
+            "name": "Repelling Blast",
+            "localization": {
+                "en": "Repelling Blast",
+                "zh": "斥退魔爆",
+                "aliases": ["Repelling Blast", "推斥魔爆"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Repelling Blast",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock push a Large or smaller creature up to 10 feet straight away when hitting it with the explicitly chosen damaging Warlock cantrip that requires an attack roll."
+                }
+            ],
+            "audit_label": "Repelling Blast"
+        },
+        {
+            "id": "srd.armor_of_shadows",
+            "name": "Armor of Shadows",
+            "localization": {
+                "en": "Armor of Shadows",
+                "zh": "影之护甲",
+                "aliases": ["Armor of Shadows", "阴影护甲", "暗影护甲"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Armor of Shadows",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Mage Armor on themself without expending a spell slot."
+                }
+            ],
+            "audit_label": "Armor of Shadows"
+        },
+        {
+            "id": "srd.armor_of_shadows_mage_armor",
+            "name": "Armor of Shadows: Mage Armor",
+            "localization": {
+                "en": "Armor of Shadows: Mage Armor",
+                "zh": "影之护甲：法师护甲",
+                "aliases": ["Armor of Shadows Mage Armor", "影之护甲法师护甲"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Armor of Shadows; SRD 5.2.1 Mage Armor",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1, "spell_level": 1},
+            "properties": {
+                "spell_definition_id": "srd.spell.mage_armor",
+                "spell_level": 1,
+                "armor_of_shadows_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {"armor_class_formula": "13+dex_modifier"},
+                    "duration": {"until": "duration_8_hours"},
+                    "tick_on": "armor_class_query"
+                }
+            ],
+            "audit_label": "Armor of Shadows: Mage Armor"
+        },
+        {
+            "id": "srd.ascendant_step",
+            "name": "Ascendant Step",
+            "localization": {
+                "en": "Ascendant Step",
+                "zh": "升腾步伐",
+                "aliases": ["Ascendant Step", "升阶步伐", "飞升步伐"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Ascendant Step",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Levitate on themself without expending a spell slot."
+                }
+            ],
+            "audit_label": "Ascendant Step"
+        },
+        {
+            "id": "srd.ascendant_step_levitate",
+            "name": "Ascendant Step: Levitate",
+            "localization": {
+                "en": "Ascendant Step: Levitate",
+                "zh": "升腾步伐：浮空术",
+                "aliases": ["Ascendant Step Levitate", "升腾步伐浮空术"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Ascendant Step; SRD 5.2.1 Levitate",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5, "spell_level": 2},
+            "properties": {
+                "spell_definition_id": "srd.spell.levitate",
+                "spell_level": 2,
+                "ascendant_step_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {"levitated": true, "vertical_move_ft": 20},
+                    "duration": {"until": "concentration_10_minutes"},
+                    "tick_on": "movement",
+                    "concentration": true
+                }
+            ],
+            "audit_label": "Ascendant Step: Levitate"
+        },
+        {
+            "id": "srd.fiendish_vigor",
+            "name": "Fiendish Vigor",
+            "localization": {
+                "en": "Fiendish Vigor",
+                "zh": "邪魔活力",
+                "aliases": ["Fiendish Vigor", "魔鬼活力", "恶魔活力"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Fiendish Vigor",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast False Life on themself without expending a spell slot, taking the highest number on the Temporary Hit Points die."
+                }
+            ],
+            "audit_label": "Fiendish Vigor"
+        },
+        {
+            "id": "srd.fiendish_vigor_false_life",
+            "name": "Fiendish Vigor: False Life",
+            "localization": {
+                "en": "Fiendish Vigor: False Life",
+                "zh": "邪魔活力：虚假生命",
+                "aliases": ["Fiendish Vigor False Life", "邪魔活力虚假生命"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Fiendish Vigor; SRD 5.2.1 False Life",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2, "spell_level": 1},
+            "properties": {
+                "spell_definition_id": "srd.spell.false_life",
+                "spell_level": 1,
+                "fiendish_vigor_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "temp_hp", "amount": 12}
+            ],
+            "audit_label": "Fiendish Vigor: False Life"
+        },
+        {
+            "id": "srd.mask_of_many_faces",
+            "name": "Mask of Many Faces",
+            "localization": {
+                "en": "Mask of Many Faces",
+                "zh": "千面面具",
+                "aliases": ["Mask of Many Faces", "众面假面"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Mask of Many Faces",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Disguise Self without expending a spell slot."
+                }
+            ],
+            "audit_label": "Mask of Many Faces"
+        },
+        {
+            "id": "srd.mask_of_many_faces_disguise_self",
+            "name": "Mask of Many Faces: Disguise Self",
+            "localization": {
+                "en": "Mask of Many Faces: Disguise Self",
+                "zh": "千面面具：易容术",
+                "aliases": ["Mask of Many Faces Disguise Self", "千面面具易容术"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Mask of Many Faces; SRD 5.2.1 Disguise Self",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2, "spell_level": 1},
+            "properties": {
+                "spell_definition_id": "srd.spell.disguise_self",
+                "spell_level": 1,
+                "mask_of_many_faces_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "illusory_disguise",
+                    "scope": {"target": "self"},
+                    "duration": {"until": "duration_1_hour"},
+                    "metadata": {"requires_investigation_to_notice": true}
+                }
+            ],
+            "audit_label": "Mask of Many Faces: Disguise Self"
+        },
+        {
+            "id": "srd.misty_visions",
+            "name": "Misty Visions",
+            "localization": {
+                "en": "Misty Visions",
+                "zh": "迷雾幻象",
+                "aliases": ["Misty Visions", "雾影幻象"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Misty Visions",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Silent Image without expending a spell slot."
+                }
+            ],
+            "audit_label": "Misty Visions"
+        },
+        {
+            "id": "srd.misty_visions_silent_image",
+            "name": "Misty Visions: Silent Image",
+            "localization": {
+                "en": "Misty Visions: Silent Image",
+                "zh": "迷雾幻象：无声幻影",
+                "aliases": ["Misty Visions Silent Image", "迷雾幻象无声幻影"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Misty Visions; SRD 5.2.1 Silent Image",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"normal_ft": 60},
+            "target_policy": {"min": 0, "max": 0, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2, "spell_level": 1},
+            "properties": {
+                "spell_definition_id": "srd.spell.silent_image",
+                "spell_level": 1,
+                "misty_visions_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "silent_illusion",
+                    "scope": {"target": "point", "range_ft": 60, "cube_ft": 15},
+                    "duration": {"until": "concentration_10_minutes"},
+                    "metadata": {"visual_only": true, "concentration": true}
+                }
+            ],
+            "audit_label": "Misty Visions: Silent Image"
+        },
+        {
+            "id": "srd.one_with_shadows",
+            "name": "One with Shadows",
+            "localization": {
+                "en": "One with Shadows",
+                "zh": "影中合一",
+                "aliases": ["One with Shadows", "与影合一", "融入阴影"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: One with Shadows",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Invisibility on themself without expending a spell slot while in an area of Dim Light or Darkness."
+                }
+            ],
+            "audit_label": "One with Shadows"
+        },
+        {
+            "id": "srd.one_with_shadows_invisibility",
+            "name": "One with Shadows: Invisibility",
+            "localization": {
+                "en": "One with Shadows: Invisibility",
+                "zh": "影中合一：隐形术",
+                "aliases": ["One with Shadows Invisibility", "影中合一隐形术"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: One with Shadows; SRD 5.2.1 Invisibility",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5, "spell_level": 2},
+            "properties": {
+                "spell_definition_id": "srd.spell.invisibility",
+                "spell_level": 2,
+                "one_with_shadows_free_cast": true,
+                "requires_dim_light_or_darkness": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "invisible",
+                    "duration": {"until": "duration_1_hour_or_attacks_or_casts"},
+                    "tick_on": "target_action",
+                    "concentration": true
+                }
+            ],
+            "audit_label": "One with Shadows: Invisibility"
+        },
+        {
+            "id": "srd.gaze_of_two_minds",
+            "name": "Gaze of Two Minds",
+            "localization": {
+                "en": "Gaze of Two Minds",
+                "zh": "双心凝视",
+                "aliases": ["Gaze of Two Minds", "双重心灵凝视", "双心视界"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Gaze of Two Minds",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock use a Bonus Action to touch a willing creature and perceive through its senses until the end of the Warlock's next turn; subsequent Bonus Actions can maintain the connection while on the same plane, and spells can be cast as if from either creature's space while within 60 feet of each other."
+                }
+            ],
+            "audit_label": "Gaze of Two Minds"
+        },
+        {
+            "id": "srd.gaze_of_two_minds_touch",
+            "name": "Gaze of Two Minds: Touch",
+            "localization": {
+                "en": "Gaze of Two Minds: Touch",
+                "zh": "双心凝视：触碰",
+                "aliases": ["Gaze of Two Minds Touch", "双心凝视触碰", "双重心灵凝视触碰"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Gaze of Two Minds",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5, "touch": true},
+            "target_policy": {"min": 1, "max": 1, "harmful": false, "exclude_self": true},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "properties": {
+                "requires_willing_target": true,
+                "requires_touch": true,
+                "gaze_of_two_minds_connection": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "world_effect",
+                    "effect_type": "gaze_of_two_minds_connection",
+                    "scope": {"target": "explicit"},
+                    "duration": {"until": "end_of_next_turn_or_not_maintained"},
+                    "metadata": {
+                        "perceive_through_target_senses": true,
+                        "benefits_from_target_special_senses": true,
+                        "can_cast_spells_from_target_space_within_60_ft": true,
+                        "same_plane_required_to_maintain": true,
+                        "requires_bonus_action_to_maintain": true,
+                        "initial_touch_required": true
+                    }
+                }
+            ],
+            "audit_label": "Gaze of Two Minds: Touch"
+        },
+        {
+            "id": "srd.otherworldly_leap",
+            "name": "Otherworldly Leap",
+            "localization": {
+                "en": "Otherworldly Leap",
+                "zh": "异界跃动",
+                "aliases": ["Otherworldly Leap", "异界跳跃"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Otherworldly Leap",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Jump on themself without expending a spell slot."
+                }
+            ],
+            "audit_label": "Otherworldly Leap"
+        },
+        {
+            "id": "srd.otherworldly_leap_jump",
+            "name": "Otherworldly Leap: Jump",
+            "localization": {
+                "en": "Otherworldly Leap: Jump",
+                "zh": "异界跃动：跳跃术",
+                "aliases": ["Otherworldly Leap Jump", "异界跃动跳跃术"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Otherworldly Leap; SRD 5.2.1 Jump",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2, "spell_level": 1},
+            "properties": {
+                "spell_definition_id": "srd.spell.jump",
+                "spell_level": 1,
+                "otherworldly_leap_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {"jump_distance_multiplier": 3},
+                    "duration": {"until": "duration_1_minute"},
+                    "tick_on": "movement"
+                }
+            ],
+            "audit_label": "Otherworldly Leap: Jump"
+        },
+        {
+            "id": "srd.devils_sight",
+            "name": "Devil's Sight",
+            "localization": {
+                "en": "Devil's Sight",
+                "zh": "魔鬼视界",
+                "aliases": ["Devil's Sight", "Devils Sight", "魔鬼视觉", "恶魔视界"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Devil's Sight",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock see normally in Dim Light and Darkness, both magical and nonmagical, within 120 feet."
+                }
+            ],
+            "audit_label": "Devil's Sight"
+        },
+        {
+            "id": "srd.lessons_of_the_first_ones",
+            "name": "Lessons of the First Ones",
+            "localization": {
+                "en": "Lessons of the First Ones",
+                "zh": "初民训诲",
+                "aliases": ["Lessons of the First Ones", "初民教诲", "始源训诲"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Lessons of the First Ones",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock gain one explicitly chosen Origin feat; repeat selections must choose different Origin feats."
+                }
+            ],
+            "audit_label": "Lessons of the First Ones"
+        },
+        {
+            "id": "srd.pact_of_the_chain",
+            "name": "Pact of the Chain",
+            "localization": {
+                "en": "Pact of the Chain",
+                "zh": "链之契约",
+                "aliases": ["Pact of the Chain", "Pact of Chain", "链契", "锁链契约"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Pact of the Chain",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock learn Find Familiar and cast it as a Magic action without expending a spell slot; special familiar forms are recorded from SRD only."
+                }
+            ],
+            "audit_label": "Pact of the Chain"
+        },
+        {
+            "id": "srd.investment_of_the_chain_master",
+            "name": "Investment of the Chain Master",
+            "localization": {
+                "en": "Investment of the Chain Master",
+                "zh": "锁链大师投资",
+                "aliases": ["Investment of the Chain Master", "链主投资", "链契大师投资"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Investment of the Chain Master",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "properties": {
+                "requires_pact_of_the_chain": true,
+                "familiar_aerial_or_aquatic_speed_ft": 40,
+                "familiar_quick_attack_bonus_action": true,
+                "familiar_damage_type_options": ["necrotic", "radiant"],
+                "familiar_uses_warlock_save_dc": true,
+                "familiar_reaction_resistance": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "When the Warlock casts Find Familiar, this invocation infuses the summoned familiar: the Warlock chooses a 40-foot Fly or Swim Speed, can command it to Attack as a Bonus Action, can make its Bludgeoning, Piercing, or Slashing damage Necrotic or Radiant, uses the Warlock's spell save DC for its saving throw effects, and can use a Reaction to grant it Resistance against damage."
+                }
+            ],
+            "audit_label": "Investment of the Chain Master"
+        },
+        {
+            "id": "srd.pact_of_the_tome",
+            "name": "Pact of the Tome",
+            "localization": {
+                "en": "Pact of the Tome",
+                "zh": "书之契约",
+                "aliases": ["Pact of the Tome", "Pact of Tome", "书契", "魔典契约", "影书契约"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Pact of the Tome",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "properties": {
+                "pact_of_the_tome": true,
+                "book_of_shadows": true,
+                "book_appears_at_end_of_short_or_long_rest": true,
+                "book_disappears_if_reconjured_or_warlock_dies": true,
+                "cantrip_choice_count": 3,
+                "ritual_choice_count": 2,
+                "ritual_spell_level": 1,
+                "chosen_spells_function_as_warlock_spells": true,
+                "book_spellcasting_focus": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation conjures a Book of Shadows at the end of a Short or Long Rest; while the book is on the Warlock's person, three explicitly chosen cantrips and two explicitly chosen level 1 Ritual spells are prepared, function as Warlock spells, and the book can be used as a Spellcasting Focus."
+                }
+            ],
+            "audit_label": "Pact of the Tome"
+        },
+        {
+            "id": "srd.pact_of_the_blade",
+            "name": "Pact of the Blade",
+            "localization": {
+                "en": "Pact of the Blade",
+                "zh": "刃之契约",
+                "aliases": ["Pact of the Blade", "Pact of Blade", "刃契", "刀锋契约"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Pact of the Blade",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock use a Bonus Action to conjure or bond with a Simple or Martial melee weapon as a pact weapon; the bonded weapon can be used as a Spellcasting Focus, and its attacks can use Charisma for attack and damage rolls and can deal Necrotic, Psychic, Radiant, or normal damage."
+                }
+            ],
+            "audit_label": "Pact of the Blade"
+        },
+        {
+            "id": "srd.pact_of_the_blade_weapon",
+            "name": "Pact of the Blade: Pact Weapon",
+            "localization": {
+                "en": "Pact of the Blade: Pact Weapon",
+                "zh": "刃之契约：契约武器",
+                "aliases": ["Pact of the Blade Pact Weapon", "刃之契约契约武器", "刃契武器"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Pact of the Blade",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true, "touch": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1},
+            "properties": {
+                "pact_of_the_blade_weapon": true,
+                "allowed_pact_weapon_action_ids": ["srd.longsword_attack", "srd.shortsword_attack"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": null,
+                    "passive_modifiers": {
+                        "pact_weapon": true,
+                        "pact_weapon_action_id": {"param": "pact_weapon_action_id"},
+                        "pact_weapon_attack_ability": "cha",
+                        "pact_weapon_damage_ability": "cha",
+                        "pact_weapon_damage_types": ["normal", "necrotic", "psychic", "radiant"],
+                        "pact_weapon_spellcasting_focus": true,
+                        "pact_weapon_grants_proficiency": true,
+                        "pact_weapon_conjured_or_bonded": true
+                    },
+                    "duration": {"until": "pact_ends_or_replaced_or_warlock_dies"},
+                    "tick_on": "weapon_attack",
+                    "stacking_policy": "replace_condition"
+                }
+            ],
+            "audit_label": "Pact of the Blade: Pact Weapon"
+        },
+        {
+            "id": "srd.eldritch_smite",
+            "name": "Eldritch Smite",
+            "localization": {
+                "en": "Eldritch Smite",
+                "zh": "魔能斩击",
+                "aliases": ["Eldritch Smite", "魔能重击", "异界斩击"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Eldritch Smite",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "properties": {
+                "requires_pact_of_the_blade": true,
+                "requires_pact_weapon_hit": true,
+                "expends_pact_magic_spell_slot": true,
+                "extra_force_damage": "1d8_plus_1d8_per_pact_slot_level",
+                "prone_target_size_max": "huge"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "Once per turn when the Warlock hits a creature with their pact weapon, the Warlock can expend a Pact Magic spell slot to deal 1d8 Force damage plus 1d8 per spell slot level and can give a Huge or smaller target the Prone condition."
+                }
+            ],
+            "audit_label": "Eldritch Smite"
+        },
+        {
+            "id": "srd.thirsting_blade",
+            "name": "Thirsting Blade",
+            "localization": {
+                "en": "Thirsting Blade",
+                "zh": "渴饮魔刃",
+                "aliases": ["Thirsting Blade", "渴血之刃", "饥渴之刃"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Thirsting Blade",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "properties": {
+                "requires_pact_of_the_blade": true,
+                "pact_weapon_extra_attack": true,
+                "allowed_pact_weapon_action_ids": ["srd.longsword_attack", "srd.shortsword_attack"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation grants Extra Attack for the Warlock's pact weapon only, allowing two attacks with that weapon instead of one when taking the Attack action on the Warlock's turn."
+                }
+            ],
+            "audit_label": "Thirsting Blade"
+        },
+        {
+            "id": "srd.pact_of_the_chain_find_familiar",
+            "name": "Pact of the Chain: Find Familiar",
+            "localization": {
+                "en": "Pact of the Chain: Find Familiar",
+                "zh": "链之契约：寻找魔宠",
+                "aliases": ["Pact of the Chain Find Familiar", "链之契约寻找魔宠", "链契召唤魔宠"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Pact of the Chain; SRD 5.2.1 Find Familiar",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"normal_ft": 10},
+            "target_policy": {"min": 0, "max": 0, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 1, "spell_level": 1},
+            "properties": {
+                "spell_definition_id": "srd.spell.find_familiar",
+                "spell_level": 1,
+                "pact_of_the_chain_free_cast": true,
+                "familiar_special_forms": [
+                    "imp",
+                    "pseudodragon",
+                    "quasit",
+                    "skeleton",
+                    "sphinx_of_wonder",
+                    "sprite",
+                    "venomous_snake"
+                ]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "familiar_bound",
+                    "scope": {"target": "empty_space", "range_ft": 10},
+                    "duration": {"until": "dismissed_or_reduced_to_0_hp"},
+                    "metadata": {
+                        "spirit_form": true,
+                        "shares_senses": true,
+                        "pact_of_the_chain": true,
+                        "can_forgo_attack_for_familiar_reaction": true,
+                        "special_forms": [
+                            "imp",
+                            "pseudodragon",
+                            "quasit",
+                            "skeleton",
+                            "sphinx_of_wonder",
+                            "sprite",
+                            "venomous_snake"
+                        ]
+                    }
+                }
+            ],
+            "audit_label": "Pact of the Chain: Find Familiar"
+        },
+        {
+            "id": "srd.master_of_myriad_forms",
+            "name": "Master of Myriad Forms",
+            "localization": {
+                "en": "Master of Myriad Forms",
+                "zh": "万形大师",
+                "aliases": ["Master of Myriad Forms", "千形大师", "百变大师"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Master of Myriad Forms",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock cast Alter Self without expending a spell slot."
+                }
+            ],
+            "audit_label": "Master of Myriad Forms"
+        },
+        {
+            "id": "srd.master_of_myriad_forms_alter_self",
+            "name": "Master of Myriad Forms: Alter Self",
+            "localization": {
+                "en": "Master of Myriad Forms: Alter Self",
+                "zh": "万形大师：变身术",
+                "aliases": ["Master of Myriad Forms Alter Self", "万形大师变身术"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Master of Myriad Forms; SRD 5.2.1 Alter Self",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5, "spell_level": 2},
+            "properties": {
+                "spell_definition_id": "srd.spell.alter_self",
+                "spell_level": 2,
+                "master_of_myriad_forms_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {
+                        "alter_self_modes": [
+                            "aquatic_adaptation",
+                            "change_appearance",
+                            "natural_weapons"
+                        ]
+                    },
+                    "duration": {"until": "concentration_1_hour"},
+                    "tick_on": "self_turn",
+                    "concentration": true
+                }
+            ],
+            "audit_label": "Master of Myriad Forms: Alter Self"
+        },
+        {
+            "id": "srd.gift_of_the_depths",
+            "name": "Gift of the Depths",
+            "localization": {
+                "en": "Gift of the Depths",
+                "zh": "深海馈赠",
+                "aliases": ["Gift of the Depths", "深渊馈赠", "深海赠礼"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Gift of the Depths",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This invocation lets the Warlock breathe underwater, gives a Swim Speed equal to Speed, and lets the Warlock cast Water Breathing once without expending a spell slot; the free casting is regained after a Long Rest."
+                }
+            ],
+            "audit_label": "Gift of the Depths"
+        },
+        {
+            "id": "srd.gift_of_the_depths_water_breathing",
+            "name": "Gift of the Depths: Water Breathing",
+            "localization": {
+                "en": "Gift of the Depths: Water Breathing",
+                "zh": "深海馈赠：水下呼吸",
+                "aliases": ["Gift of the Depths Water Breathing", "深海馈赠水下呼吸"]
+            },
+            "source": "SRD 5.2.1 Warlock Eldritch Invocation Options: Gift of the Depths; SRD 5.2.1 Water Breathing",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 1, "max": 10, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 5, "spell_level": 3},
+            "properties": {
+                "spell_definition_id": "srd.spell.water_breathing",
+                "spell_level": 3,
+                "gift_of_the_depths_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.gift_of_the_depths": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {"can_breathe_underwater": true},
+                    "duration": {"until": "duration_24_hours"},
+                    "tick_on": "environment"
+                }
+            ],
+            "audit_label": "Gift of the Depths: Water Breathing"
+        },
+        {
+            "id": "srd.magical_cunning",
+            "name": "Magical Cunning",
+            "localization": {
+                "en": "Magical Cunning",
+                "zh": "魔法狡黠",
+                "aliases": ["Magical Cunning", "魔法狡黠", "恢复契约魔法"]
+            },
+            "source": "SRD 5.2.1 Warlock Class Features: Level 2: Magical Cunning",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.magical_cunning": 1}},
+            "automation": [
+                {"type": "pact_magic_recovery"},
+                {
+                    "type": "text_result",
+                    "text": "The warlock completes a 1-minute rite and regains expended Pact Magic spell slots up to half the maximum."
+                }
+            ],
+            "audit_label": "Magical Cunning"
+        },
+        {
+            "id": "srd.bardic_inspiration",
+            "name": "Bardic Inspiration",
+            "localization": {
+                "en": "Bardic Inspiration",
+                "zh": "吟游激励",
+                "aliases": ["Bardic Inspiration", "吟游灵感", "激励"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 1: Bardic Inspiration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 60},
+            "target_policy": {"min": 1, "max": 1, "harmful": false, "exclude_self": true},
+            "requirements": {"class": "bard", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.bardic_inspiration": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "passive_effect",
+                    "condition": "bardic_inspiration",
+                    "duration": {"until": "used_or_1_hour"},
+                    "tick_on": "target_use",
+                    "passive_modifiers": {
+                        "bardic_inspiration_die": {
+                            "class_level_die": "bard",
+                            "default": "d6",
+                            "tiers": [
+                                {"level": 5, "die": "d8"},
+                                {"level": 10, "die": "d10"},
+                                {"level": 15, "die": "d12"}
+                            ]
+                        },
+                        "applies_to": "failed_d20_test"
+                    }
+                },
+                {
+                    "type": "text_result",
+                    "text": "The target gains one Bardic Inspiration die for the next hour."
+                }
+            ],
+            "audit_label": "Bardic Inspiration"
+        },
+        {
+            "id": "srd.bard_expertise",
+            "name": "Expertise",
+            "localization": {
+                "en": "Bard Expertise",
+                "zh": "吟游诗人专精",
+                "aliases": ["Bard Expertise", "吟游诗人技能专精"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 2: Expertise",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Bard gains Expertise in two skill proficiencies of choice, doubling Proficiency Bonus for those skill checks."
+                }
+            ],
+            "audit_label": "Bard Expertise"
+        },
+        {
+            "id": "srd.jack_of_all_trades",
+            "name": "Jack of All Trades",
+            "localization": {
+                "en": "Jack of All Trades",
+                "zh": "博闻强记",
+                "aliases": ["Jack of All Trades", "吟游诗人博闻强记"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 2: Jack of All Trades",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Bard can add half Proficiency Bonus, rounded down, to ability checks that use a skill proficiency the Bard lacks and that do not otherwise use Proficiency Bonus."
+                }
+            ],
+            "audit_label": "Jack of All Trades"
+        },
+        {
+            "id": "srd.cutting_words",
+            "name": "Cutting Words",
+            "localization": {
+                "en": "Cutting Words",
+                "zh": "尖刻言辞",
+                "aliases": ["College of Lore Cutting Words", "逸闻学院尖刻言辞"]
+            },
+            "source": "SRD 5.2.1 Bard Subclass: College of Lore, Level 3: Cutting Words",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "reaction",
+            "range": {"normal_ft": 60},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"class": "bard", "class_level_min": 3, "subclass": "lore"},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.bardic_inspiration": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "cutting_words"},
+                {
+                    "type": "text_result",
+                    "text": "The Bardic Inspiration die is subtracted from the triggering damage roll, ability check, or attack roll."
+                }
+            ],
+            "audit_label": "Cutting Words"
+        },
+        {
+            "id": "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+            "name": "Font of Inspiration: Restore Bardic Inspiration with Level 1 Slot",
+            "localization": {
+                "en": "Font of Inspiration: Restore Bardic Inspiration with Level 1 Slot",
+                "zh": "灵感泉源：以1环法术位恢复吟游激励",
+                "aliases": ["灵感泉源恢复吟游激励", "1环法术位恢复吟游激励"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 5: Font of Inspiration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 1},
+            "automation": [
+                {
+                    "type": "resource_delta",
+                    "resource": "srd.resource.bardic_inspiration",
+                    "delta": 1,
+                    "max_from": {"class_resource": "srd.resource.bardic_inspiration"}
+                },
+                {
+                    "type": "text_result",
+                    "text": "The bard expends a level 1 spell slot to regain one use of Bardic Inspiration."
+                }
+            ],
+            "audit_label": "Font of Inspiration: Restore Bardic Inspiration"
+        },
+        {
+            "id": "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+            "name": "Font of Inspiration: Restore Bardic Inspiration with Level 2 Slot",
+            "localization": {
+                "en": "Font of Inspiration: Restore Bardic Inspiration with Level 2 Slot",
+                "zh": "灵感泉源：以2环法术位恢复吟游激励",
+                "aliases": ["2环法术位恢复吟游激励"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 5: Font of Inspiration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 2},
+            "automation": [
+                {
+                    "type": "resource_delta",
+                    "resource": "srd.resource.bardic_inspiration",
+                    "delta": 1,
+                    "max_from": {"class_resource": "srd.resource.bardic_inspiration"}
+                },
+                {
+                    "type": "text_result",
+                    "text": "The bard expends a level 2 spell slot to regain one use of Bardic Inspiration."
+                }
+            ],
+            "audit_label": "Font of Inspiration: Restore Bardic Inspiration"
+        },
+        {
+            "id": "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+            "name": "Font of Inspiration: Restore Bardic Inspiration with Level 3 Slot",
+            "localization": {
+                "en": "Font of Inspiration: Restore Bardic Inspiration with Level 3 Slot",
+                "zh": "灵感泉源：以3环法术位恢复吟游激励",
+                "aliases": ["3环法术位恢复吟游激励"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 5: Font of Inspiration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 3},
+            "automation": [
+                {
+                    "type": "resource_delta",
+                    "resource": "srd.resource.bardic_inspiration",
+                    "delta": 1,
+                    "max_from": {"class_resource": "srd.resource.bardic_inspiration"}
+                },
+                {
+                    "type": "text_result",
+                    "text": "The bard expends a level 3 spell slot to regain one use of Bardic Inspiration."
+                }
+            ],
+            "audit_label": "Font of Inspiration: Restore Bardic Inspiration"
+        },
+        {
+            "id": "srd.divine_order",
+            "name": "Divine Order",
+            "localization": {
+                "en": "Divine Order",
+                "zh": "神圣职责",
+                "aliases": [
+                    "Divine Order",
+                    "神圣秩序",
+                    "Protector",
+                    "Thaumaturge",
+                    "护卫",
+                    "奇术师"
+                ]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 1: Divine Order",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Cleric chooses Protector or Thaumaturge. Protector grants Martial weapon proficiency and Heavy armor training. Thaumaturge grants one extra Cleric cantrip and a Wisdom modifier bonus, minimum +1, to Intelligence (Arcana or Religion) checks."
+                }
+            ],
+            "audit_label": "Divine Order"
+        },
+        {
+            "id": "srd.divine_spark_heal",
+            "name": "Divine Spark: Heal",
+            "localization": {
+                "en": "Divine Spark: Heal",
+                "zh": "神圣火花：治疗",
+                "aliases": ["Divine Spark Heal", "神圣火花治疗", "引导神力治疗"]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 2: Channel Divinity, Divine Spark",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 1, "max": 1, "harmful": false, "exclude_self": true},
+            "requirements": {"class": "cleric", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "healing", "dice": "1d8", "bonus_from": {"ability_modifier": "wis"}},
+                {
+                    "type": "text_result",
+                    "text": "The cleric restores Hit Points with Divine Spark."
+                }
+            ],
+            "audit_label": "Divine Spark: Heal"
+        },
+        {
+            "id": "srd.divine_spark_radiant",
+            "name": "Divine Spark: Radiant",
+            "localization": {
+                "en": "Divine Spark: Radiant",
+                "zh": "神圣火花：光耀",
+                "aliases": ["Divine Spark Radiant", "神圣火花光耀", "引导神力光耀"]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 2: Channel Divinity, Divine Spark",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 1, "max": 1, "harmful": true, "exclude_self": true},
+            "requirements": {"class": "cleric", "class_level_min": 2},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "cleric"}},
+                {
+                    "type": "damage",
+                    "dice": "1d8",
+                    "bonus_from": {"ability_modifier": "wis"},
+                    "damage_type": "radiant",
+                    "save_half": true
+                },
+                {
+                    "type": "text_result",
+                    "text": "The cleric harms the target with Radiant Divine Spark."
+                }
+            ],
+            "audit_label": "Divine Spark: Radiant"
+        },
+        {
+            "id": "srd.divine_spark_necrotic",
+            "name": "Divine Spark: Necrotic",
+            "localization": {
+                "en": "Divine Spark: Necrotic",
+                "zh": "神圣火花：黯蚀",
+                "aliases": ["Divine Spark Necrotic", "神圣火花黯蚀", "引导神力黯蚀"]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 2: Channel Divinity, Divine Spark",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 1, "max": 1, "harmful": true, "exclude_self": true},
+            "requirements": {"class": "cleric", "class_level_min": 2},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "cleric"}},
+                {
+                    "type": "damage",
+                    "dice": "1d8",
+                    "bonus_from": {"ability_modifier": "wis"},
+                    "damage_type": "necrotic",
+                    "save_half": true
+                },
+                {
+                    "type": "text_result",
+                    "text": "The cleric harms the target with Necrotic Divine Spark."
+                }
+            ],
+            "audit_label": "Divine Spark: Necrotic"
+        },
+        {
+            "id": "srd.turn_undead",
+            "name": "Turn Undead",
+            "localization": {
+                "en": "Turn Undead",
+                "zh": "驱散不死生物",
+                "aliases": ["Turn Undead", "驱散亡灵", "驱散不死"]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 2: Channel Divinity, Turn Undead",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 1, "harmful": true, "creature_types": ["undead"]},
+            "requirements": {"class": "cleric", "class_level_min": 2},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "cleric"}},
+                {
+                    "type": "condition",
+                    "condition": "frightened",
+                    "requires_failed_save": true,
+                    "duration": {"until": "duration_1_minute", "break_on_damage": true},
+                    "tick_on": "target_turn_end"
+                },
+                {
+                    "type": "condition",
+                    "condition": "incapacitated",
+                    "requires_failed_save": true,
+                    "duration": {"until": "duration_1_minute", "break_on_damage": true},
+                    "tick_on": "target_turn_end"
+                },
+                {
+                    "type": "passive_effect",
+                    "condition": "turned",
+                    "requires_failed_save": true,
+                    "duration": {"until": "duration_1_minute", "break_on_damage": true},
+                    "tick_on": "target_turn_end",
+                    "passive_modifiers": {"must_move_away_from_source": true}
+                },
+                {
+                    "type": "branch",
+                    "condition": "actor_class_level_min",
+                    "class": "cleric",
+                    "level": 5,
+                    "if_true": [
+                        {
+                            "type": "damage",
+                            "damage_type": "radiant",
+                            "dice_from": {"ability_modifier": "wis", "die": "d8", "minimum": 1},
+                            "requires_failed_save": true,
+                            "shared_roll": true,
+                            "breaks_on_damage": false
+                        }
+                    ],
+                    "if_false": []
+                },
+                {
+                    "type": "text_result",
+                    "text": "Each targeted Undead that fails the save is frightened, incapacitated, and driven away for 1 minute."
+                }
+            ],
+            "audit_label": "Turn Undead"
+        },
+        {
+            "id": "srd.druidic",
+            "name": "Druidic",
+            "localization": {
+                "en": "Druidic",
+                "zh": "德鲁伊语",
+                "aliases": ["Druidic", "德鲁伊密语", "德鲁伊秘密语言"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 1: Druidic",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Druid knows Druidic, can leave hidden messages in Druidic, automatically spots such messages, and always has Speak with Animals prepared."
+                }
+            ],
+            "audit_label": "Druidic"
+        },
+        {
+            "id": "srd.primal_order",
+            "name": "Primal Order",
+            "localization": {
+                "en": "Primal Order",
+                "zh": "原初职责",
+                "aliases": [
+                    "Primal Order",
+                    "原初秩序",
+                    "自然职责",
+                    "Magician",
+                    "Warden",
+                    "自然术士",
+                    "守望者"
+                ]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 1: Primal Order",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Druid chooses Magician or Warden. Magician grants one extra Druid cantrip and a Wisdom modifier bonus, minimum +1, to Intelligence (Arcana or Nature) checks. Warden grants Martial weapon proficiency and Medium armor training."
+                }
+            ],
+            "audit_label": "Primal Order"
+        },
+        {
+            "id": "srd.wild_shape_wolf",
+            "name": "Wild Shape: Wolf",
+            "localization": {
+                "en": "Wild Shape: Wolf",
+                "zh": "荒野形态：狼",
+                "aliases": ["Wild Shape Wolf", "变形为狼", "荒野形态狼"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 2: Wild Shape; Animals: Wolf",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.wild_shape": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "temp_hp", "amount": 0, "bonus_from": {"class_level": "druid"}},
+                {
+                    "type": "passive_effect",
+                    "condition": "wild_shape",
+                    "stacking_policy": "replace_condition",
+                    "duration": {
+                        "until": "half_druid_level_hours_or_incapacitated_or_dies_or_reused"
+                    },
+                    "passive_modifiers": {
+                        "wild_shape_form": "srd.wolf",
+                        "wild_shape_form_name": "Wolf",
+                        "armor_class_override": 12,
+                        "speed_override_ft": 40,
+                        "form_actions": ["srd.wolf_bite"],
+                        "form_abilities": {
+                            "str": 14,
+                            "dex": 15,
+                            "con": 12,
+                            "int": 3,
+                            "wis": 12,
+                            "cha": 6
+                        },
+                        "blocks_spellcasting": true,
+                        "retains_creature_type": true
+                    }
+                },
+                {"type": "text_result", "text": "The druid assumes a Wolf form using Wild Shape."}
+            ],
+            "audit_label": "Wild Shape: Wolf"
+        },
+        {
+            "id": "srd.wild_shape_giant_rat",
+            "name": "Wild Shape: Giant Rat",
+            "localization": {
+                "en": "Wild Shape: Giant Rat",
+                "zh": "荒野形态：巨鼠",
+                "aliases": ["Wild Shape Giant Rat", "变形为巨鼠", "荒野形态巨鼠"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 2: Wild Shape; Animals: Giant Rat",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.wild_shape": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "temp_hp", "amount": 0, "bonus_from": {"class_level": "druid"}},
+                {
+                    "type": "passive_effect",
+                    "condition": "wild_shape",
+                    "stacking_policy": "replace_condition",
+                    "duration": {
+                        "until": "half_druid_level_hours_or_incapacitated_or_dies_or_reused"
+                    },
+                    "passive_modifiers": {
+                        "wild_shape_form": "srd.giant_rat",
+                        "wild_shape_form_name": "Giant Rat",
+                        "armor_class_override": 13,
+                        "speed_override_ft": 30,
+                        "form_actions": ["srd.giant_rat_bite"],
+                        "form_abilities": {
+                            "str": 7,
+                            "dex": 16,
+                            "con": 11,
+                            "int": 2,
+                            "wis": 10,
+                            "cha": 4
+                        },
+                        "blocks_spellcasting": true,
+                        "retains_creature_type": true
+                    }
+                },
+                {
+                    "type": "text_result",
+                    "text": "The druid assumes a Giant Rat form using Wild Shape."
+                }
+            ],
+            "audit_label": "Wild Shape: Giant Rat"
+        },
+        {
+            "id": "srd.wild_companion_wild_shape",
+            "name": "Wild Companion: Wild Shape",
+            "localization": {
+                "en": "Wild Companion: Wild Shape",
+                "zh": "荒野伙伴：消耗荒野形态",
+                "aliases": ["Wild Companion Wild Shape", "荒野伙伴", "消耗荒野形态召唤魔宠"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 2: Wild Companion; Find Familiar",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 10},
+            "target_policy": {"min": 0, "max": 0, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.wild_shape": 1}},
+            "automation": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "familiar_bound",
+                    "scope": {"target": "empty_space", "range_ft": 10},
+                    "duration": {"until": "long_rest_or_reduced_to_0_hp"},
+                    "metadata": {
+                        "spirit_form": true,
+                        "shares_senses": true,
+                        "creature_type": "fey",
+                        "no_material_components": true
+                    }
+                }
+            ],
+            "audit_label": "Wild Companion: Wild Shape"
+        },
+        {
+            "id": "srd.wild_companion_spell_slot",
+            "name": "Wild Companion: Spell Slot",
+            "localization": {
+                "en": "Wild Companion: Spell Slot",
+                "zh": "荒野伙伴：消耗法术位",
+                "aliases": ["Wild Companion Spell Slot", "法术位召唤魔宠"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 2: Wild Companion; Find Familiar",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 10},
+            "target_policy": {"min": 0, "max": 0, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 2, "spell_level": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 1},
+            "automation": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "familiar_bound",
+                    "scope": {"target": "empty_space", "range_ft": 10},
+                    "duration": {"until": "long_rest_or_reduced_to_0_hp"},
+                    "metadata": {
+                        "spirit_form": true,
+                        "shares_senses": true,
+                        "creature_type": "fey",
+                        "no_material_components": true
+                    }
+                }
+            ],
+            "audit_label": "Wild Companion: Spell Slot"
+        },
+        {
+            "id": "srd.lands_aid",
+            "name": "Land's Aid",
+            "localization": {
+                "en": "Land's Aid",
+                "zh": "大地援助",
+                "aliases": ["Circle of the Land Land's Aid", "大地结社大地援助"]
+            },
+            "source": "SRD 5.2.1 Druid Subclass: Circle of the Land, Level 3: Land's Aid",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 60, "shape": "sphere", "radius_ft": 10},
+            "target_policy": {"min": 1, "harmful": true},
+            "requirements": {"class": "druid", "class_level_min": 3, "subclass": "land"},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.wild_shape": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "saving_throw",
+                    "ability": "con",
+                    "dc_from": {"spell_save_dc": "druid"}
+                },
+                {
+                    "type": "damage",
+                    "dice": "2d6",
+                    "damage_type": "necrotic",
+                    "save_half": true,
+                    "shared_roll": true
+                },
+                {"type": "target", "mode": "param", "param": "lands_aid_healing_target_id"},
+                {"type": "healing", "dice": "2d6"},
+                {
+                    "type": "text_result",
+                    "text": "Land's Aid damages chosen creatures in the Sphere and heals one chosen creature in that area."
+                }
+            ],
+            "audit_label": "Land's Aid"
+        },
+        {
+            "id": "srd.wild_resurgence_restore_wild_shape_slot_1",
+            "name": "Wild Resurgence: Restore Wild Shape with Level 1 Slot",
+            "localization": {
+                "en": "Wild Resurgence: Restore Wild Shape with Level 1 Slot",
+                "zh": "荒野复苏：以1环法术位恢复荒野形态",
+                "aliases": ["荒野复苏恢复荒野形态", "1环法术位恢复荒野形态"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 5: Wild Resurgence",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 1},
+            "automation": [
+                {"type": "wild_resurgence_restore_wild_shape"},
+                {
+                    "type": "text_result",
+                    "text": "The druid expends a level 1 spell slot to regain one use of Wild Shape."
+                }
+            ],
+            "audit_label": "Wild Resurgence: Restore Wild Shape"
+        },
+        {
+            "id": "srd.wild_resurgence_restore_wild_shape_slot_2",
+            "name": "Wild Resurgence: Restore Wild Shape with Level 2 Slot",
+            "localization": {
+                "en": "Wild Resurgence: Restore Wild Shape with Level 2 Slot",
+                "zh": "荒野复苏：以2环法术位恢复荒野形态",
+                "aliases": ["2环法术位恢复荒野形态"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 5: Wild Resurgence",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 2},
+            "automation": [
+                {"type": "wild_resurgence_restore_wild_shape"},
+                {
+                    "type": "text_result",
+                    "text": "The druid expends a level 2 spell slot to regain one use of Wild Shape."
+                }
+            ],
+            "audit_label": "Wild Resurgence: Restore Wild Shape"
+        },
+        {
+            "id": "srd.wild_resurgence_restore_wild_shape_slot_3",
+            "name": "Wild Resurgence: Restore Wild Shape with Level 3 Slot",
+            "localization": {
+                "en": "Wild Resurgence: Restore Wild Shape with Level 3 Slot",
+                "zh": "荒野复苏：以3环法术位恢复荒野形态",
+                "aliases": ["3环法术位恢复荒野形态"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 5: Wild Resurgence",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 3},
+            "automation": [
+                {"type": "wild_resurgence_restore_wild_shape"},
+                {
+                    "type": "text_result",
+                    "text": "The druid expends a level 3 spell slot to regain one use of Wild Shape."
+                }
+            ],
+            "audit_label": "Wild Resurgence: Restore Wild Shape"
+        },
+        {
+            "id": "srd.wild_resurgence_create_spell_slot",
+            "name": "Wild Resurgence: Create Level 1 Spell Slot",
+            "localization": {
+                "en": "Wild Resurgence: Create Level 1 Spell Slot",
+                "zh": "荒野复苏：创造1环法术位",
+                "aliases": ["荒野形态换1环法术位", "荒野复苏创造法术位"]
+            },
+            "source": "SRD 5.2.1 Druid Class Features: Level 5: Wild Resurgence",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "druid", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {
+                "resources": {
+                    "srd.resource.wild_shape": 1,
+                    "srd.resource.wild_resurgence_spell_slot": 1
+                }
+            },
+            "automation": [
+                {"type": "resource_delta", "resource": "spell_slot_1", "delta": 1},
+                {
+                    "type": "text_result",
+                    "text": "The druid expends a use of Wild Shape to gain one level 1 spell slot."
+                }
+            ],
+            "audit_label": "Wild Resurgence: Create Level 1 Spell Slot"
+        },
+        {
+            "id": "srd.second_wind",
+            "name": "Second Wind",
+            "localization": {
+                "en": "Second Wind",
+                "zh": "复苏之风",
+                "aliases": ["Second Wind", "复苏", "战士自疗"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 1: Second Wind; Level 5: Tactical Shift",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.second_wind": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "healing", "dice": "1d10", "bonus_from": {"class_level": "fighter"}},
+                {
+                    "type": "branch",
+                    "condition": "actor_class_level_min",
+                    "class": "fighter",
+                    "level": 5,
+                    "if_true": [
+                        {
+                            "type": "tactical_shift_move",
+                            "destination_param": "tactical_shift_to_position_node_id"
+                        }
+                    ]
+                },
+                {"type": "text_result", "text": "The fighter draws on Second Wind."}
+            ],
+            "audit_label": "Second Wind"
+        },
+        {
+            "id": "srd.action_surge",
+            "name": "Action Surge",
+            "localization": {
+                "en": "Action Surge",
+                "zh": "动作如潮",
+                "aliases": ["Action Surge", "额外动作", "战士动作如潮"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 2: Action Surge",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.action_surge": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "resource_delta", "resource": "budget.action", "delta": 1},
+                {
+                    "type": "text_result",
+                    "text": "The fighter gains one additional action this turn."
+                }
+            ],
+            "audit_label": "Action Surge"
+        },
+        {
+            "id": "srd.tactical_mind",
+            "name": "Tactical Mind",
+            "localization": {
+                "en": "Tactical Mind",
+                "zh": "战术头脑",
+                "aliases": ["Tactical Mind", "战士战术头脑"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 2: Tactical Mind",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Fighter can expend a use of Second Wind after failing an ability check to roll 1d10 and add it to the check, only expending the use if the check succeeds."
+                }
+            ],
+            "audit_label": "Tactical Mind"
+        },
+        {
+            "id": "srd.improved_critical",
+            "name": "Improved Critical",
+            "localization": {
+                "en": "Improved Critical",
+                "zh": "精通重击",
+                "aliases": ["Champion Improved Critical", "冠军精通重击"]
+            },
+            "source": "SRD 5.2.1 Fighter Subclass: Champion, Level 3: Improved Critical",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 3, "subclass": "champion"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Champion's weapon and Unarmed Strike attack rolls can score a Critical Hit on a d20 roll of 19 or 20."
+                }
+            ],
+            "audit_label": "Improved Critical"
+        },
+        {
+            "id": "srd.remarkable_athlete",
+            "name": "Remarkable Athlete",
+            "localization": {
+                "en": "Remarkable Athlete",
+                "zh": "卓越运动员",
+                "aliases": ["Champion Remarkable Athlete", "冠军卓越运动员"]
+            },
+            "source": "SRD 5.2.1 Fighter Subclass: Champion, Level 3: Remarkable Athlete",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 3, "subclass": "champion"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Champion has Advantage on Initiative rolls and Strength (Athletics) checks, and can move up to half Speed without provoking Opportunity Attacks immediately after scoring a Critical Hit."
+                }
+            ],
+            "audit_label": "Remarkable Athlete"
+        },
+        {
+            "id": "srd.disciple_of_life",
+            "name": "Disciple of Life",
+            "localization": {
+                "en": "Disciple of Life",
+                "zh": "生命门徒",
+                "aliases": ["Life Domain Disciple of Life", "生命领域生命门徒"]
+            },
+            "source": "SRD 5.2.1 Cleric Subclass: Life Domain, Level 3: Disciple of Life",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 3, "subclass": "life"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Life Domain Cleric's spell-slot healing restores additional Hit Points equal to 2 plus the spell slot's level."
+                }
+            ],
+            "audit_label": "Disciple of Life"
+        },
+        {
+            "id": "srd.preserve_life",
+            "name": "Preserve Life",
+            "localization": {
+                "en": "Preserve Life",
+                "zh": "维持生命",
+                "aliases": ["Life Domain Preserve Life", "生命领域维持生命"]
+            },
+            "source": "SRD 5.2.1 Cleric Subclass: Life Domain, Level 3: Preserve Life",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"normal_ft": 30, "line_of_sight": false},
+            "target_policy": {"min": 1, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 3, "subclass": "life"},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "preserve_life_healing", "points_param": "preserve_life_points"},
+                {
+                    "type": "text_result",
+                    "text": "Preserve Life healing was divided among Bloodied targets without exceeding half their Hit Point maximum."
+                }
+            ],
+            "audit_label": "Preserve Life"
+        },
+        {
+            "id": "srd.dark_ones_blessing",
+            "name": "Dark One's Blessing",
+            "localization": {
+                "en": "Dark One's Blessing",
+                "zh": "黑暗主祝福",
+                "aliases": ["Fiend Patron Dark One's Blessing", "邪魔宗主黑暗主祝福"]
+            },
+            "source": "SRD 5.2.1 Warlock Subclass: Fiend Patron, Level 3: Dark One's Blessing",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 3, "subclass": "fiend"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Fiend Patron Warlock gains Temporary Hit Points when reducing an enemy to 0 Hit Points, or when someone else reduces an enemy within 10 feet of the Warlock to 0 Hit Points."
+                }
+            ],
+            "audit_label": "Dark One's Blessing"
+        },
+        {
+            "id": "srd.draconic_resilience",
+            "name": "Draconic Resilience",
+            "localization": {
+                "en": "Draconic Resilience",
+                "zh": "龙族韧性",
+                "aliases": ["Draconic Sorcery Resilience", "龙族术法龙族韧性"]
+            },
+            "source": "SRD 5.2.1 Sorcerer Subclass: Draconic Sorcery, Level 3: Draconic Resilience",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "sorcerer", "class_level_min": 3, "subclass": "draconic"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Draconic Sorcery Sorcerer's Hit Point maximum increases and, while not wearing armor, base Armor Class equals 10 plus Dexterity and Charisma modifiers."
+                }
+            ],
+            "audit_label": "Draconic Resilience"
+        },
+        {
+            "id": "srd.ritual_adept",
+            "name": "Ritual Adept",
+            "localization": {
+                "en": "Ritual Adept",
+                "zh": "仪式专家",
+                "aliases": ["Wizard Ritual Adept", "法师仪式专家", "仪式施法"]
+            },
+            "source": "SRD 5.2.1 Wizard Class Features: Level 1: Ritual Adept",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "wizard", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Wizard can cast a Ritual-tagged spell as a Ritual when the spell is in the Wizard's spellbook, without needing to have it prepared."
+                }
+            ],
+            "audit_label": "Ritual Adept"
+        },
+        {
+            "id": "srd.arcane_recovery",
+            "name": "Arcane Recovery",
+            "localization": {
+                "en": "Arcane Recovery",
+                "zh": "奥术回想",
+                "aliases": ["Arcane Recovery", "法师奥术回想", "奥术恢复"]
+            },
+            "source": "SRD 5.2.1 Wizard Class Features: Level 1: Arcane Recovery",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "wizard", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Wizard can choose expended spell slots to recover when finishing a Short Rest, up to half Wizard level rounded up, and only once before a Long Rest."
+                }
+            ],
+            "audit_label": "Arcane Recovery"
+        },
+        {
+            "id": "srd.scholar",
+            "name": "Scholar",
+            "localization": {
+                "en": "Scholar",
+                "zh": "学者",
+                "aliases": ["Wizard Scholar", "法师学者"]
+            },
+            "source": "SRD 5.2.1 Wizard Class Features: Level 2: Scholar",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "wizard", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Wizard gains Expertise in one proficient scholarly skill: Arcana, History, Investigation, Medicine, Nature, or Religion."
+                }
+            ],
+            "audit_label": "Scholar"
+        },
+        {
+            "id": "srd.potent_cantrip",
+            "name": "Potent Cantrip",
+            "localization": {
+                "en": "Potent Cantrip",
+                "zh": "强效戏法",
+                "aliases": ["Evoker Potent Cantrip", "塑能师强效戏法"]
+            },
+            "source": "SRD 5.2.1 Wizard Subclass: Evoker, Level 3: Potent Cantrip",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "wizard", "class_level_min": 3, "subclass": "evocation"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that an Evoker Wizard's damaging cantrips deal half damage on a missed attack roll or successful saving throw, with no additional effect."
+                }
+            ],
+            "audit_label": "Potent Cantrip"
+        },
+        {
+            "id": "srd.memorize_spell",
+            "name": "Memorize Spell",
+            "localization": {
+                "en": "Memorize Spell",
+                "zh": "记忆法术",
+                "aliases": ["Wizard Memorize Spell", "法师记忆法术", "短休换法术"]
+            },
+            "source": "SRD 5.2.1 Wizard Class Features: Level 5: Memorize Spell",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "wizard", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Wizard can replace one prepared level 1+ Wizard spell with another level 1+ spell from the spellbook when finishing a Short Rest."
+                }
+            ],
+            "audit_label": "Memorize Spell"
+        },
+        {
+            "id": "srd.cure_wounds",
+            "name": "Cure Wounds",
+            "localization": {"en": "Cure Wounds", "zh": "治疗术", "aliases": ["治疗", "疗伤"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": false},
+            "requirements": {"spell_level": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"spell_slot_level": 1},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "healing", "dice": "1d8+3"},
+                {"type": "text_result", "text": "Healing was resolved by the engine."}
+            ],
+            "audit_label": "Cure Wounds"
+        },
+        {
+            "id": "srd.use_potion_of_healing",
+            "name": "Use Potion of Healing",
+            "localization": {
+                "en": "Use Potion of Healing",
+                "zh": "使用治疗药水",
+                "aliases": ["喝治疗药水", "饮用治疗药水", "给药水"]
+            },
+            "source": "SRD 5.2.1 Chapter 6, Adventuring Gear: Potion of Healing; Chapter 7, Magic Item Categories: Potions",
+            "rules_version": "srd-5.2.1",
+            "action_type": "item",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": false},
+            "requirements": {"item": "srd.potion_of_healing"},
+            "friendly_fire_policy": "raw",
+            "cost": {"items": {"srd.potion_of_healing": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "healing", "dice": "2d4+2"},
+                {"type": "text_result", "text": "A potion of healing restores hit points."}
+            ],
+            "audit_label": "Use Potion of Healing"
+        },
+        {
+            "id": "srd.lay_on_hands",
+            "name": "Lay On Hands",
+            "localization": {
+                "en": "Lay On Hands",
+                "zh": "圣疗",
+                "aliases": ["Lay on Hands", "圣武士圣疗", "按手治疗"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 1: Lay On Hands",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resource_params": {"srd.resource.lay_on_hands": "lay_on_hands_points"}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "healing", "amount_from": "param.lay_on_hands_points"},
+                {
+                    "type": "text_result",
+                    "text": "The paladin restores Hit Points from Lay On Hands."
+                }
+            ],
+            "audit_label": "Lay On Hands"
+        },
+        {
+            "id": "srd.lay_on_hands_remove_poisoned",
+            "name": "Lay On Hands: Remove Poisoned",
+            "localization": {
+                "en": "Lay On Hands: Remove Poisoned",
+                "zh": "圣疗：移除中毒",
+                "aliases": ["圣疗解毒", "Lay on Hands Poisoned"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 1: Lay On Hands",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.lay_on_hands": 5}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "remove_condition", "conditions": ["poisoned"]},
+                {
+                    "type": "text_result",
+                    "text": "The paladin expends Lay On Hands points to remove the Poisoned condition."
+                }
+            ],
+            "audit_label": "Lay On Hands: Remove Poisoned"
+        },
+        {
+            "id": "srd.divine_sense",
+            "name": "Divine Sense",
+            "localization": {
+                "en": "Divine Sense",
+                "zh": "神圣感知",
+                "aliases": ["圣武士神圣感知", "侦测天界邪魔亡灵"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 3: Channel Divinity, Divine Sense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 3},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "divine_sense",
+                    "duration": {"until": "duration_10_minutes"},
+                    "tick_on": "self_turn_start",
+                    "passive_modifiers": {
+                        "detect_creature_types": ["celestial", "fiend", "undead"],
+                        "detect_radius_ft": 60,
+                        "detect_consecrated_or_desecrated": true,
+                        "ends_if_condition": "incapacitated"
+                    }
+                },
+                {
+                    "type": "text_result",
+                    "text": "The paladin opens awareness to detect Celestials, Fiends, Undead, and consecrated or desecrated places and objects."
+                }
+            ],
+            "audit_label": "Divine Sense"
+        },
+        {
+            "id": "srd.sacred_weapon",
+            "name": "Sacred Weapon",
+            "localization": {
+                "en": "Sacred Weapon",
+                "zh": "神圣武器",
+                "aliases": ["Oath of Devotion Sacred Weapon", "奉献誓言神圣武器"]
+            },
+            "source": "SRD 5.2.1 Paladin Subclass: Oath of Devotion, Level 3: Sacred Weapon",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 3, "subclass": "devotion"},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.channel_divinity": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "sacred_weapon",
+                    "stacking_policy": "replace_condition",
+                    "duration": {"until": "duration_10_minutes_or_ended_or_reused"},
+                    "tick_on": "self_turn_start",
+                    "passive_modifiers": {
+                        "sacred_weapon": true,
+                        "sacred_weapon_action_id": {"param": "sacred_weapon_action_id"},
+                        "sacred_weapon_attack_bonus_ability": "cha",
+                        "sacred_weapon_attack_bonus_minimum": 1,
+                        "sacred_weapon_radiant_damage_choice": true,
+                        "bright_light_radius_ft": 20,
+                        "dim_light_beyond_ft": 20
+                    }
+                },
+                {
+                    "type": "text_result",
+                    "text": "The chosen melee weapon gains a Charisma-based attack bonus, can deal Radiant damage, and sheds light."
+                }
+            ],
+            "audit_label": "Sacred Weapon"
+        },
+        {
+            "id": "srd.paladins_smite_divine_smite",
+            "name": "Paladin's Smite: Divine Smite",
+            "localization": {
+                "en": "Paladin's Smite: Divine Smite",
+                "zh": "圣武士斩击：神圣斩",
+                "aliases": ["免法术位神圣斩", "Paladin's Smite Divine Smite"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 2: Paladin's Smite; Divine Smite spell",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 2, "spell_level": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.paladins_smite": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {
+                        "next_melee_hit_bonus_damage": "2d8",
+                        "damage_type": "radiant"
+                    },
+                    "duration": {"until": "next_melee_hit_or_1_minute"},
+                    "tick_on": "weapon_hit"
+                }
+            ],
+            "audit_label": "Paladin's Smite: Divine Smite"
+        },
+        {
+            "id": "srd.faithful_steed",
+            "name": "Faithful Steed",
+            "localization": {
+                "en": "Faithful Steed",
+                "zh": "忠诚坐骑",
+                "aliases": ["Paladin Faithful Steed", "圣武士忠诚坐骑"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 5: Faithful Steed",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Paladin always has Find Steed prepared and can cast it once per Long Rest without expending a spell slot."
+                }
+            ],
+            "audit_label": "Faithful Steed"
+        },
+        {
+            "id": "srd.faithful_steed_find_steed",
+            "name": "Faithful Steed: Find Steed",
+            "localization": {
+                "en": "Faithful Steed: Find Steed",
+                "zh": "忠诚坐骑：寻找坐骑",
+                "aliases": ["免法术位寻找坐骑", "Paladin Faithful Steed Find Steed"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 5: Faithful Steed; Find Steed spell",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "action",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 0, "max": 0, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 5, "spell_level": 2},
+            "properties": {
+                "spell_definition_id": "srd.spell.find_steed",
+                "spell_level": 2,
+                "faithful_steed_free_cast": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.faithful_steed": 1}},
+            "automation": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "steed_bound",
+                    "scope": {"target": "empty_space", "range_ft": 30},
+                    "duration": {"until": "dismissed_or_reduced_to_0_hp"},
+                    "metadata": {"mount": true, "telepathic_bond": true}
+                }
+            ],
+            "audit_label": "Faithful Steed: Find Steed"
+        },
+        {
+            "id": "srd.favored_enemy_hunters_mark",
+            "name": "Favored Enemy: Hunter's Mark",
+            "localization": {
+                "en": "Favored Enemy: Hunter's Mark",
+                "zh": "宿敌：猎人印记",
+                "aliases": ["Favored Enemy Hunter's Mark", "宿敌猎人印记", "免法术位猎人印记"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 1: Favored Enemy; Hunter's Mark spell",
+            "rules_version": "srd-5.2.1",
+            "action_type": "spell",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 90},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"class": "ranger", "class_level_min": 1, "spell_level": 1},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.favored_enemy_hunters_mark": 1}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {
+                        "hunters_mark": true,
+                        "attacker_bonus_damage": "1d6",
+                        "damage_type": "force",
+                        "tracking_advantage": true
+                    },
+                    "duration": {"until": "concentration_1_hour"},
+                    "tick_on": "target_hit_or_tracking",
+                    "concentration": true
+                }
+            ],
+            "audit_label": "Favored Enemy: Hunter's Mark"
+        },
+        {
+            "id": "srd.deft_explorer",
+            "name": "Deft Explorer",
+            "localization": {
+                "en": "Deft Explorer",
+                "zh": "灵巧探索者",
+                "aliases": ["Ranger Deft Explorer", "游侠灵巧探索者"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 2: Deft Explorer",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Ranger gains Expertise in one skill proficiency of choice and knows two additional languages."
+                }
+            ],
+            "audit_label": "Deft Explorer"
+        },
+        {
+            "id": "srd.hunters_lore",
+            "name": "Hunter's Lore",
+            "localization": {
+                "en": "Hunter's Lore",
+                "zh": "猎人学识",
+                "aliases": ["Hunter’s Lore", "猎人知识"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 3: Hunter's Lore",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"special": "target_marked_by_your_hunters_mark"},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"class": "ranger", "class_level_min": 3, "subclass": "hunter"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "hunter_lore"},
+                {
+                    "type": "text_result",
+                    "text": "The hunter learns whether the marked creature has immunities, resistances, or vulnerabilities, and what they are."
+                }
+            ],
+            "audit_label": "Hunter's Lore"
+        },
+        {
+            "id": "srd.hunters_prey_colossus_slayer",
+            "name": "Hunter's Prey: Colossus Slayer",
+            "localization": {
+                "en": "Hunter's Prey: Colossus Slayer",
+                "zh": "猎人猎物：巨像杀手",
+                "aliases": ["Hunter’s Prey: Colossus Slayer", "Colossus Slayer", "巨像杀手"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 3: Hunter's Prey, Colossus Slayer",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 3, "subclass": "hunter"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records the Hunter's Colossus Slayer option: once per turn, a weapon hit deals an extra 1d8 damage if the target is missing any Hit Points."
+                }
+            ],
+            "audit_label": "Hunter's Prey: Colossus Slayer"
+        },
+        {
+            "id": "srd.hunters_prey_horde_breaker",
+            "name": "Hunter's Prey: Horde Breaker",
+            "localization": {
+                "en": "Hunter's Prey: Horde Breaker",
+                "zh": "猎人猎物：破群者",
+                "aliases": ["Hunter’s Prey: Horde Breaker", "Horde Breaker", "破群者"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 3: Hunter's Prey, Horde Breaker",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 3, "subclass": "hunter"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records the Hunter's Horde Breaker option: once on each of your turns when you make a weapon attack, you can make another attack with the same weapon against a different creature within 5 feet of the original target, within the weapon's range, and not attacked by you this turn."
+                }
+            ],
+            "audit_label": "Hunter's Prey: Horde Breaker"
+        },
+        {
+            "id": "srd.dodge",
+            "name": "Dodge",
+            "localization": {"en": "Dodge", "zh": "闪避", "aliases": ["防御", "专心防守"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "dodging",
+                    "duration": {"until": "start_of_next_turn"},
+                    "tick_on": "self_turn_start"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The actor focuses on defense until their next turn."
+                }
+            ],
+            "audit_label": "Dodge"
+        },
+        {
+            "id": "srd.disengage",
+            "name": "Disengage",
+            "localization": {"en": "Disengage", "zh": "撤离", "aliases": ["脱离", "谨慎撤退"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "disengaged",
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {"type": "text_result", "text": "Movement this turn avoids opportunity attacks."}
+            ],
+            "audit_label": "Disengage"
+        },
+        {
+            "id": "srd.dash",
+            "name": "Dash",
+            "localization": {"en": "Dash", "zh": "疾走", "aliases": ["冲刺", "快跑"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "resource_delta", "resource": "budget.movement", "delta_from": "speed"},
+                {"type": "text_result", "text": "The actor gains extra movement for this turn."}
+            ],
+            "audit_label": "Dash"
+        },
+        {
+            "id": "srd.help",
+            "name": "Help",
+            "localization": {"en": "Help", "zh": "协助", "aliases": ["帮助", "援助"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": false},
+            "requirements": {},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "condition",
+                    "condition": "helping",
+                    "duration": {"until": "next_relevant_check_or_attack"},
+                    "tick_on": "target_use"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The target receives help on the next relevant action."
+                }
+            ],
+            "audit_label": "Help"
+        },
+        {
+            "id": "srd.hide",
+            "name": "Hide",
+            "localization": {"en": "Hide", "zh": "躲藏", "aliases": ["藏匿", "潜藏"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "ability_check",
+                    "ability": "dex",
+                    "skill": "stealth",
+                    "difficulty_tier": "medium"
+                },
+                {
+                    "type": "branch",
+                    "condition": "ability_success",
+                    "if_true": [
+                        {
+                            "type": "condition",
+                            "condition": "hidden",
+                            "duration": {"until": "revealed"},
+                            "tick_on": "revealed"
+                        }
+                    ],
+                    "if_false": [{"type": "text_result", "text": "The hide attempt fails."}]
+                }
+            ],
+            "audit_label": "Hide"
+        },
+        {
+            "id": "srd.rogue_expertise",
+            "name": "Expertise",
+            "localization": {
+                "en": "Rogue Expertise",
+                "zh": "游荡者专精",
+                "aliases": ["Rogue Expertise", "游荡者技能专精"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 1: Expertise",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Rogue gains Expertise in two skill proficiencies of choice, doubling Proficiency Bonus for those skill checks."
+                }
+            ],
+            "audit_label": "Rogue Expertise"
+        },
+        {
+            "id": "srd.sneak_attack",
+            "name": "Sneak Attack",
+            "localization": {
+                "en": "Sneak Attack",
+                "zh": "偷袭",
+                "aliases": ["Rogue Sneak Attack", "游荡者偷袭"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 1: Sneak Attack",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Rogue can add Sneak Attack damage to a qualifying attack once per turn."
+                }
+            ],
+            "audit_label": "Sneak Attack"
+        },
+        {
+            "id": "srd.thieves_cant",
+            "name": "Thieves' Cant",
+            "localization": {
+                "en": "Thieves' Cant",
+                "zh": "盗贼黑话",
+                "aliases": ["Thieves' Cant", "Thieves’ Cant", "盗贼暗语", "盗贼密语"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 1: Thieves' Cant",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 1},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Rogue knows Thieves' Cant and one other language chosen from the Character Creation language tables. The additional language is not auto-selected."
+                }
+            ],
+            "audit_label": "Thieves' Cant"
+        },
+        {
+            "id": "srd.cunning_strike",
+            "name": "Cunning Strike",
+            "localization": {
+                "en": "Cunning Strike",
+                "zh": "狡诈打击",
+                "aliases": ["Rogue Cunning Strike", "游荡者狡诈打击"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 5: Cunning Strike",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Rogue can forgo Sneak Attack dice to add one Cunning Strike effect."
+                }
+            ],
+            "audit_label": "Cunning Strike"
+        },
+        {
+            "id": "srd.uncanny_dodge",
+            "name": "Uncanny Dodge",
+            "localization": {
+                "en": "Uncanny Dodge",
+                "zh": "直觉闪避",
+                "aliases": ["Rogue Uncanny Dodge", "游荡者直觉闪避"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 5: Uncanny Dodge",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "reaction",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "When a visible attacker hits this Rogue with an attack roll, the Rogue can use a Reaction to halve that attack's damage against them."
+                }
+            ],
+            "audit_label": "Uncanny Dodge"
+        },
+        {
+            "id": "srd.steady_aim",
+            "name": "Steady Aim",
+            "localization": {
+                "en": "Steady Aim",
+                "zh": "稳定瞄准",
+                "aliases": ["Rogue Steady Aim", "稳定瞄准", "稳准瞄准"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 3: Steady Aim",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 3, "no_movement_used": true},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "steady_aim",
+                    "duration": {
+                        "until": "end_of_current_turn_or_attacks_or_casts",
+                        "remaining_ticks": 1
+                    },
+                    "tick_on": "self_turn_end",
+                    "passive_modifiers": {"attack_roll_advantage": true}
+                },
+                {"type": "resource_delta", "resource": "budget.movement", "set": 0},
+                {
+                    "type": "text_result",
+                    "text": "The rogue gains Advantage on the next attack roll this turn, and Speed is 0 until the turn ends."
+                }
+            ],
+            "audit_label": "Steady Aim"
+        },
+        {
+            "id": "srd.fast_hands_sleight_of_hand",
+            "name": "Fast Hands: Sleight of Hand",
+            "localization": {
+                "en": "Fast Hands: Sleight of Hand",
+                "zh": "快手：巧手",
+                "aliases": ["Fast Hands Sleight of Hand", "快手巧手", "奖励动作巧手"]
+            },
+            "source": "SRD 5.2.1 Rogue Subclass: Thief, Level 3: Fast Hands",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 3, "subclass": "thief"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "ability_check",
+                    "ability": "dex",
+                    "skill": "sleight_of_hand",
+                    "tool": "thieves_tools",
+                    "difficulty_tier": "medium"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The Thief uses Fast Hands to make a Dexterity (Sleight of Hand) check with Thieves' Tools as a Bonus Action."
+                }
+            ],
+            "audit_label": "Fast Hands: Sleight of Hand"
+        },
+        {
+            "id": "srd.fast_hands_utilize",
+            "name": "Fast Hands: Utilize",
+            "localization": {
+                "en": "Fast Hands: Utilize",
+                "zh": "快手：利用",
+                "aliases": ["Fast Hands Utilize", "快手利用", "奖励动作利用"]
+            },
+            "source": "SRD 5.2.1 Rogue Subclass: Thief, Level 3: Fast Hands",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 3, "subclass": "thief"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "text_result",
+                    "text": "The Thief uses Fast Hands to take the Utilize action as a Bonus Action."
+                }
+            ],
+            "audit_label": "Fast Hands: Utilize"
+        },
+        {
+            "id": "srd.fast_hands_magic_item",
+            "name": "Fast Hands: Magic Item",
+            "localization": {
+                "en": "Fast Hands: Magic Item",
+                "zh": "快手：魔法物品",
+                "aliases": ["Fast Hands Magic Item", "快手魔法物品", "奖励动作魔法物品"]
+            },
+            "source": "SRD 5.2.1 Rogue Subclass: Thief, Level 3: Fast Hands",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 3, "subclass": "thief"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "text_result",
+                    "text": "The Thief can use Fast Hands with a magic item that normally requires a Magic action; item effects are resolved through use_item with fast_hands."
+                }
+            ],
+            "audit_label": "Fast Hands: Magic Item"
+        },
+        {
+            "id": "srd.second_story_work",
+            "name": "Second-Story Work",
+            "localization": {
+                "en": "Second-Story Work",
+                "zh": "二层作业",
+                "aliases": ["Second Story Work", "二层作业"]
+            },
+            "source": "SRD 5.2.1 Rogue Subclass: Thief, Level 3: Second-Story Work",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 3, "subclass": "thief"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "properties": {
+                "passive_modifiers": {
+                    "climb_speed_equals_speed": true,
+                    "jump_distance_ability": "dex"
+                }
+            },
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Thief has a Climb Speed equal to Speed and can use Dexterity to determine jump distance."
+                }
+            ],
+            "audit_label": "Second-Story Work"
+        },
+        {
+            "id": "srd.cunning_action_dash",
+            "name": "Cunning Action: Dash",
+            "localization": {
+                "en": "Cunning Action: Dash",
+                "zh": "机敏动作：疾走",
+                "aliases": ["Cunning Action Dash", "机敏疾走", "奖励动作疾走"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 2: Cunning Action",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "resource_delta", "resource": "budget.movement", "delta_from": "speed"},
+                {
+                    "type": "text_result",
+                    "text": "The rogue takes the Dash action as a Bonus Action."
+                }
+            ],
+            "audit_label": "Cunning Action: Dash"
+        },
+        {
+            "id": "srd.cunning_action_disengage",
+            "name": "Cunning Action: Disengage",
+            "localization": {
+                "en": "Cunning Action: Disengage",
+                "zh": "机敏动作：撤离",
+                "aliases": ["Cunning Action Disengage", "机敏撤离", "奖励动作撤离"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 2: Cunning Action",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "disengaged",
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The rogue takes the Disengage action as a Bonus Action."
+                }
+            ],
+            "audit_label": "Cunning Action: Disengage"
+        },
+        {
+            "id": "srd.cunning_action_hide",
+            "name": "Cunning Action: Hide",
+            "localization": {
+                "en": "Cunning Action: Hide",
+                "zh": "机敏动作：躲藏",
+                "aliases": ["Cunning Action Hide", "机敏躲藏", "奖励动作躲藏"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 2: Cunning Action",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "ability_check",
+                    "ability": "dex",
+                    "skill": "stealth",
+                    "difficulty_tier": "medium"
+                },
+                {
+                    "type": "branch",
+                    "condition": "ability_success",
+                    "if_true": [
+                        {
+                            "type": "condition",
+                            "condition": "hidden",
+                            "duration": {"until": "revealed"},
+                            "tick_on": "revealed"
+                        }
+                    ],
+                    "if_false": [{"type": "text_result", "text": "The hide attempt fails."}]
+                }
+            ],
+            "audit_label": "Cunning Action: Hide"
+        },
+        {
+            "id": "srd.martial_arts_bonus_unarmed_strike",
+            "name": "Martial Arts: Bonus Unarmed Strike",
+            "localization": {
+                "en": "Martial Arts: Bonus Unarmed Strike",
+                "zh": "武术：附赠徒手打击",
+                "aliases": ["Bonus Unarmed Strike", "附赠徒手打击", "武僧附赠攻击"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 1: Martial Arts",
+            "rules_version": "srd-5.2.1",
+            "action_type": "unarmed_attack",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"class": "monk", "class_level_min": 1},
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice_from": {"class_feature": "monk_martial_arts_die"},
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "bludgeoning",
+                    "ability": "dex",
+                    "requires_hit": true
+                },
+                {
+                    "type": "text_result",
+                    "text": "The monk makes an Unarmed Strike as a Bonus Action."
+                }
+            ],
+            "audit_label": "Martial Arts: Bonus Unarmed Strike"
+        },
+        {
+            "id": "srd.flurry_of_blows",
+            "name": "Flurry of Blows",
+            "localization": {
+                "en": "Flurry of Blows",
+                "zh": "疾风连击",
+                "aliases": ["Flurry", "武僧疾风连击", "连打"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Monk's Focus, Flurry of Blows",
+            "rules_version": "srd-5.2.1",
+            "action_type": "unarmed_attack",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 2, "harmful": true},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "confirm",
+            "cost": {"resources": {"srd.resource.focus_points": 1}},
+            "automation": [
+                {
+                    "type": "target",
+                    "mode": "param",
+                    "param": "strike_1_target",
+                    "fallback": "explicit"
+                },
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice_from": {"class_feature": "monk_martial_arts_die"},
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "bludgeoning",
+                    "ability": "dex",
+                    "requires_hit": true
+                },
+                {
+                    "type": "target",
+                    "mode": "param",
+                    "param": "strike_2_target",
+                    "fallback": "explicit"
+                },
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice_from": {"class_feature": "monk_martial_arts_die"},
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "bludgeoning",
+                    "ability": "dex",
+                    "requires_hit": true
+                },
+                {
+                    "type": "text_result",
+                    "text": "The monk spends 1 Focus Point to make two Unarmed Strikes as a Bonus Action."
+                }
+            ],
+            "audit_label": "Flurry of Blows"
+        },
+        {
+            "id": "srd.open_hand_technique",
+            "name": "Open Hand Technique",
+            "localization": {
+                "en": "Open Hand Technique",
+                "zh": "空手技法",
+                "aliases": ["Open Hand", "空手技法"]
+            },
+            "source": "SRD 5.2.1 Monk Subclass: Warrior of the Open Hand, Level 3: Open Hand Technique",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"normal_ft": 0},
+            "target_policy": {"min": 0, "max": 0, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 3, "subclass": "open_hand"},
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "text_result",
+                    "text": "This marker records that hits from Flurry of Blows can impose Addle, Push, or Topple."
+                }
+            ],
+            "audit_label": "Open Hand Technique"
+        },
+        {
+            "id": "srd.deflect_attacks",
+            "name": "Deflect Attacks",
+            "localization": {
+                "en": "Deflect Attacks",
+                "zh": "拨挡攻击",
+                "aliases": ["Deflect Attacks", "武僧拨挡攻击", "拨挡攻击"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 3: Deflect Attacks",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "reaction",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 3},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Monk can take a Reaction when hit by an attack roll that includes Bludgeoning, Piercing, or Slashing damage to reduce that attack's damage, and may spend 1 Focus Point to redirect it if reduced to 0."
+                }
+            ],
+            "audit_label": "Deflect Attacks"
+        },
+        {
+            "id": "srd.slow_fall",
+            "name": "Slow Fall",
+            "localization": {
+                "en": "Slow Fall",
+                "zh": "轻身坠落",
+                "aliases": ["缓慢坠落", "武僧轻身坠落"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 4: Slow Fall",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "reaction",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 4},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Monk can take a Reaction when falling to reduce falling damage by five times Monk level."
+                }
+            ],
+            "audit_label": "Slow Fall"
+        },
+        {
+            "id": "srd.stunning_strike",
+            "name": "Stunning Strike",
+            "localization": {
+                "en": "Stunning Strike",
+                "zh": "震慑击",
+                "aliases": ["Stunning Strike", "武僧震慑击"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 5: Stunning Strike",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that once per turn, a Monk can expend 1 Focus Point on a hit with a Monk weapon or Unarmed Strike to force a Constitution save."
+                }
+            ],
+            "audit_label": "Stunning Strike"
+        },
+        {
+            "id": "srd.patient_defense",
+            "name": "Patient Defense",
+            "localization": {
+                "en": "Patient Defense",
+                "zh": "忍耐防御",
+                "aliases": ["Patient Defense", "武僧忍耐防御", "附赠动作脱离"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Monk's Focus",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "disengaged",
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The monk takes the Disengage action as a Bonus Action."
+                }
+            ],
+            "audit_label": "Patient Defense"
+        },
+        {
+            "id": "srd.patient_defense_focus",
+            "name": "Patient Defense: Focus",
+            "localization": {
+                "en": "Patient Defense: Focus",
+                "zh": "忍耐防御：专注点",
+                "aliases": ["Patient Defense Focus", "消耗专注点忍耐防御", "附赠动作脱离闪避"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Monk's Focus",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.focus_points": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "disengaged",
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {
+                    "type": "condition",
+                    "condition": "dodging",
+                    "duration": {"until": "start_of_next_turn"},
+                    "tick_on": "self_turn_start"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The monk spends 1 Focus Point to take both Disengage and Dodge as a Bonus Action."
+                }
+            ],
+            "audit_label": "Patient Defense: Focus"
+        },
+        {
+            "id": "srd.step_of_the_wind",
+            "name": "Step of the Wind",
+            "localization": {
+                "en": "Step of the Wind",
+                "zh": "风步",
+                "aliases": ["Step of the Wind", "武僧风步", "附赠动作疾走"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Monk's Focus",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {"type": "resource_delta", "resource": "budget.movement", "delta_from": "speed"},
+                {
+                    "type": "text_result",
+                    "text": "The monk takes the Dash action as a Bonus Action."
+                }
+            ],
+            "audit_label": "Step of the Wind"
+        },
+        {
+            "id": "srd.step_of_the_wind_focus",
+            "name": "Step of the Wind: Focus",
+            "localization": {
+                "en": "Step of the Wind: Focus",
+                "zh": "风步：专注点",
+                "aliases": ["Step of the Wind Focus", "消耗专注点风步", "附赠动作脱离疾走"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 2: Monk's Focus",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 2},
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.focus_points": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "disengaged",
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {"type": "resource_delta", "resource": "budget.movement", "delta_from": "speed"},
+                {
+                    "type": "passive_effect",
+                    "condition": "jump_distance_doubled",
+                    "passive_modifiers": {"jump_distance_multiplier": 2},
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The monk spends 1 Focus Point to take both Disengage and Dash as a Bonus Action, and the monk's jump distance is doubled for the turn."
+                }
+            ],
+            "audit_label": "Step of the Wind: Focus"
+        },
+        {
+            "id": "srd.opportunity_attack",
+            "name": "Opportunity Attack",
+            "localization": {
+                "en": "Opportunity Attack",
+                "zh": "借机攻击",
+                "aliases": ["借机", "反应攻击"]
+            },
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "reaction",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {"trigger": "enemy_leaves_reach"},
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "attack_bonus": 5, "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice": "1d6+3",
+                    "damage_type": "piercing",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Opportunity Attack"
+        },
+        {
+            "id": "srd.extra_attack",
+            "name": "Extra Attack Marker",
+            "localization": {"en": "Extra Attack", "zh": "额外攻击", "aliases": ["多重攻击标记"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class_level_min": 5},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a class feature can grant an additional attack during the Attack action."
+                }
+            ],
+            "audit_label": "Extra Attack"
+        }
+    ]
+}

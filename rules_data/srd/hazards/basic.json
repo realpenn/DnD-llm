@@ -1,0 +1,176 @@
+{
+  "items": [
+    {
+      "id": "srd.falling_10ft",
+      "name": "Falling 10 ft",
+      "hazard_type": "srd.falling_10ft",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "damage", "dice": "1d6", "damage_type": "bludgeoning" },
+        {
+          "type": "condition",
+          "condition": "prone",
+          "duration": { "until": "stands_up" },
+          "tick_on": "manual"
+        }
+      ],
+      "audit_label": "Falling 10 ft"
+    },
+    {
+      "id": "srd.falling_30ft",
+      "name": "Falling 30 ft",
+      "hazard_type": "srd.falling_30ft",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "damage", "dice": "3d6", "damage_type": "bludgeoning" },
+        {
+          "type": "condition",
+          "condition": "prone",
+          "duration": { "until": "stands_up" },
+          "tick_on": "manual"
+        }
+      ],
+      "audit_label": "Falling 30 ft"
+    },
+    {
+      "id": "srd.burning_oil",
+      "name": "Burning Oil",
+      "hazard_type": "srd.burning_oil",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "damage", "amount": 5, "damage_type": "fire" }
+      ],
+      "audit_label": "Burning Oil"
+    },
+    {
+      "id": "srd.extreme_cold",
+      "name": "Extreme Cold",
+      "hazard_type": "srd.extreme_cold",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "saving_throw", "ability": "con", "difficulty_tier": "easy" },
+        {
+          "type": "branch",
+          "condition": "last_save_success",
+          "if_false": [
+            { "type": "condition", "condition": "exhaustion" }
+          ]
+        }
+      ],
+      "audit_label": "Extreme Cold"
+    },
+    {
+      "id": "srd.extreme_heat",
+      "name": "Extreme Heat",
+      "hazard_type": "srd.extreme_heat",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "saving_throw", "ability": "con", "difficulty_tier": "very_easy" },
+        {
+          "type": "branch",
+          "condition": "last_save_success",
+          "if_false": [
+            { "type": "condition", "condition": "exhaustion" }
+          ]
+        }
+      ],
+      "audit_label": "Extreme Heat"
+    },
+    {
+      "id": "srd.strong_wind",
+      "name": "Strong Wind",
+      "hazard_type": "srd.strong_wind",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ranged_weapon_attack_disadvantage": true,
+            "open_flames_extinguished": true,
+            "fog_dispersed": true,
+            "flying_creatures_must_land_or_fall": true,
+            "desert_sandstorm_perception_disadvantage": true
+          },
+          "duration": { "while": "strong_wind" },
+          "tick_on": "environment_changes"
+        }
+      ],
+      "audit_label": "Strong Wind"
+    },
+    {
+      "id": "srd.deep_water",
+      "name": "Deep Water",
+      "hazard_type": "srd.deep_water",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "saving_throw", "ability": "con", "difficulty_tier": "easy" },
+        {
+          "type": "branch",
+          "condition": "last_save_success",
+          "if_false": [
+            { "type": "condition", "condition": "exhaustion" }
+          ]
+        }
+      ],
+      "audit_label": "Deep Water"
+    },
+    {
+      "id": "srd.dehydration",
+      "name": "Dehydration",
+      "hazard_type": "srd.dehydration",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "condition", "condition": "exhaustion" }
+      ],
+      "audit_label": "Dehydration"
+    }
+  ]
+}

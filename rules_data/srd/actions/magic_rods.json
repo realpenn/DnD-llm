@@ -1,0 +1,323 @@
+{
+  "items": [
+    {
+      "id": "srd.initialize_rod_of_absorption_energy",
+      "name": "Initialize Rod of Absorption Energy",
+      "localization": {
+        "en": "Initialize Rod of Absorption Energy",
+        "zh": "初始化吸收法杖能量",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Absorption",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.rod_of_absorption" },
+      "properties": {
+        "rod_of_absorption": true,
+        "rod_of_absorption_initialize": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "held_item": true
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "rod_of_absorption_initialize", "stored_energy_roll": "1d10" },
+        { "type": "text_result", "text": "A newly found Rod of Absorption typically has 1d10 levels of spell energy stored in it." }
+      ],
+      "audit_label": "Initialize Rod of Absorption Energy"
+    },
+    {
+      "id": "srd.rod_of_absorption_absorb_spell",
+      "name": "Rod of Absorption: Absorb Spell",
+      "localization": {
+        "en": "Rod of Absorption: Absorb Spell",
+        "zh": "吸收法杖：吸收法术",
+        "aliases": ["使用吸收法杖吸收法术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Absorption",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "reaction",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.rod_of_absorption" },
+      "properties": {
+        "rod_of_absorption": true,
+        "rod_of_absorption_absorb_spell": true,
+        "spell_level_param": "absorbed_spell_level",
+        "targeting_only_you_param": "targeting_only_you",
+        "creates_area_of_effect_param": "creates_area_of_effect",
+        "self_only": true,
+        "requires_attunement": true,
+        "held_item": true,
+        "max_lifetime_absorbed_levels": 50
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "rod_of_absorption_absorb_spell",
+          "spell_level_param": "absorbed_spell_level",
+          "targeting_only_you_param": "targeting_only_you",
+          "creates_area_of_effect_param": "creates_area_of_effect"
+        },
+        { "type": "text_result", "text": "The absorbed spell's effect is canceled, and the spell's energy is stored in the rod." }
+      ],
+      "audit_label": "Rod of Absorption: Absorb Spell"
+    },
+    {
+      "id": "srd.hold_rod_of_alertness",
+      "name": "Hold Rod of Alertness",
+      "localization": {
+        "en": "Hold Rod of Alertness",
+        "zh": "持握警觉法杖",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.rod_of_alertness" },
+      "properties": {
+        "rod_of_alertness": true,
+        "rod_of_alertness_alertness": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "held_item": true
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_check_advantage_skills": [{ "ability": "wis", "skill": "perception" }],
+            "initiative_advantage": true,
+            "initiative_advantage_source": "rod_of_alertness"
+          },
+          "duration": { "until": "while_holding_rod_of_alertness" },
+          "stacking_policy": "replace"
+        }
+      ],
+      "audit_label": "Hold Rod of Alertness"
+    },
+    {
+      "id": "srd.rod_of_alertness_detect_evil_and_good",
+      "name": "Rod of Alertness: Detect Evil and Good",
+      "localization": {
+        "en": "Rod of Alertness: Detect Evil and Good",
+        "zh": "警觉法杖：侦测善恶",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness; SRD 5.2.1 Detect Evil and Good",
+      "rules_version": "srd-5.2.1",
+      "action_type": "spell",
+      "action_economy": "action",
+      "range": { "self": true, "radius_ft": 30 },
+      "target_policy": { "min": 0, "max": 0, "harmful": false },
+      "requirements": { "item": "srd.rod_of_alertness", "spell_level": 1 },
+      "properties": {
+        "rod_of_alertness": true,
+        "rod_of_alertness_spell": true,
+        "spell_definition_id": "srd.spell.detect_evil_and_good",
+        "spell_level": 1,
+        "requires_attunement": true,
+        "held_item": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "world_effect",
+          "effect_type": "detect_creature_types",
+          "scope": { "target": "self", "radius_ft": 30 },
+          "duration": { "until": "concentration_10_minutes" },
+          "metadata": {
+            "creature_types": ["aberration", "celestial", "elemental", "fey", "fiend", "undead"],
+            "spell_definition_id": "srd.spell.detect_evil_and_good",
+            "duplicates_spell_effect": true
+          }
+        }
+      ],
+      "audit_label": "Rod of Alertness: Detect Evil and Good"
+    },
+    {
+      "id": "srd.rod_of_alertness_detect_magic",
+      "name": "Rod of Alertness: Detect Magic",
+      "localization": {
+        "en": "Rod of Alertness: Detect Magic",
+        "zh": "警觉法杖：侦测魔法",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness; SRD 5.2.1 Detect Magic",
+      "rules_version": "srd-5.2.1",
+      "action_type": "spell",
+      "action_economy": "action",
+      "range": { "self": true, "radius_ft": 30 },
+      "target_policy": { "min": 0, "max": 0, "harmful": false },
+      "requirements": { "item": "srd.rod_of_alertness", "spell_level": 1 },
+      "properties": {
+        "rod_of_alertness": true,
+        "rod_of_alertness_spell": true,
+        "spell_definition_id": "srd.spell.detect_magic",
+        "spell_level": 1,
+        "requires_attunement": true,
+        "held_item": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "world_effect",
+          "effect_type": "detect_magic",
+          "scope": { "target": "self", "radius_ft": 30 },
+          "duration": { "until": "concentration_10_minutes" },
+          "metadata": {
+            "reveals_school": true,
+            "concentration": true,
+            "spell_definition_id": "srd.spell.detect_magic",
+            "duplicates_spell_effect": true
+          }
+        }
+      ],
+      "audit_label": "Rod of Alertness: Detect Magic"
+    },
+    {
+      "id": "srd.rod_of_alertness_detect_poison_and_disease",
+      "name": "Rod of Alertness: Detect Poison and Disease",
+      "localization": {
+        "en": "Rod of Alertness: Detect Poison and Disease",
+        "zh": "警觉法杖：侦测毒性和疾病",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness; SRD 5.2.1 Detect Poison and Disease",
+      "rules_version": "srd-5.2.1",
+      "action_type": "spell",
+      "action_economy": "action",
+      "range": { "self": true, "radius_ft": 30 },
+      "target_policy": { "min": 0, "max": 0, "harmful": false },
+      "requirements": { "item": "srd.rod_of_alertness", "spell_level": 1 },
+      "properties": {
+        "rod_of_alertness": true,
+        "rod_of_alertness_spell": true,
+        "spell_definition_id": "srd.spell.detect_poison_and_disease",
+        "spell_level": 1,
+        "requires_attunement": true,
+        "held_item": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "world_effect",
+          "effect_type": "detect_poison_and_disease",
+          "scope": { "target": "self", "radius_ft": 30 },
+          "duration": { "until": "concentration_10_minutes" },
+          "metadata": {
+            "detects": ["poison", "poisonous_creature", "disease"],
+            "spell_definition_id": "srd.spell.detect_poison_and_disease",
+            "duplicates_spell_effect": true
+          }
+        }
+      ],
+      "audit_label": "Rod of Alertness: Detect Poison and Disease"
+    },
+    {
+      "id": "srd.rod_of_alertness_see_invisibility",
+      "name": "Rod of Alertness: See Invisibility",
+      "localization": {
+        "en": "Rod of Alertness: See Invisibility",
+        "zh": "警觉法杖：识破隐形",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness; SRD 5.2.1 See Invisibility",
+      "rules_version": "srd-5.2.1",
+      "action_type": "spell",
+      "action_economy": "action",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.rod_of_alertness", "spell_level": 2 },
+      "properties": {
+        "rod_of_alertness": true,
+        "rod_of_alertness_spell": true,
+        "spell_definition_id": "srd.spell.see_invisibility",
+        "spell_level": 2,
+        "self_only": true,
+        "requires_attunement": true,
+        "held_item": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "self" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "see_invisibility": true,
+            "see_ethereal": true,
+            "spell_definition_id": "srd.spell.see_invisibility",
+            "duplicates_spell_effect": true
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "perception",
+          "stacking_policy": "replace"
+        }
+      ],
+      "audit_label": "Rod of Alertness: See Invisibility"
+    },
+    {
+      "id": "srd.rod_of_alertness_protective_aura",
+      "name": "Rod of Alertness: Protective Aura",
+      "localization": {
+        "en": "Rod of Alertness: Protective Aura",
+        "zh": "警觉法杖：保护灵光",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "action",
+      "range": { "self": true, "bright_light_radius_ft": 60, "dim_light_additional_ft": 60 },
+      "target_policy": { "min": 1, "max": 10, "harmful": false },
+      "requirements": { "item": "srd.rod_of_alertness" },
+      "properties": {
+        "rod_of_alertness": true,
+        "rod_of_alertness_protective_aura": true,
+        "magic_action": true,
+        "requires_attunement": true,
+        "held_item": true,
+        "bright_light_radius_ft": 60,
+        "dim_light_additional_ft": 60,
+        "once_until_next_dawn": true
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "rod_of_alertness_protective_aura",
+          "bright_light_radius_ft": 60,
+          "dim_light_additional_ft": 60,
+          "passive_modifiers": {
+            "armor_class_bonus": 1,
+            "saving_throw_bonus": 1,
+            "sense_invisible_creature_locations_in_same_bright_light": true
+          },
+          "duration": { "until": "duration_10_minutes_or_magic_action_to_remove" },
+          "tick_on": "aura",
+          "stacking_policy": "replace"
+        },
+        {
+          "type": "text_result",
+          "text": "The rod sheds Bright Light in a 60-foot radius and Dim Light for an additional 60 feet; the aura ends after 10 minutes or when removed with a Magic action."
+        }
+      ],
+      "audit_label": "Rod of Alertness: Protective Aura"
+    }
+  ]
+}

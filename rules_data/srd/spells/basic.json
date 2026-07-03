@@ -1,0 +1,667 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.fire_bolt",
+      "name": "Fire Bolt",
+      "localization": { "en": "Fire Bolt", "zh": "火焰箭", "aliases": ["火焰戏法"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.fire_bolt",
+        "name": "Fire Bolt",
+        "localization": { "en": "Fire Bolt", "zh": "火焰箭", "aliases": ["火箭"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d10", "damage_type": "fire", "requires_hit": true }
+        ],
+        "audit_label": "Fire Bolt"
+      }
+    },
+    {
+      "id": "srd.spell.sacred_flame",
+      "name": "Sacred Flame",
+      "localization": { "en": "Sacred Flame", "zh": "圣火术", "aliases": ["圣焰"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.sacred_flame",
+        "name": "Sacred Flame",
+        "localization": { "en": "Sacred Flame", "zh": "圣火术", "aliases": ["圣焰"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              { "type": "damage", "dice": "1d8", "damage_type": "radiant" }
+            ]
+          }
+        ],
+        "audit_label": "Sacred Flame"
+      }
+    },
+    {
+      "id": "srd.spell.eldritch_blast",
+      "name": "Eldritch Blast",
+      "localization": { "en": "Eldritch Blast", "zh": "魔能爆", "aliases": ["邪能冲击"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["warlock"],
+      "action": {
+        "id": "srd.eldritch_blast",
+        "name": "Eldritch Blast",
+        "localization": { "en": "Eldritch Blast", "zh": "魔能爆", "aliases": ["邪能冲击"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d10", "damage_type": "force", "requires_hit": true }
+        ],
+        "audit_label": "Eldritch Blast"
+      }
+    },
+    {
+      "id": "srd.spell.cure_wounds",
+      "name": "Cure Wounds",
+      "localization": { "en": "Cure Wounds", "zh": "治疗术", "aliases": ["疗伤"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["cleric", "bard", "druid", "paladin", "ranger"],
+      "action_id": "srd.cure_wounds"
+    },
+    {
+      "id": "srd.spell.magic_missile",
+      "name": "Magic Missile",
+      "localization": { "en": "Magic Missile", "zh": "魔法飞弹", "aliases": ["飞弹"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.magic_missile",
+        "name": "Magic Missile",
+        "localization": { "en": "Magic Missile", "zh": "魔法飞弹", "aliases": ["飞弹"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 3, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "damage", "dice": "1d4+1", "damage_type": "force" }
+        ],
+        "audit_label": "Magic Missile"
+      }
+    },
+    {
+      "id": "srd.spell.burning_hands",
+      "name": "Burning Hands",
+      "localization": { "en": "Burning Hands", "zh": "燃烧之手", "aliases": ["火手"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.burning_hands",
+        "name": "Burning Hands",
+        "localization": { "en": "Burning Hands", "zh": "燃烧之手", "aliases": ["火手"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 15, "shape": "cone" },
+        "target_policy": { "min": 1, "max": 3, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "medium" },
+          { "type": "damage", "dice": "3d6", "damage_type": "fire", "save_half": true }
+        ],
+        "audit_label": "Burning Hands"
+      }
+    },
+    {
+      "id": "srd.spell.scorching_ray",
+      "name": "Scorching Ray",
+      "localization": { "en": "Scorching Ray", "zh": "灼热射线", "aliases": ["火焰射线"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.scorching_ray",
+        "name": "Scorching Ray",
+        "localization": { "en": "Scorching Ray", "zh": "灼热射线", "aliases": ["火焰射线"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 3, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "2d6", "damage_type": "fire", "requires_hit": true }
+        ],
+        "audit_label": "Scorching Ray"
+      }
+    },
+    {
+      "id": "srd.spell.hold_person",
+      "name": "Hold Person",
+      "localization": { "en": "Hold Person", "zh": "人类定身术", "aliases": ["定身术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "enchantment",
+      "classes": ["bard", "cleric", "druid", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.hold_person",
+        "name": "Hold Person",
+        "localization": { "en": "Hold Person", "zh": "人类定身术", "aliases": ["定身术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "condition",
+                "condition": "paralyzed",
+                "duration": { "until": "save_ends" },
+                "tick_on": "target_turn_end"
+              }
+            ]
+          }
+        ],
+        "audit_label": "Hold Person"
+      }
+    },
+    {
+      "id": "srd.spell.fireball",
+      "name": "Fireball",
+      "localization": { "en": "Fireball", "zh": "火球术", "aliases": ["火球"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.fireball",
+        "name": "Fireball",
+        "localization": { "en": "Fireball", "zh": "火球术", "aliases": ["火球"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 8, "harmful": true },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "medium" },
+          { "type": "damage", "dice": "8d6", "damage_type": "fire", "save_half": true }
+        ],
+        "audit_label": "Fireball"
+      }
+    },
+    {
+      "id": "srd.spell.lightning_bolt",
+      "name": "Lightning Bolt",
+      "localization": { "en": "Lightning Bolt", "zh": "闪电束", "aliases": ["闪电箭"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.lightning_bolt",
+        "name": "Lightning Bolt",
+        "localization": { "en": "Lightning Bolt", "zh": "闪电束", "aliases": ["闪电箭"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 100, "shape": "line" },
+        "target_policy": { "min": 1, "max": 6, "harmful": true },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "medium" },
+          { "type": "damage", "dice": "8d6", "damage_type": "lightning", "save_half": true }
+        ],
+        "audit_label": "Lightning Bolt"
+      }
+    },
+    {
+      "id": "srd.spell.acid_splash",
+      "name": "Acid Splash",
+      "localization": { "en": "Acid Splash", "zh": "酸液飞溅", "aliases": ["酸液"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.acid_splash",
+        "name": "Acid Splash",
+        "localization": { "en": "Acid Splash", "zh": "酸液飞溅", "aliases": ["酸液"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 5 },
+        "target_policy": { "min": 1, "max": 2, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [{ "type": "damage", "dice": "1d6", "damage_type": "acid" }]
+          }
+        ],
+        "audit_label": "Acid Splash"
+      }
+    },
+    {
+      "id": "srd.spell.chill_touch",
+      "name": "Chill Touch",
+      "localization": { "en": "Chill Touch", "zh": "冻寒之触", "aliases": ["寒触"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "necromancy",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.chill_touch",
+        "name": "Chill Touch",
+        "localization": { "en": "Chill Touch", "zh": "冻寒之触", "aliases": ["寒触"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d10", "damage_type": "necrotic", "requires_hit": true }
+        ],
+        "audit_label": "Chill Touch"
+      }
+    },
+    {
+      "id": "srd.spell.ray_of_frost",
+      "name": "Ray of Frost",
+      "localization": { "en": "Ray of Frost", "zh": "冷冻射线", "aliases": ["冰霜射线"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.ray_of_frost",
+        "name": "Ray of Frost",
+        "localization": { "en": "Ray of Frost", "zh": "冷冻射线", "aliases": ["冰霜射线"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d8", "damage_type": "cold", "requires_hit": true }
+        ],
+        "audit_label": "Ray of Frost"
+      }
+    },
+    {
+      "id": "srd.spell.shocking_grasp",
+      "name": "Shocking Grasp",
+      "localization": { "en": "Shocking Grasp", "zh": "电爪", "aliases": ["电击之握"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.shocking_grasp",
+        "name": "Shocking Grasp",
+        "localization": { "en": "Shocking Grasp", "zh": "电爪", "aliases": ["电击之握"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d8", "damage_type": "lightning", "requires_hit": true }
+        ],
+        "audit_label": "Shocking Grasp"
+      }
+    },
+    {
+      "id": "srd.spell.vicious_mockery",
+      "name": "Vicious Mockery",
+      "localization": { "en": "Vicious Mockery", "zh": "恶毒嘲笑", "aliases": ["嘲笑"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "enchantment",
+      "classes": ["bard"],
+      "action": {
+        "id": "srd.vicious_mockery",
+        "name": "Vicious Mockery",
+        "localization": { "en": "Vicious Mockery", "zh": "恶毒嘲笑", "aliases": ["嘲笑"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [{ "type": "damage", "dice": "1d6", "damage_type": "psychic" }]
+          }
+        ],
+        "audit_label": "Vicious Mockery"
+      }
+    },
+    {
+      "id": "srd.spell.guiding_bolt",
+      "name": "Guiding Bolt",
+      "localization": { "en": "Guiding Bolt", "zh": "曳光弹", "aliases": ["导引箭"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.guiding_bolt",
+        "name": "Guiding Bolt",
+        "localization": { "en": "Guiding Bolt", "zh": "曳光弹", "aliases": ["导引箭"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "4d6", "damage_type": "radiant", "requires_hit": true }
+        ],
+        "audit_label": "Guiding Bolt"
+      }
+    },
+    {
+      "id": "srd.spell.healing_word",
+      "name": "Healing Word",
+      "localization": { "en": "Healing Word", "zh": "疗愈真言", "aliases": ["治疗真言"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid"],
+      "action": {
+        "id": "srd.healing_word",
+        "name": "Healing Word",
+        "localization": { "en": "Healing Word", "zh": "疗愈真言", "aliases": ["治疗真言"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "healing", "dice": "1d4+3" }
+        ],
+        "audit_label": "Healing Word"
+      }
+    },
+    {
+      "id": "srd.spell.inflict_wounds",
+      "name": "Inflict Wounds",
+      "localization": { "en": "Inflict Wounds", "zh": "致伤术", "aliases": ["造成伤害"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "necromancy",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.inflict_wounds",
+        "name": "Inflict Wounds",
+        "localization": { "en": "Inflict Wounds", "zh": "致伤术", "aliases": ["造成伤害"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "3d10", "damage_type": "necrotic", "requires_hit": true }
+        ],
+        "audit_label": "Inflict Wounds"
+      }
+    },
+    {
+      "id": "srd.spell.thunderwave",
+      "name": "Thunderwave",
+      "localization": { "en": "Thunderwave", "zh": "雷鸣波", "aliases": ["雷波"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["bard", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.thunderwave",
+        "name": "Thunderwave",
+        "localization": { "en": "Thunderwave", "zh": "雷鸣波", "aliases": ["雷波"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "cube", "size_ft": 15 },
+        "target_policy": { "min": 1, "max": 8, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "con", "difficulty_tier": "medium" },
+          { "type": "damage", "dice": "2d8", "damage_type": "thunder", "save_half": true }
+        ],
+        "audit_label": "Thunderwave"
+      }
+    },
+    {
+      "id": "srd.spell.acid_arrow",
+      "name": "Acid Arrow",
+      "localization": { "en": "Acid Arrow", "zh": "酸液箭", "aliases": ["强酸箭"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.acid_arrow",
+        "name": "Acid Arrow",
+        "localization": { "en": "Acid Arrow", "zh": "酸液箭", "aliases": ["强酸箭"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "4d4", "damage_type": "acid", "requires_hit": true }
+        ],
+        "audit_label": "Acid Arrow"
+      }
+    },
+    {
+      "id": "srd.spell.shatter",
+      "name": "Shatter",
+      "localization": { "en": "Shatter", "zh": "粉碎音波", "aliases": ["粉碎术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.shatter",
+        "name": "Shatter",
+        "localization": { "en": "Shatter", "zh": "粉碎音波", "aliases": ["粉碎术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 10 },
+        "target_policy": { "min": 1, "max": 6, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "con", "difficulty_tier": "medium" },
+          { "type": "damage", "dice": "3d8", "damage_type": "thunder", "save_half": true }
+        ],
+        "audit_label": "Shatter"
+      }
+    },
+    {
+      "id": "srd.spell.mass_healing_word",
+      "name": "Mass Healing Word",
+      "localization": { "en": "Mass Healing Word", "zh": "群体疗愈真言", "aliases": ["群疗真言"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["bard", "cleric"],
+      "action": {
+        "id": "srd.mass_healing_word",
+        "name": "Mass Healing Word",
+        "localization": { "en": "Mass Healing Word", "zh": "群体疗愈真言", "aliases": ["群疗真言"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 6, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "healing", "dice": "1d4+3" }
+        ],
+        "audit_label": "Mass Healing Word"
+      }
+    }
+  ]
+}

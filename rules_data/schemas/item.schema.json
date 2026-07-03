@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ItemDefinition",
+  "type": "object",
+  "required": ["id", "name", "localization", "source", "rules_version", "item_type"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "localization": { "type": "object" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "item_type": { "type": "string" },
+    "actions": { "type": "array" },
+    "properties": { "type": "object" },
+    "quantity": { "type": "integer" }
+  }
+}

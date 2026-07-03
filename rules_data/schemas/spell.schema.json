@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SpellDefinition",
+  "type": "object",
+  "required": ["id", "name", "localization", "source", "rules_version", "level", "school", "classes"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "localization": { "type": "object" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "level": { "type": "integer" },
+    "school": { "type": "string" },
+    "classes": { "type": "array" },
+    "ritual": { "type": "boolean" },
+    "action_id": { "type": "string" },
+    "action": { "type": "object" }
+  }
+}

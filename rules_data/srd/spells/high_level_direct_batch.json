@@ -1,0 +1,183 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.flame_strike",
+      "name": "Flame Strike",
+      "localization": { "en": "Flame Strike", "zh": "焰击术", "aliases": ["烈焰打击"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "evocation",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.flame_strike",
+        "name": "Flame Strike",
+        "localization": { "en": "Flame Strike", "zh": "焰击术", "aliases": ["烈焰打击"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "cylinder", "radius_ft": 10, "height_ft": 40 },
+        "target_policy": { "min": 1, "max": 8, "harmful": true },
+        "requirements": { "spell_level": 5 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "5d6", "damage_type": "fire", "save_half": true },
+          { "type": "damage", "dice": "5d6", "damage_type": "radiant", "save_half": true }
+        ],
+        "audit_label": "Flame Strike"
+      }
+    },
+    {
+      "id": "srd.spell.disintegrate",
+      "name": "Disintegrate",
+      "localization": { "en": "Disintegrate", "zh": "解离术", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.disintegrate",
+        "name": "Disintegrate",
+        "localization": { "en": "Disintegrate", "zh": "解离术", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 6 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [
+              { "type": "text_result", "text": "The target succeeds; Disintegrate deals no damage." }
+            ],
+            "if_false": [
+              { "type": "damage", "dice": "10d6+40", "damage_type": "force" },
+              {
+                "type": "text_result",
+                "text": "If this damage reduces the target to 0 HP, apply the SRD disintegration aftermath."
+              }
+            ]
+          }
+        ],
+        "audit_label": "Disintegrate"
+      }
+    },
+    {
+      "id": "srd.spell.heal",
+      "name": "Heal",
+      "localization": { "en": "Heal", "zh": "医疗术", "aliases": ["强效治疗"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "abjuration",
+      "classes": ["cleric", "druid"],
+      "action": {
+        "id": "srd.heal",
+        "name": "Heal",
+        "localization": { "en": "Heal", "zh": "医疗术", "aliases": ["强效治疗"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 6 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "healing", "amount": 70 },
+          { "type": "remove_condition", "conditions": ["blinded", "deafened", "poisoned"] }
+        ],
+        "audit_label": "Heal"
+      }
+    },
+    {
+      "id": "srd.spell.harm",
+      "name": "Harm",
+      "localization": { "en": "Harm", "zh": "伤害术", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "necromancy",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.harm",
+        "name": "Harm",
+        "localization": { "en": "Harm", "zh": "伤害术", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 6 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "con", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "14d6", "damage_type": "necrotic", "save_half": true },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [],
+            "if_false": [
+              {
+                "type": "max_hp_delta",
+                "amount_from": "-last_damage_taken"
+              }
+            ]
+          }
+        ],
+        "audit_label": "Harm"
+      }
+    },
+    {
+      "id": "srd.spell.finger_of_death",
+      "name": "Finger of Death",
+      "localization": { "en": "Finger of Death", "zh": "死亡一指", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "necromancy",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.finger_of_death",
+        "name": "Finger of Death",
+        "localization": { "en": "Finger of Death", "zh": "死亡一指", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 7 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "con", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "7d8+30", "damage_type": "necrotic", "save_half": true },
+          {
+            "type": "text_result",
+            "text": "If a Humanoid is killed by this spell, raise it as a Zombie at the start of the caster's next turn."
+          }
+        ],
+        "audit_label": "Finger of Death"
+      }
+    }
+  ]
+}

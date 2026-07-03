@@ -1,0 +1,857 @@
+{
+    "items": [
+        {
+            "id": "barbarian",
+            "name": "Barbarian",
+            "localization": {"en": "Barbarian", "zh": "野蛮人", "aliases": ["狂战士"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d12",
+            "primary_abilities": ["str"],
+            "saving_throw_proficiencies": ["str", "con"],
+            "levels": {
+                "1": {
+                    "features": ["Rage", "Unarmored Defense", "Weapon Mastery"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense"
+                    ]
+                },
+                "2": {
+                    "features": ["Reckless Attack", "Danger Sense"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.reckless_attack"
+                    ]
+                },
+                "3": {
+                    "features": ["Barbarian Subclass", "Primal Knowledge"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack"
+                    ]
+                },
+                "5": {
+                    "features": ["Extra Attack", "Fast Movement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack"
+                    ]
+                }
+            },
+            "subclasses": {
+                "berserker": {
+                    "name": "Path of the Berserker",
+                    "level": 3,
+                    "features": ["Frenzy"],
+                    "actions": ["srd.frenzy"]
+                }
+            }
+        },
+        {
+            "id": "bard",
+            "name": "Bard",
+            "localization": {"en": "Bard", "zh": "吟游诗人", "aliases": ["诗人"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d8",
+            "primary_abilities": ["cha"],
+            "saving_throw_proficiencies": ["dex", "cha"],
+            "levels": {
+                "1": {
+                    "features": ["Spellcasting", "Bardic Inspiration"],
+                    "actions": ["srd.cure_wounds", "srd.bardic_inspiration"]
+                },
+                "2": {
+                    "features": ["Expertise", "Jack of All Trades"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades"
+                    ]
+                },
+                "3": {
+                    "features": ["Bard Subclass"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades"
+                    ]
+                },
+                "5": {
+                    "features": ["Font of Inspiration"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3"
+                    ]
+                }
+            },
+            "subclasses": {
+                "lore": {
+                    "name": "College of Lore",
+                    "level": 3,
+                    "features": ["Bonus Proficiencies", "Cutting Words"],
+                    "actions": ["srd.cutting_words"]
+                }
+            }
+        },
+        {
+            "id": "cleric",
+            "name": "Cleric",
+            "localization": {"en": "Cleric", "zh": "牧师", "aliases": ["神术施法者"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d8",
+            "primary_abilities": ["wis"],
+            "saving_throw_proficiencies": ["wis", "cha"],
+            "levels": {
+                "1": {
+                    "features": ["Spellcasting", "Divine Order"],
+                    "actions": ["srd.cure_wounds", "srd.divine_order"]
+                },
+                "2": {
+                    "features": ["Channel Divinity"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead"
+                    ]
+                },
+                "3": {
+                    "features": ["Cleric Subclass"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead"
+                    ]
+                },
+                "5": {
+                    "features": ["Sear Undead"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead"
+                    ]
+                }
+            },
+            "subclasses": {
+                "life": {
+                    "name": "Life Domain",
+                    "level": 3,
+                    "features": ["Disciple of Life", "Preserve Life"],
+                    "actions": ["srd.disciple_of_life", "srd.preserve_life"]
+                }
+            }
+        },
+        {
+            "id": "druid",
+            "name": "Druid",
+            "localization": {"en": "Druid", "zh": "德鲁伊", "aliases": ["自然施法者"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d8",
+            "primary_abilities": ["wis"],
+            "saving_throw_proficiencies": ["int", "wis"],
+            "levels": {
+                "1": {
+                    "features": ["Spellcasting", "Druidic", "Primal Order"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.druidic",
+                        "srd.primal_order",
+                        "srd.speak_with_animals"
+                    ]
+                },
+                "2": {
+                    "features": ["Wild Shape", "Wild Companion"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.druidic",
+                        "srd.primal_order",
+                        "srd.speak_with_animals",
+                        "srd.wild_shape_wolf",
+                        "srd.wild_shape_giant_rat",
+                        "srd.wild_companion_wild_shape",
+                        "srd.wild_companion_spell_slot"
+                    ]
+                },
+                "3": {
+                    "features": ["Druid Subclass"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.druidic",
+                        "srd.primal_order",
+                        "srd.speak_with_animals",
+                        "srd.wild_shape_wolf",
+                        "srd.wild_shape_giant_rat",
+                        "srd.wild_companion_wild_shape",
+                        "srd.wild_companion_spell_slot"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.druidic",
+                        "srd.primal_order",
+                        "srd.speak_with_animals",
+                        "srd.wild_shape_wolf",
+                        "srd.wild_shape_giant_rat",
+                        "srd.wild_companion_wild_shape",
+                        "srd.wild_companion_spell_slot"
+                    ]
+                },
+                "5": {
+                    "features": ["Wild Resurgence"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.druidic",
+                        "srd.primal_order",
+                        "srd.speak_with_animals",
+                        "srd.wild_shape_wolf",
+                        "srd.wild_shape_giant_rat",
+                        "srd.wild_companion_wild_shape",
+                        "srd.wild_companion_spell_slot",
+                        "srd.wild_resurgence_restore_wild_shape_slot_1",
+                        "srd.wild_resurgence_restore_wild_shape_slot_2",
+                        "srd.wild_resurgence_restore_wild_shape_slot_3",
+                        "srd.wild_resurgence_create_spell_slot"
+                    ]
+                }
+            },
+            "subclasses": {
+                "land": {
+                    "name": "Circle of the Land",
+                    "level": 3,
+                    "features": ["Circle of the Land Spells", "Land's Aid"],
+                    "actions": ["srd.lands_aid"]
+                }
+            }
+        },
+        {
+            "id": "fighter",
+            "name": "Fighter",
+            "localization": {"en": "Fighter", "zh": "战士", "aliases": ["斗士"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d10",
+            "primary_abilities": ["str", "dex"],
+            "saving_throw_proficiencies": ["str", "con"],
+            "levels": {
+                "1": {
+                    "features": ["Fighting Style", "Second Wind", "Weapon Mastery"],
+                    "actions": ["srd.longsword_attack", "srd.second_wind"]
+                },
+                "2": {
+                    "features": ["Action Surge", "Tactical Mind"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind"
+                    ]
+                },
+                "3": {
+                    "features": ["Fighter Subclass"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind"
+                    ]
+                },
+                "5": {
+                    "features": ["Extra Attack", "Tactical Shift"],
+                    "actions": [
+                        "srd.longsword_attack",
+                        "srd.second_wind",
+                        "srd.action_surge",
+                        "srd.tactical_mind",
+                        "srd.extra_attack"
+                    ]
+                }
+            },
+            "subclasses": {
+                "champion": {
+                    "name": "Champion",
+                    "level": 3,
+                    "features": ["Improved Critical", "Remarkable Athlete"],
+                    "actions": ["srd.improved_critical", "srd.remarkable_athlete"]
+                }
+            }
+        },
+        {
+            "id": "monk",
+            "name": "Monk",
+            "localization": {"en": "Monk", "zh": "武僧", "aliases": ["武道家"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d8",
+            "primary_abilities": ["dex", "wis"],
+            "saving_throw_proficiencies": ["str", "dex"],
+            "levels": {
+                "1": {
+                    "features": ["Martial Arts", "Unarmored Defense"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.monk_unarmed_strike",
+                        "srd.martial_arts_bonus_unarmed_strike",
+                        "srd.monk_unarmored_defense"
+                    ]
+                },
+                "2": {
+                    "features": ["Monk's Focus", "Unarmored Movement", "Uncanny Metabolism"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.monk_unarmed_strike",
+                        "srd.martial_arts_bonus_unarmed_strike",
+                        "srd.monk_unarmored_defense",
+                        "srd.uncanny_metabolism",
+                        "srd.monk_unarmored_movement",
+                        "srd.flurry_of_blows",
+                        "srd.patient_defense",
+                        "srd.patient_defense_focus",
+                        "srd.step_of_the_wind",
+                        "srd.step_of_the_wind_focus"
+                    ]
+                },
+                "3": {
+                    "features": ["Deflect Attacks", "Monk Subclass"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.monk_unarmed_strike",
+                        "srd.martial_arts_bonus_unarmed_strike",
+                        "srd.monk_unarmored_defense",
+                        "srd.uncanny_metabolism",
+                        "srd.monk_unarmored_movement",
+                        "srd.deflect_attacks",
+                        "srd.flurry_of_blows",
+                        "srd.patient_defense",
+                        "srd.patient_defense_focus",
+                        "srd.step_of_the_wind",
+                        "srd.step_of_the_wind_focus"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement", "Slow Fall"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.monk_unarmed_strike",
+                        "srd.martial_arts_bonus_unarmed_strike",
+                        "srd.monk_unarmored_defense",
+                        "srd.uncanny_metabolism",
+                        "srd.monk_unarmored_movement",
+                        "srd.deflect_attacks",
+                        "srd.flurry_of_blows",
+                        "srd.patient_defense",
+                        "srd.patient_defense_focus",
+                        "srd.step_of_the_wind",
+                        "srd.step_of_the_wind_focus",
+                        "srd.slow_fall"
+                    ]
+                },
+                "5": {
+                    "features": ["Extra Attack", "Stunning Strike"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.monk_unarmed_strike",
+                        "srd.martial_arts_bonus_unarmed_strike",
+                        "srd.monk_unarmored_defense",
+                        "srd.uncanny_metabolism",
+                        "srd.monk_unarmored_movement",
+                        "srd.deflect_attacks",
+                        "srd.flurry_of_blows",
+                        "srd.patient_defense",
+                        "srd.patient_defense_focus",
+                        "srd.step_of_the_wind",
+                        "srd.step_of_the_wind_focus",
+                        "srd.slow_fall",
+                        "srd.stunning_strike",
+                        "srd.extra_attack"
+                    ]
+                }
+            },
+            "subclasses": {
+                "open_hand": {
+                    "name": "Warrior of the Open Hand",
+                    "level": 3,
+                    "features": ["Open Hand Technique"],
+                    "actions": ["srd.open_hand_technique"]
+                }
+            }
+        },
+        {
+            "id": "paladin",
+            "name": "Paladin",
+            "localization": {"en": "Paladin", "zh": "圣武士", "aliases": ["圣骑士"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d10",
+            "primary_abilities": ["str", "cha"],
+            "saving_throw_proficiencies": ["wis", "cha"],
+            "levels": {
+                "1": {
+                    "features": ["Lay On Hands", "Spellcasting", "Weapon Mastery"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.cure_wounds"
+                    ]
+                },
+                "2": {
+                    "features": ["Fighting Style", "Paladin's Smite"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite"
+                    ]
+                },
+                "3": {
+                    "features": ["Channel Divinity", "Paladin Subclass"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense"
+                    ]
+                },
+                "5": {
+                    "features": ["Extra Attack", "Faithful Steed"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed"
+                    ]
+                }
+            },
+            "subclasses": {
+                "devotion": {
+                    "name": "Oath of Devotion",
+                    "level": 3,
+                    "features": ["Oath of Devotion Spells", "Sacred Weapon"],
+                    "actions": ["srd.sacred_weapon"]
+                }
+            }
+        },
+        {
+            "id": "ranger",
+            "name": "Ranger",
+            "localization": {"en": "Ranger", "zh": "游侠", "aliases": ["巡林客"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d10",
+            "primary_abilities": ["dex", "wis"],
+            "saving_throw_proficiencies": ["str", "dex"],
+            "levels": {
+                "1": {
+                    "features": ["Spellcasting", "Favored Enemy", "Weapon Mastery"],
+                    "actions": ["srd.shortsword_attack", "srd.favored_enemy_hunters_mark"]
+                },
+                "2": {
+                    "features": ["Deft Explorer", "Fighting Style"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer"
+                    ]
+                },
+                "3": {
+                    "features": ["Ranger Subclass"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer"
+                    ]
+                },
+                "5": {
+                    "features": ["Extra Attack"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer"
+                    ]
+                }
+            },
+            "subclasses": {
+                "hunter": {
+                    "name": "Hunter",
+                    "level": 3,
+                    "features": ["Hunter's Lore", "Hunter's Prey"],
+                    "actions": ["srd.hunters_lore"],
+                    "feature_options": {
+                        "hunters_prey": [
+                            "srd.hunters_prey_colossus_slayer",
+                            "srd.hunters_prey_horde_breaker"
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": "rogue",
+            "name": "Rogue",
+            "localization": {"en": "Rogue", "zh": "游荡者", "aliases": ["盗贼"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d8",
+            "primary_abilities": ["dex"],
+            "saving_throw_proficiencies": ["dex", "int"],
+            "levels": {
+                "1": {
+                    "features": ["Expertise", "Sneak Attack", "Thieves' Cant", "Weapon Mastery"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.hide",
+                        "srd.rogue_expertise",
+                        "srd.sneak_attack",
+                        "srd.thieves_cant"
+                    ]
+                },
+                "2": {
+                    "features": ["Cunning Action"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.hide",
+                        "srd.rogue_expertise",
+                        "srd.sneak_attack",
+                        "srd.thieves_cant",
+                        "srd.cunning_action_dash",
+                        "srd.cunning_action_disengage",
+                        "srd.cunning_action_hide"
+                    ]
+                },
+                "3": {
+                    "features": ["Rogue Subclass", "Steady Aim"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.hide",
+                        "srd.rogue_expertise",
+                        "srd.sneak_attack",
+                        "srd.thieves_cant",
+                        "srd.cunning_action_dash",
+                        "srd.cunning_action_disengage",
+                        "srd.cunning_action_hide",
+                        "srd.steady_aim"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.hide",
+                        "srd.rogue_expertise",
+                        "srd.sneak_attack",
+                        "srd.thieves_cant",
+                        "srd.cunning_action_dash",
+                        "srd.cunning_action_disengage",
+                        "srd.cunning_action_hide",
+                        "srd.steady_aim"
+                    ]
+                },
+                "5": {
+                    "features": ["Cunning Strike", "Uncanny Dodge"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.hide",
+                        "srd.rogue_expertise",
+                        "srd.sneak_attack",
+                        "srd.thieves_cant",
+                        "srd.cunning_strike",
+                        "srd.uncanny_dodge",
+                        "srd.cunning_action_dash",
+                        "srd.cunning_action_disengage",
+                        "srd.cunning_action_hide",
+                        "srd.steady_aim"
+                    ]
+                }
+            },
+            "subclasses": {
+                "thief": {
+                    "name": "Thief",
+                    "level": 3,
+                    "features": ["Fast Hands", "Second-Story Work"],
+                    "actions": [
+                        "srd.fast_hands_sleight_of_hand",
+                        "srd.fast_hands_utilize",
+                        "srd.fast_hands_magic_item",
+                        "srd.second_story_work"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "sorcerer",
+            "name": "Sorcerer",
+            "localization": {"en": "Sorcerer", "zh": "术法师", "aliases": ["术士"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d6",
+            "primary_abilities": ["cha"],
+            "saving_throw_proficiencies": ["con", "cha"],
+            "levels": {
+                "1": {
+                    "features": ["Spellcasting", "Innate Sorcery"],
+                    "actions": ["srd.fire_bolt", "srd.innate_sorcery"]
+                },
+                "2": {
+                    "features": ["Font of Magic", "Metamagic"],
+                    "actions": [
+                        "srd.fire_bolt",
+                        "srd.innate_sorcery",
+                        "srd.font_of_magic_convert_slot_1",
+                        "srd.font_of_magic_create_slot_1"
+                    ]
+                },
+                "3": {
+                    "features": ["Sorcerer Subclass"],
+                    "actions": [
+                        "srd.fire_bolt",
+                        "srd.innate_sorcery",
+                        "srd.font_of_magic_convert_slot_1",
+                        "srd.font_of_magic_convert_slot_2",
+                        "srd.font_of_magic_create_slot_1",
+                        "srd.font_of_magic_create_slot_2"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.fire_bolt",
+                        "srd.innate_sorcery",
+                        "srd.font_of_magic_convert_slot_1",
+                        "srd.font_of_magic_convert_slot_2",
+                        "srd.font_of_magic_create_slot_1",
+                        "srd.font_of_magic_create_slot_2"
+                    ]
+                },
+                "5": {
+                    "features": ["Sorcerous Restoration"],
+                    "actions": [
+                        "srd.fire_bolt",
+                        "srd.innate_sorcery",
+                        "srd.font_of_magic_convert_slot_1",
+                        "srd.font_of_magic_convert_slot_2",
+                        "srd.font_of_magic_convert_slot_3",
+                        "srd.font_of_magic_create_slot_1",
+                        "srd.font_of_magic_create_slot_2",
+                        "srd.font_of_magic_create_slot_3",
+                        "srd.sorcerous_restoration"
+                    ]
+                }
+            },
+            "subclasses": {
+                "draconic": {
+                    "name": "Draconic Sorcery",
+                    "level": 3,
+                    "features": ["Draconic Resilience"],
+                    "actions": ["srd.draconic_resilience"]
+                }
+            }
+        },
+        {
+            "id": "warlock",
+            "name": "Warlock",
+            "localization": {"en": "Warlock", "zh": "邪术师", "aliases": ["契术师"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d8",
+            "primary_abilities": ["cha"],
+            "saving_throw_proficiencies": ["wis", "cha"],
+            "levels": {
+                "1": {
+                    "features": ["Eldritch Invocations", "Pact Magic"],
+                    "actions": ["srd.eldritch_blast", "srd.eldritch_invocations"]
+                },
+                "2": {
+                    "features": ["Magical Cunning"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning"
+                    ]
+                },
+                "3": {
+                    "features": ["Warlock Subclass"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning"
+                    ]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning"
+                    ]
+                },
+                "5": {
+                    "features": [],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning"
+                    ]
+                }
+            },
+            "subclasses": {
+                "fiend": {
+                    "name": "Fiend Patron",
+                    "level": 3,
+                    "features": ["Dark One's Blessing"],
+                    "actions": ["srd.dark_ones_blessing"]
+                }
+            }
+        },
+        {
+            "id": "wizard",
+            "name": "Wizard",
+            "localization": {"en": "Wizard", "zh": "法师", "aliases": ["巫师"]},
+            "source": "SRD 5.2.1",
+            "rules_version": "srd-5.2.1",
+            "hit_die": "d6",
+            "primary_abilities": ["int"],
+            "saving_throw_proficiencies": ["int", "wis"],
+            "levels": {
+                "1": {
+                    "features": ["Spellcasting", "Ritual Adept", "Arcane Recovery"],
+                    "actions": ["srd.fire_bolt", "srd.ritual_adept", "srd.arcane_recovery"]
+                },
+                "2": {
+                    "features": ["Scholar"],
+                    "actions": ["srd.fire_bolt", "srd.ritual_adept", "srd.arcane_recovery", "srd.scholar"]
+                },
+                "3": {
+                    "features": ["Wizard Subclass"],
+                    "actions": ["srd.fire_bolt", "srd.ritual_adept", "srd.arcane_recovery", "srd.scholar"]
+                },
+                "4": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": ["srd.fire_bolt", "srd.ritual_adept", "srd.arcane_recovery", "srd.scholar"]
+                },
+                "5": {
+                    "features": ["Memorize Spell"],
+                    "actions": ["srd.fire_bolt", "srd.ritual_adept", "srd.arcane_recovery", "srd.scholar", "srd.memorize_spell"]
+                }
+            },
+            "subclasses": {
+                "evocation": {
+                    "name": "Evoker",
+                    "level": 3,
+                    "features": ["Potent Cantrip"],
+                    "actions": ["srd.potent_cantrip"]
+                }
+            }
+        }
+    ]
+}

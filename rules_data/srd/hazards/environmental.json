@@ -1,0 +1,59 @@
+{
+  "items": [
+    {
+      "id": "srd.burning",
+      "name": "Burning",
+      "hazard_type": "srd.burning",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "damage", "dice": "1d4", "damage_type": "fire" }
+      ],
+      "audit_label": "Burning"
+    },
+    {
+      "id": "srd.suffocation",
+      "name": "Suffocation",
+      "hazard_type": "srd.suffocation",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "condition", "condition": "exhaustion" }
+      ],
+      "audit_label": "Suffocation"
+    },
+    {
+      "id": "srd.malnutrition",
+      "name": "Malnutrition",
+      "hazard_type": "srd.malnutrition",
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "params_schema": {
+        "required": ["source"],
+        "allowed_sources": ["map", "campaign_pack", "player_declaration", "rules_discrete"]
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "saving_throw", "ability": "con", "difficulty_tier": "easy" },
+        {
+          "type": "branch",
+          "condition": "last_save_success",
+          "if_false": [
+            { "type": "condition", "condition": "exhaustion" }
+          ]
+        }
+      ],
+      "audit_label": "Malnutrition"
+    }
+  ]
+}

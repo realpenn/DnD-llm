@@ -1,0 +1,423 @@
+{
+  "items": [
+    {
+      "id": "srd.wear_boots_of_elvenkind",
+      "name": "Wear Boots of Elvenkind",
+      "localization": {
+        "en": "Wear Boots of Elvenkind",
+        "zh": "穿戴精灵靴",
+        "aliases": ["启用精灵靴"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Boots of Elvenkind",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.boots_of_elvenkind" },
+      "properties": {
+        "boots_of_elvenkind": true,
+        "requires_attunement": false,
+        "worn_slot": "feet"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "silent_steps": true,
+            "ability_check_advantage_skills": [
+              { "ability": "dex", "skill": "stealth" }
+            ]
+          },
+          "duration": { "until": "while_wearing_boots_of_elvenkind" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing these boots, the target's steps make no sound and the target has Advantage on Dexterity (Stealth) checks." }
+      ],
+      "audit_label": "Wear Boots of Elvenkind"
+    },
+    {
+      "id": "srd.wear_robe_of_eyes",
+      "name": "Wear Robe of Eyes",
+      "localization": {
+        "en": "Wear Robe of Eyes",
+        "zh": "穿戴眼魔法袍",
+        "aliases": ["启用眼魔法袍"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Eyes",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.robe_of_eyes" },
+      "properties": {
+        "robe_of_eyes": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "body"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_check_advantage_skills": [
+              { "ability": "wis", "skill": "perception", "requires_context": "sight" }
+            ],
+            "darkvision_ft": 120,
+            "truesight_ft": 120,
+            "robe_of_eyes_drawback_light": true,
+            "robe_of_eyes_drawback_daylight": true
+          },
+          "duration": { "until": "while_wearing_robe_of_eyes" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this robe, the target has Advantage on Wisdom (Perception) checks that rely on sight, and has Darkvision and Truesight with a range of 120 feet." }
+      ],
+      "audit_label": "Wear Robe of Eyes"
+    },
+    {
+      "id": "srd.wear_robe_of_the_archmagi",
+      "name": "Wear Robe of the Archmagi",
+      "localization": {
+        "en": "Wear Robe of the Archmagi",
+        "zh": "穿戴大法师法袍",
+        "aliases": ["启用大法师法袍"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of the Archmagi",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": {
+        "item": "srd.robe_of_the_archmagi",
+        "class_any": ["sorcerer", "warlock", "wizard"]
+      },
+      "properties": {
+        "robe_of_the_archmagi": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "attunement_class_any": ["sorcerer", "warlock", "wizard"],
+        "worn_slot": "body"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "armor_class_formula": "15+dex_modifier",
+            "armor_class_requires_unarmored": true,
+            "saving_throw_advantage_contexts": ["spell", "magical_effect"],
+            "spell_save_dc_bonus": {
+              "sorcerer": 2,
+              "warlock": 2,
+              "wizard": 2
+            },
+            "spell_attack_bonus": {
+              "sorcerer": 2,
+              "warlock": 2,
+              "wizard": 2
+            }
+          },
+          "duration": { "until": "while_wearing_robe_of_the_archmagi" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this robe, if the target isn't wearing armor, the target's base Armor Class is 15 plus Dexterity modifier. The target has Advantage on saving throws against spells and other magical effects, and the target's spell save DC and spell attack bonus each increase by 2." }
+      ],
+      "audit_label": "Wear Robe of the Archmagi"
+    },
+    {
+      "id": "srd.initialize_robe_of_useful_items_patches",
+      "name": "Initialize Robe of Useful Items Patches",
+      "localization": {
+        "en": "Initialize Robe of Useful Items Patches",
+        "zh": "生成实用物品法袍补丁",
+        "aliases": ["生成法袍补丁"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.robe_of_useful_items" },
+      "properties": {
+        "robe_of_useful_items": true,
+        "robe_of_useful_items_initialize": true,
+        "self_only": true,
+        "requires_attunement": false,
+        "worn_slot": "body"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "robe_of_useful_items_initialize",
+          "fixed_patches": {
+            "bullseye_lantern": 2,
+            "dagger": 2,
+            "mirror": 2,
+            "pole": 2,
+            "rope_coiled": 2,
+            "sack": 2
+          },
+          "extra_patch_roll": "4d4",
+          "extra_patch_table": [
+            { "min": 1, "max": 8, "patch": "bag_of_100_gp" },
+            { "min": 9, "max": 15, "patch": "silver_coffer" },
+            { "min": 16, "max": 22, "patch": "iron_door" },
+            { "min": 23, "max": 30, "patch": "ten_gems" },
+            { "min": 31, "max": 44, "patch": "wooden_ladder" },
+            { "min": 45, "max": 51, "patch": "riding_horse" },
+            { "min": 52, "max": 59, "patch": "open_pit" },
+            { "min": 60, "max": 68, "patch": "potions_of_healing" },
+            { "min": 69, "max": 75, "patch": "rowboat" },
+            { "min": 76, "max": 83, "patch": "spell_scroll" },
+            { "min": 84, "max": 90, "patch": "mastiffs" },
+            { "min": 91, "max": 96, "patch": "window" },
+            { "min": 97, "max": 100, "patch": "portable_ram" }
+          ]
+        },
+        { "type": "text_result", "text": "The robe has two each of its fixed patches and 4d4 additional patches determined by the SRD Robe of Useful Items table." }
+      ],
+      "audit_label": "Initialize Robe of Useful Items Patches"
+    },
+    {
+      "id": "srd.detach_robe_of_useful_items_patch",
+      "name": "Detach Robe of Useful Items Patch",
+      "localization": {
+        "en": "Detach Robe of Useful Items Patch",
+        "zh": "撕下实用物品法袍补丁",
+        "aliases": ["使用实用物品法袍"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "action",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.robe_of_useful_items" },
+      "properties": {
+        "robe_of_useful_items": true,
+        "robe_of_useful_items_detach_patch": true,
+        "patch_param": "robe_of_useful_items_patch",
+        "robe_of_useful_items_patch_keys": [
+          "bullseye_lantern",
+          "dagger",
+          "mirror",
+          "pole",
+          "rope_coiled",
+          "sack",
+          "bag_of_100_gp",
+          "silver_coffer",
+          "iron_door",
+          "ten_gems",
+          "wooden_ladder",
+          "riding_horse",
+          "open_pit",
+          "potions_of_healing",
+          "rowboat",
+          "spell_scroll",
+          "mastiffs",
+          "window",
+          "portable_ram"
+        ],
+        "self_only": true,
+        "magic_action": true,
+        "requires_attunement": false,
+        "worn_slot": "body"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "robe_of_useful_items_patch",
+          "patch_param": "robe_of_useful_items_patch",
+          "patches": {
+            "bullseye_lantern": {
+              "items": [
+                { "item_id": "srd.bullseye_lantern", "quantity": 1, "metadata": { "filled_and_lit": true } }
+              ]
+            },
+            "dagger": { "items": [{ "item_id": "srd.dagger", "quantity": 1 }] },
+            "mirror": { "items": [{ "item_id": "srd.mirror_steel", "quantity": 1 }] },
+            "pole": { "items": [{ "item_id": "srd.pole_10ft", "quantity": 1 }] },
+            "rope_coiled": { "items": [{ "item_id": "srd.rope_50ft", "quantity": 1 }] },
+            "sack": { "items": [{ "item_id": "srd.sack", "quantity": 1 }] },
+            "bag_of_100_gp": { "gold": 100 },
+            "silver_coffer": { "items": [{ "item_id": "srd.silver_coffer_500gp", "quantity": 1 }] },
+            "iron_door": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_object",
+                "scope": { "target": "reachable_opening" },
+                "metadata": {
+                  "object": "iron_door",
+                  "max_width_ft": 10,
+                  "max_height_ft": 10,
+                  "barred_on_side_chosen_by_user": true,
+                  "conforms_to_opening": true,
+                  "attaches_and_hinges_itself": true
+                }
+              }
+            },
+            "ten_gems": { "items": [{ "item_id": "srd.gem_100gp", "quantity": 10 }] },
+            "wooden_ladder": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_object",
+                "scope": { "target": "reachable_space" },
+                "metadata": { "object": "wooden_ladder", "length_ft": 24 }
+              }
+            },
+            "riding_horse": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_creature",
+                "scope": { "target": "reachable_space" },
+                "metadata": { "creature": "riding_horse", "riding_saddle": true }
+              }
+            },
+            "open_pit": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_terrain",
+                "scope": { "target": "ground_within_10_ft" },
+                "metadata": { "terrain": "open_pit", "shape": "cube", "size_ft": 10 }
+              }
+            },
+            "potions_of_healing": {
+              "items": [{ "item_id": "srd.potion_of_healing", "quantity": 4 }]
+            },
+            "rowboat": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_object",
+                "scope": { "target": "reachable_space" },
+                "metadata": { "object": "rowboat", "length_ft": 12 }
+              }
+            },
+            "spell_scroll": {
+              "items": [
+                {
+                  "item_id": "srd.spell_scroll_level_1_3",
+                  "quantity": 1,
+                  "metadata": { "spell_level_choices": [1, 2, 3], "spell_choice_by_user": true }
+                }
+              ]
+            },
+            "mastiffs": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_creature",
+                "scope": { "target": "reachable_space" },
+                "metadata": { "creature": "mastiff", "count": 2 }
+              }
+            },
+            "window": {
+              "world_effect": {
+                "effect_type": "robe_of_useful_items_object",
+                "scope": { "target": "reachable_vertical_surface" },
+                "metadata": { "object": "window", "width_ft": 2, "height_ft": 4, "max_depth_ft": 2 }
+              }
+            },
+            "portable_ram": { "items": [{ "item_id": "srd.portable_ram", "quantity": 1 }] }
+          }
+        },
+        { "type": "text_result", "text": "A selected SRD Robe of Useful Items patch is detached and becomes the object or creature it represents. Once the last patch is removed, the robe becomes ordinary." }
+      ],
+      "audit_label": "Detach Robe of Useful Items Patch"
+    },
+    {
+      "id": "srd.robe_of_eyes_light_drawback",
+      "name": "Robe of Eyes: Light Drawback",
+      "localization": {
+        "en": "Robe of Eyes: Light Drawback",
+        "zh": "眼魔法袍：光亮术缺点",
+        "aliases": ["眼魔法袍光亮术失明"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Eyes",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.robe_of_eyes" },
+      "properties": {
+        "robe_of_eyes": true,
+        "robe_of_eyes_drawback": "light",
+        "self_only": true,
+        "trigger_spell_definition_id": "srd.spell.light",
+        "requires_attunement": true,
+        "worn_slot": "body"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "condition",
+          "condition": "blinded",
+          "duration": {
+            "until": "duration_1_minute",
+            "repeat_save": {
+              "ability": "con",
+              "dc": 11,
+              "dc_source": "dc_ref:srd.robe_of_eyes.light_con_save",
+              "end_on_success": true
+            }
+          },
+          "tick_on": "self_turn_end",
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "A Light spell cast on the robe gives the wearer the Blinded condition for 1 minute; at the end of each of their turns, they make a DC 11 Constitution saving throw, ending the condition on a success." }
+      ],
+      "audit_label": "Robe of Eyes: Light Drawback"
+    },
+    {
+      "id": "srd.robe_of_eyes_daylight_drawback",
+      "name": "Robe of Eyes: Daylight Drawback",
+      "localization": {
+        "en": "Robe of Eyes: Daylight Drawback",
+        "zh": "眼魔法袍：昼明术缺点",
+        "aliases": ["眼魔法袍昼明术失明"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Eyes",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.robe_of_eyes" },
+      "properties": {
+        "robe_of_eyes": true,
+        "robe_of_eyes_drawback": "daylight",
+        "self_only": true,
+        "trigger_spell_definition_id": "srd.spell.daylight",
+        "trigger_range_ft": 5,
+        "requires_attunement": true,
+        "worn_slot": "body"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "condition",
+          "condition": "blinded",
+          "duration": {
+            "until": "duration_1_minute",
+            "repeat_save": {
+              "ability": "con",
+              "dc": 15,
+              "dc_source": "dc_ref:srd.robe_of_eyes.daylight_con_save",
+              "end_on_success": true
+            }
+          },
+          "tick_on": "self_turn_end",
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "A Daylight spell cast within 5 feet of the robe gives the wearer the Blinded condition for 1 minute; at the end of each of their turns, they make a DC 15 Constitution saving throw, ending the condition on a success." }
+      ],
+      "audit_label": "Robe of Eyes: Daylight Drawback"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "items": [
+    {
+      "id": "srd.boots_of_elvenkind",
+      "name": "Boots of Elvenkind",
+      "localization": {
+        "en": "Boots of Elvenkind",
+        "zh": "精灵靴",
+        "aliases": ["Elvenkind Boots"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Boots of Elvenkind",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_boots_of_elvenkind"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "feet"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.robe_of_eyes",
+      "name": "Robe of Eyes",
+      "localization": {
+        "en": "Robe of Eyes",
+        "zh": "眼魔法袍",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Eyes",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": [
+        "srd.wear_robe_of_eyes",
+        "srd.robe_of_eyes_light_drawback",
+        "srd.robe_of_eyes_daylight_drawback"
+      ],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "body"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.robe_of_the_archmagi",
+      "name": "Robe of the Archmagi",
+      "localization": {
+        "en": "Robe of the Archmagi",
+        "zh": "大法师法袍",
+        "aliases": ["Archmagi Robe"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of the Archmagi",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_robe_of_the_archmagi"],
+      "properties": {
+        "rarity": "legendary",
+        "requires_attunement": true,
+        "attunement_class_any": ["sorcerer", "warlock", "wizard"],
+        "worn_slot": "body"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.robe_of_useful_items",
+      "name": "Robe of Useful Items",
+      "localization": {
+        "en": "Robe of Useful Items",
+        "zh": "实用物品法袍",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": [
+        "srd.initialize_robe_of_useful_items_patches",
+        "srd.detach_robe_of_useful_items_patch"
+      ],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "body"
+      },
+      "quantity": 1
+    }
+  ]
+}

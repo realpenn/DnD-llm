@@ -1,0 +1,162 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.ice_storm",
+      "name": "Ice Storm",
+      "localization": { "en": "Ice Storm", "zh": "冰风暴", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.ice_storm",
+        "name": "Ice Storm",
+        "localization": { "en": "Ice Storm", "zh": "冰风暴", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 300, "shape": "cylinder", "radius_ft": 20, "height_ft": 40 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": { "spell_level": 4 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "2d10", "damage_type": "bludgeoning", "save_half": true },
+          { "type": "damage", "dice": "4d6", "damage_type": "cold", "save_half": true },
+          {
+            "type": "world_effect",
+            "effect_type": "difficult_terrain",
+            "scope": { "shape": "cylinder", "radius_ft": 20, "height_ft": 40 },
+            "duration": { "until": "end_of_next_turn" }
+          }
+        ],
+        "audit_label": "Ice Storm"
+      }
+    },
+    {
+      "id": "srd.spell.cone_of_cold",
+      "name": "Cone of Cold",
+      "localization": { "en": "Cone of Cold", "zh": "寒冰锥", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.cone_of_cold",
+        "name": "Cone of Cold",
+        "localization": { "en": "Cone of Cold", "zh": "寒冰锥", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "cone", "length_ft": 60 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": { "spell_level": 5 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "8d8", "damage_type": "cold", "save_half": true }
+        ],
+        "audit_label": "Cone of Cold"
+      }
+    },
+    {
+      "id": "srd.spell.chain_lightning",
+      "name": "Chain Lightning",
+      "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.chain_lightning",
+        "name": "Chain Lightning",
+        "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150 },
+        "target_policy": { "min": 1, "max": 4, "harmful": true },
+        "requirements": { "spell_level": 6 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": true }
+        ],
+        "audit_label": "Chain Lightning"
+      }
+    },
+    {
+      "id": "srd.spell.fire_storm",
+      "name": "Fire Storm",
+      "localization": { "en": "Fire Storm", "zh": "火焰风暴", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "sorcerer"],
+      "action": {
+        "id": "srd.fire_storm",
+        "name": "Fire Storm",
+        "localization": { "en": "Fire Storm", "zh": "火焰风暴", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "area" },
+        "target_policy": { "min": 1, "max": 20, "harmful": true },
+        "requirements": { "spell_level": 7 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "7d10", "damage_type": "fire", "save_half": true }
+        ],
+        "audit_label": "Fire Storm"
+      }
+    },
+    {
+      "id": "srd.spell.meteor_swarm",
+      "name": "Meteor Swarm",
+      "localization": { "en": "Meteor Swarm", "zh": "流星爆", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.meteor_swarm",
+        "name": "Meteor Swarm",
+        "localization": { "en": "Meteor Swarm", "zh": "流星爆", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5280, "shape": "sphere", "radius_ft": 40 },
+        "target_policy": { "min": 1, "max": 24, "harmful": true },
+        "requirements": { "spell_level": 9 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "hard" },
+          { "type": "damage", "dice": "20d6", "damage_type": "fire", "save_half": true },
+          { "type": "damage", "dice": "20d6", "damage_type": "bludgeoning", "save_half": true }
+        ],
+        "audit_label": "Meteor Swarm"
+      }
+    }
+  ]
+}

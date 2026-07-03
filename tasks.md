@@ -1,0 +1,321 @@
+# DnD-LLM 实现任务分解（tasks.md）
+
+> 配套文档：[spec.md](spec.md)（Final v1.0）
+> 本文件把 spec §9 的分期策略与工程里程碑展开为可勾选、可追踪的任务清单。
+> 任务粒度 = 一个可独立验收的工程单元，**不是**每日任务。Phase = 可玩范围（见 spec §9），
+> 不是排期。下方仅给依赖与验收口径，不给日期。
+
+## 阅读约定
+
+- 任务 ID 形如 `M1-3`：里程碑 1 的第 3 项。`P0-x` 为前置脚手架，`P2/P3/P4-x` 为后续阶段。
+- 每个里程碑给 **Goal / Tasks / Exit（退出标准）**；退出标准对齐 spec 的硬性不变量与测试策略。
+- `↳ 依赖`：必须先完成的任务/里程碑。`↳ spec`：对应 spec 章节。
+
+## 全局完成定义（Definition of Done，适用于所有任务）
+
+源自 spec §5/§11.19/§3.1.2，每个涉及规则的任务都必须满足：
+
+1. **确定性**：任何随机都只经 `RollService`（seed + roll_counter），禁止裸 `random`（spec §3.1.2 / §4.2）。
+2. **可序列化**：新增状态对象/定义可 JSON 往返序列化（save→load 等价）（spec §6 / §11.19）。
+3. **可审计**：任何权威状态变更追加审计日志条目，字段满足 spec §6 列表。
+4. **可回放**：关键路径（骰子、战斗结算、存读档）有确定性回放测试。
+5. **数字边界**：运行时 LLM 路径不得创造/修改/推断权威数字，仅经已校验 `ActionDefinition` / 工具 facade（spec §1 原则 1 / §11.2）。
+
+---
+
+## 关键路径概览
+
+```
+P0 脚手架
+ └─ M1 Core 骨架（模型 / RollService / 审计 / 存读档）
+     └─ M2 Automation DSL（定义 schema / 节点 / Executor / Validator）
+         └─ M3 规则核心（检定/豁免/攻击/伤害/状态/专注/休整/行动经济/定位/Resolver/Tool Facade）
+             ├─ M4 Compendium（SRD 数据 + automation 填充）
+             │    └─ M9 测试与 Alpha（自动模拟 / 回放 / playtest）
+             └─ M5 Orchestrator（状态机/先攻/点名/反应/队列/锁/超时/战术图装载）
+                 └─ M6 Telegram（channel/指令/DD 门控/映射/展示）
+                     └─ M7 LLM-DM（裁决/叙事/摘要/越权防护/纠错回路）
+                         └─ M8 Content/角色（战役包生成校验 / 默认模板 / 自然语言改角色）
+```
+
+可并行：M4（数据）与 M5（编排器）在 M3 完成后可并行推进；M9 贯穿全程持续补测。
+
+---
+
+# Phase 0 — 工程脚手架（前置，非 spec 可玩范围）
+
+**Goal：** 建立 spec §8 的目录骨架、依赖、配置与 CI，让后续里程碑有可落地的工程地基。
+
+- [ ] **P0-1** 初始化 Python 3.11+ 项目：`pyproject.toml`、依赖（`python-telegram-bot`、OpenAI 兼容 client、`d20`、`pydantic` 或等价、`pytest`）。↳ spec §8
+- [ ] **P0-2** 按 spec §8 建目录骨架：`core/`、`rules_data/`、`dm/`、`content/`、`orchestrator/`、`telegram_bot/`、`tests/`（含 `core/positioning.py`、`core/resolver.py`）。
+- [ ] **P0-3** 工具链：lint（ruff）、format（black/ruff-format）、类型检查（mypy/pyright）、pre-commit、CI 跑 `pytest` + 类型检查。
+- [ ] **P0-4** 配置层：环境变量加载（`BOT_TOKEN`、`OPENAI_BASE_URL`、`OPENAI_API_KEY`、各用途 model id、战役包目录）；DM/摘要/内容生成可分别配模型。↳ spec §8 / §11.24
+- [ ] **P0-5** JSON Schema 基建：`rules_data/schemas/` 版本化 schema 加载器与校验入口（供 M2 `RuleDataValidator` 复用）。↳ spec §3.1.1 / §11.18
+- [ ] **P0-6** 许可证义务接线：确认 `LICENSE`(Apache-2.0)/`LICENSE-CONTENT.md`(CC-BY-4.0)/`NOTICE`/`LICENSE-THIRD-PARTY` 就位；为 SRD 派生数据与战役包预留逐字署名注入位。↳ spec §12
+- **Exit：** `pytest` 空跑通过；CI 绿；`python -m dnd_llm`（或等价入口）能加载配置并退出；schema 校验器能对一个示例 JSON 报 pass/fail。
+
+---
+
+# Phase 1（MVP，完整 Tier 1）
+
+对应 spec §9 Phase 1 的 9 个工程里程碑。可玩目标：**一队真人在单群单战役里跑通 探索→战斗→存读档 的完整 Tier 1（1–5 级）体验**。
+
+## M1 — Core 骨架
+
+**Goal：** 数据模型 + 确定性骰子 + 审计 + 存读档。这是一切的地基。
+↳ 依赖：P0 ｜ ↳ spec §3.1 / §3.1.2 / §6 / §11.16-17
+
+- [ ] **M1-1** 状态模型（`core/models.py`）：`Character`（属性/调整值/职业等级/熟练/HP/临时HP/**生命骰**/AC/速度/技能/豁免/装备/物品栏/法术位/状态效果/位置/金币/经验）、`Monster/NPC`（5e stat block 子集）、`Encounter`（参战实体/先攻/回合指针/地形/轻量战术位置图引用）、`WorldState`、`SessionConfig`（`pvp_enabled`/`friendly_fire`/展示策略）。↳ spec §3.1
+- [ ] **M1-2** 位置字段双轨：`Character` 探索期 `zone_id`，战斗期 combatant 实例持 `position_node_id`（结构占位，图计算留 M3）。↳ spec §3.1
+- [ ] **M1-3** `RollService`（`core/dice.py`）：封装 `d20`，注入 RNG；每战役/存档持 `rng_seed` + 单调 `roll_counter`；每次掷骰产出 `roll_id`，记录 dice expr/seed/counter/优劣势/每骰原始面/保留丢弃/总值/展示串。↳ spec §3.1.2 / §11.17
+- [ ] **M1-4** 审计日志（`core/persistence.py`）：追加写事件日志，字段至少含 spec §6 全列表（玩家原文、`PlayerIntent`、工具名+参数、工具结果、automation node path、骰面、事件计数、idempotency key、model id、prompt/schema 版本、规则数据版本、战役包版本、时间）。
+- [ ] **M1-5** 存读档：状态 + 摘要 + seed/roll_counter + 事件计数 + 审计引用 → JSON（可读、可 diff）；`save`/`load` 往返等价。↳ spec §6
+- [ ] **M1-6** 确定性回放测试骨架：同 seed+counter+动作序列 → 同结果；`d20` 升级漂移时可按审计骰面重放。↳ spec §3.1.2
+- **Exit：** 构造一个 `Character` + 一串掷骰，save→load→继续掷骰结果完全一致；回放测试通过；审计日志字段齐全可解析。
+
+## M2 — Automation DSL
+
+**Goal：** 把规则效果数据化：定义 schema、节点模型、Executor、Validator。
+↳ 依赖：M1 ｜ ↳ spec §3.1.1 / §11.13-14
+
+- [ ] **M2-1** 定义 schema（`core/automation/definitions.py`）：`ActionDefinition`（id/name/localization+aliases/source/rules_version/action_type/action_economy/range/target_policy/requirements/**friendly_fire_policy**/cost/automation/audit_label）、`HazardDefinition`、`EventDefinition`。↳ spec §3.1.1 / §11.14
+- [ ] **M2-2** `EffectInstance`（`core/automation/effects.py`）：effect_id/source_ref/source_action_id/target_id/applied_by/condition 或被动修正/duration/tick_on/concentration/stacking_policy/父子效果/remove_conditions/审计。↳ spec §3.1.1 / §11.16
+- [ ] **M2-3** automation 节点（`core/automation/nodes.py`）：`target`（self/each/all/explicit/**area**：node/中心 combatant + shape/radius/line/cone）、`attack_roll`、`saving_throw`、`ability_check`、`damage`/`healing`/`temp_hp`、`condition`、`resource_delta`、`move`、`branch`、`text_result`。↳ spec §3.1.1
+- [ ] **M2-4** `AutomationExecutor`（`core/automation/executor.py`）：把已校验定义编译为 automation tree 并结算；所有掷骰经 `RollService`；所有变更写审计 + 生成/更新 `EffectInstance`。
+- [ ] **M2-5** `RuleDataValidator`（`core/compendium/validators.py`）：schema 校验（字段/节点/target+friendly fire policy/cost/source/rules version/战术图 node-edge 字段）、规则校验（环位/职业等级/动作经济/状态名/伤害类型/SRD 来源）、本地化别名校验（归一冲突→保留 `ambiguous`，不加载期报错）、**安全校验**（运行时 LLM 不能提交/改 automation tree）。↳ spec §3.1.1 / §11.18
+- **Exit：** 用一个手写 `ActionDefinition`（如「短剑攻击」「治疗术」）跑 Executor 得到正确状态变更与审计；非法定义被 Validator 精确拒绝；定义可 JSON 往返。
+
+## M3 — 规则核心 + 定位 + Resolver + Tool Facade
+
+**Goal：** 5e 结算 helper、战斗定位图、动作审核、对 LLM 的工具门面。
+↳ 依赖：M2 ｜ ↳ spec §3.1 / §3.1.1 / §3.2.1 / §4.2 / §11.30-32
+
+- [ ] **M3-1** 规则 helper（`core/rules/`）：检定、豁免、攻击命中、伤害（**抗性/免疫/易伤**）、状态、专注（concentration，伤害触发 CON 豁免、单并发）、休整（**短休/长休**）、死亡豁免。↳ spec §9 Phase 1 引擎清单
+- [ ] **M3-2** `difficulty_tier` → DC 映射表（very_easy…nearly_impossible）与 `dc_ref` 解析；最终 DC 写审计；运行时不接受裸数值 DC。↳ spec §3.1「关于 DC」/ §11.31
+- [ ] **M3-3** 行动经济（`core/economy.py`）：action/bonus/reaction/movement/object-free interaction 预算；回合开始/结束重置或 tick；预算不足 Executor 拒绝。↳ spec §3.1.1 / §4.2
+- [ ] **M3-4** 定位（`core/positioning.py`）：`PositionNode` + 带 `distance_ft`/movement cost/LOS/cover/difficult terrain 的边；最短路求距离、LOS/cover 判定、可达性、**AoE 命中集合**、**借机攻击触发**（离开敌方 reach 覆盖 node）。运行时若需生成战术图，生成过程经 seed 或落档以保回放。↳ spec §3.1 定位段 / §4.2 / §11.32
+- [ ] **M3-5** `ActionResolver`（`core/resolver.py`）：`PlayerActionDraft` → 确定性审核 `accepted`/`rejected`/`ambiguous`（含友伤 `confirm_required` 子型）。校验拥有/已知已准备/资源法术位/行动经济/目标距离视线遮蔽/友伤策略；`candidate_action_id` 仅路由提示，必须照常校验存在性/归属/合法性。↳ spec §3.2.1 / §4.3 / §11.26
+- [ ] **M3-6** Tool Facade（`core/tools.py`）：DM 可调用工具（`roll_check`/`roll_save`/`attack`/`cast_spell`/`use_item`/`move`/`interact`/`trigger_event`/`apply_hazard`/`award`/`request_combat`/`request_end_combat`）+ 内部/GM 工具（`apply_damage`/`apply_healing`/`apply_condition`/…/`gm_override`）。DM 工具只接有限参数转 Executor，**不开放裸状态修改**。↳ spec §3.1 / §11.3/15
+- [ ] **M3-7** `apply_hazard` 受控通道：仅放行 SRD 5.2.1 Hazards/Environmental Effects；params 必须可追溯（地图/战役包/玩家声明/规则离散项）；映射已校验 `HazardDefinition.automation`；每次写审计。↳ spec §3.1.3
+- [ ] **M3-8** PvP/友伤强制：默认 `pvp_enabled=false`（PC 不能以 allied PC 为有害目标→`rejected`）；玩家 AoE 默认 `friendly_fire=confirm`（波及友军→`confirm_required`）；`off|confirm|raw` 可配；怪物 AoE 按规则正常波及。↳ spec §4.3 / §11.33
+- [ ] **M3-9** 引擎不变量强制 + 测试：HP 不负伤害治疗 / 法术位 0 不可施法 / 移动沿 zone 边（探索）或战术图边（战斗）/ 奖励只经 `award` / 任何变更有审计。↳ spec §3.1.3
+- **Exit：** 给定一个小型战术图 + 两名 combatant，能正确判定近战/远程射程、AoE 命中集合、借机攻击触发；Resolver 对合法/幻觉/越权/友伤草案分别返回正确分类；PvP 默认拦截生效。
+
+## M4 — Compendium（SRD 数据填充）
+
+**Goal：** 把 Tier 1 全量规则数据填进 `rules_data/`，全部以 automation 表达。
+↳ 依赖：M2（schema）+ M3（结算语义）｜ ↳ spec §3.1 / §9 / §11.12/18
+
+- [ ] **M4-1** 加载器与本地化（`core/compendium/loader.py` + `localization.py`）：加载 `rules_data/srd/**` 与战役包事件；中英标准名 + 别名 + 名称归一。↳ spec §11.18
+- [ ] **M4-2** 基础动作：攻击/施法/闪避/脱离/冲刺/帮助/躲藏 + 借机攻击、额外攻击。↳ spec §9
+- [ ] **M4-3** 核心状态（`conditions.json`）：中毒/眩晕/倒地/束缚/目盲/魅惑/恐慌/麻痹等**全部核心状态**，以 `EffectInstance` 语义落地。↳ spec §9
+- [ ] **M4-4** 危害（`hazards.json`）：SRD 5.2.1 Hazards 与 Environmental Effects（坠落/窒息/燃烧/脱水/饥饿/极端冷热/深水/强风等）。↳ spec §3.1.3
+- [ ] **M4-5** 职业（`classes.json`）：**SRD 5.2.1 全部基础职业**，等级 1–5，含 3 级子职；职业能力以 `ActionDefinition`/automation。多职业/专长**不做**（Phase 2）。↳ spec §9 / §11.12
+  - [x] **M4-5a** Rogue 3 `Steady Aim` 按 SRD 5.2.1 落为可执行 `ActionDefinition`：未移动过才可用、奖励动作、下一次本回合攻击优势、速度/移动预算归零，并覆盖解析器/执行器测试。
+  - [x] **M4-5b** 基础职业 1–5 级 class feature/subclass 显示名按 SRD 5.2.1 表格校准，移除旧版名称残留（如 Primal Path、Bard College、Arcane Tradition 等）。
+  - [x] **M4-5c** Fighter 5 `Tactical Shift` 按 SRD 5.2.1 接入 `Second Wind`：使用 Second Wind 时可选半速战术位移、不触发借机攻击，非法距离/等级在扣资源前拒绝，并覆盖执行器测试。
+  - [x] **M4-5d** Barbarian 3 `Primal Knowledge` 的 Rage 中技能检定替换按 SRD 5.2.1 落地：显式选择后，Acrobatics/Intimidation/Perception/Stealth/Survival 能作为 Strength check 结算，并覆盖 direct tool、automation 和 DM tool-calling 路径。
+  - [x] **M4-5e** Barbarian 5 `Fast Movement` 按 SRD 5.2.1 落地：未穿 Heavy armor 时有效速度 +10；SRD armor item 增加 armor category 元数据，移动预算/解析/回合速度使用统一计算，并覆盖重甲阻断测试。
+  - [x] **M4-5f** Cleric 5 `Sear Undead` 按 SRD 5.2.1 接入 `Turn Undead`：牧师 5 级使用 Turn Undead 时，对豁免失败的不死生物造成等于 Wisdom modifier 个 d8（至少 1d8）的 radiant damage，且该伤害不结束 turn effect，并覆盖执行器测试。
+  - [x] **M4-5g** Bard 5 `Font of Inspiration` 的法术位恢复按 SRD 5.2.1 落地：短休恢复已覆盖，新增无需动作的 1–3 环法术位兑换 1 次 Bardic Inspiration，按 CHA 调整值上限拒绝满资源兑换，并覆盖 compendium、resolver、executor 测试。
+  - [x] **M4-5h** Rogue 5 `Cunning Strike` 按 SRD 5.2.1 接入 Sneak Attack：Poison/Trip/Withdraw 三个 1d6 成本选项会在 Sneak Attack 掷骰前扣骰、伤害后立即结算；Poison 要求随身 Poisoner's Kit 并支持回合末重复 CON 豁免，Trip 校验 Large or smaller 并失败 DEX 豁免倒地，Withdraw 可半速移动且不触发借机攻击，并覆盖 compendium、resolver、executor、effect lifecycle、角色升级测试。
+  - [x] **M4-5i** Rogue 5 `Uncanny Dodge` 按 SRD 5.2.1 接入攻击伤害结算：当可见攻击者以 attack roll 命中 Rogue 5 目标时，可消耗目标 Reaction 将该次攻击伤害向下取整减半；非法职业等级、不可见攻击者、非攻击掷骰伤害、reaction 不足均在扣攻击行动前拒绝，并覆盖 compendium、resolver、executor、角色升级测试。
+  - [x] **M4-5j** Fighter Champion 3 `Improved Critical` 按 SRD 5.2.1 落地：新增角色子职选择字段与显式自然语言子职选择，Champion 子职动作不授予普通 Fighter；选定 Fighter/Champion 3 后，weapon attack 与 Unarmed Strike 的 d20 自然 19–20 可造成 Critical Hit，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5k** Fighter Champion 3 `Remarkable Athlete` 按 SRD 5.2.1 落地：选定 Fighter/Champion 3 后，Initiative rolls 与 Strength (Athletics) checks 获得 Advantage；重击后可选半速战术位移且不触发借机攻击，非法子职/距离在扣行动前拒绝，并覆盖 compendium、direct tool、automation、orchestrator initiative、executor、角色升级测试。
+  - [x] **M4-5l** Cleric Life Domain 3 `Disciple of Life` 按 SRD 5.2.1 落地：选定 Cleric/Life Domain 3 后，以法术位施放的治疗法术会让每个受治疗目标额外恢复 `2 + spell slot level` HP；普通 Cleric、非 spell slot 治疗不获得该加成，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5m** Cleric Life Domain 3 `Preserve Life` 按 SRD 5.2.1 落地：选定 Cleric/Life Domain 3 后，可用 Magic action/Action 消耗 1 次 Channel Divinity，将 `5 * Cleric level` 的治疗池分配给 30 尺内 Bloodied 目标（可包含自己），且每个目标不能被治疗到超过半 HP；非法分配/非 Bloodied/超距均在扣资源前拒绝，并覆盖 compendium、resolver、executor、角色升级测试。
+  - [x] **M4-5n** Warlock Fiend Patron 3 `Dark One's Blessing` 按 SRD 5.2.1 落地：选定 Warlock/Fiend Patron 3 后，当自己将敌人降至 0 HP 时获得等于 CHA modifier + Warlock level（至少 1）的 Temporary Hit Points；当他人在该 Warlock 10 尺内将敌人降至 0 HP 时同样触发，远距盟友击倒不触发，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5o** Sorcerer Draconic Sorcery 3 `Draconic Resilience` 按 SRD 5.2.1 落地：选定 Sorcerer/Draconic Sorcery 3 后，Hit Point maximum 增加 3 且之后每个 Sorcerer level 再增加 1；未穿 armor 时基础 AC 使用 `10 + Dex modifier + Cha modifier`，穿戴 armor 时不生效，并覆盖 compendium、executor AC、角色升级测试。
+  - [x] **M4-5p** Wizard Evoker 3 `Potent Cantrip` 按 SRD 5.2.1 落地：修正 Wizard/Evoker 3 子职特性为 Potent Cantrip（Sculpt Spells 保持 6 级内容不进入 1–5 级数据），选定 Wizard/Evoker 3 后 damaging cantrip 在 attack roll miss 或目标 saving throw success 时造成该戏法伤害的一半且不附加额外效果；普通 Wizard 不触发，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5q** Barbarian/Monk 1 `Unarmored Defense` 按 SRD 5.2.1 落地：Barbarian 未穿 armor 时基础 AC 使用 `10 + Dex modifier + Con modifier` 且 Shield 不阻断；Monk 未穿 armor 且未 wielding Shield 时基础 AC 使用 `10 + Dex modifier + Wis modifier`；对应 marker action 纳入职业等级与角色升级，并覆盖 compendium、executor AC、角色升级测试。
+  - [x] **M4-5r** Barbarian Path of the Berserker 3 `Frenzy` 按 SRD 5.2.1 落地：选定 Barbarian/Berserker 3 后，若 Rage active 且本回合使用了 Reckless Attack，第一次命中的 Strength-based weapon 或 Unarmed Strike 会额外造成等同 Rage Damage bonus 数量的 d6，伤害类型同该攻击；每回合只触发一次，普通 Barbarian 不触发，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5s** Druid Circle of the Land 3 `Land's Aid` 按 SRD 5.2.1 落地：修正 Circle of the Land 3 级特性为 `Circle of the Land Spells` 与 `Land's Aid`（`Natural Recovery` 保持 6 级内容不进入 1–5 子职数据）；选定 Druid/Land 3 后可用 Action 消耗 Wild Shape，使区域内所选生物进行 CON 豁免并承受 2d6 necrotic（成功半伤），且区域内一名所选生物恢复 2d6 HP；治疗目标/伤害目标区域合法性在扣资源前校验，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5t** Bard College of Lore 3 `Cutting Words` 按 SRD 5.2.1 落地：修正 College of Lore 3 级特性包含 `Bonus Proficiencies` 与 `Cutting Words`；选定 Bard/Lore 3 后可用 Reaction 消耗 1 次 Bardic Inspiration，对 60 尺内可见生物的 damage roll 或已成功 ability check/attack roll 掷 Bardic Inspiration die 并从触发掷骰中扣除，可能降低伤害或将成功转为失败；非法触发在扣资源/Reaction 前拒绝，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5u** Paladin Oath of Devotion 3 `Sacred Weapon` 按 SRD 5.2.1 落地：修正 Oath of Devotion 3 级特性包含 `Oath of Devotion Spells` 与 `Sacred Weapon`；选定 Paladin/Devotion 3 后可在 Attack action 中消耗 1 次 Channel Divinity 注入指定近战武器 10 分钟，使该武器攻击掷骰获得 Charisma modifier（至少 +1），命中时可选择造成原伤害类型或 radiant damage，并记录 20 尺 bright light/额外 20 尺 dim light；缺少指定武器在扣资源前拒绝，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5v** Monk Warrior of the Open Hand 3 `Open Hand Technique` 按 SRD 5.2.1 落地：选定 Monk/Open Hand 3 后，Flurry of Blows 命中的攻击可选择 Addle/Push/Topple；Addle 阻止目标借机攻击直到其下回合开始，Push 要求失败 Strength saving throw 后最多推离 15 尺且目的地必须离武僧更远，Topple 要求失败 Dexterity saving throw 后获得 Prone condition；非法子职/非 Flurry/Push 非法目的地均在扣 Focus Point 前拒绝，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5w** Rogue Thief 3 `Fast Hands` / `Second-Story Work` 按 SRD 5.2.1 落地：修正 Thief 3 级特性包含 `Fast Hands` 与 `Second-Story Work`；选定 Rogue/Thief 3 后可用 Bonus Action 进行 Dexterity (Sleight of Hand) + Thieves' Tools 检定、执行 Utilize 路径，且 `use_item(..., fast_hands=True)` 仅允许符合 SRD 数据且原本需要 action/Magic action 的魔法物品改用 Bonus Action；Second-Story Work 提供 Climb Speed 等于 Speed 与以 Dexterity 决定跳跃距离的规则 helper；非法子职/缺少 Thieves' Tools proficiency/不符合条件的物品均在扣行动经济或消耗物品前拒绝，并覆盖 compendium、resolver、executor、角色升级、自动模拟测试。
+  - [x] **M4-5x** Ranger Hunter 3 `Hunter's Lore` 与 `Hunter's Prey: Colossus Slayer` 按 SRD 5.2.1 落地：修正 Hunter 3 级特性为 `Hunter's Lore` 与 `Hunter's Prey`；`Hunter's Mark` 命中被当前攻击者标记的目标时额外造成 1d6 Force damage，并按 Force 抗性/免疫/易伤单独结算；选定 Ranger/Hunter 3 后默认记录 Hunter's Prey 选项 `Colossus Slayer`，对已损失 HP 的生物以 weapon attack 命中时每回合一次额外造成 1d8 武器伤害；`Hunter's Lore` 只允许读取由自己的 Hunter's Mark 标记的目标的 Immunities/Resistances/Vulnerabilities，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5y** Ranger Hunter 3 `Hunter's Prey: Horde Breaker` 按 SRD 5.2.1 落地：Hunter's Prey 选项改为角色 `feature_choices` 驱动，只授予 `Colossus Slayer` 或 `Horde Breaker` 其中一个；显式选择 `Horde Breaker` 后，在进行 weapon attack 时可用同一武器对原目标 5 尺内、仍在武器射程内、且本回合尚未被自己攻击过的另一生物进行一次额外攻击；该额外攻击不额外消耗 action，且每回合只能使用一次，非法目标/重复目标在扣行动经济前拒绝，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5z** Monk 4 `Slow Fall` 按 SRD 5.2.1 落地：选定 Monk 4 后授予 `srd.slow_fall` marker action；坠落 hazard 可用 `use_slow_fall=True` 触发 Reaction，将 falling bludgeoning damage 减少 `5 * Monk level`（最低 0），并继续保留 SRD 坠落后的 Prone 结算；非 Monk 4、非 falling damage、Reaction 不足均在结算伤害前拒绝，并覆盖 compendium、executor、角色升级、自动模拟测试。
+  - [x] **M4-5aa** Monk 5 `Stunning Strike` 按 SRD 5.2.1 落地：选定 Monk 5 后授予 `srd.stunning_strike` marker action；以 Monk weapon 或 Unarmed Strike 命中生物时可每回合一次消耗 1 Focus Point 迫使目标进行 CON saving throw，失败获得 Stunned condition 直到武僧下回合开始，成功则 Speed 减半直到武僧下回合开始且下一次针对该目标的 attack roll 获得 Advantage；未命中不扣 Focus，资源不足、非合格武器、重复使用均在扣行动经济前拒绝，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5ab** Monk 2 `Unarmored Movement` 按 SRD 5.2.1 落地：选定 Monk 2 后授予 `srd.monk_unarmored_movement` marker action；未穿 armor 且未 wielding Shield 时有效 Speed 在 1–5 级范围内增加 10 feet，并通过统一职业速度 helper 接入 executor、resolver、orchestrator turn budget 与 timeout 路径；穿 armor 或 wielding Shield 时不生效，并覆盖 compendium、movement budget、turn reset、角色升级测试。
+  - [x] **M4-5ac** Monk 2 `Uncanny Metabolism` 按 SRD 5.2.1 落地：选定 Monk 2 后授予 `srd.uncanny_metabolism` marker action 与一次/Long Rest 资源；roll Initiative 时若 Focus Points 未满或 HP 未满，会自动消耗该资源、恢复全部 Focus Points，并掷 Martial Arts die 治疗 `Monk level + roll`；无收益时不浪费资源，Long Rest 恢复该使用次数，并覆盖 compendium、initiative audit、Long Rest、角色升级测试。
+  - [x] **M4-5ad** Monk 1/5 `Martial Arts Die` 按 SRD 5.2.1 落地：Unarmed Strike、Martial Arts Bonus Unarmed Strike 与 Flurry of Blows 的伤害骰改为按 Monk level 动态读取 Martial Arts die，1-4 级使用 1d6，5 级使用 1d8；automation schema/执行器支持该 SRD 职业特性骰来源，并覆盖 compendium、executor 测试。
+  - [x] **M4-5ae** Monk 3 `Deflect Attacks` 按 SRD 5.2.1 落地：选定 Monk 3 后授予 `srd.deflect_attacks` reaction marker action；当命中的 attack roll 伤害包含 bludgeoning/piercing/slashing 时可消耗 Reaction，将该次攻击伤害减少 `1d10 + Dexterity modifier + Monk level`；若减至 0，可消耗 1 Focus Point 选择符合近战 5 尺或远程 60 尺且不在 Total Cover 后的可见目标，失败 Dexterity save 时承受 `2 * Martial Arts die + Dexterity modifier` 的同类型伤害，并覆盖 compendium、executor、角色升级测试。
+  - [x] **M4-5af** Fighter 2 `Tactical Mind` 按 SRD 5.2.1 落地：选定 Fighter 2 后授予 `srd.tactical_mind` marker action；失败 ability check 可显式使用 Tactical Mind 掷 `1d10` 加到检定，若因此成功则消耗 1 次 Second Wind，若仍失败则不消耗；现有 direct tool、automation、DM tool-calling 执行路径保持覆盖，并补齐 compendium、角色升级测试。
+  - [x] **M4-5ag** Wizard 1 `Arcane Recovery` 按 SRD 5.2.1 落地：选定 Wizard 1 后授予 `srd.arcane_recovery` marker action 与一次/Long Rest 资源；Short Rest 可选择已消耗法术位，按 Wizard level 一半向上取整的总环级上限恢复，且 6 环及以上不可恢复，使用后直到 Long Rest 前不可再次使用；现有 Short Rest/Long Rest 结算保持覆盖，并补齐 compendium、角色升级测试。
+  - [x] **M4-5ah** Bard 2 `Jack of All Trades` 按 SRD 5.2.1 落地：选定 Bard 2 后授予 `srd.jack_of_all_trades` marker action；使用未熟练技能且未以其他方式加入 Proficiency Bonus 的 ability check 会加入向下取整的半 Proficiency Bonus；现有 direct tool 与 automation ability check 结算保持覆盖，并补齐 compendium、角色升级测试。
+  - [x] **M4-5ai** Barbarian 2 `Danger Sense` 按 SRD 5.2.1 落地：选定 Barbarian 2 后授予 `srd.danger_sense` marker action；Dexterity saving throws 获得 Advantage，Incapacitated 时不生效；现有 direct tool 与 automation saving throw 结算保持覆盖，并补齐 compendium、覆盖统计、角色升级测试。
+  - [x] **M4-5aj** `Expertise` 共用规则按 SRD 5.2.1 落地：角色新增显式 `skill_expertise` 选择字段；拥有 Expertise 的已熟练技能在 direct tool 与 automation ability check 中额外加入一次 Proficiency Bonus；Bard 2、Rogue 1、Ranger 2 `Deft Explorer`、Wizard 2 `Scholar` 授予对应 marker action，且 Wizard Scholar 只允许 Arcana/History/Investigation/Medicine/Nature/Religion；自然语言角色编辑支持 `专精`/`expertise` 合法选择，并补齐 compendium、覆盖统计、角色升级与检定结算测试。
+  - [x] **M4-5ak** Sorcerer 5 `Sorcerous Restoration` 按 SRD 5.2.1 落地：选定 Sorcerer 5 后授予 `srd.sorcerous_restoration` marker action 与一次/Long Rest 资源；Short Rest 可恢复已消耗 Sorcery Points，最多等于 Sorcerer level 一半向下取整，使用后直到 Long Rest 前不可再次使用；现有 Short Rest/Long Rest 结算保持覆盖，并补齐 compendium、覆盖统计、角色升级测试。
+  - [x] **M4-5al** Barbarian 3 `Primal Knowledge` 数据闭环按 SRD 5.2.1 落地：选定 Barbarian 3 后授予 `srd.primal_knowledge` marker action；该 marker 记录额外 Barbarian 技能熟练与 Rage active 时 Acrobatics/Intimidation/Perception/Stealth/Survival 可作为 Strength check 的规则入口；既有 direct tool、automation 与 DM tool-calling 行为结算保持覆盖，并补齐 compendium、覆盖统计、角色升级测试。
+  - [x] **M4-5am** Cleric 1 `Divine Order` 按 SRD 5.2.1 落地：选定 Cleric 1 后授予 `srd.divine_order` marker action；自然语言角色编辑支持 `Protector`/`Thaumaturge` 显式选择且不默认代选；`Thaumaturge` 在 direct tool 与 automation ability check 中为 Intelligence (Arcana or Religion) checks 加入 Wisdom modifier（最低 +1），`Protector` 仅记录 SRD 选择不虚构装备或物品，并补齐 compendium、覆盖统计、角色升级与检定结算测试。
+  - [x] **M4-5an** Druid 1 `Primal Order` 按 SRD 5.2.1 落地：选定 Druid 1 后授予 `srd.primal_order` marker action；自然语言角色编辑支持 `Magician`/`Warden` 显式选择且不默认代选；`Magician` 在 direct tool 与 automation ability check 中为 Intelligence (Arcana or Nature) checks 加入 Wisdom modifier（最低 +1），`Warden` 仅记录 SRD 选择不虚构装备或物品，并补齐 compendium、覆盖统计、角色升级与检定结算测试。
+  - [x] **M4-5ao** Druid 1 `Druidic` 按 SRD 5.2.1 落地：选定 Druid 1 后授予 `srd.druidic` marker action、职业语言 `druidic`、永久准备 `srd.spell.speak_with_animals`，并将 `srd.speak_with_animals` 作为可用法术动作；替换出 Druid 职业时清理这些职业派生项；Druidic 隐藏讯息规则以 marker 记录，不虚构非 SRD 数值，并补齐 compendium、覆盖统计、角色成长与存档兼容测试。
+  - [x] **M4-5ap** Rogue 1 `Thieves' Cant` 按 SRD 5.2.1 落地：选定 Rogue 1 后授予 `srd.thieves_cant` marker action 与职业语言 `thieves_cant`，替换出 Rogue 职业时清理该固定职业语言；额外“一种语言自选”仅在 marker 中记录且不默认代选，避免虚构玩家未声明的语言，并补齐 compendium、覆盖统计与角色成长测试。
+  - [x] **M4-5aq** Wizard 1 `Ritual Adept` 按 SRD 5.2.1 落地：选定 Wizard 1 后授予 `srd.ritual_adept` marker action；SRD Ritual 标签作为 `SpellDefinition.ritual` 与 spell action properties 元数据加载；`cast_spell(..., as_ritual=True)` 对已准备 Ritual 法术或 Wizard spellbook（以 `known_spells` 表示）中的 Ritual 法术不消耗法术位、记录额外 10 分钟施法时间且禁止升环；非 Ritual、未准备/未入 spellbook、非角色施法均在扣资源前拒绝，并补齐 compendium、resolver、executor、DM tool-calling 与角色成长测试。
+  - [x] **M4-5ar** Wizard 5 `Memorize Spell` 按 SRD 5.2.1 落地：选定 Wizard 5 后授予 `srd.memorize_spell` marker action；`short_rest(..., memorize_spell={replace, with})` 可在短休结束时把一个已准备的 1 环以上 Wizard 法术替换为 spellbook（以 `known_spells` 表示）中另一个 1 环以上 Wizard 法术；非法等级、非 Wizard 法术、戏法、未准备原法术、替换法术未入 spellbook 或重复准备均在休息结算前拒绝，避免拒绝后改动状态，并补齐 compendium、覆盖统计、角色成长与短休测试。
+  - [x] **M4-5as** Paladin 5 `Faithful Steed` 按 SRD 5.2.1 落地：选定 Paladin 5 后授予 `srd.faithful_steed` marker action、永久准备 `srd.spell.find_steed` 并将 `srd.find_steed` 作为可用法术动作；新增 `srd.faithful_steed_find_steed` 用一次/Long Rest 职业资源施放 Find Steed 而不消耗 2 环法术位，Long Rest 恢复该使用次数，降低等级时清理派生动作/资源/常备法术；坐骑效果复用 SRD Find Steed world effect，不自造坐骑数据，并补齐 compendium、覆盖统计、resolver、executor、Long Rest 与角色成长测试。
+  - [x] **M4-5at** Warlock 1 `Eldritch Invocations: Eldritch Mind` 按 SRD 5.2.1 落地：选定 Warlock 1 后授予 `srd.eldritch_invocations` marker action；自然语言角色编辑支持显式选择 `eldritch invocation: eldritch mind`，选择后授予 `srd.eldritch_mind`，未选择时不默认代选；拥有 Eldritch Mind 的 Warlock 在因受伤维持 Concentration 的 Constitution saving throw 上获得 Advantage，并在结算结果中记录来源；替换出 Warlock 职业时清理该选择与派生动作，并补齐 compendium、覆盖统计、角色成长与专注豁免执行器测试。
+  - [x] **M4-5au** Warlock 2 `Eldritch Invocations: Agonizing Blast` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: agonizing blast eldritch blast`，要求 Warlock 2 且明确选择已知伤害 Warlock 戏法；选择 `Eldritch Blast` 后授予 `srd.agonizing_blast`，施放该戏法造成伤害时把 Charisma modifier 加入 damage roll 并记录来源；未选择时不默认代选，也不为其他未明确选择的戏法加成，并补齐 compendium、覆盖统计、角色成长与执行器伤害测试。
+  - [x] **M4-5av** Warlock 2 `Eldritch Invocations: Eldritch Spear` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: eldritch spear eldritch blast`，要求 Warlock 2 且明确选择已知、会造成伤害、射程 10 尺以上的 Warlock 戏法；选择 `Eldritch Blast` 后授予 `srd.eldritch_spear`，施放该戏法时射程增加 `30 * Warlock level` feet；未选择时不默认代选，也不为其他未明确选择的戏法增距，并补齐 compendium、覆盖统计、角色成长与 resolver 射程测试。
+  - [x] **M4-5aw** Warlock 2 `Eldritch Invocations: Repelling Blast` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: repelling blast eldritch blast`，要求 Warlock 2 且明确选择已知、会造成伤害、需要 attack roll 的 Warlock 戏法；选择 `Eldritch Blast` 后授予 `srd.repelling_blast`，命中 Large or smaller 生物时可按显式目的地将其最多推离 10 feet 且必须远离 Warlock；未选择时不默认代选，也不为其他未明确选择的戏法推离，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor 推离测试。
+  - [x] **M4-5ax** Warlock 1 `Eldritch Invocations: Armor of Shadows` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: armor of shadows`，要求 Warlock 1；选择后授予 `srd.armor_of_shadows` marker 与 `srd.armor_of_shadows_mage_armor` 免费施法动作，可对自己施放 Mage Armor 而不消耗 1 环法术位；Mage Armor 目标必须未穿 armor，效果复用 SRD Mage Armor 的 `13 + Dexterity modifier` base AC 规则，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor AC 测试。
+  - [x] **M4-5ay** Warlock 2 `Eldritch Invocations: Fiendish Vigor` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: fiendish vigor`，要求 Warlock 2；选择后授予 `srd.fiendish_vigor` marker 与 `srd.fiendish_vigor_false_life` 免费施法动作，可对自己施放 False Life 而不消耗 1 环法术位；该特性施法不掷临时 HP 骰，固定获得 `2d4+4` 的最高值 12 Temporary Hit Points，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor 临时 HP 测试。
+  - [x] **M4-5az** Warlock 2 `Eldritch Invocations: Mask of Many Faces` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: mask of many faces`，要求 Warlock 2；选择后授予 `srd.mask_of_many_faces` marker 与 `srd.mask_of_many_faces_disguise_self` 免费施法动作，可施放 Disguise Self 而不消耗 1 环法术位；效果复用 SRD Disguise Self 的 `illusory_disguise` world effect 与 1 小时持续时间，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor world effect 测试。
+  - [x] **M4-5ba** Warlock 2 `Eldritch Invocations: Misty Visions` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: misty visions`，要求 Warlock 2；选择后授予 `srd.misty_visions` marker 与 `srd.misty_visions_silent_image` 免费施法动作，可施放 Silent Image 而不消耗 1 环法术位；效果复用 SRD Silent Image 的 `silent_illusion` world effect、60 尺范围、15 尺立方体与 Concentration up to 10 minutes，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor concentration world effect 测试。
+  - [x] **M4-5bb** Warlock 2 `Eldritch Invocations: Otherworldly Leap` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: otherworldly leap`，要求 Warlock 2；选择后授予 `srd.otherworldly_leap` marker 与 `srd.otherworldly_leap_jump` 免费施法动作，可对自己施放 Jump 而不消耗 1 环法术位；效果复用 SRD Jump 的 `jump_distance_multiplier: 3` 与 1 分钟持续时间，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor passive effect 测试。
+  - [x] **M4-5bc** Warlock 2 `Eldritch Invocations: Devil's Sight` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation: devil's sight`，要求 Warlock 2；选择后授予 `srd.devils_sight` marker action，并提供 `warlock_devils_sight_range_ft()` helper 记录可在 120 尺内正常看见 Dim Light 与 Darkness（magical and nonmagical）；当前项目尚无完整光照/视觉查询系统，因此只接入 SRD marker 与 helper，不虚构额外战术结算，并补齐 compendium、覆盖统计与角色成长测试。
+  - [x] **M4-5bd** Warlock 2 `Eldritch Invocations: Lessons of the First Ones` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation lessons of the first ones alert/skilled`，要求 Warlock 2；选择后授予 `srd.lessons_of_the_first_ones` marker 与对应已实现 SRD Origin feat（Alert 或 Skilled），该授予不消耗普通 Ability Score Improvement 专长槽，Skilled 仍必须明确选择三项 SRD 技能或工具；当前未接入实际效果的 SRD Origin feat（如 Magic Initiate、Savage Attacker）会明确拒绝，不默认代选或虚构效果，并补齐 compendium、覆盖统计与角色成长测试。
+  - [x] **M4-5be** Warlock 1 `Eldritch Invocations: Pact of the Chain` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation pact of the chain`，要求 Warlock 1；选择后授予 `srd.pact_of_the_chain` marker、已知 `srd.spell.find_familiar` 与 `srd.pact_of_the_chain_find_familiar` 免费施法动作，可施放 Find Familiar 而不消耗 1 环法术位；普通或特殊 familiar 形态仅以 SRD 列表记录为 world effect metadata，不自造 stat block，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor world effect 测试。
+  - [x] **M4-5bf** Warlock 5 `Eldritch Invocations: Master of Myriad Forms` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation master of myriad forms`，要求 Warlock 5；选择后授予 `srd.master_of_myriad_forms` marker 与 `srd.master_of_myriad_forms_alter_self` 免费施法动作，可施放 Alter Self 而不消耗 2 环法术位；效果复用 SRD Alter Self 的 aquatic adaptation/change appearance/natural weapons 三种模式与 Concentration up to 1 hour，不自造额外变形效果，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor passive effect 测试。
+  - [x] **M4-5bg** Warlock 5 `Eldritch Invocations: Gift of the Depths` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation gift of the depths`，要求 Warlock 5；选择后授予 `srd.gift_of_the_depths` marker、可水下呼吸与 Swim Speed 等于 Speed 的 helper，并新增 `srd.gift_of_the_depths_water_breathing` 用一次/Long Rest invocation 资源施放 Water Breathing 而不消耗 3 环法术位；效果复用 SRD Water Breathing 的 24 小时水下呼吸，不自造额外水下战术规则，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与 Long Rest 测试。
+  - [x] **M4-5bh** Warlock 5 `Eldritch Invocations: Ascendant Step` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation ascendant step`，要求 Warlock 5；选择后授予 `srd.ascendant_step` marker 与 `srd.ascendant_step_levitate` 免费施法动作，可对自己施放 Levitate 而不消耗 2 环法术位；效果复用 SRD Levitate 的 levitated/vertical_move_ft 与 Concentration up to 10 minutes，不自造额外飞行或移动规则，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor passive effect 测试。
+  - [x] **M4-5bi** Warlock 5 `Eldritch Invocations: One with Shadows` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation one with shadows`，要求 Warlock 5；选择后授予 `srd.one_with_shadows` marker 与 `srd.one_with_shadows_invisibility` 免费施法动作，可在明确处于 Dim Light 或 Darkness 时对自己施放 Invisibility 而不消耗 2 环法术位；效果复用 SRD Invisibility 的 Invisible condition、1 小时/攻击或施法结束与 Concentration，不自造完整光照系统，并补齐 compendium、覆盖统计、角色成长、resolver 与 executor 前置校验测试。
+  - [x] **M4-5bj** Warlock 5 `Eldritch Invocations: Gaze of Two Minds` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation gaze of two minds`，要求 Warlock 5；选择后授予 `srd.gaze_of_two_minds` marker 与 `srd.gaze_of_two_minds_touch` Bonus Action，触碰 5 尺内显式自愿且非自身生物后记录可感知其感官、受益于其特殊感官、同位面维持、60 尺内可按双方空间施法的 SRD world effect metadata；当前项目尚无完整同位面/远程施法空间系统，因此只记录 SRD 元数据和现有距离/自愿/动作经济校验，不虚构额外施法或感官结算，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与自动模拟测试。
+  - [x] **M4-5bk** Warlock 1 `Eldritch Invocations: Pact of the Blade` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation pact of the blade`，要求 Warlock 1；选择后授予 `srd.pact_of_the_blade` marker 与 `srd.pact_of_the_blade_weapon` Bonus Action，可用显式 `pact_weapon_action_id` 绑定/召唤当前已实现 SRD melee weapon action（`srd.longsword_attack` 或 `srd.shortsword_attack`），记录 pact weapon 可作施法焦点、授予熟练、可用 Charisma 替代攻击/伤害属性、可选择 normal/Necrotic/Psychic/Radiant 伤害的 passive effect；Resolver 仅在 active pact weapon effect 匹配时放行对应武器攻击，不默认白送所有武器动作；当前 SRD item 中尚未有全量武器 attack action，因此不虚构未接入武器，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与自动模拟测试。
+  - [x] **M4-5bl** Warlock 1 `Eldritch Invocations: Pact of the Tome` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation pact of the tome`，要求 Warlock 1 且必须明确选择 3 个已实现 SRD cantrip 与 2 个已实现 SRD 1 环 Ritual spell；选择后授予 `srd.pact_of_the_tome` marker、对应已选 spell action，并把 Book of Shadows 中的 spell 同步为 prepared spells、按 Warlock spells 记录、可作为 Spellcasting Focus；拒绝重复、未实现 SRD spell、非 cantrip/非 1 环 Ritual、或已经 prepared 的 spell，不默认代选或虚构书本内容，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与自动模拟测试。
+  - [x] **M4-5bm** Warlock 5 `Eldritch Invocations: Thirsting Blade` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation thirsting blade`，要求 Warlock 5 且已选择 `Pact of the Blade`；选择后授予 `srd.thirsting_blade` marker，只允许当前已绑定的 pact weapon 在本回合已执行一次 Attack action 后，通过显式 `use_thirsting_blade_extra_attack` 进行一次不额外消耗 Action 的同武器攻击；未绑定 pact weapon、未先攻击、重复使用、非 pact weapon 或未满足前置均拒绝，不泛化为所有武器/所有 Extra Attack，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与自动模拟测试。
+  - [x] **M4-5bn** Warlock 5 `Eldritch Invocations: Eldritch Smite` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation eldritch smite`，要求 Warlock 5 且已选择 `Pact of the Blade`；选择后授予 `srd.eldritch_smite` marker，只允许当前已绑定 pact weapon 命中生物时通过显式 `use_eldritch_smite` 消耗 1 个 Pact Magic spell slot，造成 `1d8 + 每 spell slot level 1d8` 的 Force 额外伤害；未命中不扣 slot，本回合已使用、未绑定 pact weapon、无 Pact Magic slot 或前置不满足均拒绝；可选 `eldritch_smite_prone` 仅对 Huge or smaller 目标施加 Prone condition，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与全量测试。
+  - [x] **M4-5bo** Warlock 5 `Eldritch Invocations: Investment of the Chain Master` 按 SRD 5.2.1 落地：自然语言角色编辑支持显式选择 `eldritch invocation investment of the chain master`，要求 Warlock 5 且已选择 `Pact of the Chain`；选择后授予 `srd.investment_of_the_chain_master` marker；施放 `srd.pact_of_the_chain_find_familiar` 时必须显式提供 `investment_familiar_speed=fly|swim`，不默认代选，并将 SRD 的 40 尺 Fly/Swim、Bonus Action 命令 familiar Attack、B/P/S 转 Necrotic/Radiant、使用 Warlock spell save DC、Warlock Reaction 赋予 Resistance 等增益记录到 familiar world effect metadata；当前项目尚无完整 familiar stat block/独立 familiar 战斗动作，因此不自造数据，只记录 SRD 元数据和现有施法校验，并补齐 compendium、覆盖统计、角色成长、resolver、executor 与全量测试。
+- [x] **M4-6** 法术（`spells.json`）：**1–3 环全部 SRD 法术 + 戏法**，效果以 `SpellDefinition.automation`。↳ spec §9
+- [x] **M4-7** 怪物（`monsters.json`）+ 物品（`items.json`）：Tier 1 遭遇所需 stat block 与物品动作。
+- [x] **M4-8** 每条数据过 `RuleDataValidator` + **自动模拟**（每个动作可模拟并 JSON 序列化）。↳ spec §11.19
+- **Exit：** 所有 Tier 1 数据通过 Validator；每个动作有自动模拟用例；抽样法术/职业能力/怪物动作经 Executor 结算结果符合 SRD。
+
+## M5 — Orchestrator（编排器 / 会话状态机）
+
+**Goal：** 探索/战斗状态机、回合调度、并发安全、战术图装载、超时接管。
+↳ 依赖：M3（+ M4 部分数据用于联调）｜ ↳ spec §4 / §11.4/20/27-29
+
+- [x] **M5-1** 会话状态机（`orchestrator/session.py`）：探索/战斗/过场切换；同一战役任意时刻只允许一个事件写状态。↳ spec §4
+- [x] **M5-2** 并发安全（`orchestrator/queue.py`）：session lock + 事件队列 + idempotency key，防重复消息/Telegram 重试/并发工具调用重复扣资源或乱序。↳ spec §4 / §11.20
+- [x] **M5-3** 轮次控制（`orchestrator/turn.py`）：先攻、回合指针、`advance_turn` 由编排器**确定性独占**驱动（DM 不可调用）；同类怪物 group initiative。↳ spec §3.1 / §4.2 / §11.4/22
+- [x] **M5-4** bot 主动点名：轮到玩家时 @该玩家提示行动。↳ spec §4.2
+- [x] **M5-5** Encounter Tactical Graph 装载/生成：战斗开始时为该 zone 读取预置战术图或按模板生成；运行时生成须可回放（seed/落档）。↳ spec §3.1 / §3.3 / §11.32
+- [x] **M5-6** 非交互式反应策略：reaction 预算 + 预声明/自动反应（私聊配置借机攻击/反应法术/资源阈值/优先级；未配时非资源型低风险自动、消耗法术位的默认不自动）。**不开**交互式反应窗口（Phase 2）。↳ spec §4.2 / §11.29
+- [x] **M5-7** 超时接管：宽松可配超时；超时后 LLM 按角色性格/处境替其行动一回合（非简单防御/跳过）；`/forceturn` GM 强推兜底。↳ spec §4.2 / §11.7
+- [x] **M5-8** 小怪确定性战术库：每类怪物多套战术 → 条件过滤 → `RollService` seeded weighted choice（计入 roll counter）；首领/特殊怪走 LLM。↳ spec §4.2 / §11.28
+- [x] **M5-9** 上下文组装路由（`orchestrator/router.py`）：`PlayerIntent` 路由给 DM，按 spec §5 拼接上下文切片（含战斗模式 eager-compact 动作/目标 affordances）。↳ spec §5
+- **Exit：** 一场脚本化战斗能跑完整回合循环（先攻→点名→结算→推进），并发重复提交被 idempotency 去重，超时由 LLM/`/forceturn` 接管，小怪战术回放一致。
+
+## M6 — Telegram 适配层
+
+**Goal：** 群/私聊 channel、确定性指令、`DD` 门控、用户↔角色映射、公开/私密展示。
+↳ 依赖：M5 ｜ ↳ spec §4.3/4.4/4.5 / §7
+
+- [x] **M6-1** Gateway（`telegram_bot/gateway.py`）：消息门控（前缀 `DD` 区分大小写、不要求空格 / @bot / 指令）、规范化为 `PlayerIntent`、速率限制/队列。↳ spec §4.1 / §7 / §11.6
+- [x] **M6-2** 指令（`telegram_bot/commands.py`，确定性不走 LLM）：`/start /help /newchar /mychars /usechar /sheet /join /leave /roll /status` + GM 专用 `/newcampaign /save /load /saves /kick /forceturn`（执行前校验 GM）。↳ spec §7 / §7.1
+- [x] **M6-3** channel 分离（`telegram_bot/channels.py`）：群 vs 私聊；暗骰/密信/角色卡详情只走私聊；未 `/start` 私聊则提示激活。↳ spec §7 私密 channel / §11.21
+- [x] **M6-4** 用户↔角色映射 + 入队：角色库（单 active）、`/join` 绑定 active、成长持久化回库。↳ spec §4.4 / §11.9
+- [x] **M6-5** 公开/私密展示过滤：群内 `status` 摘要（可配精确/模糊）、怪物 HP MVP 默认模糊（Healthy/Injured/Bloodied/Critical）；展示层只过滤不改权威状态。↳ spec §4.5 / §11.21
+- **Exit：** 真人能在群里用 `DD…`/@bot 触发、私聊管理角色、`/join` 入队；私密信息不进群；GM 指令对非 GM 拒绝。
+
+## M7 — LLM-DM 组件
+
+**Goal：** 裁决 + 叙事 + 摘要 + 越权防护 + 纠错回路。
+↳ 依赖：M3（工具/Resolver）+ M5（编排）+ M6（输入）｜ ↳ spec §3.2 / §3.2.1 / §5
+
+- [x] **M7-1** 裁决（`dm/adjudicator.py`）：自然语言 → `PlayerActionDraft`（含可选 `candidate_action_id`）；两段式：先意图理解，再交 Resolver 审核。↳ spec §3.2 / §11.26
+- [x] **M7-2** 叙事（`dm/narrator.py`）：把引擎结构化结果或驳回原因翻成中文叙事；**绝不**编造骰值/HP/掉落。↳ spec §3.2
+- [x] **M7-3** 上下文与摘要（`dm/context.py`）：拼接系统提示/大纲切片/当前 zone-遭遇/在场角色卡摘要/动作+目标 affordances/滚动剧情摘要/近期窗口/工具定义；场景或章节末做 LLM 滚动摘要。↳ spec §5
+- [x] **M7-4** affordances 注入策略：战斗 eager-compact（当前行动者合法动作 `action_id`+中文名+消耗+目标类型，回填 `candidate_action_id`）；探索 lazy；首领精简版；小怪不注入。↳ spec §5 / §11.27
+- [x] **M7-5** 纠错回路：Executor/Resolver 结构化报错回喂合法可选项 → DM 重试，**硬上限默认 1 次可配** → 超限降级（换措辞/待 GM）；每次失败/重试/降级写审计。↳ spec §3.2.1 / §11.25
+- [x] **M7-6** 越权 + 隐藏信息防护：DM 上下文只注入展示层可见状态，精确隐藏值留 Core/审计；玩家自由文本视为不可信输入，不能提升可见性或诱导泄漏。↳ spec §3.2 隐藏信息隔离
+- [x] **M7-7** OpenAI 兼容调用层：tool-calling；DM/摘要/内容可分别配模型；后端保真度差异容错。↳ spec §8 / §11.24
+- **Exit：** DM 能把玩家自然语言落到合法工具调用、复述引擎数字、对非法动作正确驳回并叙述；弱后端下纠错≤1 次后优雅降级；无隐藏信息泄漏。
+
+## M8 — Content / 角色
+
+**Goal：** 战役包生成与校验、事件 automation、默认角色模板、自然语言改角色。
+↳ 依赖：M2（Validator）+ M4（数据）+ M7（LLM 改写）｜ ↳ spec §3.3 / §4.4 / §11.9/11
+
+- [x] **M8-1** 战役大纲 + 地图生成（`content/campaign_gen.py` + `map_gen.py`）：主线/章节/NPC/目标/结局；Zone Graph（节点+连通条件）；战斗 zone 的 Encounter Tactical Graph（PositionNode/边/distance/LOS/cover/terrain）。↳ spec §3.3
+- [x] **M8-2** 遭遇/奖励/事件定义：怪物组合 + CR 预算、奖励表、非标准危害（酸池/雷击/落石/岩浆等）作为战役包事件预定义 DC/豁免/伤害/触发/`EventDefinition.automation`，经 `trigger_event` 触发。↳ spec §3.3 / §3.1.3
+- [x] **M8-3** LLM 候选生成 + GM 自然语言修改：LLM 产结构化 JSON 战役包，GM 自然语言改写（LLM 解析→重写 JSON），全部过 `RuleDataValidator`（schema/zone 连通/战术图连通-距离-LOS-cover/CR/奖励/事件 automation/SRD 边界）。↳ spec §3.3 / §11.11
+- [x] **M8-4** 单战役包定稿：MVP 开局前生成校对存为 campaign pack，运行时只读；附 SRD 逐字署名。↳ spec §3.3 / §9 / §12
+- [x] **M8-5** 默认角色模板 + 自然语言改角色：私聊默认模板（职业/属性数组）→ 自然语言修改 → LLM 解析 → 引擎校验（属性点数/职业合法/起始装备），越界拒绝并说明。↳ spec §4.4 / §11.9
+- **Exit：** 一个完整单战役包通过全部校验并可运行时 `trigger_event`；玩家可用自然语言在 5e 规则内改出合法角色，越界被拒。
+
+## M9 — 测试与 Alpha
+
+**Goal：** 把 spec §11.19 测试策略落实，并完成一次端到端 playtest。
+↳ 依赖：贯穿 M1–M8 ｜ ↳ spec §9 / §11.19
+
+- [x] **M9-1** Compendium 自动模拟：每个动作可自动模拟并 JSON 序列化，纳入 CI。
+- [x] **M9-2** 确定性回放测试：关键战斗流程、骰子、存读档快照回放一致；`d20` 漂移按骰面重放分支覆盖。
+- [x] **M9-3** Resolver/越权矩阵测试：合法/幻觉 id/越权/资源不足/友伤/PvP 各分类断言。
+- [x] **M9-4** 并发/幂等测试：重复提交、Telegram 重试、并发工具调用不重复扣资源/乱序。
+- [ ] **M9-5** 单群单战役端到端 playtest：一队真人跑通 探索→战斗→存读档 的完整 Tier 1 冒险。↳ spec §9 跑通目标
+- **Exit：** CI 全绿（自动模拟 + 回放 + 矩阵 + 幂等）；一次完整 playtest 无引擎层数字/越权/泄漏事故。
+
+---
+
+# Phase 2 — 拓展规则（Tier 2+）
+
+↳ spec §9 Phase 2 / §11.12/29。架构已预留全量空间，本阶段填充。
+
+- [ ] **P2-1** 等级 6+：更高环法术、更多子职特性。
+- [ ] **P2-2** 多职业 + 专长。
+- [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
+- [ ] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。
+  - [x] **P2-4a** SRD 5.2.1 `Potion of Resistance` 落地：按 SRD 表限定 acid/cold/fire/force/lightning/necrotic/poison/psychic/radiant/thunder 十种伤害类型，饮用为 Bonus Action，1 小时给予所选伤害类型 Resistance；缺失或非表内 `damage_type` 在扣物品/行动经济前拒绝，并覆盖 compendium、resolver、executor、DM tool-calling 与自动模拟测试。
+  - [x] **P2-4b** SRD 5.2.1 `Potion of Invulnerability` 落地：饮用为 Bonus Action，按 SRD 在 1 分钟内给予所有伤害 Resistance；复用 `all_damage_resistance` 被动修正与 `duration_1_minute` 生命周期，覆盖 compendium、executor 伤害减半、10 tick 过期与自动模拟测试。
+  - [x] **P2-4c** SRD 5.2.1 `Potion of Water Breathing` 落地：饮用为 Bonus Action，按 SRD 在 24 小时内可水下呼吸；复用 `Water Breathing` 的 `can_breathe_underwater` 被动修正与 `duration_24_hours`/`environment` 语义，不额外虚构游泳速度或水下战斗规则，并覆盖 compendium、executor 与自动模拟测试。
+  - [x] **P2-4d** SRD 5.2.1 `Potion of Poison` 落地：饮用为 Bonus Action，按 SRD 造成 `4d6` Poison damage，并以 `dc_ref` 映射 DC 13 Constitution saving throw，失败后获得 1 小时 Poisoned condition；成功豁免仍承受毒素伤害但不获得 Poisoned，并覆盖 compendium、executor 成功/失败分支与自动模拟测试。
+  - [x] **P2-4e** SRD 5.2.1 `Potion of Heroism` 落地：饮用为 Bonus Action，按 SRD 获得持续 1 小时的 10 Temporary Hit Points，并在同一持续时间内获得无需 Concentration 的 Bless 效果；新增带来源追踪的有时限临时 HP，到期只清除仍来自该效果的剩余临时 HP，不会误清后续更高临时 HP，并覆盖 compendium、executor、持续时间过期、替换来源与自动模拟测试。
+  - [x] **P2-4f** SRD 5.2.1 `Potion of Climbing` 落地：饮用为 Bonus Action，按 SRD 在 1 小时内获得等于 Speed 的 Climb Speed，并仅对 Strength (Athletics) checks to climb 提供 Advantage；新增能力+技能限定的检定优势被动修正，不泛化到其它 Strength 或 Athletics 变体，并覆盖 compendium、executor、direct tool 与自动模拟测试。
+  - [x] **P2-4g** SRD 5.2.1 `Potion of Flying` 落地：饮用为 Bonus Action，按 SRD 在 1 小时内获得等于 Speed 的 Fly Speed 且可以 hover；新增飞行速度/hover 的状态效果读取 helper，并将“效果结束时若仍在空中会坠落，除非另有保持滞空手段”作为 SRD 元数据记录，不虚构高度或空中战术定位系统，并覆盖 compendium、executor、持续时间过期与自动模拟测试。
+  - [x] **P2-4h** SRD 5.2.1 `Potion of Speed` 落地：饮用为 Bonus Action，按 SRD 获得 1 分钟无需 Concentration 的 Haste 效果且结束时不承受通常的 lethargy；复用 Haste 的 AC +2、Speed 翻倍与受限额外动作 marker，并记录 `no_haste_lethargy_on_expiry`，不虚构额外行动经济池；覆盖 compendium、executor 的 AC/Speed 结算、持续时间过期与自动模拟测试。
+  - [x] **P2-4i** SRD 5.2.1 `Potion of Growth` 落地：饮用为 Bonus Action，按 SRD 获得 10 分钟无需 Concentration 的 Enlarge/Reduce “enlarge” 效果；记录体型增大一级、Strength checks 与 Strength saving throws 获得 Advantage，并让 enlarged weapon/Unarmed Strike 命中时额外造成 `1d4` 同类型伤害（重击时按攻击伤害骰追加掷骰）；覆盖 compendium、direct tool 的检定/豁免优势、executor 额外伤害、持续时间过期与自动模拟测试。
+  - [x] **P2-4j** SRD 5.2.1 `Potion of Clairvoyance` 落地：饮用为 Bonus Action，按 SRD 获得无需 Concentration 的 Clairvoyance spell 效果；复用 `clairvoyant_sensor` world effect，记录 1 英里范围内 known/obvious location、选择 sight/hearing 与 10 分钟持续时间，不虚构远程感知定位算法，并覆盖 compendium、executor/world effect 与自动模拟测试。
+  - [x] **P2-4k** SRD 5.2.1 `Potion of Mind Reading` 落地：饮用为 Bonus Action，按 SRD 获得无需 Concentration 的 Detect Thoughts 效果（save DC 13）并持续 10 分钟；复用 `detect_thoughts` world effect，记录自身 30 尺范围、surface thoughts 与 DC 13，不虚构读心对抗流程，并覆盖 compendium、executor/world effect 与自动模拟测试。
+  - [x] **P2-4l** SRD 5.2.1 `Potion of Gaseous Form` 落地：饮用为 Bonus Action，按 SRD 获得 1 小时无需 Concentration 的 Gaseous Form 效果且可用 Bonus Action 结束；记录 10 尺 Fly Speed/hover、可进入其他生物空间、B/P/S Resistance、Prone immunity、STR/DEX/CON saving throws Advantage、穿过狭窄开口/液体视为固体、不能说话/操纵物品/攻击/施法等 SRD marker，并将攻击/施法阻断与抗性/豁免优势接入执行器和解析器，覆盖 compendium、executor/resolver、持续时间过期与自动模拟测试。
+  - [x] **P2-4m** SRD 5.2.1 `Potion of Invisibility` 落地：饮用为 Bonus Action，按 SRD 获得 1 小时 Invisible condition，无需 Concentration；效果会在使用者作出 attack roll、造成 damage 或 cast a spell 时提前结束，复合时长可按 1 小时自然过期；覆盖 compendium、executor 三种提前结束分支、持续时间过期与自动模拟测试。
+  - [x] **P2-4n** SRD 5.2.1 `Potion of Vitality` 落地：饮用为 Bonus Action，按 SRD 移除饮用者所有 Exhaustion levels 并结束 Poisoned condition；24 小时内花费 Hit Point Die 恢复 HP 时使用该 Hit Die 的最大值结算；新增可持久化到角色本体的被动效果 marker，覆盖 compendium、executor 状态清除、角色/combatant 同步、短休 Hit Die 最大化与自动模拟测试。
+  - [x] **P2-4o** SRD 5.2.1 `Elixir of Health` 落地：饮用为 Bonus Action，按 SRD 治愈 all magical contagions，并结束 Blinded/Deafened/Paralyzed/Poisoned conditions；为 `remove_condition` 节点新增受限 `magical_contagion` effect marker 清除语义，不泛化为自造疾病系统，覆盖 compendium、executor condition/marker 清除与自动模拟测试。
+  - [x] **P2-4p** SRD 5.2.1 `Potion of Diminution` 落地：饮用为 Bonus Action，按 SRD 获得 1d4 小时无需 Concentration 的 Enlarge/Reduce “reduce” 效果；持续时间经 RollService 掷骰并转为可 tick 的 remaining ticks，记录体型缩小一级、Strength checks 与 Strength saving throws Disadvantage、reduced weapon/Unarmed Strike 命中伤害减少 `1d4` 且不低于 1，并覆盖 compendium、direct tool、executor 伤害减少、持续时间过期与自动模拟测试。
+  - [x] **P2-4q** SRD 5.2.1 `Potion of Giant Strength` 落地：按 SRD 六种变体 hill/frost/stone/fire/cloud/storm 分别设置 Strength 21/23/23/25/27/29，饮用为 Bonus Action，持续 1 小时；当前 Strength 已等于或高于目标值时不会被降低；有效 Strength 覆盖 direct tool 检定/豁免、executor 攻击与武器伤害差值路径，并覆盖 compendium、executor/no-effect、持续时间过期与自动模拟测试。
+  - [x] **P2-4r** SRD 5.2.1 `Potion of Animal Friendship` 落地：饮用为 Bonus Action，按 SRD 施放 3 环版本 `Animal Friendship`（save DC 13），最多目标 3 个 Beast；非 Beast 目标在扣物品/行动经济前拒绝；失败 Wisdom saving throw 的目标获得 Charmed 24 小时，且仅在施加者或其盟友伤害目标时提前结束；覆盖 compendium、executor 多目标/非 Beast/no-cost、伤害来源过期与自动模拟测试。
+  - [x] **P2-4s** SRD 5.2.1 `Oil of Sharpness` 落地：按 SRD 可涂抹当前已实现的非魔法 Slashing/Piercing 近战武器（短剑/长剑），涂抹 1 分钟后作为 +3 Weapon；不虚构弹药库存/动作，仅记录 SRD 的 20 发弹药支持为元数据；显式选择非法/缺失武器在扣物品前拒绝；覆盖 compendium、executor 攻击/伤害 +3、no-cost 拒绝与自动模拟测试。
+  - [x] **P2-4t** SRD 5.2.1 `Oil of Etherealness` 落地：一瓶可覆盖 Medium 或更小生物及其穿戴/携带装备，每高于 Medium 一个体型类别自动多消耗 1 瓶，涂抹 10 分钟后记录 1 小时无需 Concentration 的 Etherealness spell world effect；变量瓶数由规则层按目标体型计算并在扣费前校验，不接受运行时自填权威数字；覆盖 compendium、executor Medium/Huge 扣费、库存不足 no-effect 与自动模拟测试。
+  - [x] **P2-4u** SRD 5.2.1 `Oil of Slipperiness` 落地：按 SRD 支持涂抹生物与倒在地面两种用法；涂抹生物时每瓶覆盖 Medium 或更小目标且每高一个体型类别多消耗 1 瓶，10 分钟后获得 8 小时 Freedom of Movement 被动标记（困难地形不影响、魔法减速/麻痹/束缚免疫语义、Swim Speed 等于 Speed、5 尺移动逃脱非魔法束缚元数据）；倒地上用 Magic action/Action 消耗 1 瓶记录 10 尺方形 8 小时 Grease area world effect，不虚构未给出的固定豁免 DC；补齐 `duration_8_hours` tick 推断，并覆盖 compendium、executor 两种用法、变量扣费/no-effect、速度 helper、自动模拟与生命周期测试。
+  - [x] **P2-4v** SRD 5.2.1 `Boots of Elvenkind` 落地：新增非消耗 wondrous item 与穿戴效果 action；持有校验支持 inventory 或 equipment，不消耗物品；穿戴后记录“脚步无声”标记，并仅对 Dexterity (Stealth) checks 提供 Advantage；覆盖 compendium、executor 持有/缺失、resolver 装备持有、Stealth 优势与自动模拟测试。
+  - [x] **P2-4w** SRD 5.2.1 `Ring of Swimming` 落地：新增非消耗 ring item 与佩戴效果 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 提供固定 40 feet Swim Speed，并覆盖 compendium、executor swim speed helper 与自动模拟测试。
+  - [x] **P2-4x** SRD 5.2.1 `Ring of Water Walking` 落地：新增非消耗 ring item 与从戒指施放 `Water Walk` 的自我目标 action；持有校验复用 inventory/equipment 路径，不消耗物品或法术位；严格限制目标只能是自己，记录 1 小时 `walk_on_liquid_surface` 被动效果，并覆盖 compendium、executor 自身/非法目标、resolver self-only 与自动模拟测试。
+  - [x] **P2-4y** SRD 5.2.1 `Ring of X-ray Vision` 落地：新增需要 attunement 的 rare ring item 与 Magic action 使用动作；持有校验复用 inventory/equipment 路径，不消耗物品；记录 1 分钟 30 尺 X-ray vision、SRD 穿透厚度与铅阻挡 marker，不虚构额外视觉/地图判定；长休前重复使用时按 `dc_ref` 固定 DC 15 Constitution saving throw，失败叠加 1 Exhaustion level，长休清除重复使用 marker，并覆盖 compendium、executor 首次/重复失败/长休清理/非法目标、resolver self-only 与自动模拟测试。
+  - [x] **P2-4z** SRD 5.2.1 `Robe of Eyes` 落地：新增需要 attunement 的 rare wondrous item 与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后记录仅对依赖视觉的 Wisdom (Perception) checks 生效的 Advantage、120 feet Darkvision 与 120 feet Truesight helper；将 `Light` cast on the robe 与 5 尺内 `Daylight` 两种 SRD drawback 拆为可触发动作，分别施加 1 分钟 Blinded condition，并在每回合末按 DC 11/15 Constitution repeat save 成功结束；不虚构额外视觉/地图判定，并覆盖 compendium、executor 穿戴/触发/重复豁免、resolver 多动作 item 选择与自动模拟测试。
+  - [x] **P2-4aa** SRD 5.2.1 `Robe of the Archmagi` 落地：新增需要 Sorcerer/Warlock/Wizard attunement 的 legendary wondrous item 与穿戴 action；持有与职业校验在 resolver/executor 双层生效；未穿 armor 时基础 AC 使用 `15 + Dexterity modifier`；对 spells 和 magical effects 的 saving throws 获得 Advantage；spell save DC 与 spell attack bonus 各 +2；不虚构额外 attunement/颜色阵营限制，并覆盖 compendium、executor AC/豁免/法术 DC/法术攻击/非法职业、resolver 与自动模拟测试。
+  - [x] **P2-4ab** SRD 5.2.1 `Robe of Useful Items` 落地：新增 uncommon wondrous item、补丁初始化 action 与 Magic action 撕补丁；按 SRD 固定补丁与 `4d4`/`1d100` 额外补丁表初始化 patch 资源；撕补丁会扣减对应补丁并生成 SRD 物品、金币或 world effect，最后一枚补丁移除后 robe 变为普通不再可用；不伪造非 SRD 补丁或怪物 stat block，Riding Horse/Mastiffs/门/坑/窗/船等以世界效果记录；覆盖 compendium、executor 初始化/物品/金币/世界效果/耗尽/非法补丁、resolver 与自动模拟测试。
+  - [x] **P2-4ac** SRD 5.2.1 `Rod of Absorption` 落地：新增 very rare rod item（requires attunement）与初始化/反应吸收 spell 两个 action；按 SRD 以 `1d10` 初始化新发现法杖储能，记录当前 stored levels 与 lifetime absorbed levels；仅允许反应吸收“只以持有者为目标且不产生 area of effect”的 spell，吸收后取消该 spell 效果并增加同环位储能，生命周期累计上限 50；显式 `use_rod_of_absorption` 施法时以储能创建不高于自身 spell slots 且最高 5 环的 spell slot，消耗储能而不扣普通法术位，50 环已满且储能归零时移除魔法物品；覆盖 compendium、executor、resolver、DM tool-calling、自动模拟与全量门禁测试。
+  - [x] **P2-4ad** SRD 5.2.1 `Rod of Alertness` 落地：新增 very rare rod item（requires attunement）与持握、四个 SRD 列表法术、Protective Aura action；持握时获得 Wisdom (Perception) checks 与 Initiative rolls Advantage；从法杖施放 Detect Evil and Good、Detect Magic、Detect Poison and Disease、See Invisibility 时复用既有 SRD 法术效果且不消耗角色 spell slots；Protective Aura 作为 Magic action 记录 60 尺 Bright Light/额外 60 尺 Dim Light、10 分钟或 Magic action 拔出结束、到下个黎明前不可再用，并给亮光内自己/盟友 +1 AC、+1 saving throws 与感知同亮光内 Invisible 生物位置 marker；覆盖 compendium、executor、resolver、先攻、自动模拟与全量门禁测试。
+- [x] **P2-5** 难度/CR 预算自动化。
+
+# Phase 3 — 动态内容
+
+↳ spec §9 Phase 3。
+
+- [ ] **P3-1** 内容生成组件运行时实时产出剧情与地图（Zone Graph / Tactical Graph 动态扩展），DM 即兴成团；启用架构图中 LLM-DM→Content Gen 路径。
+- [ ] **P3-2** 长战役向量检索记忆：按情境召回历史片段（spec §5.6 留口）。
+
+# Phase 4 — 体验与运营
+
+↳ spec §9 Phase 4 / §11.8。
+
+- [ ] **P4-1** 多战役并行、跨群（解除单群单战役限制）。
+- [ ] **P4-2** 观战模式。
+- [ ] **P4-3** 角色成长持久化增强、并发/超时/速率精细化。
+- [ ] **P4-4** 成本监控。
+
+---
+
+## 待后续阶段细化（非阻塞，来自 spec §11 末）
+
+这些不阻塞 Phase 1，实现到相关里程碑时确认默认值：
+
+- 战斗超时的具体默认分钟数（M5-7）。
+- 角色库容量上限、删除/改名等管理操作（M6-4）。
+- 审计日志的长期保留、归档、压缩与裁剪策略（M1-4）。
+- 长战役向量检索记忆接入时机（Phase 3）。
+- 多战役并行与跨群（Phase 4）。
+- `confirm_required` 是否在 Resolver 三类结果中显式建模 / 运行时战术图生成的 seeded 细节（实现期定，见 spec §3.2.1 / §3.1）。

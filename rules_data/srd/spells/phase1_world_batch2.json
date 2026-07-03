@@ -1,0 +1,898 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.animal_messenger",
+      "name": "Animal Messenger",
+      "localization": { "en": "Animal Messenger", "zh": "动物信使", "aliases": ["动物传信"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "enchantment",
+      "classes": ["bard", "druid", "ranger"],
+      "ritual": true,
+      "action": {
+        "id": "srd.animal_messenger",
+        "name": "Animal Messenger",
+        "localization": { "en": "Animal Messenger", "zh": "动物信使", "aliases": ["动物传信"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "animal_messenger",
+            "scope": { "target": "tiny_beast", "range_ft": 30 },
+            "duration": { "until": "message_delivered_or_24_hours" },
+            "metadata": { "message_delivery": true }
+          }
+        ],
+        "audit_label": "Animal Messenger"
+      }
+    },
+    {
+      "id": "srd.spell.arcanists_magic_aura",
+      "name": "Arcanist's Magic Aura",
+      "localization": { "en": "Arcanist's Magic Aura", "zh": "奥法师魔法灵光", "aliases": ["魔法灵光"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "illusion",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.arcanists_magic_aura",
+        "name": "Arcanist's Magic Aura",
+        "localization": { "en": "Arcanist's Magic Aura", "zh": "奥法师魔法灵光", "aliases": ["魔法灵光"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "masked_magical_aura",
+            "scope": { "target": "creature_or_object" },
+            "duration": { "until": "duration_24_hours" },
+            "metadata": { "false_aura": true, "mask_creature_type": true }
+          }
+        ],
+        "audit_label": "Arcanist's Magic Aura"
+      }
+    },
+    {
+      "id": "srd.spell.augury",
+      "name": "Augury",
+      "localization": { "en": "Augury", "zh": "卜筮", "aliases": ["预兆术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "divination",
+      "classes": ["cleric"],
+      "ritual": true,
+      "action": {
+        "id": "srd.augury",
+        "name": "Augury",
+        "localization": { "en": "Augury", "zh": "卜筮", "aliases": ["预兆术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "augury_omen_request",
+            "scope": { "target": "declared_course_of_action" },
+            "duration": { "until": "instant" },
+            "metadata": { "omen_window_minutes": 30 }
+          }
+        ],
+        "audit_label": "Augury"
+      }
+    },
+    {
+      "id": "srd.spell.clairvoyance",
+      "name": "Clairvoyance",
+      "localization": { "en": "Clairvoyance", "zh": "鹰眼术", "aliases": ["千里眼"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "divination",
+      "classes": ["bard", "cleric", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.clairvoyance",
+        "name": "Clairvoyance",
+        "localization": { "en": "Clairvoyance", "zh": "鹰眼术", "aliases": ["千里眼"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5280 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "clairvoyant_sensor",
+            "scope": { "target": "known_or_obvious_location", "range_ft": 5280 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "choose_sight_or_hearing": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Clairvoyance"
+      }
+    },
+    {
+      "id": "srd.spell.create_food_and_water",
+      "name": "Create Food and Water",
+      "localization": { "en": "Create Food and Water", "zh": "造粮术", "aliases": ["创造食物和水"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "conjuration",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.create_food_and_water",
+        "name": "Create Food and Water",
+        "localization": { "en": "Create Food and Water", "zh": "造粮术", "aliases": ["创造食物和水"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "created_food_and_water",
+            "scope": { "target": "ground_or_containers", "range_ft": 30 },
+            "duration": { "until": "duration_24_hours" },
+            "metadata": { "people_fed": 15, "mounts_fed": 5 }
+          }
+        ],
+        "audit_label": "Create Food and Water"
+      }
+    },
+    {
+      "id": "srd.spell.create_or_destroy_water",
+      "name": "Create or Destroy Water",
+      "localization": { "en": "Create or Destroy Water", "zh": "造水或毁水", "aliases": ["造水术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "transmutation",
+      "classes": ["cleric", "druid"],
+      "action": {
+        "id": "srd.create_or_destroy_water",
+        "name": "Create or Destroy Water",
+        "localization": { "en": "Create or Destroy Water", "zh": "造水或毁水", "aliases": ["造水术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "create_or_destroy_water",
+            "scope": { "target": "open_container_or_area", "range_ft": 30 },
+            "duration": { "until": "instant" },
+            "metadata": { "water_gallons": 10, "fog_cleared": true }
+          }
+        ],
+        "audit_label": "Create or Destroy Water"
+      }
+    },
+    {
+      "id": "srd.spell.dispel_magic",
+      "name": "Dispel Magic",
+      "localization": { "en": "Dispel Magic", "zh": "解除魔法", "aliases": ["驱散魔法"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid", "paladin", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.dispel_magic",
+        "name": "Dispel Magic",
+        "localization": { "en": "Dispel Magic", "zh": "解除魔法", "aliases": ["驱散魔法"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "dispel_magic_attempt",
+            "scope": { "target": "creature_object_or_magical_effect", "range_ft": 120 },
+            "duration": { "until": "instant" },
+            "metadata": { "auto_ends_spell_level_lte": 3, "higher_level_requires_check": true }
+          }
+        ],
+        "audit_label": "Dispel Magic"
+      }
+    },
+    {
+      "id": "srd.spell.druidcraft",
+      "name": "Druidcraft",
+      "localization": { "en": "Druidcraft", "zh": "德鲁伊伎俩", "aliases": ["自然戏法"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.druidcraft",
+        "name": "Druidcraft",
+        "localization": { "en": "Druidcraft", "zh": "德鲁伊伎俩", "aliases": ["自然戏法"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "minor_nature_effect",
+            "scope": { "target": "nearby_space", "range_ft": 30 },
+            "duration": { "until": "short_duration_or_instant" },
+            "metadata": { "weather_sign": true, "minor_plant_or_sensory_effect": true }
+          }
+        ],
+        "audit_label": "Druidcraft"
+      }
+    },
+    {
+      "id": "srd.spell.elementalism",
+      "name": "Elementalism",
+      "localization": { "en": "Elementalism", "zh": "元素戏法", "aliases": ["元素伎俩"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.elementalism",
+        "name": "Elementalism",
+        "localization": { "en": "Elementalism", "zh": "元素戏法", "aliases": ["元素伎俩"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "minor_elemental_effect",
+            "scope": { "target": "nearby_element", "range_ft": 30 },
+            "duration": { "until": "short_duration_or_instant" },
+            "metadata": { "air_earth_fire_water": true }
+          }
+        ],
+        "audit_label": "Elementalism"
+      }
+    },
+    {
+      "id": "srd.spell.find_familiar",
+      "name": "Find Familiar",
+      "localization": { "en": "Find Familiar", "zh": "寻找魔宠", "aliases": ["召唤魔宠"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.find_familiar",
+        "name": "Find Familiar",
+        "localization": { "en": "Find Familiar", "zh": "寻找魔宠", "aliases": ["召唤魔宠"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "familiar_bound",
+            "scope": { "target": "empty_space", "range_ft": 10 },
+            "duration": { "until": "dismissed_or_reduced_to_0_hp" },
+            "metadata": { "spirit_form": true, "shares_senses": true }
+          }
+        ],
+        "audit_label": "Find Familiar"
+      }
+    },
+    {
+      "id": "srd.spell.find_steed",
+      "name": "Find Steed",
+      "localization": { "en": "Find Steed", "zh": "寻找坐骑", "aliases": ["召唤坐骑"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "conjuration",
+      "classes": ["paladin"],
+      "action": {
+        "id": "srd.find_steed",
+        "name": "Find Steed",
+        "localization": { "en": "Find Steed", "zh": "寻找坐骑", "aliases": ["召唤坐骑"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "steed_bound",
+            "scope": { "target": "empty_space", "range_ft": 30 },
+            "duration": { "until": "dismissed_or_reduced_to_0_hp" },
+            "metadata": { "mount": true, "telepathic_bond": true }
+          }
+        ],
+        "audit_label": "Find Steed"
+      }
+    },
+    {
+      "id": "srd.spell.find_traps",
+      "name": "Find Traps",
+      "localization": { "en": "Find Traps", "zh": "寻找陷阱", "aliases": ["侦测陷阱"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "divination",
+      "classes": ["cleric", "druid", "ranger"],
+      "action": {
+        "id": "srd.find_traps",
+        "name": "Find Traps",
+        "localization": { "en": "Find Traps", "zh": "寻找陷阱", "aliases": ["侦测陷阱"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "trap_presence_sense",
+            "scope": { "target": "line_of_sight_area", "range_ft": 120 },
+            "duration": { "until": "instant" },
+            "metadata": { "reveals_presence_not_location": true }
+          }
+        ],
+        "audit_label": "Find Traps"
+      }
+    },
+    {
+      "id": "srd.spell.gentle_repose",
+      "name": "Gentle Repose",
+      "localization": { "en": "Gentle Repose", "zh": "遗体防腐", "aliases": ["安魂防腐"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "necromancy",
+      "classes": ["cleric", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.gentle_repose",
+        "name": "Gentle Repose",
+        "localization": { "en": "Gentle Repose", "zh": "遗体防腐", "aliases": ["安魂防腐"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "gentle_repose",
+            "scope": { "target": "corpse_or_remains" },
+            "duration": { "until": "duration_10_days" },
+            "metadata": { "prevents_decay": true, "extends_resurrection_window": true }
+          }
+        ],
+        "audit_label": "Gentle Repose"
+      }
+    },
+    {
+      "id": "srd.spell.illusory_script",
+      "name": "Illusory Script",
+      "localization": { "en": "Illusory Script", "zh": "幻术文书", "aliases": ["幻文术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "illusion",
+      "classes": ["bard", "warlock", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.illusory_script",
+        "name": "Illusory Script",
+        "localization": { "en": "Illusory Script", "zh": "幻术文书", "aliases": ["幻文术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "illusory_script",
+            "scope": { "target": "written_material" },
+            "duration": { "until": "duration_10_days" },
+            "metadata": { "authorized_readers": true, "conceals_message": true }
+          }
+        ],
+        "audit_label": "Illusory Script"
+      }
+    },
+    {
+      "id": "srd.spell.locate_animals_or_plants",
+      "name": "Locate Animals or Plants",
+      "localization": { "en": "Locate Animals or Plants", "zh": "定位动植物", "aliases": ["寻找动植物"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "divination",
+      "classes": ["bard", "druid", "ranger"],
+      "ritual": true,
+      "action": {
+        "id": "srd.locate_animals_or_plants",
+        "name": "Locate Animals or Plants",
+        "localization": { "en": "Locate Animals or Plants", "zh": "定位动植物", "aliases": ["寻找动植物"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "locate_animals_or_plants",
+            "scope": { "target": "named_kind_within_region" },
+            "duration": { "until": "instant" },
+            "metadata": { "reveals_nearest_direction_or_distance": true }
+          }
+        ],
+        "audit_label": "Locate Animals or Plants"
+      }
+    },
+    {
+      "id": "srd.spell.locate_object",
+      "name": "Locate Object",
+      "localization": { "en": "Locate Object", "zh": "定位物品", "aliases": ["寻找物品"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "divination",
+      "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"],
+      "action": {
+        "id": "srd.locate_object",
+        "name": "Locate Object",
+        "localization": { "en": "Locate Object", "zh": "定位物品", "aliases": ["寻找物品"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "locate_object",
+            "scope": { "target": "described_object" },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "direction_to_object": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Locate Object"
+      }
+    },
+    {
+      "id": "srd.spell.magic_circle",
+      "name": "Magic Circle",
+      "localization": { "en": "Magic Circle", "zh": "魔法法阵", "aliases": ["防护法阵"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin", "warlock", "wizard"],
+      "action": {
+        "id": "srd.magic_circle",
+        "name": "Magic Circle",
+        "localization": { "en": "Magic Circle", "zh": "魔法法阵", "aliases": ["防护法阵"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10, "shape": "cylinder", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "magic_circle",
+            "scope": { "target": "ground_point", "radius_ft": 10, "height_ft": 20 },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "blocks_selected_creature_types": true }
+          }
+        ],
+        "audit_label": "Magic Circle"
+      }
+    },
+    {
+      "id": "srd.spell.magic_mouth",
+      "name": "Magic Mouth",
+      "localization": { "en": "Magic Mouth", "zh": "魔嘴术", "aliases": ["魔法嘴"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "illusion",
+      "classes": ["bard", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.magic_mouth",
+        "name": "Magic Mouth",
+        "localization": { "en": "Magic Mouth", "zh": "魔嘴术", "aliases": ["魔法嘴"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "magic_mouth",
+            "scope": { "target": "object", "range_ft": 30 },
+            "duration": { "until": "dispelled" },
+            "metadata": { "triggered_message": true }
+          }
+        ],
+        "audit_label": "Magic Mouth"
+      }
+    },
+    {
+      "id": "srd.spell.meld_into_stone",
+      "name": "Meld into Stone",
+      "localization": { "en": "Meld into Stone", "zh": "融身入石", "aliases": ["融入石中"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["cleric", "druid"],
+      "ritual": true,
+      "action": {
+        "id": "srd.meld_into_stone",
+        "name": "Meld into Stone",
+        "localization": { "en": "Meld into Stone", "zh": "融身入石", "aliases": ["融入石中"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "melded_into_stone",
+            "scope": { "target": "stone_object_or_surface" },
+            "duration": { "until": "duration_8_hours" },
+            "metadata": { "caster_inside_stone": true }
+          }
+        ],
+        "audit_label": "Meld into Stone"
+      }
+    },
+    {
+      "id": "srd.spell.nondetection",
+      "name": "Nondetection",
+      "localization": { "en": "Nondetection", "zh": "回避侦测", "aliases": ["防侦测"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["bard", "ranger", "wizard"],
+      "action": {
+        "id": "srd.nondetection",
+        "name": "Nondetection",
+        "localization": { "en": "Nondetection", "zh": "回避侦测", "aliases": ["防侦测"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "hidden_from_divination": true, "cannot_be_scryed": true },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "divination_query"
+          }
+        ],
+        "audit_label": "Nondetection"
+      }
+    },
+    {
+      "id": "srd.spell.phantom_steed",
+      "name": "Phantom Steed",
+      "localization": { "en": "Phantom Steed", "zh": "魅影驹", "aliases": ["幻影坐骑"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "illusion",
+      "classes": ["wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.phantom_steed",
+        "name": "Phantom Steed",
+        "localization": { "en": "Phantom Steed", "zh": "魅影驹", "aliases": ["幻影坐骑"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "phantom_steed",
+            "scope": { "target": "empty_space", "range_ft": 30 },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "mount_speed_ft": 100 }
+          }
+        ],
+        "audit_label": "Phantom Steed"
+      }
+    },
+    {
+      "id": "srd.spell.rope_trick",
+      "name": "Rope Trick",
+      "localization": { "en": "Rope Trick", "zh": "魔绳术", "aliases": ["绳技"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.rope_trick",
+        "name": "Rope Trick",
+        "localization": { "en": "Rope Trick", "zh": "魔绳术", "aliases": ["绳技"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "extradimensional_rope_space",
+            "scope": { "target": "rope" },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "capacity_creatures": 8 }
+          }
+        ],
+        "audit_label": "Rope Trick"
+      }
+    },
+    {
+      "id": "srd.spell.sending",
+      "name": "Sending",
+      "localization": { "en": "Sending", "zh": "短讯术", "aliases": ["传讯术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "evocation",
+      "classes": ["bard", "cleric", "wizard"],
+      "action": {
+        "id": "srd.sending",
+        "name": "Sending",
+        "localization": { "en": "Sending", "zh": "短讯术", "aliases": ["传讯术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "unlimited": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "sending_message",
+            "scope": { "target": "known_creature" },
+            "duration": { "until": "instant" },
+            "metadata": { "word_limit": 25, "reply_allowed": true }
+          }
+        ],
+        "audit_label": "Sending"
+      }
+    },
+    {
+      "id": "srd.spell.speak_with_dead",
+      "name": "Speak with Dead",
+      "localization": { "en": "Speak with Dead", "zh": "死者交谈", "aliases": ["亡者交谈"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "necromancy",
+      "classes": ["bard", "cleric"],
+      "action": {
+        "id": "srd.speak_with_dead",
+        "name": "Speak with Dead",
+        "localization": { "en": "Speak with Dead", "zh": "死者交谈", "aliases": ["亡者交谈"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "speak_with_dead",
+            "scope": { "target": "corpse", "range_ft": 10 },
+            "duration": { "until": "duration_10_minutes" },
+            "metadata": { "question_limit": 5 }
+          }
+        ],
+        "audit_label": "Speak with Dead"
+      }
+    },
+    {
+      "id": "srd.spell.speak_with_plants",
+      "name": "Speak with Plants",
+      "localization": { "en": "Speak with Plants", "zh": "植物交谈", "aliases": ["与植物交谈"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["bard", "druid", "ranger"],
+      "action": {
+        "id": "srd.speak_with_plants",
+        "name": "Speak with Plants",
+        "localization": { "en": "Speak with Plants", "zh": "植物交谈", "aliases": ["与植物交谈"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "speak_with_plants",
+            "scope": { "target": "plants_near_self", "radius_ft": 30 },
+            "duration": { "until": "duration_10_minutes" },
+            "metadata": { "plant_communication": true, "can_influence_plants": true }
+          }
+        ],
+        "audit_label": "Speak with Plants"
+      }
+    },
+    {
+      "id": "srd.spell.tiny_hut",
+      "name": "Tiny Hut",
+      "localization": { "en": "Tiny Hut", "zh": "魔法小屋", "aliases": ["小屋术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "evocation",
+      "classes": ["bard", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.tiny_hut",
+        "name": "Tiny Hut",
+        "localization": { "en": "Tiny Hut", "zh": "魔法小屋", "aliases": ["小屋术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "hemisphere", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "tiny_hut",
+            "scope": { "target": "self_centered_hemisphere", "radius_ft": 10 },
+            "duration": { "until": "duration_8_hours" },
+            "metadata": { "shelter": true, "blocks_external_creatures_and_effects": true }
+          }
+        ],
+        "audit_label": "Tiny Hut"
+      }
+    }
+  ]
+}
