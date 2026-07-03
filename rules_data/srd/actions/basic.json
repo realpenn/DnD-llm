@@ -4529,6 +4529,36 @@
                 }
             ],
             "audit_label": "Extra Attack"
+        },
+        {
+            "id": "srd.two_extra_attacks",
+            "name": "Two Extra Attacks",
+            "localization": {
+                "en": "Two Extra Attacks",
+                "zh": "两次额外攻击",
+                "aliases": ["Fighter Two Extra Attacks", "战士两次额外攻击"]
+            },
+            "source": "SRD 5.2.1 Fighter Class Features: Level 11: Two Extra Attacks",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "fighter", "class_level_min": 11},
+            "properties": {
+                "attack_action_attack_count": 3,
+                "applies_when_taking_attack_action_on_turn": true,
+                "instead_of_once": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a level 11 Fighter can attack three times instead of once whenever they take the Attack action on their turn."
+                }
+            ],
+            "audit_label": "Two Extra Attacks"
         }
     ]
 }
