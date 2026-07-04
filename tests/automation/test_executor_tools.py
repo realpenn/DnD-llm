@@ -9081,6 +9081,181 @@ def test_headband_of_intellect_does_not_lower_equal_or_higher_intelligence(make_
     assert intelligence_check["roll"]["expression"] == "1d20+5"
 
 
+def test_periapt_of_proof_against_poison_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError, match="actor does not have item srd.periapt_of_proof_against_poison"
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.periapt_of_proof_against_poison",
+            ["pc1"],
+            action_id="srd.wear_periapt_of_proof_against_poison",
+            idempotency_key="missing-periapt-proof-poison",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.periapt_of_proof_against_poison")
+    result = tools.use_item(
+        "pc1",
+        "srd.periapt_of_proof_against_poison",
+        ["pc1"],
+        action_id="srd.wear_periapt_of_proof_against_poison",
+        idempotency_key="equipped-periapt-proof-poison",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_periapt_of_proof_against_poison"
+    )
+
+
+def test_periapt_of_proof_against_poison_grants_poison_damage_and_condition_immunity(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.periapt_of_proof_against_poison"] = 1
+    target = state.encounter.combatants["pc1"]
+    target.hp_current = 20
+    target.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    periapt = tools.use_item(
+        "pc1",
+        "srd.periapt_of_proof_against_poison",
+        ["pc1"],
+        action_id="srd.wear_periapt_of_proof_against_poison",
+        idempotency_key="wear-periapt-proof-poison",
+    )
+    poison_damage_action = ActionDefinition(
+        id="test.periapt.poison_damage",
+        name="Periapt Poison Damage",
+        localization={"en": "Periapt Poison Damage", "zh": "防毒护符毒素伤害", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 9, "damage_type": "poison"},
+        ],
+    )
+    poison_damage = AutomationExecutor(
+        state,
+        RollService(state),
+        AuditLog(),
+    ).execute(poison_damage_action, actor_id="goblin1", targets=["pc1"])
+    force_damage_action = ActionDefinition(
+        id="test.periapt.force_damage",
+        name="Periapt Force Damage",
+        localization={"en": "Periapt Force Damage", "zh": "防毒护符力场伤害", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 5, "damage_type": "force"},
+        ],
+    )
+    force_damage = AutomationExecutor(
+        state,
+        RollService(state),
+        AuditLog(),
+    ).execute(force_damage_action, actor_id="goblin1", targets=["pc1"])
+    poisoned_action = ActionDefinition(
+        id="test.periapt.poisoned_condition",
+        name="Periapt Poisoned Condition",
+        localization={
+            "en": "Periapt Poisoned Condition",
+            "zh": "防毒护符中毒状态",
+            "aliases": [],
+        },
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "condition", "condition": "poisoned"},
+        ],
+    )
+    poisoned = AutomationExecutor(
+        state,
+        RollService(state),
+        AuditLog(),
+    ).execute(poisoned_action, actor_id="goblin1", targets=["pc1"])
+    gm_poison_damage = tools.apply_damage("pc1", 7, "poison", "test.periapt.gm_poison")
+
+    assert periapt["success"] is True
+    assert character.inventory["srd.periapt_of_proof_against_poison"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_periapt_of_proof_against_poison"
+    assert effect["passive_modifiers"] == {
+        "condition_immunities": ["poisoned"],
+        "damage_immunities": ["poison"],
+    }
+    assert effect["duration"] == {"until": "while_wearing_periapt_of_proof_against_poison"}
+
+    poison_damage_change = next(
+        change for change in poison_damage.state_changes if change["type"] == "damage"
+    )
+    assert poison_damage_change["amount"] == 9
+    assert poison_damage_change["applied"] == 0
+    assert poison_damage_change["damage_immunity_sources"] == [
+        {
+            "effect_id": effect["effect_id"],
+            "source_action_id": "srd.wear_periapt_of_proof_against_poison",
+            "modifier": "damage_immunities",
+            "damage_type": "poison",
+        }
+    ]
+    assert target.hp_current == 15
+
+    force_damage_change = next(
+        change for change in force_damage.state_changes if change["type"] == "damage"
+    )
+    assert force_damage_change["amount"] == 5
+    assert force_damage_change["applied"] == 5
+    assert "damage_immunity_sources" not in force_damage_change
+
+    immune_change = next(
+        change for change in poisoned.state_changes if change["type"] == "condition_immune"
+    )
+    assert immune_change["condition"] == "poisoned"
+    assert immune_change["immunity_sources"] == [
+        {
+            "condition": None,
+            "effect_id": effect["effect_id"],
+            "source_action_id": "srd.wear_periapt_of_proof_against_poison",
+            "modifier": "condition_immunities",
+            "immune_condition": "poisoned",
+        }
+    ]
+    assert not any(
+        active.get("condition") == "poisoned"
+        for active in state.encounter.combatants["pc1"].status_effects
+    )
+    assert gm_poison_damage["applied"] == 0
+    assert target.hp_current == 15
+
+
 def test_cloak_of_protection_item_requirement_accepts_equipment_and_rejects_missing(
     make_state,
 ) -> None:

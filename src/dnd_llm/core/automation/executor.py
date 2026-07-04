@@ -1302,6 +1302,10 @@ class AutomationExecutor:
             )
             target_before = self._entity(target_id)
             hp_before = int(getattr(target_before, "hp_current"))
+            damage_immunity_sources = self._passive_damage_immunity_sources(
+                target_before,
+                damage_type,
+            )
             damage_taken = self._mitigated_damage(target_before, amount, damage_type)
             applied = self._apply_damage(target_id, amount, damage_type)
             extra_damage_changes: list[dict[str, Any]] = []
@@ -1356,6 +1360,8 @@ class AutomationExecutor:
             if passive_bonus:
                 change["passive_damage_bonus"] = passive_bonus
                 change["passive_sources"] = passive_bonus_sources
+            if damage_immunity_sources:
+                change["damage_immunity_sources"] = damage_immunity_sources
             if brutal_strike.amount:
                 change["brutal_strike_bonus"] = brutal_strike.amount
                 change["brutal_strike_sources"] = brutal_strike.sources
@@ -10995,7 +11001,12 @@ class AutomationExecutor:
         amount: int,
         damage_type: str,
     ) -> int:
-        if damage_type in getattr(target, "immunities", []):
+        if damage_type in getattr(
+            target, "immunities", []
+        ) or self._passive_damage_immunity_sources(
+            target,
+            damage_type,
+        ):
             return 0
         if (
             damage_type in getattr(target, "resistances", [])
@@ -11006,6 +11017,28 @@ class AutomationExecutor:
         if damage_type in getattr(target, "vulnerabilities", []):
             return amount * 2
         return amount
+
+    def _passive_damage_immunity_sources(
+        self,
+        target: Character | Monster | Combatant,
+        damage_type: str,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(target):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            immunities = _string_set(modifiers.get("damage_immunities"))
+            if damage_type in immunities:
+                sources.append(
+                    {
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                        "modifier": "damage_immunities",
+                        "damage_type": damage_type,
+                    }
+                )
+        return sources
 
     def _has_condition(self, target: Character | Monster | Combatant, condition: str) -> bool:
         return any(

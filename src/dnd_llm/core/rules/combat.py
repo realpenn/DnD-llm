@@ -72,7 +72,10 @@ def apply_damage(
     damage_type: str = "untyped",
 ) -> int:
     adjusted = amount
-    if damage_type in getattr(target, "immunities", []):
+    if damage_type in getattr(target, "immunities", []) or _has_damage_immunity(
+        target,
+        damage_type,
+    ):
         adjusted = 0
     elif damage_type in getattr(target, "resistances", []) or _has_condition(target, "petrified"):
         adjusted //= 2
@@ -101,3 +104,18 @@ def _has_condition(target: Character | Monster | Combatant, condition: str) -> b
         for effect in getattr(target, "status_effects", [])
         if isinstance(effect, dict)
     )
+
+
+def _has_damage_immunity(target: Character | Monster | Combatant, damage_type: str) -> bool:
+    for effect in getattr(target, "status_effects", []):
+        if not isinstance(effect, dict):
+            continue
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            continue
+        immunities = modifiers.get("damage_immunities", [])
+        if isinstance(immunities, str):
+            immunities = [immunities]
+        if isinstance(immunities, list) and damage_type in {str(item) for item in immunities}:
+            return True
+    return False

@@ -2486,6 +2486,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert headband.status == "accepted"
     assert headband.action_id == "srd.wear_headband_of_intellect"
 
+    state.characters["pc1"].equipment.append("srd.periapt_of_proof_against_poison")
+    periapt_poison = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.periapt_of_proof_against_poison",
+        )
+    )
+
+    assert periapt_poison.status == "accepted"
+    assert periapt_poison.action_id == "srd.wear_periapt_of_proof_against_poison"
+
     state.characters["pc1"].equipment.append("srd.ring_of_protection")
     ring = resolver.resolve(
         PlayerActionDraft(
@@ -2598,6 +2611,28 @@ def test_resolver_rejects_headband_of_intellect_non_self_target(make_state) -> N
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_headband_of_intellect"
+
+
+def test_resolver_rejects_periapt_of_proof_against_poison_non_self_target(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.periapt_of_proof_against_poison"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.periapt_of_proof_against_poison",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_periapt_of_proof_against_poison"
 
 
 def test_resolver_rejects_ring_of_protection_non_self_target(make_state) -> None:
