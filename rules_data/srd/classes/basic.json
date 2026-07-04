@@ -74,6 +74,19 @@
                         "srd.extra_attack",
                         "srd.mindless_rage"
                     ]
+                },
+                "7": {
+                    "features": ["Feral Instinct"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct"
+                    ]
                 }
             },
             "subclasses": {

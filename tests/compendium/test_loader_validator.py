@@ -3908,6 +3908,11 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mindless_rage",
     ]
     assert "srd.frenzy" not in compendium.classes["barbarian"].levels["3"]["actions"]
+    assert compendium.classes["barbarian"].levels["7"]["features"] == ["Feral Instinct"]
+    assert "srd.feral_instinct" in compendium.classes["barbarian"].levels["7"]["actions"]
+    feral_instinct = compendium.action("srd.feral_instinct")
+    assert feral_instinct.requirements == {"class": "barbarian", "class_level_min": 7}
+    assert feral_instinct.properties == {"initiative_advantage": True}
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {
         "name": "College of Lore",

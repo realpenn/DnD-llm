@@ -7,6 +7,7 @@ from ..core.models import Character, Combatant, Encounter, GameState
 from ..core.persistence import AuditLog
 from ..core.rules.class_features import (
     UNCANNY_METABOLISM_RESOURCE,
+    has_barbarian_feature,
     has_fighter_champion_feature,
     has_monk_feature,
     has_rogue_thief_feature,
@@ -280,6 +281,8 @@ def _initiative_advantage(
     combatant = state.encounter.combatants[combatant_ids[0]]
     source = _initiative_source(state, combatant)
     sources: list[str] = []
+    if isinstance(source, Character) and has_barbarian_feature(source, level=7):
+        sources.append("feral_instinct")
     if isinstance(source, Character) and has_fighter_champion_feature(source, level=3):
         sources.append("remarkable_athlete")
     sources.extend(_passive_initiative_advantage_sources(state, combatant))

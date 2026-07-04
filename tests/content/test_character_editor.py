@@ -1567,8 +1567,20 @@ def test_natural_language_character_edit_assigns_barbarian_rage_resource() -> No
     assert "srd.danger_sense" in result.character.actions
     assert "srd.primal_knowledge" in result.character.actions
     assert "srd.reckless_attack" in result.character.actions
+    assert "srd.feral_instinct" not in result.character.actions
     assert "srd.frenzy" not in result.character.actions
     assert result.character.resources == {"srd.resource.rage": 3}
+
+
+def test_natural_language_character_edit_assigns_barbarian_feral_instinct() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 barbarian7")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"barbarian": 7}
+    assert "srd.feral_instinct" in result.character.actions
 
 
 def test_natural_language_character_edit_assigns_explicit_berserker_subclass() -> None:

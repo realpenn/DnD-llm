@@ -482,6 +482,19 @@ def test_roll_initiative_applies_champion_remarkable_athlete_advantage(make_stat
     assert any(roll["advantage"] == "advantage" for roll in audit.events[-1].dice_rolls)
 
 
+def test_roll_initiative_applies_barbarian_feral_instinct_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"barbarian": 7}
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    groups = {group["group_key"]: group for group in audit.events[-1].tool_result["groups"]}
+    assert groups["combatant:pc1"]["initiative_advantage_sources"] == ["feral_instinct"]
+    assert any(roll["advantage"] == "advantage" for roll in audit.events[-1].dice_rolls)
+
+
 def test_roll_initiative_adds_thief_reflexes_second_first_round_turn(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

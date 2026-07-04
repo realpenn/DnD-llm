@@ -217,6 +217,7 @@ CLASS_LEVEL_ACTIONS = {
         2: ["srd.danger_sense", "srd.reckless_attack"],
         3: ["srd.primal_knowledge"],
         5: ["srd.extra_attack"],
+        7: ["srd.feral_instinct"],
     },
     "monk": {
         1: [

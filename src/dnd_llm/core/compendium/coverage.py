@@ -94,6 +94,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.elusive",
     "srd.extra_attack",
     "srd.favored_enemy_hunters_mark",
+    "srd.feral_instinct",
     "srd.faithful_steed",
     "srd.faithful_steed_find_steed",
     "srd.fast_hands_magic_item",
