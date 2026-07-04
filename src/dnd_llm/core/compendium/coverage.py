@@ -158,6 +158,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.patient_defense",
     "srd.patient_defense_focus",
     "srd.paladins_smite_divine_smite",
+    "srd.perfect_focus",
     "srd.potent_cantrip",
     "srd.primal_order",
     "srd.rage",

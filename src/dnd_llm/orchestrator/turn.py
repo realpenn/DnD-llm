@@ -10,6 +10,7 @@ from ..core.rules.class_features import (
     has_fighter_champion_feature,
     has_monk_feature,
     monk_martial_arts_die,
+    monk_perfect_focus_applies,
 )
 
 FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
@@ -22,6 +23,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
     scored: list[tuple[int, str, list[str], dict[str, object]]] = []
     uncanny_metabolism_results: list[dict[str, object]] = []
     uncanny_metabolism_rolls: list[dict[str, object]] = []
+    perfect_focus_results: list[dict[str, object]] = []
     for group_key, combatant_ids in _initiative_groups(state).items():
         modifier, modifier_sources = _initiative_modifier(state, combatant_ids)
         advantage, advantage_sources = _initiative_advantage(state, combatant_ids)
@@ -46,6 +48,9 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
                 roll_service,
             )
             if uncanny_metabolism is None:
+                perfect_focus = _apply_perfect_focus(state, combatant_id)
+                if perfect_focus is not None:
+                    perfect_focus_results.append(perfect_focus)
                 continue
             uncanny_metabolism_results.append(uncanny_metabolism)
             healing_roll = uncanny_metabolism.get("healing_roll")
@@ -75,6 +80,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
                 for score, group_key, combatant_ids, roll_dict in scored
             ],
             "uncanny_metabolism": uncanny_metabolism_results,
+            "perfect_focus": perfect_focus_results,
         },
         dice_rolls=[roll for _, _, _, roll in scored] + uncanny_metabolism_rolls,
     )
@@ -129,6 +135,30 @@ def _apply_uncanny_metabolism(
         "character_hp_after": character.hp_current,
         "combatant_hp_before": combatant_hp_before,
         "combatant_hp_after": combatant.hp_current,
+    }
+
+
+def _apply_perfect_focus(state: GameState, combatant_id: str) -> dict[str, object] | None:
+    if state.encounter is None:
+        return None
+    combatant = state.encounter.combatants[combatant_id]
+    character = state.characters.get(combatant.entity_id) or state.characters.get(combatant.id)
+    if character is None or not monk_perfect_focus_applies(character):
+        return None
+    monk_level = int(character.class_levels.get("monk", 0))
+    focus_before = max(0, int(character.resources.get(FOCUS_POINTS_RESOURCE, monk_level)))
+    focus_after = min(monk_level, 4)
+    if focus_before > 3 or focus_before >= focus_after:
+        return None
+    character.resources[FOCUS_POINTS_RESOURCE] = focus_after
+    return {
+        "combatant_id": combatant_id,
+        "character_id": character.id,
+        "source_action_id": "srd.perfect_focus",
+        "resource": FOCUS_POINTS_RESOURCE,
+        "resource_before": focus_before,
+        "resource_after": focus_after,
+        "requires_uncanny_metabolism_not_used": True,
     }
 
 

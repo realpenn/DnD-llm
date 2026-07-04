@@ -4609,6 +4609,37 @@
             "audit_label": "Disciplined Survivor"
         },
         {
+            "id": "srd.perfect_focus",
+            "name": "Perfect Focus",
+            "localization": {
+                "en": "Perfect Focus",
+                "zh": "完美专注",
+                "aliases": ["Monk Perfect Focus", "武僧完美专注"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 15: Perfect Focus",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 15},
+            "properties": {
+                "trigger": "roll_initiative",
+                "requires_uncanny_metabolism_not_used": true,
+                "focus_points_threshold_max": 3,
+                "focus_points_after": 4
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a level 15 Monk who rolls Initiative without using Uncanny Metabolism regains Focus Points up to 4 if they have 3 or fewer."
+                }
+            ],
+            "audit_label": "Perfect Focus"
+        },
+        {
             "id": "srd.quivering_palm_release",
             "name": "End Quivering Palm",
             "localization": {

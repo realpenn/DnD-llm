@@ -4161,6 +4161,18 @@ def test_compendium_loads_srd_actions() -> None:
         "reroll_cost": {"resource": "srd.resource.focus_points", "amount": 1},
         "must_use_new_roll": True,
     }
+    assert compendium.classes["monk"].levels["15"]["features"] == ["Perfect Focus"]
+    assert "srd.perfect_focus" in compendium.classes["monk"].levels["15"]["actions"]
+    assert "srd.perfect_focus" in compendium.classes["monk"].levels["17"]["actions"]
+    perfect_focus = compendium.action("srd.perfect_focus")
+    assert perfect_focus.action_economy == "none"
+    assert perfect_focus.requirements == {"class": "monk", "class_level_min": 15}
+    assert perfect_focus.properties == {
+        "trigger": "roll_initiative",
+        "requires_uncanny_metabolism_not_used": True,
+        "focus_points_threshold_max": 3,
+        "focus_points_after": 4,
+    }
     assert compendium.classes["monk"].levels["17"]["features"] == ["Subclass Feature"]
     assert "srd.quivering_palm" in compendium.classes["monk"].levels["17"]["actions"]
     assert "srd.quivering_palm_release" in compendium.classes["monk"].levels["17"]["actions"]

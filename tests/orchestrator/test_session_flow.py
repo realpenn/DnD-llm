@@ -531,3 +531,56 @@ def test_roll_initiative_does_not_spend_uncanny_metabolism_without_benefit(
     assert audit.events[-1].tool_result["uncanny_metabolism"] == []
     assert character.resources["srd.resource.focus_points"] == 2
     assert character.resources["srd.resource.uncanny_metabolism"] == 1
+
+
+def test_roll_initiative_applies_monk_perfect_focus_when_uncanny_metabolism_unused(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 15}
+    character.resources["srd.resource.focus_points"] = 3
+    character.resources["srd.resource.uncanny_metabolism"] = 0
+    character.hp_current = character.hp_max
+    state.encounter.combatants["pc1"].hp_current = state.encounter.combatants["pc1"].hp_max
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    assert audit.events[-1].tool_result["uncanny_metabolism"] == []
+    result = audit.events[-1].tool_result["perfect_focus"][0]
+    assert result == {
+        "combatant_id": "pc1",
+        "character_id": "pc1",
+        "source_action_id": "srd.perfect_focus",
+        "resource": "srd.resource.focus_points",
+        "resource_before": 3,
+        "resource_after": 4,
+        "requires_uncanny_metabolism_not_used": True,
+    }
+    assert character.resources["srd.resource.focus_points"] == 4
+
+
+def test_roll_initiative_monk_perfect_focus_does_not_stack_with_uncanny_metabolism(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 15}
+    character.resources["srd.resource.focus_points"] = 3
+    character.resources["srd.resource.uncanny_metabolism"] = 1
+    character.hp_current = character.hp_max
+    state.encounter.combatants["pc1"].hp_current = state.encounter.combatants["pc1"].hp_max
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    uncanny_metabolism = audit.events[-1].tool_result["uncanny_metabolism"][0]
+    assert uncanny_metabolism["source_action_id"] == "srd.uncanny_metabolism"
+    assert uncanny_metabolism["focus_before"] == 3
+    assert uncanny_metabolism["focus_after"] == 15
+    assert audit.events[-1].tool_result["perfect_focus"] == []
+    assert character.resources["srd.resource.focus_points"] == 15
+    assert character.resources["srd.resource.uncanny_metabolism"] == 0
