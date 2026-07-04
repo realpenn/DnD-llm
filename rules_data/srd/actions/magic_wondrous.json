@@ -574,6 +574,43 @@
       "audit_label": "Wear Gauntlets of Ogre Power"
     },
     {
+      "id": "srd.wear_goggles_of_night",
+      "name": "Wear Goggles of Night",
+      "localization": {
+        "en": "Wear Goggles of Night",
+        "zh": "佩戴夜视镜",
+        "aliases": ["启用夜视镜"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Goggles of Night",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.goggles_of_night" },
+      "properties": {
+        "goggles_of_night": true,
+        "self_only": true,
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "darkvision_ft": 60,
+            "darkvision_existing_bonus_ft": 60
+          },
+          "duration": { "until": "while_wearing_goggles_of_night" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing these goggles, the target has Darkvision out to 60 feet. If the target already has Darkvision, its range increases by 60 feet." }
+      ],
+      "audit_label": "Wear Goggles of Night"
+    },
+    {
       "id": "srd.wear_headband_of_intellect",
       "name": "Wear Headband of Intellect",
       "localization": {

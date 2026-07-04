@@ -390,6 +390,7 @@ P0 脚手架
   - [x] **P2-4ap** SRD 5.2.1 `Amulet of Proof against Detection and Location` 落地：新增 uncommon wondrous item（requires attunement）与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 记录不能被 Divination spells 作为目标、不能被 magical scrying sensors 感知，除非佩戴者允许；复用 `hidden_from_divination` 与 `cannot_be_scryed` marker，并新增佩戴者允许 marker；严格限制目标只能是自己，不虚构完整反占卜拦截器、隐形或定位算法；覆盖 compendium、executor 与 resolver 测试。
   - [x] **P2-4aq** SRD 5.2.1 `Boots of Levitation` 落地：新增 rare wondrous item（requires attunement）与由靴子对自己施放 `Levitate` 的 action；持有校验复用 inventory/equipment 路径，不消耗物品且不消耗 2 环法术位；效果复用既有 `Levitate` 的 concentration 10 minutes、movement tick、`levitated` 与 `vertical_move_ft: 20` marker；严格限制目标只能是自己，不虚构对他人/物体施法、飞行速度、hover、高度/坠落系统、充能或额外调谐规则；覆盖 compendium、executor 与 resolver 测试。
   - [x] **P2-4ar** SRD 5.2.1 `Cloak of the Manta Ray` 落地：新增 uncommon wondrous item（requires attunement）与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后按 SRD 记录可水下呼吸与固定 60 feet Swim Speed，复用 `can_breathe_underwater` 与 `swim_speed_ft` marker；严格限制目标只能是自己，不虚构水下战斗、变形、飞行或额外游泳规则；覆盖 compendium、executor 与 resolver 测试。
+  - [x] **P2-4as** SRD 5.2.1 `Goggles of Night` 落地：新增 uncommon wondrous item 与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 提供 60 feet Darkvision，若已有 Darkvision 则将范围增加 60 feet；为暗视 helper 增加精确 `darkvision_existing_bonus_ft` 读取，不虚构完整视觉/光照系统、Truesight、Perception 加值或额外侦察规则；严格限制目标只能是自己，并覆盖 compendium、executor/helper 与 resolver 测试。
 - [x] **P2-5** 难度/CR 预算自动化。
 
 # Phase 3 — 动态内容

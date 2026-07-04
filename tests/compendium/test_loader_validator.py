@@ -3450,6 +3450,36 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_gauntlets_of_ogre_power"},
         "stacking_policy": "replace",
     }
+    goggles_of_night = compendium.action("srd.wear_goggles_of_night")
+    assert compendium.items["srd.goggles_of_night"].actions == ["srd.wear_goggles_of_night"]
+    assert compendium.items["srd.goggles_of_night"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": False,
+        "worn_slot": "eyes",
+    }
+    assert goggles_of_night.action_economy == "none"
+    assert goggles_of_night.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert goggles_of_night.requirements == {"item": "srd.goggles_of_night"}
+    assert goggles_of_night.properties == {
+        "goggles_of_night": True,
+        "self_only": True,
+        "requires_attunement": False,
+        "worn_slot": "eyes",
+    }
+    assert goggles_of_night.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "darkvision_ft": 60,
+            "darkvision_existing_bonus_ft": 60,
+        },
+        "duration": {"until": "while_wearing_goggles_of_night"},
+        "stacking_policy": "replace",
+    }
     headband_of_intellect = compendium.action("srd.wear_headband_of_intellect")
     assert compendium.items["srd.headband_of_intellect"].actions == [
         "srd.wear_headband_of_intellect"
@@ -5139,6 +5169,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.items["srd.gauntlets_of_ogre_power"].actions == [
         "srd.wear_gauntlets_of_ogre_power"
     ]
+    assert compendium.items["srd.goggles_of_night"].actions == ["srd.wear_goggles_of_night"]
     assert compendium.items["srd.headband_of_intellect"].actions == [
         "srd.wear_headband_of_intellect"
     ]

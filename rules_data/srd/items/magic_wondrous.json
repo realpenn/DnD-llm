@@ -298,6 +298,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.goggles_of_night",
+      "name": "Goggles of Night",
+      "localization": {
+        "en": "Goggles of Night",
+        "zh": "夜视镜",
+        "aliases": ["Night Goggles"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Goggles of Night",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_goggles_of_night"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.headband_of_intellect",
       "name": "Headband of Intellect",
       "localization": {

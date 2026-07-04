@@ -115,7 +115,24 @@ def xray_vision_range_from_effects(status_effects: list[dict[str, Any]]) -> int 
 
 
 def darkvision_range_from_effects(status_effects: list[dict[str, Any]]) -> int | None:
-    return _sense_range_from_effects(status_effects, "darkvision_ft")
+    ranges: list[tuple[int, int]] = []
+    bonuses: list[tuple[int, int]] = []
+    for index, effect in enumerate(status_effects):
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            continue
+        range_ft = modifiers.get("darkvision_ft")
+        if isinstance(range_ft, int) and not isinstance(range_ft, bool):
+            ranges.append((index, range_ft))
+        bonus_ft = modifiers.get("darkvision_existing_bonus_ft")
+        if isinstance(bonus_ft, int) and not isinstance(bonus_ft, bool):
+            bonuses.append((index, bonus_ft))
+    candidates = [range_ft for _, range_ft in ranges]
+    for bonus_index, bonus_ft in bonuses:
+        other_ranges = [range_ft for index, range_ft in ranges if index != bonus_index]
+        if other_ranges:
+            candidates.append(max(other_ranges) + bonus_ft)
+    return max(candidates) if candidates else None
 
 
 def truesight_range_from_effects(status_effects: list[dict[str, Any]]) -> int | None:

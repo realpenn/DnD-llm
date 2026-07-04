@@ -10044,6 +10044,64 @@ def test_eyes_of_the_eagle_item_requirement_accepts_equipment_and_rejects_missin
     )
 
 
+def test_goggles_of_night_grant_darkvision_and_extend_existing_darkvision(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.goggles_of_night"):
+        tools.use_item(
+            "pc1",
+            "srd.goggles_of_night",
+            ["pc1"],
+            action_id="srd.wear_goggles_of_night",
+            idempotency_key="missing-goggles-of-night",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.goggles_of_night")
+    with pytest.raises(AutomationError, match="target must be self"):
+        tools.use_item(
+            "pc1",
+            "srd.goggles_of_night",
+            ["pc2"],
+            action_id="srd.wear_goggles_of_night",
+            idempotency_key="goggles-of-night-other-target",
+        )
+
+    result = tools.use_item(
+        "pc1",
+        "srd.goggles_of_night",
+        ["pc1"],
+        action_id="srd.wear_goggles_of_night",
+        idempotency_key="wear-goggles-of-night",
+    )
+
+    assert result["success"] is True
+    assert "srd.goggles_of_night" in state.characters["pc1"].equipment
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_goggles_of_night"
+    assert effect["duration"] == {"until": "while_wearing_goggles_of_night"}
+    assert effect["passive_modifiers"] == {
+        "darkvision_ft": 60,
+        "darkvision_existing_bonus_ft": 60,
+    }
+    assert darkvision_range_from_effects([effect]) == 60
+    assert (
+        darkvision_range_from_effects(
+            [
+                {"passive_modifiers": {"darkvision_ft": 120}},
+                effect,
+            ]
+        )
+        == 180
+    )
+
+
 def test_eyes_of_minute_seeing_grant_close_investigation_advantage_and_darkvision(
     make_state,
 ) -> None:

@@ -2526,6 +2526,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert gauntlets.status == "accepted"
     assert gauntlets.action_id == "srd.wear_gauntlets_of_ogre_power"
 
+    state.characters["pc1"].equipment.append("srd.goggles_of_night")
+    goggles = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.goggles_of_night",
+        )
+    )
+
+    assert goggles.status == "accepted"
+    assert goggles.action_id == "srd.wear_goggles_of_night"
+
     state.characters["pc1"].equipment.append("srd.headband_of_intellect")
     headband = resolver.resolve(
         PlayerActionDraft(
@@ -2726,6 +2739,26 @@ def test_resolver_rejects_eyes_of_minute_seeing_non_self_target(make_state) -> N
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_eyes_of_minute_seeing"
+
+
+def test_resolver_rejects_goggles_of_night_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.goggles_of_night"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.goggles_of_night",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_goggles_of_night"
 
 
 def test_resolver_rejects_gauntlets_of_ogre_power_non_self_target(make_state) -> None:
