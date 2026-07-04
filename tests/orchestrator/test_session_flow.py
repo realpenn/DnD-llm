@@ -703,3 +703,60 @@ def test_roll_initiative_persistent_rage_does_not_spend_restore_when_rage_full(
     assert audit.events[-1].tool_result["persistent_rage"] == []
     assert character.resources["srd.resource.rage"] == 5
     assert character.resources["srd.resource.persistent_rage_initiative_restore"] == 1
+
+
+def test_roll_initiative_applies_bard_superior_inspiration_until_two(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"bard": 18}
+    character.abilities["cha"] = 16
+    character.resources["srd.resource.bardic_inspiration"] = 0
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    result = audit.events[-1].tool_result["superior_inspiration"][0]
+    assert result == {
+        "combatant_id": "pc1",
+        "character_id": "pc1",
+        "source_action_id": "srd.superior_inspiration",
+        "resource": "srd.resource.bardic_inspiration",
+        "resource_before": 0,
+        "resource_after": 2,
+        "resource_max": 3,
+        "minimum_after": 2,
+    }
+    assert character.resources["srd.resource.bardic_inspiration"] == 2
+
+
+def test_roll_initiative_bard_superior_inspiration_respects_level_and_current_uses(
+    make_state,
+) -> None:
+    low_state = make_state()
+    assert low_state.encounter is not None
+    low_character = low_state.characters["pc1"]
+    low_character.class_levels = {"bard": 17}
+    low_character.abilities["cha"] = 16
+    low_character.resources["srd.resource.bardic_inspiration"] = 0
+    low_audit = AuditLog()
+
+    roll_initiative(low_state, low_audit)
+
+    assert low_audit.events[-1].tool_result["superior_inspiration"] == []
+    assert low_character.resources["srd.resource.bardic_inspiration"] == 0
+
+    full_state = make_state()
+    assert full_state.encounter is not None
+    full_character = full_state.characters["pc1"]
+    full_character.class_levels = {"bard": 18}
+    full_character.abilities["cha"] = 16
+    full_character.resources["srd.resource.bardic_inspiration"] = 2
+    full_audit = AuditLog()
+
+    roll_initiative(full_state, full_audit)
+
+    assert full_audit.events[-1].tool_result["superior_inspiration"] == []
+    assert full_character.resources["srd.resource.bardic_inspiration"] == 2

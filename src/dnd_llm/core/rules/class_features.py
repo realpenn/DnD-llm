@@ -116,6 +116,7 @@ RELENTLESS_RAGE_ACTION_ID = "srd.relentless_rage"
 PERSISTENT_RAGE_ACTION_ID = "srd.persistent_rage"
 INDOMITABLE_MIGHT_ACTION_ID = "srd.indomitable_might"
 PRIMAL_CHAMPION_ACTION_ID = "srd.primal_champion"
+SUPERIOR_INSPIRATION_ACTION_ID = "srd.superior_inspiration"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -421,6 +422,14 @@ def monk_open_hand_quivering_palm_applies(character: Character) -> bool:
 
 def has_paladin_feature(character: Character, *, level: int) -> bool:
     return int(character.class_levels.get("paladin", 0)) >= level
+
+
+def has_bard_feature(character: Character, *, level: int) -> bool:
+    return int(character.class_levels.get("bard", 0)) >= level
+
+
+def superior_inspiration_applies(character: Character) -> bool:
+    return has_bard_feature(character, level=18)
 
 
 def has_fighter_champion_feature(character: Character, *, level: int) -> bool:

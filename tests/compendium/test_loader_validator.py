@@ -4324,6 +4324,19 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
         "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
     } <= set(compendium.classes["bard"].levels["5"]["actions"])
+    assert compendium.classes["bard"].levels["10"]["features"] == ["Magical Secrets"]
+    assert compendium.classes["bard"].levels["17"]["features"] == []
+    assert "srd.superior_inspiration" not in compendium.classes["bard"].levels["17"]["actions"]
+    assert compendium.classes["bard"].levels["18"]["features"] == ["Superior Inspiration"]
+    assert "srd.superior_inspiration" in compendium.classes["bard"].levels["18"]["actions"]
+    superior_inspiration = compendium.action("srd.superior_inspiration")
+    assert superior_inspiration.action_economy == "none"
+    assert superior_inspiration.requirements == {"class": "bard", "class_level_min": 18}
+    assert superior_inspiration.properties == {
+        "trigger": "roll_initiative",
+        "resource": "srd.resource.bardic_inspiration",
+        "restore_until_at_least": 2,
+    }
     assert compendium.action("srd.divine_order").requirements == {
         "class": "cleric",
         "class_level_min": 1,

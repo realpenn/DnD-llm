@@ -424,6 +424,124 @@
                         "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
                         "srd.countercharm"
                     ]
+                },
+                "10": {
+                    "features": ["Magical Secrets"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "11": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "12": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "13": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "14": {
+                    "features": ["Subclass feature"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "15": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "16": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "17": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
+                },
+                "18": {
+                    "features": ["Superior Inspiration"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm",
+                        "srd.superior_inspiration"
+                    ]
                 }
             },
             "subclasses": {

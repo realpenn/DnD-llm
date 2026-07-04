@@ -2235,6 +2235,36 @@
             "audit_label": "Countercharm"
         },
         {
+            "id": "srd.superior_inspiration",
+            "name": "Superior Inspiration",
+            "localization": {
+                "en": "Superior Inspiration",
+                "zh": "高等激励",
+                "aliases": ["Bard Superior Inspiration", "吟游诗人高等激励"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 18: Superior Inspiration",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 18},
+            "properties": {
+                "trigger": "roll_initiative",
+                "resource": "srd.resource.bardic_inspiration",
+                "restore_until_at_least": 2
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Bard 18 rolls Initiative, the Bard regains expended uses of Bardic Inspiration until they have two if they have fewer than that."
+                }
+            ],
+            "audit_label": "Superior Inspiration"
+        },
+        {
             "id": "srd.divine_order",
             "name": "Divine Order",
             "localization": {

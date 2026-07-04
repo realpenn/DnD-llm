@@ -212,6 +212,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.supreme_sneak",
     "srd.stunning_strike",
     "srd.superior_defense",
+    "srd.superior_inspiration",
     "srd.step_of_the_wind",
     "srd.step_of_the_wind_focus",
     "srd.thieves_cant",

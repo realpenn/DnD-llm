@@ -31,6 +31,7 @@ from dnd_llm.core.rules.class_features import (
     rogue_elusive_applies,
     rogue_slippery_mind_applies,
     rogue_stroke_of_luck_applies,
+    superior_inspiration_applies,
     warlock_devils_sight_range_ft,
     warlock_gift_of_depths_swim_speed_ft,
 )
@@ -1505,6 +1506,32 @@ def test_natural_language_character_edit_assigns_bardic_inspiration_resource() -
     assert result.character.class_levels == {"bard": 1}
     assert "srd.bardic_inspiration" in result.character.actions
     assert result.character.resources["srd.resource.bardic_inspiration"] == 2
+
+
+def test_natural_language_character_edit_assigns_bard_superior_inspiration() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    level_17 = apply_natural_language_character_edit(
+        character,
+        "职业 bard17 力量 8 敏捷 14 体质 13 智力 10 感知 12 魅力 15",
+    )
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 bard18 力量 8 敏捷 14 体质 13 智力 10 感知 12 魅力 15",
+    )
+
+    assert level_17.accepted is True
+    assert level_17.character is not None
+    assert "srd.superior_inspiration" not in level_17.character.actions
+    assert superior_inspiration_applies(level_17.character) is False
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"bard": 18}
+    assert "srd.bardic_inspiration" in result.character.actions
+    assert "srd.countercharm" in result.character.actions
+    assert "srd.superior_inspiration" in result.character.actions
+    assert result.character.resources["srd.resource.bardic_inspiration"] == 2
+    assert superior_inspiration_applies(result.character) is True
 
 
 def test_natural_language_character_edit_assigns_bard_jack_of_all_trades() -> None:

@@ -186,6 +186,7 @@ CLASS_LEVEL_ACTIONS = {
         ],
         7: ["srd.countercharm"],
         9: ["srd.bard_expertise"],
+        18: ["srd.superior_inspiration"],
     },
     "cleric": {
         1: ["srd.divine_order"],

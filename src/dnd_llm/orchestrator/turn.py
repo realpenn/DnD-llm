@@ -8,6 +8,7 @@ from ..core.persistence import AuditLog
 from ..core.rules.class_features import (
     PERSISTENT_RAGE_ACTION_ID,
     PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
+    SUPERIOR_INSPIRATION_ACTION_ID,
     UNCANNY_METABOLISM_RESOURCE,
     has_barbarian_feature,
     has_fighter_champion_feature,
@@ -16,8 +17,9 @@ from ..core.rules.class_features import (
     monk_martial_arts_die,
     monk_perfect_focus_applies,
     persistent_rage_applies,
+    superior_inspiration_applies,
 )
-from ..core.rules.rests import RAGE_RESOURCE, resource_maxima
+from ..core.rules.rests import BARDIC_INSPIRATION_RESOURCE, RAGE_RESOURCE, resource_maxima
 
 FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
 THIEFS_REFLEXES_ACTION_ID = "srd.thiefs_reflexes"
@@ -32,6 +34,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
     uncanny_metabolism_rolls: list[dict[str, object]] = []
     perfect_focus_results: list[dict[str, object]] = []
     persistent_rage_results: list[dict[str, object]] = []
+    superior_inspiration_results: list[dict[str, object]] = []
     for group_key, combatant_ids in _initiative_groups(state).items():
         modifier, modifier_sources = _initiative_modifier(state, combatant_ids)
         advantage, advantage_sources = _initiative_advantage(state, combatant_ids)
@@ -62,6 +65,9 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
             persistent_rage = _apply_persistent_rage(state, combatant_id)
             if persistent_rage is not None:
                 persistent_rage_results.append(persistent_rage)
+            superior_inspiration = _apply_superior_inspiration(state, combatant_id)
+            if superior_inspiration is not None:
+                superior_inspiration_results.append(superior_inspiration)
             if uncanny_metabolism is None:
                 continue
             uncanny_metabolism_results.append(uncanny_metabolism)
@@ -100,6 +106,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
             "uncanny_metabolism": uncanny_metabolism_results,
             "perfect_focus": perfect_focus_results,
             "persistent_rage": persistent_rage_results,
+            "superior_inspiration": superior_inspiration_results,
             "thiefs_reflexes": thiefs_reflexes_results,
         },
         dice_rolls=[roll for _, _, _, roll in scored] + uncanny_metabolism_rolls,
@@ -212,6 +219,39 @@ def _apply_persistent_rage(state: GameState, combatant_id: str) -> dict[str, obj
         "restore_resource": PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
         "restore_resource_before": restore_uses_before,
         "restore_resource_after": restore_uses_before - 1,
+    }
+
+
+def _apply_superior_inspiration(state: GameState, combatant_id: str) -> dict[str, object] | None:
+    if state.encounter is None:
+        return None
+    combatant = state.encounter.combatants[combatant_id]
+    character = state.characters.get(combatant.entity_id) or state.characters.get(combatant.id)
+    if character is None or not superior_inspiration_applies(character):
+        return None
+    bardic_inspiration_max = int(resource_maxima(character).get(BARDIC_INSPIRATION_RESOURCE, 0))
+    resource_after = min(bardic_inspiration_max, 2)
+    if resource_after <= 0:
+        return None
+    resource_before = max(
+        0,
+        min(
+            int(character.resources.get(BARDIC_INSPIRATION_RESOURCE, bardic_inspiration_max)),
+            bardic_inspiration_max,
+        ),
+    )
+    if resource_before >= resource_after:
+        return None
+    character.resources[BARDIC_INSPIRATION_RESOURCE] = resource_after
+    return {
+        "combatant_id": combatant_id,
+        "character_id": character.id,
+        "source_action_id": SUPERIOR_INSPIRATION_ACTION_ID,
+        "resource": BARDIC_INSPIRATION_RESOURCE,
+        "resource_before": resource_before,
+        "resource_after": resource_after,
+        "resource_max": bardic_inspiration_max,
+        "minimum_after": 2,
     }
 
 
