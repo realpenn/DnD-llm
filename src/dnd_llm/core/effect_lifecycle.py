@@ -45,6 +45,7 @@ def tick_effects(
     roll_service: RollService | None = None,
 ) -> EffectLifecycleResult:
     result = EffectLifecycleResult(trigger=trigger, actor_id=actor_id)
+    pending_saving_throw_consumptions: list[tuple[str, dict[str, Any]]] = []
     for owner_type, owner_id, effects in _effect_lists(state):
         retained: list[dict[str, Any]] = []
         for effect in effects:
@@ -78,6 +79,9 @@ def tick_effects(
                     actor_id,
                     repeat_save,
                     roll_service,
+                )
+                pending_saving_throw_consumptions.append(
+                    (str(effect.get("target_id") or actor_id), repeat_save_entry)
                 )
                 if repeat_save_entry["success"] and bool(repeat_save.get("end_on_success", True)):
                     result.expired.append(
@@ -114,6 +118,10 @@ def tick_effects(
                 result.ticked.append(entry)
                 retained.append(effect)
         effects[:] = retained
+    for target_id, repeat_save_entry in pending_saving_throw_consumptions:
+        consumed = _consume_next_saving_throw_disadvantage(state, target_id)
+        if consumed:
+            repeat_save_entry["consumed_effects"] = consumed
     if trigger == "self_turn_end":
         _apply_monk_self_restoration(state, actor_id, result)
     return result
@@ -376,7 +384,8 @@ def _roll_repeat_save(
     exhaustion = exhaustion_level(status_effects)
     penalty = exhaustion_d20_penalty(status_effects)
     bonus = base_bonus - penalty
-    roll = roll_service.roll(d20_expression(bonus))
+    status_advantage, status_sources = _saving_throw_status_advantage(target)
+    roll = roll_service.roll(d20_expression(bonus), advantage=status_advantage)
     total = roll.total
     dc = int(repeat_save["dc"])
     return {
@@ -389,10 +398,60 @@ def _roll_repeat_save(
         "proficiency_sources": proficiency_sources,
         "exhaustion_level": exhaustion,
         "d20_penalty": penalty,
+        "status_advantage": status_advantage,
+        "status_sources": status_sources,
         "roll": roll.to_dict(),
         "total": total,
         "success": total >= dc,
     }
+
+
+def _saving_throw_status_advantage(target: Any) -> tuple[str | None, list[dict[str, Any]]]:
+    disadvantage_sources: list[dict[str, Any]] = []
+    for effect in getattr(target, "status_effects", []):
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            continue
+        if modifiers.get("next_saving_throw_disadvantage") is not True:
+            continue
+        disadvantage_sources.append(
+            {
+                "kind": "disadvantage",
+                "condition": effect.get("condition"),
+                "effect_id": effect.get("effect_id"),
+                "source_action_id": effect.get("source_action_id"),
+                "modifier": "next_saving_throw_disadvantage",
+            }
+        )
+    return ("disadvantage" if disadvantage_sources else None, disadvantage_sources)
+
+
+def _consume_next_saving_throw_disadvantage(
+    state: GameState,
+    actor_id: str,
+) -> list[dict[str, Any]]:
+    removed: list[dict[str, Any]] = []
+    for owner_type, owner_id, effects in _target_effect_lists(state, actor_id):
+        retained: list[dict[str, Any]] = []
+        for effect in effects:
+            modifiers = effect.get("passive_modifiers", {})
+            if (
+                isinstance(modifiers, dict)
+                and modifiers.get("next_saving_throw_disadvantage") is True
+            ):
+                removed.append(
+                    {
+                        "owner_type": owner_type,
+                        "owner_id": owner_id,
+                        "effect_id": effect.get("effect_id"),
+                        "condition": effect.get("condition"),
+                        "source_action_id": effect.get("source_action_id"),
+                    }
+                )
+                continue
+            retained.append(effect)
+        effects[:] = retained
+    return removed
 
 
 def _saving_throw_bonus(

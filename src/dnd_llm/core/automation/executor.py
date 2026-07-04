@@ -100,7 +100,13 @@ from .nodes import STATE_CHANGING_NODE_TYPES
 ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
 CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 MAX_CUNNING_STRIKE_EFFECTS = 2
-BRUTAL_STRIKE_EFFECTS = {"forceful_blow", "hamstring_blow"}
+BRUTAL_STRIKE_EFFECTS = {
+    "forceful_blow",
+    "hamstring_blow",
+    "staggering_blow",
+    "sundering_blow",
+}
+IMPROVED_BRUTAL_STRIKE_EFFECTS = {"staggering_blow", "sundering_blow"}
 IMPROVED_CUNNING_STRIKE_ACTION_ID = "srd.improved_cunning_strike"
 SUPREME_SNEAK_ACTION_ID = "srd.supreme_sneak"
 ESCAPE_THE_HORDE_ACTION_ID = "srd.escape_the_horde"
@@ -123,6 +129,7 @@ ACTION_SURGE_ACTION_ID = "srd.action_surge"
 ACTION_SURGE_USED_CONDITION = "action_surge_used"
 INSTINCTIVE_POUNCE_ACTION_ID = "srd.instinctive_pounce"
 BRUTAL_STRIKE_ACTION_ID = "srd.brutal_strike"
+IMPROVED_BRUTAL_STRIKE_ACTION_ID = "srd.improved_brutal_strike"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
@@ -755,6 +762,11 @@ class AutomationExecutor:
             enhancement_bonus, enhancement_sources = self._weapon_enhancement_bonus(ctx)
             adjustment += enhancement_bonus
             adjustment_sources.extend(enhancement_sources)
+            sundering_bonus, sundering_sources, sundering_expiry = (
+                self._sundering_blow_attack_adjustment(ctx, target_id, path)
+            )
+            adjustment += sundering_bonus
+            adjustment_sources.extend(sundering_sources)
             ctx.result.dice_rolls.append(roll.to_dict())
             ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
             natural = self._kept_d20(roll)
@@ -819,6 +831,8 @@ class AutomationExecutor:
                 ctx.result.node_results[path]["brutal_strike"] = brutal_strike
             if stroke_of_luck_result is not None:
                 ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
+            if sundering_expiry is not None:
+                ctx.result.state_changes.append(sundering_expiry)
             ctx.result.state_changes.extend(
                 self._expire_target_effects_on_incoming_attack(target_id, path)
             )
@@ -953,6 +967,9 @@ class AutomationExecutor:
                     ],
                     "success": False,
                 }
+                staggering_expiry = self._expire_next_saving_throw_disadvantage(target_id, path)
+                if staggering_expiry is not None:
+                    ctx.result.state_changes.append(staggering_expiry)
                 continue
             base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(
                 target,
@@ -1069,6 +1086,9 @@ class AutomationExecutor:
                 ctx.result.node_results[path]["disciplined_survivor"] = disciplined_survivor_result
             if countercharm_result is not None:
                 ctx.result.node_results[path]["countercharm"] = countercharm_result
+            staggering_expiry = self._expire_next_saving_throw_disadvantage(target_id, path)
+            if staggering_expiry is not None:
+                ctx.result.state_changes.append(staggering_expiry)
 
     def _node_ability_check(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         original_ability = str(node["ability"]).lower()
@@ -4660,6 +4680,51 @@ class AutomationExecutor:
             return 0, []
         return amount, [{**source_entry, "amount": amount} for source_entry in sources]
 
+    def _sundering_blow_attack_adjustment(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> tuple[int, list[dict[str, Any]], dict[str, Any] | None]:
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            for index, effect in enumerate(list(effects)):
+                modifiers = effect.get("passive_modifiers", {})
+                if not isinstance(modifiers, dict):
+                    continue
+                amount = modifiers.get("sundering_blow_attack_bonus")
+                if not isinstance(amount, int) or isinstance(amount, bool):
+                    continue
+                applied_by = effect.get("applied_by")
+                if isinstance(applied_by, str) and self._entity_ids_match(
+                    applied_by,
+                    ctx.actor_id,
+                ):
+                    continue
+                removed = {
+                    "owner_type": owner_type,
+                    "owner_id": owner_id,
+                    "effect_id": effect.get("effect_id"),
+                    "condition": effect.get("condition"),
+                    "source_action_id": effect.get("source_action_id"),
+                }
+                del effects[index]
+                source = {
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "sundering_blow_attack_bonus",
+                    "amount": amount,
+                    "applied_by": applied_by,
+                }
+                expired = {
+                    "type": "effect_expired",
+                    "target_id": target_id,
+                    "trigger": "sundering_blow_attack_roll",
+                    "removed": [removed],
+                    "path": path,
+                }
+                return amount, [source], expired
+        return 0, [], None
+
     def _pact_weapon_damage_type(self, ctx: _Context, base_damage_type: str) -> str:
         requested = ctx.params.get("pact_weapon_damage_type")
         if requested is None:
@@ -5023,6 +5088,11 @@ class AutomationExecutor:
         effect = self._brutal_strike_effect(params)
         if effect is not None and effect not in BRUTAL_STRIKE_EFFECTS:
             raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
+        if effect in IMPROVED_BRUTAL_STRIKE_EFFECTS and not has_barbarian_feature(
+            actor_owner,
+            level=13,
+        ):
+            raise AutomationError("Improved Brutal Strike requires Barbarian level 13")
         if target_id not in (self.state.encounter.combatants if self.state.encounter else {}):
             self._entity(target_id)
 
@@ -5112,6 +5182,14 @@ class AutomationExecutor:
             ctx.result.state_changes.append(base_change)
             self._apply_brutal_strike_hamstring(ctx, target_id, path)
             return
+        if effect == "staggering_blow":
+            ctx.result.state_changes.append(base_change)
+            self._apply_brutal_strike_staggering(ctx, target_id, path)
+            return
+        if effect == "sundering_blow":
+            ctx.result.state_changes.append(base_change)
+            self._apply_brutal_strike_sundering(ctx, target_id, path)
+            return
         raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
 
     def _apply_brutal_strike_forceful_push(
@@ -5191,6 +5269,89 @@ class AutomationExecutor:
             existing
             for existing in effects
             if existing.get("condition") != "hamstring_blow"
+            or existing.get("source_action_id") != BRUTAL_STRIKE_ACTION_ID
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "condition",
+                "target_id": target_id,
+                "condition": effect.condition,
+                "effect_id": effect.effect_id,
+                "source_action_id": effect.source_action_id,
+                "passive_modifiers": effect.passive_modifiers,
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+                "path": f"{path}.brutal_strike",
+            }
+        )
+
+    def _apply_brutal_strike_staggering(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        self._apply_brutal_strike_condition(
+            ctx,
+            target_id,
+            "staggering_blow_save_disadvantage",
+            path,
+            passive_modifiers={"next_saving_throw_disadvantage": True},
+        )
+        self._apply_brutal_strike_condition(
+            ctx,
+            target_id,
+            "staggering_blow_no_opportunity_attacks",
+            path,
+            passive_modifiers={"cannot_make_opportunity_attacks": True},
+        )
+
+    def _apply_brutal_strike_sundering(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        self._apply_brutal_strike_condition(
+            ctx,
+            target_id,
+            "sundering_blow",
+            path,
+            passive_modifiers={
+                "sundering_blow_attack_bonus": 5,
+                "sundering_blow_applied_by": ctx.actor_id,
+            },
+        )
+
+    def _apply_brutal_strike_condition(
+        self,
+        ctx: _Context,
+        target_id: str,
+        condition: str,
+        path: str,
+        *,
+        passive_modifiers: dict[str, Any],
+    ) -> None:
+        target = self._entity(target_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, f"brutal_strike_{condition}"),
+            source_ref=("SRD 5.2.1 Barbarian Class Features: Level 13: Improved Brutal Strike"),
+            source_action_id=BRUTAL_STRIKE_ACTION_ID,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=condition,
+            passive_modifiers=passive_modifiers,
+            duration={"until": "start_of_next_turn", "turn_owner_id": ctx.actor_id},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"node_path": path, "feature": "brutal_strike", "effect": condition},
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != condition
             or existing.get("source_action_id") != BRUTAL_STRIKE_ACTION_ID
         ]
         effects.append(effect.to_dict())
@@ -8734,6 +8895,7 @@ class AutomationExecutor:
                 ability=ability,
             )
         )
+        disadvantage_sources.extend(self._next_saving_throw_disadvantage_sources(target))
         danger_sense_sources = self._danger_sense_sources(target, ability)
         advantage_sources.extend(danger_sense_sources)
         if ability.lower() == "dex":
@@ -8747,6 +8909,63 @@ class AutomationExecutor:
             [{"kind": "advantage", **source} for source in advantage_sources]
             + [{"kind": "disadvantage", **source} for source in disadvantage_sources],
         )
+
+    def _next_saving_throw_disadvantage_sources(
+        self,
+        target: Character | Monster | Combatant,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(target):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("next_saving_throw_disadvantage") is not True:
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "next_saving_throw_disadvantage",
+                }
+            )
+        return sources
+
+    def _expire_next_saving_throw_disadvantage(
+        self,
+        target_id: str,
+        path: str,
+    ) -> dict[str, Any] | None:
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                modifiers = effect.get("passive_modifiers", {})
+                if (
+                    isinstance(modifiers, dict)
+                    and modifiers.get("next_saving_throw_disadvantage") is True
+                ):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "condition": effect.get("condition"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                    continue
+                retained.append(effect)
+            effects[:] = retained
+        if not removed:
+            return None
+        return {
+            "type": "effect_expired",
+            "target_id": target_id,
+            "trigger": "next_saving_throw",
+            "removed": removed,
+            "path": path,
+        }
 
     def _passive_saving_throw_context_advantage_sources(
         self,
@@ -9176,6 +9395,10 @@ class AutomationExecutor:
             "forceful_blow": "forceful_blow",
             "hamstring": "hamstring_blow",
             "hamstring_blow": "hamstring_blow",
+            "staggering": "staggering_blow",
+            "staggering_blow": "staggering_blow",
+            "sundering": "sundering_blow",
+            "sundering_blow": "sundering_blow",
         }
         return aliases.get(normalized, normalized)
 

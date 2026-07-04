@@ -117,6 +117,67 @@
                         "srd.instinctive_pounce",
                         "srd.brutal_strike"
                     ]
+                },
+                "10": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike"
+                    ]
+                },
+                "11": {
+                    "features": ["Relentless Rage"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike"
+                    ]
+                },
+                "12": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike"
+                    ]
+                },
+                "13": {
+                    "features": ["Improved Brutal Strike"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike",
+                        "srd.improved_brutal_strike"
+                    ]
                 }
             },
             "subclasses": {

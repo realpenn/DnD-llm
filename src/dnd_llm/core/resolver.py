@@ -31,7 +31,13 @@ from .rules.spell_slots import warlock_pact_slot_maxima_for_class_levels
 
 RESOLVER_CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 RESOLVER_MAX_CUNNING_STRIKE_EFFECTS = 2
-RESOLVER_BRUTAL_STRIKE_EFFECTS = {"forceful_blow", "hamstring_blow"}
+RESOLVER_BRUTAL_STRIKE_EFFECTS = {
+    "forceful_blow",
+    "hamstring_blow",
+    "staggering_blow",
+    "sundering_blow",
+}
+RESOLVER_IMPROVED_BRUTAL_STRIKE_EFFECTS = {"staggering_blow", "sundering_blow"}
 RESOLVER_POISONERS_KIT_ITEM_ID = "srd.poisoners_kit"
 RESOLVER_ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
 RESOLVER_HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
@@ -1248,6 +1254,15 @@ class ActionResolver:
                 reason="Brutal Strike requires Barbarian level 9",
                 action_id=action.id,
             )
+        if effect in RESOLVER_IMPROVED_BRUTAL_STRIKE_EFFECTS and not has_barbarian_feature(
+            owner,
+            level=13,
+        ):
+            return ResolverResult(
+                status="rejected",
+                reason="Improved Brutal Strike requires Barbarian level 13",
+                action_id=action.id,
+            )
         if not self._action_qualifies_for_brutal_strike(action):
             return ResolverResult(
                 status="rejected",
@@ -1356,6 +1371,10 @@ class ActionResolver:
             "forceful_blow": "forceful_blow",
             "hamstring": "hamstring_blow",
             "hamstring_blow": "hamstring_blow",
+            "staggering": "staggering_blow",
+            "staggering_blow": "staggering_blow",
+            "sundering": "sundering_blow",
+            "sundering_blow": "sundering_blow",
         }
         return aliases.get(normalized, normalized)
 

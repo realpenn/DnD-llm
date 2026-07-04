@@ -4696,7 +4696,32 @@ def test_compendium_loads_srd_actions() -> None:
                 "speed_penalty_ft": 15,
                 "duration": "start_of_next_turn",
             },
+            "staggering_blow": {
+                "requires_barbarian_level_min": 13,
+                "next_saving_throw_disadvantage": True,
+                "cannot_make_opportunity_attacks_duration": "start_of_next_turn",
+            },
+            "sundering_blow": {
+                "requires_barbarian_level_min": 13,
+                "next_attack_roll_by_another_creature_bonus": 5,
+                "duration": "start_of_next_turn",
+                "one_sundering_blow_bonus_per_attack_roll": True,
+            },
         },
+    }
+    assert compendium.classes["barbarian"].levels["13"]["features"] == ["Improved Brutal Strike"]
+    assert "srd.brutal_strike" in compendium.classes["barbarian"].levels["13"]["actions"]
+    assert "srd.improved_brutal_strike" in compendium.classes["barbarian"].levels["13"]["actions"]
+    improved_brutal_strike = compendium.action("srd.improved_brutal_strike")
+    assert improved_brutal_strike.requirements == {
+        "class": "barbarian",
+        "class_level_min": 13,
+    }
+    assert improved_brutal_strike.action_economy == "none"
+    assert improved_brutal_strike.properties == {
+        "adds_brutal_strike_options": ["staggering_blow", "sundering_blow"],
+        "does_not_increase_brutal_strike_damage": True,
+        "does_not_allow_two_brutal_strike_effects": True,
     }
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {

@@ -424,7 +424,9 @@
                     "Barbarian Brutal Strike",
                     "残暴打击",
                     "Forceful Blow",
-                    "Hamstring Blow"
+                    "Hamstring Blow",
+                    "Staggering Blow",
+                    "Sundering Blow"
                 ]
             },
             "source": "SRD 5.2.1 Barbarian Class Features: Level 9: Brutal Strike",
@@ -449,6 +451,17 @@
                     "hamstring_blow": {
                         "speed_penalty_ft": 15,
                         "duration": "start_of_next_turn"
+                    },
+                    "staggering_blow": {
+                        "requires_barbarian_level_min": 13,
+                        "next_saving_throw_disadvantage": true,
+                        "cannot_make_opportunity_attacks_duration": "start_of_next_turn"
+                    },
+                    "sundering_blow": {
+                        "requires_barbarian_level_min": 13,
+                        "next_attack_roll_by_another_creature_bonus": 5,
+                        "duration": "start_of_next_turn",
+                        "one_sundering_blow_bonus_per_attack_roll": true
                     }
                 }
             },
@@ -457,10 +470,40 @@
             "automation": [
                 {
                     "type": "text_result",
-                    "text": "This marker records that a Barbarian can forgo Advantage from Reckless Attack on one Strength-based weapon or Unarmed Strike attack roll; on a hit, the attack deals 1d10 extra damage of the same type and applies Forceful Blow or Hamstring Blow."
+                    "text": "This marker records that a Barbarian can forgo Advantage from Reckless Attack on one Strength-based weapon or Unarmed Strike attack roll; on a hit, the attack deals 1d10 extra damage of the same type and applies a chosen Brutal Strike effect."
                 }
             ],
             "audit_label": "Brutal Strike"
+        },
+        {
+            "id": "srd.improved_brutal_strike",
+            "name": "Improved Brutal Strike",
+            "localization": {
+                "en": "Improved Brutal Strike",
+                "zh": "精通残暴打击",
+                "aliases": ["Barbarian Improved Brutal Strike", "精通残暴打击"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 13: Improved Brutal Strike",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 13},
+            "properties": {
+                "adds_brutal_strike_options": ["staggering_blow", "sundering_blow"],
+                "does_not_increase_brutal_strike_damage": true,
+                "does_not_allow_two_brutal_strike_effects": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Barbarian 13 adds Staggering Blow and Sundering Blow to Brutal Strike options. The 2d10 damage and two-effect upgrade are not part of this level 13 feature."
+                }
+            ],
+            "audit_label": "Improved Brutal Strike"
         },
         {
             "id": "srd.frenzy",

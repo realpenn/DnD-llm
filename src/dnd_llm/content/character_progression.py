@@ -226,6 +226,7 @@ CLASS_LEVEL_ACTIONS = {
         5: ["srd.extra_attack"],
         7: ["srd.feral_instinct", "srd.instinctive_pounce"],
         9: ["srd.brutal_strike"],
+        13: ["srd.improved_brutal_strike"],
     },
     "monk": {
         1: [

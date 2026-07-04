@@ -143,6 +143,58 @@ def test_turn_owner_self_turn_effect_waits_for_owner_turn_start(make_state) -> N
     assert state.encounter.combatants["goblin1"].status_effects == []
 
 
+def test_staggering_blow_consumes_next_saving_throw_on_repeat_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.encounter.combatants["goblin1"]
+    target.status_effects.extend(
+        [
+            {
+                "effect_id": "staggering-repeat",
+                "source_ref": "test",
+                "source_action_id": "srd.brutal_strike",
+                "target_id": "goblin1",
+                "applied_by": "pc1",
+                "condition": "staggering_blow_save_disadvantage",
+                "duration": {"until": "start_of_next_turn", "turn_owner_id": "pc1"},
+                "tick_on": "self_turn_start",
+                "passive_modifiers": {"next_saving_throw_disadvantage": True},
+            },
+            {
+                "effect_id": "repeat-save-staggered",
+                "source_ref": "test",
+                "source_action_id": "test.repeat_save",
+                "target_id": "goblin1",
+                "applied_by": "pc1",
+                "condition": "poisoned",
+                "duration": {
+                    "until": "duration_1_minute",
+                    "repeat_save": {
+                        "ability": "wis",
+                        "dc": 99,
+                        "dc_source": "test",
+                        "end_on_success": True,
+                    },
+                },
+                "tick_on": "target_turn_end",
+            },
+        ]
+    )
+
+    result = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=RollService(state),
+    )
+
+    repeat_save = result.ticked[0]["repeat_save"]
+    assert repeat_save["status_advantage"] == "disadvantage"
+    assert repeat_save["status_sources"][0]["modifier"] == "next_saving_throw_disadvantage"
+    assert repeat_save["consumed_effects"][0]["condition"] == ("staggering_blow_save_disadvantage")
+    assert [effect["condition"] for effect in target.status_effects] == ["poisoned"]
+
+
 def test_longer_duration_ticks_and_round_trips(tmp_path: Path, make_state) -> None:
     state = make_state()
     assert state.encounter is not None

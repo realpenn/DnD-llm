@@ -883,6 +883,26 @@ def test_resolver_checks_brutal_strike_preconditions(make_state) -> None:
             params={"use_brutal_strike": True, "brutal_strike_effect": "hamstring_blow"},
         )
     )
+    character.class_levels = {"barbarian": 12}
+    improved_too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_brutal_strike": True, "brutal_strike_effect": "staggering_blow"},
+        )
+    )
+    character.class_levels = {"barbarian": 13}
+    improved_accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_brutal_strike": True, "brutal_strike_effect": "sundering_blow"},
+        )
+    )
 
     assert accepted.status == "accepted"
     assert invalid_destination.status == "rejected"
@@ -891,6 +911,9 @@ def test_resolver_checks_brutal_strike_preconditions(make_state) -> None:
     )
     assert too_low.status == "rejected"
     assert too_low.reason == "Brutal Strike requires Barbarian level 9"
+    assert improved_too_low.status == "rejected"
+    assert improved_too_low.reason == "Improved Brutal Strike requires Barbarian level 13"
+    assert improved_accepted.status == "accepted"
 
 
 def test_resolver_checks_dynamic_resource_cost_params(make_state) -> None:

@@ -7819,6 +7819,229 @@ def test_brutal_strike_forceful_pushes_target_and_can_follow_without_opportunity
     assert state.encounter.combatants["pc1"].position_node_id == "cover"
 
 
+def test_improved_brutal_strike_staggering_disadvantages_next_save_and_blocks_opportunity_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 13}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 4, 7]),
+    )
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="stagger-reckless")
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        params={"use_brutal_strike": True, "brutal_strike_effect": "staggering_blow"},
+        idempotency_key="brutal-staggering",
+    )
+
+    staggering = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "brutal_strike" and change["effect"] == "staggering_blow"
+    )
+    assert staggering["source_action_id"] == "srd.brutal_strike"
+    effects = state.encounter.combatants["goblin1"].status_effects
+    assert any(
+        effect["condition"] == "staggering_blow_save_disadvantage"
+        and effect["passive_modifiers"] == {"next_saving_throw_disadvantage": True}
+        for effect in effects
+    )
+    assert any(
+        effect["condition"] == "staggering_blow_no_opportunity_attacks"
+        and effect["passive_modifiers"] == {"cannot_make_opportunity_attacks": True}
+        for effect in effects
+    )
+
+    save_action = ActionDefinition(
+        id="test.staggering_save",
+        name="Staggering Save",
+        localization={"en": "Staggering Save", "zh": "踉跄豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "wis", "difficulty_tier": "medium"}],
+    )
+    save = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(save_action, actor_id="pc2", targets=["goblin1"])
+
+    save_node = save.node_results["automation[0]"]
+    assert save_node["status_advantage"] == "disadvantage"
+    assert save_node["status_sources"][0]["modifier"] == "next_saving_throw_disadvantage"
+    expired = next(change for change in save.state_changes if change["type"] == "effect_expired")
+    assert expired["trigger"] == "next_saving_throw"
+    assert expired["removed"][0]["condition"] == "staggering_blow_save_disadvantage"
+    assert all(
+        effect["condition"] != "staggering_blow_save_disadvantage"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+    state.encounter.combatants["pc1"].position_node_id = "cover"
+    move_result = tools.move(
+        "pc1",
+        to_position_node_id="back",
+        idempotency_key="move-away-from-staggered-goblin",
+    )
+    move_change = next(
+        change for change in move_result["state_changes"] if change["type"] == "move"
+    )
+    assert move_change["opportunity_attack_triggers"] == []
+
+
+def test_improved_brutal_strike_sundering_bonuses_only_another_creatures_next_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    barbarian = state.characters["pc1"]
+    barbarian.class_levels = {"barbarian": 13}
+    barbarian.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    state.encounter.combatants["goblin1"].armor_class = 14
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 4, 7]),
+    )
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="sundering-reckless")
+    tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        params={"use_brutal_strike": True, "brutal_strike_effect": "sundering_blow"},
+        idempotency_key="brutal-sundering",
+    )
+    assert any(
+        effect["condition"] == "sundering_blow"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+    own_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 1]),
+        AuditLog(),
+    ).execute(_attack_action(0), actor_id="pc1", targets=["goblin1"])
+    own_attack_node = own_attack.node_results["automation[1]"]
+    assert own_attack_node["passive_adjustment"] == 0
+    assert not any(change["type"] == "effect_expired" for change in own_attack.state_changes)
+    assert any(
+        effect["condition"] == "sundering_blow"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+    ally_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([9, 1]),
+        AuditLog(),
+    ).execute(_attack_action(0), actor_id="pc2", targets=["goblin1"])
+    ally_attack_node = ally_attack.node_results["automation[1]"]
+    assert ally_attack_node["passive_adjustment"] == 5
+    assert ally_attack_node["passive_sources"][0]["modifier"] == "sundering_blow_attack_bonus"
+    assert ally_attack_node["total"] == 14
+    assert ally_attack_node["hit"] is True
+    expired = next(
+        change for change in ally_attack.state_changes if change["type"] == "effect_expired"
+    )
+    assert expired["trigger"] == "sundering_blow_attack_roll"
+    assert expired["removed"][0]["condition"] == "sundering_blow"
+    assert all(
+        effect["condition"] != "sundering_blow"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_improved_brutal_strike_options_require_barbarian_level_13(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 12}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="improved-low-reckless")
+    with pytest.raises(
+        AutomationError,
+        match="Improved Brutal Strike requires Barbarian level 13",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.longsword_attack",
+            ["goblin1"],
+            params={"use_brutal_strike": True, "brutal_strike_effect": "staggering_blow"},
+            idempotency_key="improved-brutal-too-low",
+        )
+
+
+def test_staggering_blow_disadvantages_and_consumes_direct_roll_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "staggering-direct",
+            "source_ref": "test",
+            "source_action_id": "srd.brutal_strike",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "condition": "staggering_blow_save_disadvantage",
+            "duration": {"until": "start_of_next_turn", "turn_owner_id": "pc1"},
+            "tick_on": "self_turn_start",
+            "passive_modifiers": {"next_saving_throw_disadvantage": True},
+        }
+    )
+    tools = EngineTools(
+        state,
+        CompendiumLoader("rules_data").load(),
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10]),
+    )
+
+    first = tools.roll_save(
+        "goblin1",
+        "wis",
+        difficulty_tier="medium",
+        idempotency_key="staggering-direct-save",
+    )
+    second = tools.roll_save(
+        "goblin1",
+        "wis",
+        difficulty_tier="medium",
+        idempotency_key="staggering-direct-save-after",
+    )
+
+    assert first["status_advantage"] == "disadvantage"
+    assert first["status_sources"][0]["modifier"] == "next_saving_throw_disadvantage"
+    assert first["effect_expired"]["removed"][0]["condition"] == (
+        "staggering_blow_save_disadvantage"
+    )
+    assert second["status_advantage"] is None
+    assert all(
+        effect["condition"] != "staggering_blow_save_disadvantage"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
 def test_brutal_strike_rejects_disadvantaged_attack_before_spending_action(
     make_state,
 ) -> None:

@@ -342,6 +342,9 @@ class EngineTools:
                 "passive_bonus_sources": passive_bonus_sources,
                 "proficiency_sources": proficiency_sources,
             }
+            expiry = self._expire_next_saving_throw_disadvantage(actor_id, "roll_save")
+            if expiry is not None:
+                auto_fail_payload["effect_expired"] = expiry
             self.audit_log.append(
                 self.state,
                 idempotency_key=idempotency_key,
@@ -426,6 +429,9 @@ class EngineTools:
         )
         if stroke_of_luck is not None:
             payload["stroke_of_luck"] = stroke_of_luck
+        expiry = self._expire_next_saving_throw_disadvantage(actor_id, "roll_save")
+        if expiry is not None:
+            payload["effect_expired"] = expiry
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -1625,6 +1631,15 @@ class EngineTools:
                         "ability": ability,
                     }
                 )
+            if modifiers.get("next_saving_throw_disadvantage") is True:
+                disadvantage_sources.append(
+                    {
+                        "condition": effect.get("condition"),
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                        "modifier": "next_saving_throw_disadvantage",
+                    }
+                )
         return (
             _merge_advantage(
                 "advantage" if advantage_sources else None,
@@ -1797,6 +1812,74 @@ class EngineTools:
         if isinstance(actor, Combatant) and actor.entity_id in self.state.monsters:
             effects.extend(self.state.monsters[actor.entity_id].status_effects)
         return effects
+
+    def _actor_effect_lists(self, actor_id: str) -> list[tuple[str, str, list[dict[str, Any]]]]:
+        effect_lists: list[tuple[str, str, list[dict[str, Any]]]] = []
+        seen: set[int] = set()
+
+        def add(owner_type: str, owner_id: str, effects: list[dict[str, Any]]) -> None:
+            list_id = id(effects)
+            if list_id in seen:
+                return
+            seen.add(list_id)
+            effect_lists.append((owner_type, owner_id, effects))
+
+        if actor_id in self.state.characters:
+            add("character", actor_id, self.state.characters[actor_id].status_effects)
+        if actor_id in self.state.monsters:
+            add("monster", actor_id, self.state.monsters[actor_id].status_effects)
+        if self.state.encounter is not None and actor_id in self.state.encounter.combatants:
+            combatant = self.state.encounter.combatants[actor_id]
+            add("combatant", actor_id, combatant.status_effects)
+            if combatant.entity_id in self.state.characters:
+                add(
+                    "character",
+                    combatant.entity_id,
+                    self.state.characters[combatant.entity_id].status_effects,
+                )
+            if combatant.entity_id in self.state.monsters:
+                add(
+                    "monster",
+                    combatant.entity_id,
+                    self.state.monsters[combatant.entity_id].status_effects,
+                )
+        return effect_lists
+
+    def _expire_next_saving_throw_disadvantage(
+        self,
+        actor_id: str,
+        path: str,
+    ) -> dict[str, Any] | None:
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._actor_effect_lists(actor_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                modifiers = effect.get("passive_modifiers", {})
+                if (
+                    isinstance(modifiers, dict)
+                    and modifiers.get("next_saving_throw_disadvantage") is True
+                ):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "condition": effect.get("condition"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                    continue
+                retained.append(effect)
+            effects[:] = retained
+        if not removed:
+            return None
+        return {
+            "type": "effect_expired",
+            "actor_id": actor_id,
+            "trigger": "next_saving_throw",
+            "removed": removed,
+            "path": path,
+        }
 
     def _exhaustion_penalty_for(self, actor_id: str) -> tuple[int, list[dict[str, Any]]]:
         effects = self._status_effects_for_actor(actor_id)
