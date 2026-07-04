@@ -4014,6 +4014,35 @@
             "audit_label": "Cunning Strike"
         },
         {
+            "id": "srd.improved_cunning_strike",
+            "name": "Improved Cunning Strike",
+            "localization": {
+                "en": "Improved Cunning Strike",
+                "zh": "精通狡诈打击",
+                "aliases": ["Rogue Improved Cunning Strike", "游荡者精通狡诈打击"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 11: Improved Cunning Strike",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 11},
+            "properties": {
+                "max_cunning_strike_effects_per_sneak_attack": 2,
+                "pay_die_cost_for_each_effect": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Rogue can use up to two Cunning Strike effects when dealing Sneak Attack damage, paying the die cost for each effect."
+                }
+            ],
+            "audit_label": "Improved Cunning Strike"
+        },
+        {
             "id": "srd.uncanny_dodge",
             "name": "Uncanny Dodge",
             "localization": {

@@ -551,6 +551,56 @@ def test_resolver_rejects_cunning_strike_withdraw_over_half_speed(make_state) ->
     assert too_far.reason == "Cunning Strike Withdraw movement cannot exceed half Speed"
 
 
+def test_resolver_rejects_two_cunning_strikes_before_rogue_level_eleven(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 5}
+    character.equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="精通狡诈打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"use_sneak_attack": True, "cunning_strikes": ["poison", "trip"]},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Improved Cunning Strike requires Rogue level 11"
+
+
+def test_resolver_rejects_more_than_two_cunning_strikes(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 11}
+    character.equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="精通狡诈打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strikes": ["poison", "trip", "withdraw"],
+                "cunning_strike_withdraw_to_position_node_id": "cover",
+            },
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Improved Cunning Strike allows at most two effects"
+
+
 def test_resolver_accepts_uncanny_dodge_on_visible_attack_hit_context(make_state) -> None:
     state = make_state()
     state.characters["pc1"].class_levels = {"rogue": 5}

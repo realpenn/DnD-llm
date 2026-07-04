@@ -243,6 +243,16 @@ def test_compendium_loads_srd_actions() -> None:
         "d20_floor": 10,
         "d20_floor_applies_to_rolls_at_or_below": 9,
     }
+    improved_cunning_strike = compendium.action("srd.improved_cunning_strike")
+    assert improved_cunning_strike.requirements == {
+        "class": "rogue",
+        "class_level_min": 11,
+    }
+    assert improved_cunning_strike.action_economy == "none"
+    assert improved_cunning_strike.properties == {
+        "max_cunning_strike_effects_per_sneak_attack": 2,
+        "pay_die_cost_for_each_effect": True,
+    }
     assert compendium.action("srd.deft_explorer").requirements == {
         "class": "ranger",
         "class_level_min": 2,
@@ -3961,6 +3971,8 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert "srd.evasion" in compendium.classes["rogue"].levels["7"]["actions"]
     assert "srd.reliable_talent" in compendium.classes["rogue"].levels["7"]["actions"]
+    assert compendium.classes["rogue"].levels["11"]["features"] == ["Improved Cunning Strike"]
+    assert "srd.improved_cunning_strike" in compendium.classes["rogue"].levels["11"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",

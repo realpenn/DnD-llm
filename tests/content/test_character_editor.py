@@ -2483,6 +2483,17 @@ def test_natural_language_character_edit_assigns_rogue_evasion() -> None:
     assert "srd.reliable_talent" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_rogue_improved_cunning_strike() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 rogue11")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"rogue": 11}
+    assert "srd.improved_cunning_strike" in result.character.actions
+
+
 def test_natural_language_character_edit_rejects_rogue_level_5_extra_expertise_slots() -> None:
     character = default_fighter("pc1", "Penn")
     character.skill_proficiencies = ["stealth", "perception", "arcana", "history"]

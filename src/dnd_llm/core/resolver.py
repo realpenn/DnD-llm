@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,6 +29,7 @@ from .rules.rituals import ritual_casting_eligibility
 from .rules.spell_slots import warlock_pact_slot_maxima_for_class_levels
 
 RESOLVER_CUNNING_STRIKE_EFFECTS = {"poison", "trip", "withdraw"}
+RESOLVER_MAX_CUNNING_STRIKE_EFFECTS = 2
 RESOLVER_POISONERS_KIT_ITEM_ID = "srd.poisoners_kit"
 RESOLVER_ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
 RESOLVER_CREATURE_SIZE_RANKS = {
@@ -1062,10 +1064,10 @@ class ActionResolver:
         action: ActionDefinition,
     ) -> ResolverResult | None:
         try:
-            effect = self._cunning_strike_choice(draft.params)
+            effects = self._cunning_strike_choices(draft.params)
         except ValueError as exc:
             return ResolverResult(status="rejected", reason=str(exc), action_id=action.id)
-        if effect is None:
+        if not effects:
             return None
         if draft.params.get("use_sneak_attack") is not True:
             return ResolverResult(
@@ -1082,13 +1084,20 @@ class ActionResolver:
                 action_id=action.id,
             )
         owner = self._resource_owner(draft.actor_id, actor)
-        if not isinstance(owner, Character) or int(owner.class_levels.get("rogue", 0)) < 5:
+        rogue_level = int(owner.class_levels.get("rogue", 0)) if isinstance(owner, Character) else 0
+        if not isinstance(owner, Character) or rogue_level < 5:
             return ResolverResult(
                 status="rejected",
                 reason="Cunning Strike requires Rogue level 5",
                 action_id=action.id,
             )
-        if effect == "poison" and not self._has_item_on_person(
+        if len(effects) > 1 and rogue_level < 11:
+            return ResolverResult(
+                status="rejected",
+                reason="Improved Cunning Strike requires Rogue level 11",
+                action_id=action.id,
+            )
+        if "poison" in effects and not self._has_item_on_person(
             owner,
             RESOLVER_POISONERS_KIT_ITEM_ID,
         ):
@@ -1097,7 +1106,7 @@ class ActionResolver:
                 reason="Cunning Strike Poison requires a Poisoner's Kit",
                 action_id=action.id,
             )
-        if effect == "trip":
+        if "trip" in effects:
             for target_id in draft.target_ids:
                 if not self._target_large_or_smaller(target_id):
                     return ResolverResult(
@@ -1105,7 +1114,7 @@ class ActionResolver:
                         reason="Cunning Strike Trip requires a Large or smaller target",
                         action_id=action.id,
                     )
-        if effect == "withdraw":
+        if "withdraw" in effects:
             destination = self._cunning_strike_withdraw_destination(draft.params)
             if destination is None:
                 return ResolverResult(
@@ -1362,13 +1371,37 @@ class ActionResolver:
 
     @staticmethod
     def _cunning_strike_choice(params: dict[str, Any]) -> str | None:
-        raw = params.get("cunning_strike", params.get("cunning_strike_effect"))
+        choices = ActionResolver._cunning_strike_choices(params)
+        return choices[0] if choices else None
+
+    @staticmethod
+    def _cunning_strike_choices(params: dict[str, Any]) -> list[str]:
+        raw = params.get(
+            "cunning_strikes",
+            params.get("cunning_strike_effects", params.get("cunning_strike_effect")),
+        )
+        if raw is None:
+            raw = params.get("cunning_strike")
         if raw in (None, "", False):
-            return None
-        effect = str(raw).casefold().strip().replace("-", "_").replace(" ", "_")
-        if effect not in RESOLVER_CUNNING_STRIKE_EFFECTS:
-            raise ValueError(f"unsupported Cunning Strike effect: {effect}")
-        return effect
+            return []
+        raw_values: list[Any]
+        if isinstance(raw, str):
+            raw_values = [part for part in re.split(r"[,;]+", raw) if part.strip()]
+        elif isinstance(raw, (list, tuple)):
+            raw_values = list(raw)
+        else:
+            raw_values = [raw]
+        effects: list[str] = []
+        for value in raw_values:
+            effect = str(value).casefold().strip().replace("-", "_").replace(" ", "_")
+            if effect not in RESOLVER_CUNNING_STRIKE_EFFECTS:
+                raise ValueError(f"unsupported Cunning Strike effect: {effect}")
+            if effect in effects:
+                raise ValueError(f"duplicate Cunning Strike effect: {effect}")
+            effects.append(effect)
+        if len(effects) > RESOLVER_MAX_CUNNING_STRIKE_EFFECTS:
+            raise ValueError("Improved Cunning Strike allows at most two effects")
+        return effects
 
     @staticmethod
     def _has_item_on_person(actor: Character, item_id: str) -> bool:

@@ -84,6 +84,8 @@ from .nodes import STATE_CHANGING_NODE_TYPES
 
 ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
 CUNNING_STRIKE_EFFECTS = {"poison", "trip", "withdraw"}
+MAX_CUNNING_STRIKE_EFFECTS = 2
+IMPROVED_CUNNING_STRIKE_ACTION_ID = "srd.improved_cunning_strike"
 OPEN_HAND_TECHNIQUE_EFFECTS = {"addle", "push", "topple"}
 FOCUS_RESOURCE_ID = "srd.resource.focus_points"
 UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
@@ -1205,13 +1207,8 @@ class AutomationExecutor:
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
-            if sneak_attack.cunning_strike is not None:
-                self._apply_cunning_strike_effect(
-                    ctx,
-                    target_id,
-                    sneak_attack.cunning_strike,
-                    path,
-                )
+            for cunning_strike in self._cunning_strike_effects(sneak_attack.cunning_strike):
+                self._apply_cunning_strike_effect(ctx, target_id, cunning_strike, path)
             self._apply_open_hand_technique_if_requested(
                 ctx,
                 target_id,
@@ -4972,11 +4969,7 @@ class AutomationExecutor:
             }
         ]
         if cunning_strike is not None:
-            sources[0]["cunning_strike"] = {
-                "effect": cunning_strike["effect"],
-                "die_cost": cunning_strike["die_cost"],
-                "forgone_dice": "1d6",
-            }
+            sources[0]["cunning_strike"] = self._cunning_strike_source(cunning_strike)
         return _SneakAttackResult(
             amount=amount,
             rolls=rolls,
@@ -4991,26 +4984,76 @@ class AutomationExecutor:
         rogue_level: int,
         base_dice_count: int,
     ) -> dict[str, Any] | None:
-        effect = self._cunning_strike_choice(ctx.params)
-        if effect is None:
+        effects = self._cunning_strike_choices(ctx.params)
+        if not effects:
             return None
-        die_cost = 1
+        die_cost = len(effects)
         if rogue_level < 5:
             raise AutomationError("Cunning Strike requires Rogue level 5")
+        if len(effects) > 1 and rogue_level < 11:
+            raise AutomationError("Improved Cunning Strike requires Rogue level 11")
         if base_dice_count <= die_cost:
             raise AutomationError("Cunning Strike requires enough Sneak Attack dice")
-        result: dict[str, Any] = {
-            "feature": "cunning_strike",
-            "effect": effect,
+        dc = self._cunning_strike_dc(ctx.actor_id)
+        dc_source = "cunning_strike:dex+proficiency"
+        strikes: list[dict[str, Any]] = []
+        for effect in effects:
+            strike: dict[str, Any] = {
+                "feature": "cunning_strike",
+                "effect": effect,
+                "die_cost": 1,
+                "target_id": target_id,
+                "dc": dc,
+                "dc_source": dc_source,
+            }
+            destination = self._cunning_strike_withdraw_destination(ctx.params)
+            if effect == "withdraw" and destination is not None:
+                strike["to_position_node_id"] = destination
+            strikes.append(strike)
+        if len(strikes) == 1:
+            return strikes[0]
+        return {
+            "feature": "improved_cunning_strike",
+            "effects": strikes,
             "die_cost": die_cost,
             "target_id": target_id,
-            "dc": self._cunning_strike_dc(ctx.actor_id),
-            "dc_source": "cunning_strike:dex+proficiency",
+            "source_action_id": IMPROVED_CUNNING_STRIKE_ACTION_ID,
         }
-        destination = self._cunning_strike_withdraw_destination(ctx.params)
-        if effect == "withdraw" and destination is not None:
-            result["to_position_node_id"] = destination
-        return result
+
+    @staticmethod
+    def _cunning_strike_effects(
+        cunning_strike: dict[str, Any] | None,
+    ) -> list[dict[str, Any]]:
+        if cunning_strike is None:
+            return []
+        effects = cunning_strike.get("effects")
+        if isinstance(effects, list):
+            return [effect for effect in effects if isinstance(effect, dict)]
+        return [cunning_strike]
+
+    @staticmethod
+    def _cunning_strike_source(cunning_strike: dict[str, Any]) -> dict[str, Any]:
+        effects = AutomationExecutor._cunning_strike_effects(cunning_strike)
+        if len(effects) == 1:
+            effect = effects[0]
+            return {
+                "effect": effect["effect"],
+                "die_cost": effect["die_cost"],
+                "forgone_dice": "1d6",
+            }
+        return {
+            "source_action_id": IMPROVED_CUNNING_STRIKE_ACTION_ID,
+            "effects": [
+                {
+                    "effect": effect["effect"],
+                    "die_cost": effect["die_cost"],
+                    "forgone_dice": "1d6",
+                }
+                for effect in effects
+            ],
+            "die_cost": int(cunning_strike["die_cost"]),
+            "forgone_dice": f"{int(cunning_strike['die_cost'])}d6",
+        }
 
     def _apply_cunning_strike_effect(
         self,
@@ -7618,8 +7661,8 @@ class AutomationExecutor:
         targets: list[str],
         params: dict[str, Any],
     ) -> None:
-        effect = self._cunning_strike_choice(params)
-        if effect is None:
+        effects = self._cunning_strike_choices(params)
+        if not effects:
             return
         if params.get("use_sneak_attack") is not True:
             raise AutomationError("Cunning Strike requires Sneak Attack")
@@ -7628,17 +7671,20 @@ class AutomationExecutor:
         ):
             raise AutomationError("Cunning Strike requires a Sneak Attack weapon attack")
         actor = self._resource_owner(actor_id)
-        if not isinstance(actor, Character) or int(actor.class_levels.get("rogue", 0)) < 5:
+        rogue_level = int(actor.class_levels.get("rogue", 0)) if isinstance(actor, Character) else 0
+        if not isinstance(actor, Character) or rogue_level < 5:
             raise AutomationError("Cunning Strike requires Rogue level 5")
-        if ((int(actor.class_levels.get("rogue", 0)) + 1) // 2) <= 1:
+        if len(effects) > 1 and rogue_level < 11:
+            raise AutomationError("Improved Cunning Strike requires Rogue level 11")
+        if ((rogue_level + 1) // 2) <= len(effects):
             raise AutomationError("Cunning Strike requires enough Sneak Attack dice")
-        if effect == "poison" and not self._has_item_on_person(actor, POISONERS_KIT_ITEM_ID):
+        if "poison" in effects and not self._has_item_on_person(actor, POISONERS_KIT_ITEM_ID):
             raise AutomationError("Cunning Strike Poison requires a Poisoner's Kit")
-        if effect == "trip":
+        if "trip" in effects:
             for target_id in targets:
                 if not self._target_large_or_smaller(target_id):
                     raise AutomationError("Cunning Strike Trip requires a Large or smaller target")
-        if effect == "withdraw":
+        if "withdraw" in effects:
             destination = self._cunning_strike_withdraw_destination(params)
             if destination is None:
                 raise AutomationError("Cunning Strike Withdraw requires a destination position")
@@ -8756,13 +8802,37 @@ class AutomationExecutor:
 
     @staticmethod
     def _cunning_strike_choice(params: dict[str, Any]) -> str | None:
-        raw = params.get("cunning_strike", params.get("cunning_strike_effect"))
+        choices = AutomationExecutor._cunning_strike_choices(params)
+        return choices[0] if choices else None
+
+    @staticmethod
+    def _cunning_strike_choices(params: dict[str, Any]) -> list[str]:
+        raw = params.get(
+            "cunning_strikes",
+            params.get("cunning_strike_effects", params.get("cunning_strike_effect")),
+        )
+        if raw is None:
+            raw = params.get("cunning_strike")
         if raw in (None, "", False):
-            return None
-        effect = str(raw).casefold().strip().replace("-", "_").replace(" ", "_")
-        if effect not in CUNNING_STRIKE_EFFECTS:
-            raise AutomationError(f"unsupported Cunning Strike effect: {effect}")
-        return effect
+            return []
+        raw_values: list[Any]
+        if isinstance(raw, str):
+            raw_values = [part for part in re.split(r"[,;]+", raw) if part.strip()]
+        elif isinstance(raw, (list, tuple)):
+            raw_values = list(raw)
+        else:
+            raw_values = [raw]
+        effects: list[str] = []
+        for value in raw_values:
+            effect = str(value).casefold().strip().replace("-", "_").replace(" ", "_")
+            if effect not in CUNNING_STRIKE_EFFECTS:
+                raise AutomationError(f"unsupported Cunning Strike effect: {effect}")
+            if effect in effects:
+                raise AutomationError(f"duplicate Cunning Strike effect: {effect}")
+            effects.append(effect)
+        if len(effects) > MAX_CUNNING_STRIKE_EFFECTS:
+            raise AutomationError("Improved Cunning Strike allows at most two effects")
+        return effects
 
     @staticmethod
     def _cunning_strike_withdraw_destination(params: dict[str, Any]) -> str | None:

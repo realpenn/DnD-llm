@@ -124,6 +124,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.hunters_lore",
     "srd.hunters_prey_colossus_slayer",
     "srd.hunters_prey_horde_breaker",
+    "srd.improved_cunning_strike",
     "srd.improved_critical",
     "srd.investment_of_the_chain_master",
     "srd.innate_sorcery",

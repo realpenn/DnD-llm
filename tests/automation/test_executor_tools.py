@@ -2553,6 +2553,118 @@ def test_cunning_strike_trip_applies_prone_on_failed_dex_save(make_state) -> Non
     )
 
 
+def test_improved_cunning_strike_applies_two_effects_and_pays_both_die_costs(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.encounter.combatants["goblin1"]
+    target.armor_class = 1
+    target.size = "large"
+    target.abilities = {
+        "str": 10,
+        "dex": 1,
+        "con": 1,
+        "int": 10,
+        "wis": 10,
+        "cha": 10,
+    }
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 11}
+    character.abilities["dex"] = 20
+    character.proficiency_bonus = 4
+    character.equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        params={"use_sneak_attack": True, "cunning_strikes": ["poison", "trip"]},
+        idempotency_key="improved-cunning-strike-poison-trip",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    cunning_changes = [
+        change for change in result["state_changes"] if change["type"] == "cunning_strike"
+    ]
+
+    assert result["success"] is True
+    assert result["dice_rolls"][2]["expression"] == "4d6"
+    assert damage_change["sneak_attack_sources"][0]["cunning_strike"] == {
+        "source_action_id": "srd.improved_cunning_strike",
+        "effects": [
+            {"effect": "poison", "die_cost": 1, "forgone_dice": "1d6"},
+            {"effect": "trip", "die_cost": 1, "forgone_dice": "1d6"},
+        ],
+        "die_cost": 2,
+        "forgone_dice": "2d6",
+    }
+    assert [change["effect"] for change in cunning_changes] == ["poison", "trip"]
+    assert result["node_results"]["automation[2].cunning_strike.poison"]["dc"] == 17
+    assert result["node_results"]["automation[2].cunning_strike.poison"]["success"] is False
+    assert result["node_results"]["automation[2].cunning_strike.trip"]["dc"] == 17
+    assert result["node_results"]["automation[2].cunning_strike.trip"]["success"] is False
+    assert {effect["condition"] for effect in target.status_effects[-2:]} == {
+        "poisoned",
+        "prone",
+    }
+
+
+def test_improved_cunning_strike_requires_rogue_level_eleven(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.characters["pc1"].class_levels = {"rogue": 5}
+    state.characters["pc1"].equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Improved Cunning Strike requires Rogue level 11",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={"use_sneak_attack": True, "cunning_strikes": ["poison", "trip"]},
+            idempotency_key="improved-cunning-strike-too-low",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
+def test_improved_cunning_strike_rejects_more_than_two_effects(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 11}
+    character.equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Improved Cunning Strike allows at most two effects",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_sneak_attack": True,
+                "cunning_strikes": ["poison", "trip", "withdraw"],
+                "cunning_strike_withdraw_to_position_node_id": "cover",
+            },
+            idempotency_key="improved-cunning-strike-too-many",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
 def test_cunning_strike_trip_rejects_huge_target_before_spending_action(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
