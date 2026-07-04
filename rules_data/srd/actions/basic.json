@@ -606,6 +606,35 @@
             "audit_label": "Indomitable Might"
         },
         {
+            "id": "srd.primal_champion",
+            "name": "Primal Champion",
+            "localization": {
+                "en": "Primal Champion",
+                "zh": "原初勇士",
+                "aliases": ["Barbarian Primal Champion", "野蛮人原初勇士"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 20: Primal Champion",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 20},
+            "properties": {
+                "ability_score_increase": {"str": 4, "con": 4},
+                "ability_score_maximum": {"str": 25, "con": 25}
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Barbarian 20 increases Strength and Constitution scores by 4, to a maximum of 25."
+                }
+            ],
+            "audit_label": "Primal Champion"
+        },
+        {
             "id": "srd.frenzy",
             "name": "Frenzy",
             "localization": {

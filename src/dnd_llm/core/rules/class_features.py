@@ -114,6 +114,7 @@ STROKE_OF_LUCK_D20 = 20
 RELENTLESS_RAGE_ACTION_ID = "srd.relentless_rage"
 PERSISTENT_RAGE_ACTION_ID = "srd.persistent_rage"
 INDOMITABLE_MIGHT_ACTION_ID = "srd.indomitable_might"
+PRIMAL_CHAMPION_ACTION_ID = "srd.primal_champion"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -214,6 +215,16 @@ def indomitable_might_applies(character: Character) -> bool:
     return has_barbarian_feature(character, level=18)
 
 
+def primal_champion_applies(character: Character) -> bool:
+    return has_barbarian_feature(character, level=20)
+
+
+def primal_champion_ability_score(character: Character, ability: str, score: int) -> int:
+    if ability.lower() not in {"str", "con"} or not primal_champion_applies(character):
+        return score
+    return min(score + 4, 25)
+
+
 def indomitable_might_total_floor(
     character: Character,
     *,
@@ -222,7 +233,11 @@ def indomitable_might_total_floor(
 ) -> int | None:
     if ability.lower() != "str" or not indomitable_might_applies(character):
         return None
-    strength_score = int(character.abilities.get("str", character.abilities.get("STR", 10)))
+    strength_score = primal_champion_ability_score(
+        character,
+        "str",
+        int(character.abilities.get("str", character.abilities.get("STR", 10))),
+    )
     if total >= strength_score:
         return None
     return strength_score

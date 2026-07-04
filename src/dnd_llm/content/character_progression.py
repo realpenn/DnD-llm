@@ -231,6 +231,7 @@ CLASS_LEVEL_ACTIONS = {
         13: ["srd.improved_brutal_strike"],
         15: ["srd.persistent_rage"],
         18: ["srd.indomitable_might"],
+        20: ["srd.primal_champion"],
     },
     "monk": {
         1: [
@@ -1097,10 +1098,18 @@ def set_multiclass_level(
     if projected_total > 20:
         return ProgressionResult(["角色总等级不能超过 SRD 角色等级上限 20"])
     previous_subclass_hp_bonus = _subclass_hp_bonus(character)
+    previous_con_modifier = _effective_con_modifier_for_levels(
+        character,
+        character.class_levels,
+    )
+    previous_total_level = total_level(character)
     character.class_levels[class_name] = level
     _append_fixed_class_tool_proficiencies(character, class_name)
     delta = level - previous_level
     hp_delta = _fixed_hp_gain(character, class_name) * delta if delta > 0 else 0
+    new_con_modifier = _effective_con_modifier_for_levels(character, character.class_levels)
+    if new_con_modifier != previous_con_modifier:
+        hp_delta += (new_con_modifier - previous_con_modifier) * previous_total_level
     subclass_hp_delta = _subclass_hp_bonus(character) - previous_subclass_hp_bonus
     hp_delta += subclass_hp_delta
     if hp_delta:
@@ -2550,13 +2559,13 @@ def _resources_for_levels(
 def _fixed_hp_gain(character: Character, class_name: str) -> int:
     die = int(CLASS_HIT_DICE[class_name].removeprefix("d"))
     average = die // 2 + 1
-    con_modifier = (int(character.abilities.get("con", 10)) - 10) // 2
+    con_modifier = _effective_con_modifier_for_levels(character, character.class_levels)
     return max(1, average + con_modifier)
 
 
 def _fixed_hp_for_single_class(character: Character, class_name: str, level: int) -> int:
     die = int(CLASS_HIT_DICE[class_name].removeprefix("d"))
-    con_modifier = (int(character.abilities.get("con", 10)) - 10) // 2
+    con_modifier = _effective_con_modifier_for_levels(character, {class_name: level})
     first_level = max(1, die + con_modifier)
     later_levels = max(0, level - 1) * _fixed_hp_gain(character, class_name)
     return first_level + later_levels
@@ -2564,6 +2573,13 @@ def _fixed_hp_for_single_class(character: Character, class_name: str, level: int
 
 def _subclass_hp_bonus(character: Character) -> int:
     return draconic_resilience_hp_bonus(character)
+
+
+def _effective_con_modifier_for_levels(character: Character, class_levels: dict[str, int]) -> int:
+    con_score = int(character.abilities.get("con", 10))
+    if int(class_levels.get("barbarian", 0)) >= 20:
+        con_score = min(con_score + 4, 25)
+    return (con_score - 10) // 2
 
 
 def _ability_modifier_from_scores(abilities: dict[str, int], ability: str) -> int:

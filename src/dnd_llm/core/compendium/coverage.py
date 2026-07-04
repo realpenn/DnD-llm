@@ -180,6 +180,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.perfect_focus",
     "srd.persistent_rage",
     "srd.potent_cantrip",
+    "srd.primal_champion",
     "srd.primal_order",
     "srd.rage",
     "srd.ranger_expertise",

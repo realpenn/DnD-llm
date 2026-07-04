@@ -32,6 +32,7 @@ from dnd_llm.core.rules.class_features import (
     warlock_devils_sight_range_ft,
     warlock_gift_of_depths_swim_speed_ft,
 )
+from dnd_llm.core.rules.conditions import effective_ability_score
 
 
 def test_default_fighter_equipment_uses_srd_item_ids() -> None:
@@ -1661,6 +1662,42 @@ def test_natural_language_character_edit_assigns_barbarian_indomitable_might() -
     assert "srd.persistent_rage" in result.character.actions
     assert "srd.indomitable_might" in result.character.actions
     assert result.character.resources["srd.resource.rage"] == 6
+
+
+def test_natural_language_character_edit_assigns_barbarian_primal_champion() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    level_19 = apply_natural_language_character_edit(character, "职业 barbarian19")
+    result = apply_natural_language_character_edit(character, "职业 barbarian20")
+
+    assert level_19.accepted is True
+    assert level_19.character is not None
+    assert "srd.primal_champion" not in level_19.character.actions
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"barbarian": 20}
+    assert "srd.indomitable_might" in result.character.actions
+    assert "srd.primal_champion" in result.character.actions
+    assert effective_ability_score(result.character, "str") == 19
+    assert effective_ability_score(result.character, "con") == 18
+    assert result.character.hp_max == 225
+    assert result.character.hp_current == 225
+
+
+def test_natural_language_character_edit_barbarian20_retroactively_updates_hp() -> None:
+    character = default_fighter("pc1", "Penn")
+    level_19 = apply_natural_language_character_edit(character, "职业 barbarian19")
+    assert level_19.character is not None
+    hp_before = level_19.character.hp_max
+
+    result = apply_natural_language_character_edit(level_19.character, "多职业 barbarian20")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert hp_before == 176
+    assert result.character.class_levels == {"barbarian": 20}
+    assert result.character.hp_max == 225
+    assert result.character.hp_current == 225
 
 
 def test_natural_language_character_edit_assigns_explicit_berserker_subclass() -> None:

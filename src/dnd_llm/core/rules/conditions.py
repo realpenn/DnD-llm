@@ -184,7 +184,8 @@ def effective_ability_score(
     *,
     status_effects: list[dict[str, Any]] | None = None,
 ) -> int:
-    score = raw_ability_score(entity, ability)
+    ability = ability.lower()
+    score = _class_feature_ability_score(entity, ability, raw_ability_score(entity, ability))
     for effect in (
         status_effects if status_effects is not None else getattr(entity, "status_effects", [])
     ):
@@ -202,6 +203,19 @@ def effective_ability_score(
     return score
 
 
+def _class_feature_ability_score(entity: Any, ability: str, score: int) -> int:
+    if ability not in {"str", "con"} or not _has_primal_champion(entity):
+        return score
+    return min(score + 4, 25)
+
+
+def _has_primal_champion(entity: Any) -> bool:
+    class_levels = getattr(entity, "class_levels", {})
+    if not isinstance(class_levels, dict):
+        return False
+    return int(class_levels.get("barbarian", 0)) >= 20
+
+
 def effective_ability_modifier(
     entity: Any,
     ability: str,
@@ -217,8 +231,13 @@ def ability_score_set_sources(
     *,
     status_effects: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    base_score = raw_ability_score(entity, ability)
+    ability = ability.lower()
+    raw_score = raw_ability_score(entity, ability)
+    base_score = _class_feature_ability_score(entity, ability, raw_score)
     sources: list[dict[str, Any]] = []
+    class_feature_source = _class_feature_ability_score_source(entity, ability, raw_score)
+    if class_feature_source is not None:
+        sources.append(class_feature_source)
     for effect in (
         status_effects if status_effects is not None else getattr(entity, "status_effects", [])
     ):
@@ -244,6 +263,24 @@ def ability_score_set_sources(
             }
         )
     return sources
+
+
+def _class_feature_ability_score_source(
+    entity: Any,
+    ability: str,
+    score: int,
+) -> dict[str, Any] | None:
+    if ability not in {"str", "con"} or not _has_primal_champion(entity):
+        return None
+    feature_score = min(score + 4, 25)
+    if feature_score <= score:
+        return None
+    return {
+        "source_action_id": "srd.primal_champion",
+        "modifier": "primal_champion_ability_score_increase",
+        "ability": ability,
+        "score": feature_score,
+    }
 
 
 def apply_exhaustion(

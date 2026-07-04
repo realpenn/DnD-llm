@@ -271,6 +271,45 @@
                         "srd.persistent_rage",
                         "srd.indomitable_might"
                     ]
+                },
+                "19": {
+                    "features": ["Epic Boon"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike",
+                        "srd.relentless_rage",
+                        "srd.improved_brutal_strike",
+                        "srd.persistent_rage",
+                        "srd.indomitable_might"
+                    ]
+                },
+                "20": {
+                    "features": ["Primal Champion"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike",
+                        "srd.relentless_rage",
+                        "srd.improved_brutal_strike",
+                        "srd.persistent_rage",
+                        "srd.indomitable_might",
+                        "srd.primal_champion"
+                    ]
                 }
             },
             "subclasses": {

@@ -4771,6 +4771,17 @@ def test_compendium_loads_srd_actions() -> None:
         "affected_tests": ["strength_check", "strength_saving_throw"],
         "use_strength_score_when_total_below_score": True,
     }
+    assert compendium.classes["barbarian"].levels["19"]["features"] == ["Epic Boon"]
+    assert "srd.primal_champion" not in compendium.classes["barbarian"].levels["19"]["actions"]
+    assert compendium.classes["barbarian"].levels["20"]["features"] == ["Primal Champion"]
+    assert "srd.primal_champion" in compendium.classes["barbarian"].levels["20"]["actions"]
+    primal_champion = compendium.action("srd.primal_champion")
+    assert primal_champion.requirements == {"class": "barbarian", "class_level_min": 20}
+    assert primal_champion.action_economy == "none"
+    assert primal_champion.properties == {
+        "ability_score_increase": {"str": 4, "con": 4},
+        "ability_score_maximum": {"str": 25, "con": 25},
+    }
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {
         "name": "College of Lore",

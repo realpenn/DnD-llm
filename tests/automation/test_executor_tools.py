@@ -22,6 +22,7 @@ from dnd_llm.core.rules.conditions import (
     can_walk_on_liquid_surface_from_effects,
     climb_speed_from_effects,
     darkvision_range_from_effects,
+    effective_ability_score,
     effective_speed,
     fly_speed_from_effects,
     swim_speed_from_effects,
@@ -6519,6 +6520,70 @@ def test_barbarian_indomitable_might_floors_automation_check_and_save(
     assert save_node["success"] is True
     assert save_node["indomitable_might"]["total_before"] == 6
     assert save_node["indomitable_might"]["total_after"] == 20
+
+
+def test_barbarian_primal_champion_improves_abilities_indomitable_might_and_attacks(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 20}
+    character.abilities["str"] = 20
+    character.abilities["con"] = 14
+    character.actions.append("srd.longsword_attack")
+    state.encounter.combatants["goblin1"].armor_class = 18
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 10, 4]),
+    )
+
+    strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="very_hard",
+        idempotency_key="primal-champion-strength-check",
+    )
+    attack = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        idempotency_key="primal-champion-longsword",
+    )
+
+    assert effective_ability_score(character, "str") == 24
+    assert effective_ability_score(character, "con") == 18
+    assert strength_check["roll"]["expression"] == "1d20+7"
+    assert strength_check["total"] == 24
+    assert strength_check["indomitable_might"] == {
+        "source_action_id": "srd.indomitable_might",
+        "ability": "str",
+        "strength_score": 24,
+        "total_before": 8,
+        "total_after": 24,
+        "success": False,
+    }
+    attack_node = attack["node_results"]["automation[1]"]
+    assert attack_node["base_attack_bonus"] == 4
+    assert attack_node["passive_adjustment"] == 5
+    assert attack_node["passive_sources"][0]["source_action_id"] == "srd.primal_champion"
+    assert attack_node["passive_sources"][0]["modifier"] == (
+        "primal_champion_ability_score_increase"
+    )
+    assert attack_node["passive_sources"][0]["score"] == 24
+    assert attack_node["passive_sources"][0]["amount"] == 5
+    assert attack_node["total"] == 19
+    assert attack_node["hit"] is True
+    damage = next(change for change in attack["state_changes"] if change["type"] == "damage")
+    assert damage["amount"] == 11
+    assert damage["passive_damage_bonus"] == 5
+    assert damage["passive_sources"][0]["source_action_id"] == "srd.primal_champion"
+    assert damage["passive_sources"][0]["modifier"] == ("primal_champion_ability_score_increase")
 
 
 def test_monk_disciplined_survivor_grants_all_save_proficiency_and_rerolls_failed_direct_save(
