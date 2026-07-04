@@ -4071,6 +4071,35 @@
             "audit_label": "Slippery Mind"
         },
         {
+            "id": "srd.elusive",
+            "name": "Elusive",
+            "localization": {
+                "en": "Elusive",
+                "zh": "难以捉摸",
+                "aliases": ["Rogue Elusive", "游荡者难以捉摸"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 18: Elusive",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 18},
+            "properties": {
+                "blocks_attack_roll_advantage_against_self": true,
+                "disabled_by_condition": "incapacitated"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that no attack roll can have Advantage against the Rogue unless the Rogue has the Incapacitated condition."
+                }
+            ],
+            "audit_label": "Elusive"
+        },
+        {
             "id": "srd.uncanny_dodge",
             "name": "Uncanny Dodge",
             "localization": {

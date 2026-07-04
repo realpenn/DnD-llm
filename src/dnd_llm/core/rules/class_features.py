@@ -100,6 +100,7 @@ RELIABLE_TALENT_D20_FLOOR = 10
 RELIABLE_TALENT_MAX_NATURAL = 9
 SLIPPERY_MIND_ACTION_ID = "srd.slippery_mind"
 SLIPPERY_MIND_SAVING_THROWS = frozenset({"wis", "cha"})
+ELUSIVE_ACTION_ID = "srd.elusive"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -207,6 +208,10 @@ def reliable_talent_applies(character: Character) -> bool:
 
 def rogue_slippery_mind_applies(character: Character) -> bool:
     return int(character.class_levels.get("rogue", 0)) >= 15
+
+
+def rogue_elusive_applies(character: Character) -> bool:
+    return int(character.class_levels.get("rogue", 0)) >= 18
 
 
 def reliable_talent_d20_adjustment(

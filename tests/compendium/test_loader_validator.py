@@ -262,6 +262,16 @@ def test_compendium_loads_srd_actions() -> None:
     assert slippery_mind.properties == {
         "saving_throw_proficiencies": ["wis", "cha"],
     }
+    elusive = compendium.action("srd.elusive")
+    assert elusive.requirements == {
+        "class": "rogue",
+        "class_level_min": 18,
+    }
+    assert elusive.action_economy == "none"
+    assert elusive.properties == {
+        "blocks_attack_roll_advantage_against_self": True,
+        "disabled_by_condition": "incapacitated",
+    }
     assert compendium.action("srd.deft_explorer").requirements == {
         "class": "ranger",
         "class_level_min": 2,
@@ -3984,6 +3994,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.improved_cunning_strike" in compendium.classes["rogue"].levels["11"]["actions"]
     assert compendium.classes["rogue"].levels["15"]["features"] == ["Slippery Mind"]
     assert "srd.slippery_mind" in compendium.classes["rogue"].levels["15"]["actions"]
+    assert compendium.classes["rogue"].levels["18"]["features"] == ["Elusive"]
+    assert "srd.elusive" in compendium.classes["rogue"].levels["18"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",

@@ -6174,6 +6174,166 @@ def test_reckless_attack_grants_incoming_attack_advantage(make_state) -> None:
     assert attack_node["status_sources"][0]["modifier"] == "incoming_attack_advantage"
 
 
+def test_rogue_elusive_blocks_incoming_attack_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 18}
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "incoming-advantage-test",
+            "condition": "incoming_advantage",
+            "source_action_id": "test.incoming_advantage",
+            "passive_modifiers": {"incoming_attack_advantage": True},
+        }
+    )
+
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(_attack_action(), actor_id="goblin1", targets=["pc1"])
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack.dice_rolls[0]["advantage"] is None
+    assert attack_node["status_advantage"] is None
+    assert attack_node["status_sources"][0]["kind"] == "advantage_blocked"
+    assert attack_node["status_sources"][0]["source_action_id"] == "srd.elusive"
+    assert attack_node["status_sources"][0]["modifier"] == "elusive_blocks_attack_advantage"
+    assert attack_node["status_sources"][0]["blocked_sources"][0]["modifier"] == (
+        "incoming_attack_advantage"
+    )
+
+
+def test_rogue_elusive_does_not_apply_before_level_eighteen(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 17}
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "incoming-advantage-test",
+            "condition": "incoming_advantage",
+            "source_action_id": "test.incoming_advantage",
+            "passive_modifiers": {"incoming_attack_advantage": True},
+        }
+    )
+
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(_attack_action(), actor_id="goblin1", targets=["pc1"])
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack.dice_rolls[0]["advantage"] == "advantage"
+    assert attack_node["status_advantage"] == "advantage"
+    assert attack_node["status_sources"][0]["modifier"] == "incoming_attack_advantage"
+
+
+def test_rogue_elusive_does_not_apply_while_incapacitated(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 18}
+    state.encounter.combatants["pc1"].status_effects.extend(
+        [
+            {
+                "effect_id": "incoming-advantage-test",
+                "condition": "incoming_advantage",
+                "source_action_id": "test.incoming_advantage",
+                "passive_modifiers": {"incoming_attack_advantage": True},
+            },
+            {"effect_id": "incapacitated-test", "condition": "incapacitated"},
+        ]
+    )
+
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(_attack_action(), actor_id="goblin1", targets=["pc1"])
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack.dice_rolls[0]["advantage"] == "advantage"
+    assert attack_node["status_advantage"] == "advantage"
+    assert attack_node["status_sources"][0]["modifier"] == "incoming_attack_advantage"
+
+
+def test_rogue_elusive_blocks_attack_node_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 18}
+    action = ActionDefinition(
+        id="test.advantage_attack",
+        name="Advantage Attack",
+        localization={"en": "Advantage Attack", "zh": "优势攻击", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "attack_roll", "attack_bonus": 99, "advantage": "advantage"},
+            {
+                "type": "damage",
+                "dice": "1d6",
+                "damage_type": "force",
+                "requires_hit": True,
+            },
+        ],
+    )
+
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack.dice_rolls[0]["advantage"] is None
+    assert attack_node["status_advantage"] is None
+    assert attack_node["status_sources"][0]["kind"] == "advantage_blocked"
+    assert attack_node["status_sources"][0]["blocked_sources"][0] == {
+        "modifier": "attack_node_advantage",
+        "advantage": "advantage",
+    }
+
+
+def test_rogue_elusive_blocks_prone_advantage_but_preserves_disadvantage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 18}
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "prone-test", "condition": "prone"}
+    )
+
+    melee_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(_attack_action(), actor_id="goblin1", targets=["pc1"])
+
+    state.encounter.combatants["goblin1"].position_node_id = "back"
+    distant_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(_attack_action(), actor_id="goblin1", targets=["pc1"])
+
+    melee_node = melee_attack.node_results["automation[1]"]
+    assert melee_attack.dice_rolls[0]["advantage"] is None
+    assert melee_node["status_sources"][0]["kind"] == "advantage_blocked"
+    assert melee_node["status_sources"][0]["blocked_sources"][0]["condition"] == "prone"
+    distant_node = distant_attack.node_results["automation[1]"]
+    assert distant_node["distance_ft"] == 35
+    assert distant_attack.dice_rolls[0]["advantage"] == "disadvantage"
+    assert distant_node["status_advantage"] == "disadvantage"
+    assert distant_node["status_sources"][0]["kind"] == "disadvantage"
+    assert distant_node["status_sources"][0]["condition"] == "prone"
+
+
 def test_innate_sorcery_boosts_sorcerer_spell_dc_and_attack_rolls(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

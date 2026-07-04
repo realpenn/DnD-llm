@@ -12,6 +12,7 @@ from ..positioning import TacticalGraph
 from ..rules.checks import d20_expression
 from ..rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
+    ELUSIVE_ACTION_ID,
     FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
@@ -62,6 +63,7 @@ from ..rules.class_features import (
     preserve_life_healing_pool,
     reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
+    rogue_elusive_applies,
     saving_throw_proficiency_sources,
     warlock_agonizing_blast_bonus,
 )
@@ -630,8 +632,14 @@ class AutomationExecutor:
                 target_id=target_id,
                 action=ctx.action,
                 ability=ability,
+                node_advantage=node_advantage,
             )
-            advantage = _merge_advantage(node_advantage, status_advantage)
+            effective_node_advantage = (
+                None
+                if any(source.get("kind") == "advantage_blocked" for source in status_sources)
+                else node_advantage
+            )
+            advantage = _merge_advantage(effective_node_advantage, status_advantage)
             roll = self.roll_service.roll(d20_expression(attack_bonus), advantage=advantage)
             adjustment, adjustment_rolls, adjustment_sources = self._passive_roll_adjustment(
                 actor,
@@ -6856,6 +6864,7 @@ class AutomationExecutor:
         target_id: str,
         action: ActionDefinition,
         ability: str,
+        node_advantage: str | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         advantage_sources = self._condition_sources(actor, {"invisible"})
         advantage_sources.extend(
@@ -6872,6 +6881,14 @@ class AutomationExecutor:
         )
         advantage_sources.extend(self._attack_roll_advantage_sources(actor, action, target_id))
         advantage_sources.extend(self._incoming_attack_advantage_sources(target))
+        advantage_blocked_source = self._elusive_attack_advantage_block_source(
+            target_id,
+            target,
+            node_advantage=node_advantage,
+            advantage_sources=advantage_sources,
+        )
+        if advantage_blocked_source is not None:
+            advantage_sources = []
         disadvantage_sources = self._condition_sources(
             actor,
             {"blinded", "frightened", "poisoned", "prone", "restrained"},
@@ -6886,9 +6903,41 @@ class AutomationExecutor:
             None,
             "advantage" if advantage_sources else None,
             "disadvantage" if disadvantage_sources else None,
-        ), [{"kind": "advantage", **source} for source in advantage_sources] + [
-            {"kind": "disadvantage", **source} for source in disadvantage_sources
-        ]
+        ), (
+            (
+                [{"kind": "advantage_blocked", **advantage_blocked_source}]
+                if advantage_blocked_source is not None
+                else []
+            )
+            + [{"kind": "advantage", **source} for source in advantage_sources]
+            + [{"kind": "disadvantage", **source} for source in disadvantage_sources]
+        )
+
+    def _elusive_attack_advantage_block_source(
+        self,
+        target_id: str,
+        target: Character | Monster | Combatant,
+        *,
+        node_advantage: str | None,
+        advantage_sources: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        owner = self._resource_owner(target_id)
+        if not isinstance(owner, Character) or not rogue_elusive_applies(owner):
+            return None
+        if self._condition_sources(target, {"incapacitated"}):
+            return None
+        if node_advantage is None and not advantage_sources:
+            return None
+        blocked_sources = list(advantage_sources)
+        if node_advantage is not None:
+            blocked_sources.append(
+                {"modifier": "attack_node_advantage", "advantage": node_advantage}
+            )
+        return {
+            "source_action_id": ELUSIVE_ACTION_ID,
+            "modifier": "elusive_blocks_attack_advantage",
+            "blocked_sources": blocked_sources,
+        }
 
     def _attack_roll_advantage_sources(
         self,

@@ -91,6 +91,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.divine_smite",
     "srd.disciplined_survivor",
     "srd.druidic",
+    "srd.elusive",
     "srd.extra_attack",
     "srd.favored_enemy_hunters_mark",
     "srd.faithful_steed",
