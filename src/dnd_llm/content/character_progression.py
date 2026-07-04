@@ -178,6 +178,7 @@ CLASS_LEVEL_ACTIONS = {
             "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
             "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
         ],
+        7: ["srd.countercharm"],
     },
     "cleric": {
         1: ["srd.divine_order"],

@@ -93,6 +93,8 @@ RESOLVER_THIRSTING_BLADE_PACT_WEAPON_ATTACK_CONDITION = (
 )
 RESOLVER_THIRSTING_BLADE_EXTRA_ATTACK_USED_CONDITION = "thirsting_blade_extra_attack_used"
 RESOLVER_ELDRITCH_SMITE_USED_CONDITION = "eldritch_smite_used"
+RESOLVER_COUNTERCHARM_CONDITIONS = frozenset({"charmed", "frightened"})
+RESOLVER_COUNTERCHARM_RANGE_FT = 30
 
 
 @dataclass
@@ -321,6 +323,9 @@ class ActionResolver:
         willing_target_check = self._check_willing_targets(draft, action)
         if willing_target_check is not None:
             return willing_target_check
+        countercharm_check = self._check_countercharm(draft, action)
+        if countercharm_check is not None:
+            return countercharm_check
         uncanny_dodge_check = self._check_uncanny_dodge(draft, action)
         if uncanny_dodge_check is not None:
             return uncanny_dodge_check
@@ -1809,6 +1814,138 @@ class ActionResolver:
             return False
         graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
         return graph.has_line_of_sight(target.position_node_id, attacker.position_node_id)
+
+    def _check_countercharm(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> ResolverResult | None:
+        if draft.params.get("use_countercharm") is not True:
+            return None
+        try:
+            target_id = self._countercharm_target_id(draft.target_ids, draft.params)
+        except ValueError as exc:
+            return ResolverResult(status="rejected", reason=str(exc), action_id=action.id)
+        if target_id not in set(draft.target_ids):
+            return ResolverResult(
+                status="rejected",
+                reason="Countercharm target must be a target of the action",
+                action_id=action.id,
+            )
+        if not self._action_supports_countercharm(action):
+            return ResolverResult(
+                status="rejected",
+                reason="Countercharm requires a save against Charmed or Frightened",
+                action_id=action.id,
+            )
+        bard_id = self._countercharm_bard_id(draft.params)
+        if bard_id is None:
+            return ResolverResult(
+                status="rejected",
+                reason="Countercharm requires an explicit Bard",
+                action_id=action.id,
+            )
+        try:
+            bard_entity = self.state.entity_for_actor(bard_id)
+            target = self.state.entity_for_actor(target_id)
+        except KeyError:
+            return ResolverResult(
+                status="rejected",
+                reason="Countercharm requires known Bard and target",
+                action_id=action.id,
+            )
+        bard_owner = self._resource_owner(bard_id, bard_entity)
+        if not isinstance(bard_owner, Character) or int(bard_owner.class_levels.get("bard", 0)) < 7:
+            return ResolverResult(
+                status="rejected",
+                reason="Countercharm requires Bard level 7",
+                action_id=action.id,
+            )
+        budget = self._action_budget_for_check(bard_id, bard_entity)
+        if not budget.can_spend("reaction"):
+            return ResolverResult(
+                status="rejected",
+                reason="insufficient reaction economy",
+                action_id=action.id,
+            )
+        if not self._countercharm_target_within_range(bard_id, bard_entity, target_id, target):
+            return ResolverResult(
+                status="rejected",
+                reason="Countercharm requires target within 30 feet",
+                action_id=action.id,
+            )
+        return None
+
+    @staticmethod
+    def _countercharm_target_id(targets: list[str], params: dict[str, Any]) -> str:
+        explicit_target = params.get("countercharm_target_id")
+        if explicit_target is not None:
+            return str(explicit_target)
+        if len(targets) == 1:
+            return str(targets[0])
+        raise ValueError("Countercharm requires an explicit target")
+
+    @staticmethod
+    def _countercharm_bard_id(params: dict[str, Any]) -> str | None:
+        explicit_bard = params.get("countercharm_bard_id")
+        if explicit_bard is None:
+            explicit_bard = params.get("countercharm_actor_id")
+        if explicit_bard is None:
+            return None
+        return str(explicit_bard)
+
+    def _action_supports_countercharm(self, action: ActionDefinition) -> bool:
+        nodes = self._automation_nodes(action.automation)
+        has_saving_throw = any(node.get("type") == "saving_throw" for node in nodes)
+        return has_saving_throw and any(
+            node.get("type") == "condition"
+            and str(node.get("condition", "")).lower() in RESOLVER_COUNTERCHARM_CONDITIONS
+            and node.get("requires_failed_save") is True
+            for node in nodes
+        )
+
+    def _countercharm_target_within_range(
+        self,
+        bard_id: str,
+        bard: Character | Monster | Combatant,
+        target_id: str,
+        target: Character | Monster | Combatant,
+    ) -> bool:
+        if self._entity_aliases(bard_id) & self._entity_aliases(target_id):
+            return True
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return False
+        bard_combatant = self._combatant_for_entity(bard)
+        target_combatant = self._combatant_for_entity(target)
+        if (
+            bard_combatant is None
+            or target_combatant is None
+            or bard_combatant.position_node_id is None
+            or target_combatant.position_node_id is None
+        ):
+            return False
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        distance = graph.shortest_distance(
+            bard_combatant.position_node_id,
+            target_combatant.position_node_id,
+        )
+        return distance is not None and distance <= RESOLVER_COUNTERCHARM_RANGE_FT
+
+    def _combatant_for_entity(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> Combatant | None:
+        if isinstance(entity, Combatant):
+            return entity
+        if self.state.encounter is None:
+            return None
+        entity_id = getattr(entity, "id", None)
+        if entity_id is None:
+            return None
+        for combatant in self.state.encounter.combatants.values():
+            if combatant.id == entity_id or combatant.entity_id == entity_id:
+                return combatant
+        return None
 
     @staticmethod
     def _cunning_strike_choice(params: dict[str, Any]) -> str | None:

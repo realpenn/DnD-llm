@@ -64,6 +64,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.bard_expertise",
     "srd.bardic_inspiration",
     "srd.brutal_strike",
+    "srd.countercharm",
     "srd.cure_wounds",
     "srd.cunning_strike",
     "srd.cunning_action_dash",

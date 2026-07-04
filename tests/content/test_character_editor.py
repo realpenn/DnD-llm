@@ -2215,6 +2215,17 @@ def test_natural_language_character_edit_assigns_bard_font_of_inspiration_action
     } <= set(result.character.actions)
 
 
+def test_natural_language_character_edit_assigns_bard_countercharm() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 吟游诗人7")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"bard": 7}
+    assert "srd.countercharm" in result.character.actions
+
+
 def test_natural_language_character_edit_supports_multiclass_progression() -> None:
     character = default_fighter("pc1", "Penn")
 

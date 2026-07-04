@@ -125,6 +125,9 @@ RESTORING_TOUCH_CONDITION_POINT_COST = 5
 DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 INDOMITABLE_ACTION_ID = "srd.indomitable"
 DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
+COUNTERCHARM_ACTION_ID = "srd.countercharm"
+COUNTERCHARM_CONDITIONS = frozenset({"charmed", "frightened"})
+COUNTERCHARM_RANGE_FT = 30
 STUDIED_ATTACKS_ACTION_ID = "srd.studied_attacks"
 STUDIED_ATTACKS_CONDITION = "studied_attacks"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
@@ -443,6 +446,7 @@ class AutomationExecutor:
         self._validate_fleet_step_preconditions(action, actor_id, params)
         self._validate_preserve_life_preconditions(action, actor_id, targets or [], params)
         self._validate_cutting_words_preconditions(action, params)
+        self._validate_countercharm_preconditions(action, targets or [], params)
         self._validate_lands_aid_preconditions(action, targets or [], params)
         self._validate_natures_sanctuary_preconditions(action, actor_id, params)
         self._validate_sacred_weapon_preconditions(action, params)
@@ -854,6 +858,8 @@ class AutomationExecutor:
             raise AutomationError("Disciplined Survivor saving throw requires an explicit target")
         if bool(ctx.params.get("use_stroke_of_luck")):
             self._validate_stroke_of_luck_target_selection(ctx)
+        if bool(ctx.params.get("use_countercharm")):
+            self._validate_countercharm_target_selection(ctx)
         disciplined_survivor_target_id = ctx.params.get("disciplined_survivor_target_id")
         if (
             bool(ctx.params.get("use_disciplined_survivor"))
@@ -875,7 +881,21 @@ class AutomationExecutor:
             use_stroke_of_luck = self._use_stroke_of_luck_for_target(ctx, target_id)
             if use_stroke_of_luck:
                 self._validate_stroke_of_luck_available(target)
-            if sum([use_indomitable, use_disciplined_survivor, use_stroke_of_luck]) > 1:
+            use_countercharm = self._use_countercharm_for_save(ctx, target_id)
+            if use_countercharm:
+                self._validate_countercharm_save_node(ctx.action)
+                self._validate_countercharm_available(ctx, target_id)
+            if (
+                sum(
+                    [
+                        use_indomitable,
+                        use_disciplined_survivor,
+                        use_stroke_of_luck,
+                        use_countercharm,
+                    ]
+                )
+                > 1
+            ):
                 raise AutomationError("choose only one failed saving throw feature")
             auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
@@ -887,6 +907,8 @@ class AutomationExecutor:
                     )
                 if use_stroke_of_luck:
                     raise AutomationError("Stroke of Luck requires a rolled failed D20 Test")
+                if use_countercharm:
+                    raise AutomationError("Countercharm requires a rolled failed saving throw")
                 ctx.save_successes[target_id] = False
                 ctx.save_abilities[target_id] = ability.lower()
                 ctx.result.node_results[path] = {
@@ -972,6 +994,19 @@ class AutomationExecutor:
             if disciplined_survivor_result is not None:
                 total = int(disciplined_survivor_result["total_after"])
                 success = bool(disciplined_survivor_result["success"])
+            countercharm_result = self._apply_countercharm_to_failed_save(
+                ctx,
+                target,
+                total,
+                dc,
+                bonus,
+                adjustment,
+                path,
+                use_countercharm=use_countercharm,
+            )
+            if countercharm_result is not None:
+                total = int(countercharm_result["total_after"])
+                success = bool(countercharm_result["success"])
             ctx.save_successes[target_id] = success
             ctx.save_abilities[target_id] = ability.lower()
             ctx.result.node_results[path] = {
@@ -1001,6 +1036,8 @@ class AutomationExecutor:
                 ctx.result.node_results[path]["indomitable"] = indomitable_result
             if disciplined_survivor_result is not None:
                 ctx.result.node_results[path]["disciplined_survivor"] = disciplined_survivor_result
+            if countercharm_result is not None:
+                ctx.result.node_results[path]["countercharm"] = countercharm_result
 
     def _node_ability_check(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         original_ability = str(node["ability"]).lower()
@@ -3252,6 +3289,14 @@ class AutomationExecutor:
             return str(explicit_target) == target_id
         return len(ctx.targets) == 1
 
+    def _use_countercharm_for_save(self, ctx: _Context, target_id: str) -> bool:
+        if not bool(ctx.params.get("use_countercharm")):
+            return False
+        explicit_target = ctx.params.get("countercharm_target_id")
+        if explicit_target is not None:
+            return str(explicit_target) == target_id
+        return len(ctx.targets) == 1
+
     def _validate_stroke_of_luck_target_selection(self, ctx: _Context) -> None:
         explicit_target = ctx.params.get("stroke_of_luck_target_id")
         if explicit_target is None:
@@ -3260,6 +3305,128 @@ class AutomationExecutor:
             return
         if str(explicit_target) not in ctx.targets:
             raise AutomationError("Stroke of Luck target must be one of the action targets")
+
+    def _validate_countercharm_target_selection(self, ctx: _Context) -> None:
+        target_id = self._countercharm_target_id(ctx.targets, ctx.params)
+        if target_id not in ctx.targets:
+            raise AutomationError("Countercharm target must be one of the action targets")
+
+    def _validate_countercharm_preconditions(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if not bool(params.get("use_countercharm")):
+            return
+        self._validate_countercharm_save_node(action)
+        target_id = self._countercharm_target_id(targets, params)
+        if target_id not in targets:
+            raise AutomationError("Countercharm target must be one of the action targets")
+        target = self._entity(target_id)
+        for node in self._countercharm_saving_throw_nodes(action):
+            auto_fail_sources = self._saving_throw_auto_failure_sources(
+                target,
+                str(node["ability"]),
+                node,
+            )
+            if auto_fail_sources:
+                raise AutomationError("Countercharm requires a rolled failed saving throw")
+        self._validate_countercharm_available_for_ids(params, target_id)
+
+    def _validate_countercharm_save_node(self, action: ActionDefinition) -> None:
+        if not self._countercharm_saving_throw_nodes(
+            action
+        ) or not self._action_applies_countercharm_condition(action):
+            raise AutomationError("Countercharm requires a save against Charmed or Frightened")
+
+    def _action_applies_countercharm_condition(self, action: ActionDefinition) -> bool:
+        return any(
+            node.get("type") == "condition"
+            and str(node.get("condition", "")).lower() in COUNTERCHARM_CONDITIONS
+            and node.get("requires_failed_save") is True
+            for node in self._automation_nodes(action.automation)
+        )
+
+    def _countercharm_saving_throw_nodes(
+        self,
+        action: ActionDefinition,
+    ) -> list[dict[str, Any]]:
+        return [
+            node
+            for node in self._automation_nodes(action.automation)
+            if node.get("type") == "saving_throw" and "ability" in node
+        ]
+
+    @staticmethod
+    def _countercharm_target_id(targets: list[str], params: dict[str, Any]) -> str:
+        explicit_target = params.get("countercharm_target_id")
+        if explicit_target is not None:
+            return str(explicit_target)
+        if len(targets) == 1:
+            return str(targets[0])
+        raise AutomationError("Countercharm requires an explicit target")
+
+    @staticmethod
+    def _countercharm_bard_id(params: dict[str, Any]) -> str | None:
+        explicit_bard = params.get("countercharm_bard_id")
+        if explicit_bard is None:
+            explicit_bard = params.get("countercharm_actor_id")
+        if explicit_bard is None:
+            return None
+        return str(explicit_bard)
+
+    def _countercharm_bard_character(self, bard_id: str) -> Character | None:
+        try:
+            bard_entity = self._entity(bard_id)
+        except KeyError:
+            return None
+        if isinstance(bard_entity, Character):
+            return bard_entity
+        if isinstance(bard_entity, Combatant) and bard_entity.entity_id in self.state.characters:
+            return self.state.characters[bard_entity.entity_id]
+        return None
+
+    def _validate_countercharm_available(self, ctx: _Context, target_id: str) -> None:
+        self._validate_countercharm_available_for_ids(ctx.params, target_id)
+
+    def _validate_countercharm_available_for_ids(
+        self,
+        params: dict[str, Any],
+        target_id: str,
+    ) -> None:
+        bard_id = self._countercharm_bard_id(params)
+        if bard_id is None:
+            raise AutomationError("Countercharm requires an explicit Bard")
+        character = self._countercharm_bard_character(bard_id)
+        if character is None or int(character.class_levels.get("bard", 0)) < 7:
+            raise AutomationError("Countercharm requires Bard level 7")
+        try:
+            bard_entity = self._entity(bard_id)
+            target = self._entity(target_id)
+        except KeyError as exc:
+            raise AutomationError("Countercharm requires known Bard and target") from exc
+        self._validate_condition_gate(bard_entity, "reaction")
+        if not self._reaction_budget_available(bard_id, bard_entity):
+            raise AutomationError("not enough reaction budget")
+        if not self._countercharm_target_within_range(bard_id, bard_entity, target_id, target):
+            raise AutomationError("Countercharm requires target within 30 feet")
+
+    def _countercharm_target_within_range(
+        self,
+        bard_id: str,
+        bard_entity: Character | Monster | Combatant,
+        target_id: str,
+        target: Character | Monster | Combatant,
+    ) -> bool:
+        if self._entity_ids_match(bard_id, target_id):
+            return True
+        bard_combatant = self._combatant_for(bard_entity)
+        target_combatant = self._combatant_for(target)
+        if bard_combatant is None or target_combatant is None:
+            return False
+        distance = self._combat_distance(bard_combatant, target_combatant)
+        return distance is not None and distance <= COUNTERCHARM_RANGE_FT
 
     def _dark_ones_own_luck_character(
         self,
@@ -3540,6 +3707,59 @@ class AutomationExecutor:
             "reroll_base_total": reroll.total,
             "passive_adjustment": passive_adjustment,
             "total_after": after_total,
+            "spent": True,
+            "success": success,
+        }
+
+    def _apply_countercharm_to_failed_save(
+        self,
+        ctx: _Context,
+        entity: Character | Monster | Combatant,
+        total: int,
+        dc: int,
+        bonus: int,
+        passive_adjustment: int,
+        path: str,
+        *,
+        use_countercharm: bool,
+    ) -> dict[str, Any] | None:
+        if not use_countercharm or total >= dc:
+            return None
+        bard_id = self._countercharm_bard_id(ctx.params)
+        if bard_id is None:
+            raise AutomationError("Countercharm requires an explicit Bard")
+        bard_entity = self._entity(bard_id)
+        before = self.economy.budget_for(bard_id, self._effective_speed(bard_entity)).to_dict()
+        reroll = self.roll_service.roll(d20_expression(bonus), advantage="advantage")
+        ctx.result.dice_rolls.append(reroll.to_dict())
+        after_total = reroll.total + passive_adjustment
+        self.economy.spend(bard_id, "reaction", 1)
+        after = self.economy.budget_for(bard_id).to_dict()
+        target_id = str(getattr(entity, "id", ""))
+        success = after_total >= dc
+        ctx.result.state_changes.append(
+            {
+                "type": "countercharm",
+                "actor_id": bard_id,
+                "target_id": target_id,
+                "source_action_id": COUNTERCHARM_ACTION_ID,
+                "economy": "reaction",
+                "amount": 1,
+                "reaction_before": before,
+                "reaction_after": after,
+                "path": path,
+            }
+        )
+        return {
+            "source_action_id": COUNTERCHARM_ACTION_ID,
+            "bard_id": bard_id,
+            "target_id": target_id,
+            "total_before": total,
+            "reroll_base_total": reroll.total,
+            "passive_adjustment": passive_adjustment,
+            "total_after": after_total,
+            "reaction_before": before,
+            "reaction_after": after,
             "spent": True,
             "success": success,
         }

@@ -180,6 +180,31 @@
                         "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
                         "srd.font_of_inspiration_restore_bardic_inspiration_slot_3"
                     ]
+                },
+                "6": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3"
+                    ]
+                },
+                "7": {
+                    "features": ["Countercharm"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.bardic_inspiration",
+                        "srd.bard_expertise",
+                        "srd.jack_of_all_trades",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
+                        "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",
+                        "srd.countercharm"
+                    ]
                 }
             },
             "subclasses": {

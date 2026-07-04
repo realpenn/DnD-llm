@@ -1140,6 +1140,184 @@ def test_turn_undead_applies_failed_save_effects_and_ends_on_damage(make_state) 
     }
 
 
+def test_bard_countercharm_rerolls_failed_frightened_save_with_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].abilities["wis"] = 16
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    state.characters["pc2"].actions.append("srd.countercharm")
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        speed_ft=30,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 16]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.turn_undead",
+        ["skeleton1"],
+        params={
+            "use_countercharm": True,
+            "countercharm_bard_id": "pc2",
+            "countercharm_target_id": "skeleton1",
+        },
+        idempotency_key="countercharm-turn-undead",
+    )
+
+    save_result = result["node_results"]["automation[1]"]
+    assert save_result["success"] is True
+    assert save_result["total"] == 15
+    assert save_result["countercharm"]["source_action_id"] == "srd.countercharm"
+    assert save_result["countercharm"]["bard_id"] == "pc2"
+    assert save_result["countercharm"]["target_id"] == "skeleton1"
+    assert save_result["countercharm"]["total_before"] == 0
+    assert save_result["countercharm"]["reroll_base_total"] == 15
+    assert save_result["countercharm"]["reaction_before"]["reaction"] == 1
+    assert save_result["countercharm"]["reaction_after"]["reaction"] == 0
+    assert result["dice_rolls"][1]["advantage"] == "advantage"
+    assert state.encounter.action_budgets["pc2"]["reaction"] == 0
+    assert state.characters["pc1"].resources["srd.resource.channel_divinity"] == 1
+    assert state.encounter.combatants["skeleton1"].status_effects == []
+    assert any(
+        change["type"] == "countercharm"
+        and change["actor_id"] == "pc2"
+        and change["target_id"] == "skeleton1"
+        for change in result["state_changes"]
+    )
+
+
+def test_bard_countercharm_successful_save_does_not_spend_reaction(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].abilities["wis"] = 16
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    state.characters["pc2"].actions.append("srd.countercharm")
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.turn_undead",
+        ["skeleton1"],
+        params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        idempotency_key="countercharm-successful-save",
+    )
+
+    save_result = result["node_results"]["automation[1]"]
+    assert save_result["success"] is True
+    assert "countercharm" not in save_result
+    if "pc2" in state.encounter.action_budgets:
+        assert state.encounter.action_budgets["pc2"]["reaction"] == 1
+    assert not any(change["type"] == "countercharm" for change in result["state_changes"])
+
+
+def test_bard_countercharm_rejects_non_charmed_or_frightened_save_before_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].abilities["wis"] = 16
+    state.characters["pc1"].actions.append("srd.divine_spark_necrotic")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    state.characters["pc2"].actions.append("srd.countercharm")
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog(), roll_service=_FixedSingleDieRollService([1]))
+
+    with pytest.raises(
+        AutomationError,
+        match="Countercharm requires a save against Charmed or Frightened",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.divine_spark_necrotic",
+            ["goblin1"],
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+            idempotency_key="countercharm-nonqualifying-save",
+        )
+
+    assert state.characters["pc1"].resources["srd.resource.channel_divinity"] == 2
+    assert state.encounter.action_budgets == {}
+
+
+def test_bard_countercharm_requires_target_within_thirty_feet_before_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].abilities["wis"] = 16
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    state.characters["pc2"].actions.append("srd.countercharm")
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="front",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog(), roll_service=_FixedSingleDieRollService([1]))
+
+    with pytest.raises(AutomationError, match="Countercharm requires target within 30 feet"):
+        tools.perform_action(
+            "pc1",
+            "srd.turn_undead",
+            ["skeleton1"],
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+            idempotency_key="countercharm-out-of-range",
+        )
+
+    assert state.characters["pc1"].resources["srd.resource.channel_divinity"] == 2
+
+
 def test_sear_undead_adds_radiant_damage_without_ending_turn_effect(make_state) -> None:
     state = make_state()
     state.rng_seed = 7

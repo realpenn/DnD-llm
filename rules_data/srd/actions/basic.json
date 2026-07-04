@@ -2033,6 +2033,36 @@
             "audit_label": "Font of Inspiration: Restore Bardic Inspiration"
         },
         {
+            "id": "srd.countercharm",
+            "name": "Countercharm",
+            "localization": {
+                "en": "Countercharm",
+                "zh": "反迷惑",
+                "aliases": ["Countercharm", "吟游诗人反迷惑"]
+            },
+            "source": "SRD 5.2.1 Bard Class Features: Level 7: Countercharm",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "reaction",
+            "range": {"normal_ft": 30},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "bard", "class_level_min": 7},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "properties": {
+                "failed_saving_throw_reroll": true,
+                "conditions": ["charmed", "frightened"],
+                "reroll_advantage": true
+            },
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "When the bard or a creature within 30 feet fails a saving throw against an effect that applies the Charmed or Frightened condition, the bard can take a Reaction to cause the save to be rerolled with Advantage."
+                }
+            ],
+            "audit_label": "Countercharm"
+        },
+        {
             "id": "srd.divine_order",
             "name": "Divine Order",
             "localization": {

@@ -2008,6 +2008,102 @@ def test_resolver_checks_turn_undead_creature_type_policy(make_state) -> None:
     assert accepted.status == "accepted"
 
 
+def test_resolver_accepts_countercharm_for_turn_undead_target_in_range(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    state.characters["pc2"].actions.append("srd.countercharm")
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="驱散亡灵时反迷惑",
+            target_ids=["skeleton1"],
+            candidate_action_id="srd.turn_undead",
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        )
+    )
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.turn_undead"
+
+
+def test_resolver_rejects_countercharm_without_bard_level_seven(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 6}
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="驱散亡灵时反迷惑",
+            target_ids=["skeleton1"],
+            candidate_action_id="srd.turn_undead",
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Countercharm requires Bard level 7"
+
+
+def test_resolver_rejects_countercharm_for_nonqualifying_save(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.divine_spark_necrotic")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="神圣火花时反迷惑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.divine_spark_necrotic",
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Countercharm requires a save against Charmed or Frightened"
+
+
 def test_resolver_rejects_unmet_class_requirements(make_state) -> None:
     state = make_state()
     state.characters["pc1"].class_levels = {"fighter": 1}
