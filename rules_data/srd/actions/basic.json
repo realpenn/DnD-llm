@@ -5693,6 +5693,35 @@
             "audit_label": "Superior Defense"
         },
         {
+            "id": "srd.body_and_mind",
+            "name": "Body and Mind",
+            "localization": {
+                "en": "Body and Mind",
+                "zh": "身心合一",
+                "aliases": ["Monk Body and Mind", "武僧身心合一"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 20: Body and Mind",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 20},
+            "properties": {
+                "ability_score_increase": {"dex": 4, "wis": 4},
+                "ability_score_maximum": {"dex": 25, "wis": 25}
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Monk 20 increases Dexterity and Wisdom scores by 4, to a maximum of 25."
+                }
+            ],
+            "audit_label": "Body and Mind"
+        },
+        {
             "id": "srd.quivering_palm_release",
             "name": "End Quivering Palm",
             "localization": {

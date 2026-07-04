@@ -5,6 +5,7 @@ from typing import Any
 
 from ..models import Character
 from .checks import ability_modifier
+from .conditions import effective_ability_modifier
 
 HEAVY_ARMOR_ITEM_IDS = frozenset({"srd.chain_mail"})
 ARMOR_ITEM_IDS = frozenset({"srd.leather_armor", "srd.chain_mail"})
@@ -353,6 +354,10 @@ def monk_perfect_focus_applies(character: Character) -> bool:
 
 def monk_superior_defense_applies(character: Character) -> bool:
     return has_monk_feature(character, level=18)
+
+
+def monk_body_and_mind_applies(character: Character) -> bool:
+    return has_monk_feature(character, level=20)
 
 
 def saving_throw_proficiency_sources(actor: Any, ability: str) -> list[dict[str, Any]]:
@@ -944,9 +949,11 @@ def barbarian_unarmored_defense_armor_class(character: Character) -> int | None:
         return None
     if is_wearing_armor(character):
         return None
-    dexterity = int(character.abilities.get("dex", character.abilities.get("DEX", 10)))
-    constitution = int(character.abilities.get("con", character.abilities.get("CON", 10)))
-    return 10 + ability_modifier(dexterity) + ability_modifier(constitution)
+    return (
+        10
+        + effective_ability_modifier(character, "dex")
+        + effective_ability_modifier(character, "con")
+    )
 
 
 def monk_unarmored_defense_armor_class(character: Character) -> int | None:
@@ -954,9 +961,11 @@ def monk_unarmored_defense_armor_class(character: Character) -> int | None:
         return None
     if is_wearing_armor(character) or is_wielding_shield(character):
         return None
-    dexterity = int(character.abilities.get("dex", character.abilities.get("DEX", 10)))
-    wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
-    return 10 + ability_modifier(dexterity) + ability_modifier(wisdom)
+    return (
+        10
+        + effective_ability_modifier(character, "dex")
+        + effective_ability_modifier(character, "wis")
+    )
 
 
 def dark_ones_blessing_temp_hp(character: Character) -> int:

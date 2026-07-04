@@ -5204,6 +5204,17 @@ def test_compendium_loads_srd_actions() -> None:
         "can_replace_one_attack_during_attack_action": True,
         "can_end_harmlessly_without_action": True,
     }
+    assert compendium.classes["monk"].levels["19"]["features"] == ["Epic Boon"]
+    assert "srd.body_and_mind" not in compendium.classes["monk"].levels["19"]["actions"]
+    assert compendium.classes["monk"].levels["20"]["features"] == ["Body and Mind"]
+    assert "srd.body_and_mind" in compendium.classes["monk"].levels["20"]["actions"]
+    body_and_mind = compendium.action("srd.body_and_mind")
+    assert body_and_mind.action_economy == "none"
+    assert body_and_mind.requirements == {"class": "monk", "class_level_min": 20}
+    assert body_and_mind.properties == {
+        "ability_score_increase": {"dex": 4, "wis": 4},
+        "ability_score_maximum": {"dex": 25, "wis": 25},
+    }
     patient_focus = compendium.action("srd.patient_defense_focus")
     assert patient_focus.automation[3]["if_true"] == [
         {

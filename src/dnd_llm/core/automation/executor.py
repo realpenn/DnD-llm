@@ -4997,6 +4997,12 @@ class AutomationExecutor:
         ability: str,
         node: dict[str, Any],
     ) -> tuple[int, list[dict[str, Any]]]:
+        bonus_from = node.get("bonus_from")
+        if (
+            isinstance(bonus_from, dict)
+            and str(bonus_from.get("ability_modifier", "")).lower() == ability
+        ):
+            return 0, []
         source = self._ability_source(actor)
         effects = self._ability_status_effects(actor, source)
         sources = ability_score_set_sources(source, ability, status_effects=effects)

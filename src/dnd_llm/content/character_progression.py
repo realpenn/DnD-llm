@@ -259,6 +259,7 @@ CLASS_LEVEL_ACTIONS = {
         14: ["srd.disciplined_survivor"],
         15: ["srd.perfect_focus"],
         18: ["srd.superior_defense"],
+        20: ["srd.body_and_mind"],
     },
     "paladin": {
         1: ["srd.lay_on_hands", "srd.lay_on_hands_remove_poisoned", "srd.cure_wounds"],

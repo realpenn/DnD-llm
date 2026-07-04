@@ -4570,6 +4570,71 @@ def test_monk_level_five_unarmed_strike_uses_scaled_martial_arts_die(make_state)
     assert damage_change["amount"] == 6
 
 
+def test_monk_body_and_mind_improves_dexterity_wisdom_attacks_and_armor_class(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 20}
+    character.proficiency_bonus = 6
+    character.abilities["dex"] = 20
+    character.abilities["wis"] = 18
+    character.equipment = []
+    character.actions.append("srd.monk_unarmed_strike")
+    state.encounter.combatants["goblin1"].armor_class = 20
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 10, 4, 10]),
+    )
+
+    dex_check = tools.roll_check(
+        "pc1",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="body-and-mind-dex-check",
+    )
+    attack = tools.perform_action(
+        "pc1",
+        "srd.monk_unarmed_strike",
+        ["goblin1"],
+        idempotency_key="body-and-mind-unarmed",
+    )
+    incoming = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(
+        _attack_action(attack_bonus=0),
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    assert effective_ability_score(character, "dex") == 24
+    assert effective_ability_score(character, "wis") == 22
+    assert dex_check["roll"]["expression"] == "1d20+7"
+    assert dex_check["total"] == 8
+    attack_node = attack["node_results"]["automation[1]"]
+    assert attack_node["base_attack_bonus"] == 13
+    assert attack_node["passive_adjustment"] == 0
+    assert attack_node["total"] == 23
+    assert attack_node["hit"] is True
+    damage = next(change for change in attack["state_changes"] if change["type"] == "damage")
+    assert damage["amount"] == 11
+    incoming_node = incoming.node_results["automation[1]"]
+    assert incoming_node["base_ac"] == 16
+    assert incoming_node["ac"] == 23
+    assert incoming_node["armor_class_sources"][0]["source_action_id"] == (
+        "srd.monk_unarmored_defense"
+    )
+    assert incoming_node["armor_class_sources"][0]["value"] == 23
+
+
 def test_monk_empowered_strikes_can_make_unarmed_damage_force(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

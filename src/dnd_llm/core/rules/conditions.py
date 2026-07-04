@@ -204,16 +204,18 @@ def effective_ability_score(
 
 
 def _class_feature_ability_score(entity: Any, ability: str, score: int) -> int:
-    if ability not in {"str", "con"} or not _has_primal_champion(entity):
-        return score
-    return min(score + 4, 25)
+    if ability in {"str", "con"} and _has_class_feature_level(entity, "barbarian", 20):
+        return min(score + 4, 25)
+    if ability in {"dex", "wis"} and _has_class_feature_level(entity, "monk", 20):
+        return min(score + 4, 25)
+    return score
 
 
-def _has_primal_champion(entity: Any) -> bool:
+def _has_class_feature_level(entity: Any, class_name: str, level: int) -> bool:
     class_levels = getattr(entity, "class_levels", {})
     if not isinstance(class_levels, dict):
         return False
-    return int(class_levels.get("barbarian", 0)) >= 20
+    return int(class_levels.get(class_name, 0)) >= level
 
 
 def effective_ability_modifier(
@@ -270,14 +272,22 @@ def _class_feature_ability_score_source(
     ability: str,
     score: int,
 ) -> dict[str, Any] | None:
-    if ability not in {"str", "con"} or not _has_primal_champion(entity):
+    source_action_id: str
+    modifier: str
+    if ability in {"str", "con"} and _has_class_feature_level(entity, "barbarian", 20):
+        source_action_id = "srd.primal_champion"
+        modifier = "primal_champion_ability_score_increase"
+    elif ability in {"dex", "wis"} and _has_class_feature_level(entity, "monk", 20):
+        source_action_id = "srd.body_and_mind"
+        modifier = "body_and_mind_ability_score_increase"
+    else:
         return None
     feature_score = min(score + 4, 25)
     if feature_score <= score:
         return None
     return {
-        "source_action_id": "srd.primal_champion",
-        "modifier": "primal_champion_ability_score_increase",
+        "source_action_id": source_action_id,
+        "modifier": modifier,
         "ability": ability,
         "score": feature_score,
     }

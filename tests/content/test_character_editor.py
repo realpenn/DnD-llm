@@ -10,6 +10,7 @@ from dnd_llm.core.rules.class_features import (
     has_warlock_pact_of_blade,
     has_warlock_pact_of_tome,
     has_warlock_thirsting_blade,
+    monk_body_and_mind_applies,
     monk_can_move_across_liquids,
     monk_can_move_along_vertical_surfaces,
     monk_deflect_energy_applies,
@@ -2055,6 +2056,26 @@ def test_natural_language_character_edit_assigns_monk_superior_defense() -> None
     assert "srd.superior_defense" in result.character.actions
     assert result.character.resources["srd.resource.focus_points"] == 18
     assert monk_superior_defense_applies(result.character) is True
+
+
+def test_natural_language_character_edit_assigns_monk_body_and_mind() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    level_19 = apply_natural_language_character_edit(character, "职业 monk19")
+    result = apply_natural_language_character_edit(character, "职业 monk20")
+
+    assert level_19.accepted is True
+    assert level_19.character is not None
+    assert "srd.body_and_mind" not in level_19.character.actions
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"monk": 20}
+    assert "srd.superior_defense" in result.character.actions
+    assert "srd.body_and_mind" in result.character.actions
+    assert result.character.resources["srd.resource.focus_points"] == 20
+    assert effective_ability_score(result.character, "dex") == 17
+    assert effective_ability_score(result.character, "wis") == 16
+    assert monk_body_and_mind_applies(result.character) is True
 
 
 def test_natural_language_character_edit_assigns_open_hand_wholeness_of_body() -> None:
