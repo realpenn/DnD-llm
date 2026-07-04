@@ -3499,6 +3499,36 @@ def test_compendium_loads_srd_actions() -> None:
         "tick_on": "aura",
         "stacking_policy": "replace",
     }
+    ring_of_protection = compendium.action("srd.wear_ring_of_protection")
+    assert compendium.items["srd.ring_of_protection"].actions == ["srd.wear_ring_of_protection"]
+    assert compendium.items["srd.ring_of_protection"].properties == {
+        "rarity": "rare",
+        "requires_attunement": True,
+        "worn_slot": "ring",
+    }
+    assert ring_of_protection.action_economy == "none"
+    assert ring_of_protection.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert ring_of_protection.requirements == {"item": "srd.ring_of_protection"}
+    assert ring_of_protection.properties == {
+        "ring_of_protection": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "ring",
+    }
+    assert ring_of_protection.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "armor_class_bonus": 1,
+            "saving_throw_bonus": 1,
+        },
+        "duration": {"until": "while_wearing_ring_of_protection"},
+        "stacking_policy": "replace",
+    }
     ring_of_swimming = compendium.action("srd.wear_ring_of_swimming")
     assert compendium.items["srd.ring_of_swimming"].actions == ["srd.wear_ring_of_swimming"]
     assert compendium.items["srd.ring_of_swimming"].properties == {
@@ -4713,6 +4743,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.items["srd.boots_of_elvenkind"].actions == ["srd.wear_boots_of_elvenkind"]
     assert compendium.items["srd.bracers_of_defense"].actions == ["srd.wear_bracers_of_defense"]
     assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]
+    assert compendium.items["srd.ring_of_protection"].actions == ["srd.wear_ring_of_protection"]
     assert compendium.items["srd.ring_of_swimming"].actions == ["srd.wear_ring_of_swimming"]
     assert compendium.items["srd.leather_armor"].properties["armor_category"] == "light"
     assert compendium.items["srd.chain_mail"].properties["armor_category"] == "heavy"

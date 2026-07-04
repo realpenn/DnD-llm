@@ -1,6 +1,43 @@
 {
   "items": [
     {
+      "id": "srd.wear_ring_of_protection",
+      "name": "Wear Ring of Protection",
+      "localization": {
+        "en": "Wear Ring of Protection",
+        "zh": "佩戴防护戒指",
+        "aliases": ["启用防护戒指"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Protection",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.ring_of_protection" },
+      "properties": {
+        "ring_of_protection": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "ring"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "armor_class_bonus": 1,
+            "saving_throw_bonus": 1
+          },
+          "duration": { "until": "while_wearing_ring_of_protection" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this ring, the target gains a +1 bonus to Armor Class and saving throws." }
+      ],
+      "audit_label": "Wear Ring of Protection"
+    },
+    {
       "id": "srd.wear_ring_of_swimming",
       "name": "Wear Ring of Swimming",
       "localization": {

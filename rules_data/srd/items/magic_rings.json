@@ -1,6 +1,25 @@
 {
   "items": [
     {
+      "id": "srd.ring_of_protection",
+      "name": "Ring of Protection",
+      "localization": {
+        "en": "Ring of Protection",
+        "zh": "防护戒指",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Protection",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ring",
+      "actions": ["srd.wear_ring_of_protection"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "ring"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.ring_of_swimming",
       "name": "Ring of Swimming",
       "localization": {

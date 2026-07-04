@@ -378,6 +378,7 @@ P0 脚手架
   - [x] **P2-4ad** SRD 5.2.1 `Rod of Alertness` 落地：新增 very rare rod item（requires attunement）与持握、四个 SRD 列表法术、Protective Aura action；持握时获得 Wisdom (Perception) checks 与 Initiative rolls Advantage；从法杖施放 Detect Evil and Good、Detect Magic、Detect Poison and Disease、See Invisibility 时复用既有 SRD 法术效果且不消耗角色 spell slots；Protective Aura 作为 Magic action 记录 60 尺 Bright Light/额外 60 尺 Dim Light、10 分钟或 Magic action 拔出结束、到下个黎明前不可再用，并给亮光内自己/盟友 +1 AC、+1 saving throws 与感知同亮光内 Invisible 生物位置 marker；覆盖 compendium、executor、resolver、先攻、自动模拟与全量门禁测试。
   - [x] **P2-4ae** SRD 5.2.1 `Cloak of Protection` 落地：新增 uncommon wondrous item（requires attunement）与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后按 SRD 获得 +1 Armor Class 与 +1 saving throws，被动修正接入 executor 攻击 AC 与 automation/direct saving throw 结算；严格限制目标只能是自己，不虚构额外防护或完整 attunement 槽位系统；覆盖 compendium、executor 与 resolver 测试。
   - [x] **P2-4af** SRD 5.2.1 `Bracers of Defense` 落地：新增 rare wondrous item（requires attunement）与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后仅在未穿 armor 且未使用 Shield 时按 SRD 获得 +2 Armor Class，并为 AC 被动修正新增独立 `armor_class_requires_no_shield` 条件以免影响既有未穿甲规则；严格限制目标只能是自己，不虚构额外防护；覆盖 compendium、executor 穿甲/持盾反例与 resolver 测试。
+  - [x] **P2-4ag** SRD 5.2.1 `Ring of Protection` 落地：新增 rare ring item（requires attunement）与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 获得 +1 Armor Class 与 +1 saving throws，被动修正接入 executor 攻击 AC 与 automation/direct saving throw 结算；严格限制目标只能是自己，不虚构额外防护或完整 attunement 槽位系统；覆盖 compendium、executor 与 resolver 测试。
 - [x] **P2-5** 难度/CR 预算自动化。
 
 # Phase 3 — 动态内容
