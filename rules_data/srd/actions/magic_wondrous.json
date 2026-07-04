@@ -1,6 +1,240 @@
 {
   "items": [
     {
+      "id": "srd.wear_belt_of_hill_giant_strength",
+      "name": "Wear Belt of Giant Strength (hill)",
+      "localization": {
+        "en": "Wear Belt of Giant Strength (hill)",
+        "zh": "穿戴山丘巨人力量腰带",
+        "aliases": ["启用山丘巨人力量腰带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.belt_of_hill_giant_strength" },
+      "properties": {
+        "belt_of_giant_strength": true,
+        "giant_type": "hill",
+        "strength_score": 21,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 21 },
+            "giant_strength_type": "hill"
+          },
+          "duration": { "until": "while_wearing_belt_of_hill_giant_strength" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this belt, the target's Strength changes to 21 unless it is already 21 or higher without the belt." }
+      ],
+      "audit_label": "Wear Belt of Giant Strength (hill)"
+    },
+    {
+      "id": "srd.wear_belt_of_frost_giant_strength",
+      "name": "Wear Belt of Giant Strength (frost)",
+      "localization": {
+        "en": "Wear Belt of Giant Strength (frost)",
+        "zh": "穿戴霜巨人力量腰带",
+        "aliases": ["启用霜巨人力量腰带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.belt_of_frost_giant_strength" },
+      "properties": {
+        "belt_of_giant_strength": true,
+        "giant_type": "frost",
+        "strength_score": 23,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 23 },
+            "giant_strength_type": "frost"
+          },
+          "duration": { "until": "while_wearing_belt_of_frost_giant_strength" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this belt, the target's Strength changes to 23 unless it is already 23 or higher without the belt." }
+      ],
+      "audit_label": "Wear Belt of Giant Strength (frost)"
+    },
+    {
+      "id": "srd.wear_belt_of_stone_giant_strength",
+      "name": "Wear Belt of Giant Strength (stone)",
+      "localization": {
+        "en": "Wear Belt of Giant Strength (stone)",
+        "zh": "穿戴石巨人力量腰带",
+        "aliases": ["启用石巨人力量腰带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.belt_of_stone_giant_strength" },
+      "properties": {
+        "belt_of_giant_strength": true,
+        "giant_type": "stone",
+        "strength_score": 23,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 23 },
+            "giant_strength_type": "stone"
+          },
+          "duration": { "until": "while_wearing_belt_of_stone_giant_strength" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this belt, the target's Strength changes to 23 unless it is already 23 or higher without the belt." }
+      ],
+      "audit_label": "Wear Belt of Giant Strength (stone)"
+    },
+    {
+      "id": "srd.wear_belt_of_fire_giant_strength",
+      "name": "Wear Belt of Giant Strength (fire)",
+      "localization": {
+        "en": "Wear Belt of Giant Strength (fire)",
+        "zh": "穿戴火巨人力量腰带",
+        "aliases": ["启用火巨人力量腰带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.belt_of_fire_giant_strength" },
+      "properties": {
+        "belt_of_giant_strength": true,
+        "giant_type": "fire",
+        "strength_score": 25,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 25 },
+            "giant_strength_type": "fire"
+          },
+          "duration": { "until": "while_wearing_belt_of_fire_giant_strength" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this belt, the target's Strength changes to 25 unless it is already 25 or higher without the belt." }
+      ],
+      "audit_label": "Wear Belt of Giant Strength (fire)"
+    },
+    {
+      "id": "srd.wear_belt_of_cloud_giant_strength",
+      "name": "Wear Belt of Giant Strength (cloud)",
+      "localization": {
+        "en": "Wear Belt of Giant Strength (cloud)",
+        "zh": "穿戴云巨人力量腰带",
+        "aliases": ["启用云巨人力量腰带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.belt_of_cloud_giant_strength" },
+      "properties": {
+        "belt_of_giant_strength": true,
+        "giant_type": "cloud",
+        "strength_score": 27,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 27 },
+            "giant_strength_type": "cloud"
+          },
+          "duration": { "until": "while_wearing_belt_of_cloud_giant_strength" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this belt, the target's Strength changes to 27 unless it is already 27 or higher without the belt." }
+      ],
+      "audit_label": "Wear Belt of Giant Strength (cloud)"
+    },
+    {
+      "id": "srd.wear_belt_of_storm_giant_strength",
+      "name": "Wear Belt of Giant Strength (storm)",
+      "localization": {
+        "en": "Wear Belt of Giant Strength (storm)",
+        "zh": "穿戴风暴巨人力量腰带",
+        "aliases": ["启用风暴巨人力量腰带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.belt_of_storm_giant_strength" },
+      "properties": {
+        "belt_of_giant_strength": true,
+        "giant_type": "storm",
+        "strength_score": 29,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 29 },
+            "giant_strength_type": "storm"
+          },
+          "duration": { "until": "while_wearing_belt_of_storm_giant_strength" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this belt, the target's Strength changes to 29 unless it is already 29 or higher without the belt." }
+      ],
+      "audit_label": "Wear Belt of Giant Strength (storm)"
+    },
+    {
       "id": "srd.wear_boots_of_elvenkind",
       "name": "Wear Boots of Elvenkind",
       "localization": {

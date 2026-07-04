@@ -3117,6 +3117,52 @@ def test_compendium_loads_srd_actions() -> None:
             "concentration": False,
         },
     }
+    belt_of_giant_strength_variants = {
+        "hill": (21, "rare"),
+        "frost": (23, "very_rare"),
+        "stone": (23, "very_rare"),
+        "fire": (25, "very_rare"),
+        "cloud": (27, "legendary"),
+        "storm": (29, "legendary"),
+    }
+    for giant_type, (score, rarity) in belt_of_giant_strength_variants.items():
+        item_id = f"srd.belt_of_{giant_type}_giant_strength"
+        action_id = f"srd.wear_belt_of_{giant_type}_giant_strength"
+        item = compendium.items[item_id]
+        action = compendium.action(action_id)
+        assert item.actions == [action_id]
+        assert item.properties == {
+            "giant_type": giant_type,
+            "strength_score": score,
+            "rarity": rarity,
+            "requires_attunement": True,
+            "worn_slot": "waist",
+        }
+        assert action.action_economy == "none"
+        assert action.target_policy == {
+            "min": 1,
+            "max": 1,
+            "self": True,
+            "harmful": False,
+        }
+        assert action.requirements == {"item": item_id}
+        assert action.properties == {
+            "belt_of_giant_strength": True,
+            "giant_type": giant_type,
+            "strength_score": score,
+            "self_only": True,
+            "requires_attunement": True,
+            "worn_slot": "waist",
+        }
+        assert action.automation[1] == {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "ability_score_set": {"str": score},
+                "giant_strength_type": giant_type,
+            },
+            "duration": {"until": f"while_wearing_belt_of_{giant_type}_giant_strength"},
+            "stacking_policy": "replace",
+        }
     boots_of_elvenkind = compendium.action("srd.wear_boots_of_elvenkind")
     assert compendium.items["srd.boots_of_elvenkind"].actions == ["srd.wear_boots_of_elvenkind"]
     assert compendium.items["srd.boots_of_elvenkind"].properties == {
@@ -4930,6 +4976,10 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert compendium.items["srd.potion_of_vitality"].actions == ["srd.use_potion_of_vitality"]
     assert compendium.items["srd.potion_of_resistance"].actions == ["srd.use_potion_of_resistance"]
+    for giant_type in ["hill", "frost", "stone", "fire", "cloud", "storm"]:
+        assert compendium.items[f"srd.belt_of_{giant_type}_giant_strength"].actions == [
+            f"srd.wear_belt_of_{giant_type}_giant_strength"
+        ]
     assert compendium.items["srd.boots_of_elvenkind"].actions == ["srd.wear_boots_of_elvenkind"]
     assert compendium.items["srd.bracers_of_defense"].actions == ["srd.wear_bracers_of_defense"]
     assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]

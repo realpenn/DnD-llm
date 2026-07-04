@@ -8218,6 +8218,155 @@ def test_potion_of_giant_strength_does_not_lower_equal_or_higher_strength(
     assert strength_check["roll"]["expression"] == "1d20+6"
 
 
+def test_belt_of_giant_strength_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError, match="actor does not have item srd.belt_of_storm_giant_strength"
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.belt_of_storm_giant_strength",
+            ["pc1"],
+            action_id="srd.wear_belt_of_storm_giant_strength",
+            idempotency_key="missing-belt-of-storm-giant-strength",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.belt_of_storm_giant_strength")
+    result = tools.use_item(
+        "pc1",
+        "srd.belt_of_storm_giant_strength",
+        ["pc1"],
+        action_id="srd.wear_belt_of_storm_giant_strength",
+        idempotency_key="equipped-belt-of-storm-giant-strength",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_belt_of_storm_giant_strength"
+    )
+
+
+def test_belt_of_giant_strength_sets_strength_for_checks_saves_attacks_and_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.belt_of_storm_giant_strength"] = 1
+    character.actions.append("srd.longsword_attack")
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10, 10, 4]),
+    )
+
+    belt = tools.use_item(
+        "pc1",
+        "srd.belt_of_storm_giant_strength",
+        ["pc1"],
+        action_id="srd.wear_belt_of_storm_giant_strength",
+        idempotency_key="wear-belt-of-storm-giant-strength",
+    )
+    strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        idempotency_key="storm-belt-strength-check",
+    )
+    strength_save = tools.roll_save(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        idempotency_key="storm-belt-strength-save",
+    )
+    attack = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        idempotency_key="storm-belt-longsword",
+    )
+
+    assert belt["success"] is True
+    assert character.inventory["srd.belt_of_storm_giant_strength"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_belt_of_storm_giant_strength"
+    assert effect["passive_modifiers"] == {
+        "ability_score_set": {"str": 29},
+        "giant_strength_type": "storm",
+    }
+    assert effect["duration"] == {"until": "while_wearing_belt_of_storm_giant_strength"}
+    assert strength_check["bonus"] == 9
+    assert strength_check["roll"]["expression"] == "1d20+9"
+    assert strength_save["bonus"] == 9
+    assert strength_save["roll"]["expression"] == "1d20+9"
+
+    attack_node = attack["node_results"]["automation[1]"]
+    assert attack_node["base_attack_bonus"] == 4
+    assert attack_node["passive_adjustment"] == 7
+    assert attack_node["total"] == 21
+    assert attack_node["passive_sources"][0]["modifier"] == "ability_score_set"
+    assert attack_node["passive_sources"][0]["score"] == 29
+    assert attack_node["passive_sources"][0]["amount"] == 7
+    damage = next(change for change in attack["state_changes"] if change["type"] == "damage")
+    assert damage["amount"] == 13
+    assert damage["applied"] == 13
+    assert damage["passive_damage_bonus"] == 7
+    assert damage["passive_sources"][0]["modifier"] == "ability_score_set"
+    assert damage["passive_sources"][0]["score"] == 29
+    assert damage["passive_sources"][0]["amount"] == 7
+
+
+def test_belt_of_giant_strength_does_not_lower_equal_or_higher_strength(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.abilities["str"] = 30
+    character.inventory["srd.belt_of_storm_giant_strength"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    )
+
+    belt = tools.use_item(
+        "pc1",
+        "srd.belt_of_storm_giant_strength",
+        ["pc1"],
+        action_id="srd.wear_belt_of_storm_giant_strength",
+        idempotency_key="wear-storm-belt-no-lower",
+    )
+    strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        idempotency_key="storm-belt-no-lower-check",
+    )
+
+    assert belt["success"] is True
+    assert character.inventory["srd.belt_of_storm_giant_strength"] == 1
+    assert state.encounter.combatants["pc1"].status_effects[-1]["passive_modifiers"] == {
+        "ability_score_set": {"str": 29},
+        "giant_strength_type": "storm",
+    }
+    assert strength_check["bonus"] == 10
+    assert strength_check["roll"]["expression"] == "1d20+10"
+
+
 def test_potion_of_animal_friendship_casts_level_three_spell_at_dc_13(
     make_state,
 ) -> None:

@@ -2408,6 +2408,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert accepted.status == "accepted"
     assert accepted.action_id == "srd.use_potion_of_healing"
 
+    state.characters["pc1"].equipment.append("srd.belt_of_hill_giant_strength")
+    belt = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.belt_of_hill_giant_strength",
+        )
+    )
+
+    assert belt.status == "accepted"
+    assert belt.action_id == "srd.wear_belt_of_hill_giant_strength"
+
     state.characters["pc1"].equipment.append("srd.boots_of_elvenkind")
     equipped = resolver.resolve(
         PlayerActionDraft(
@@ -2679,6 +2692,26 @@ def test_resolver_rejects_periapt_of_proof_against_poison_non_self_target(
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_periapt_of_proof_against_poison"
+
+
+def test_resolver_rejects_belt_of_giant_strength_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.belt_of_hill_giant_strength"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.belt_of_hill_giant_strength",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_belt_of_hill_giant_strength"
 
 
 def test_resolver_rejects_stone_of_good_luck_non_self_target(make_state) -> None:

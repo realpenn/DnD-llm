@@ -1,6 +1,132 @@
 {
   "items": [
     {
+      "id": "srd.belt_of_hill_giant_strength",
+      "name": "Belt of Giant Strength (hill)",
+      "localization": {
+        "en": "Belt of Giant Strength (hill)",
+        "zh": "山丘巨人力量腰带",
+        "aliases": ["Hill Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_hill_giant_strength"],
+      "properties": {
+        "giant_type": "hill",
+        "strength_score": 21,
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_frost_giant_strength",
+      "name": "Belt of Giant Strength (frost)",
+      "localization": {
+        "en": "Belt of Giant Strength (frost)",
+        "zh": "霜巨人力量腰带",
+        "aliases": ["Frost Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_frost_giant_strength"],
+      "properties": {
+        "giant_type": "frost",
+        "strength_score": 23,
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_stone_giant_strength",
+      "name": "Belt of Giant Strength (stone)",
+      "localization": {
+        "en": "Belt of Giant Strength (stone)",
+        "zh": "石巨人力量腰带",
+        "aliases": ["Stone Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_stone_giant_strength"],
+      "properties": {
+        "giant_type": "stone",
+        "strength_score": 23,
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_fire_giant_strength",
+      "name": "Belt of Giant Strength (fire)",
+      "localization": {
+        "en": "Belt of Giant Strength (fire)",
+        "zh": "火巨人力量腰带",
+        "aliases": ["Fire Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_fire_giant_strength"],
+      "properties": {
+        "giant_type": "fire",
+        "strength_score": 25,
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_cloud_giant_strength",
+      "name": "Belt of Giant Strength (cloud)",
+      "localization": {
+        "en": "Belt of Giant Strength (cloud)",
+        "zh": "云巨人力量腰带",
+        "aliases": ["Cloud Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_cloud_giant_strength"],
+      "properties": {
+        "giant_type": "cloud",
+        "strength_score": 27,
+        "rarity": "legendary",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_storm_giant_strength",
+      "name": "Belt of Giant Strength (storm)",
+      "localization": {
+        "en": "Belt of Giant Strength (storm)",
+        "zh": "风暴巨人力量腰带",
+        "aliases": ["Storm Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_storm_giant_strength"],
+      "properties": {
+        "giant_type": "storm",
+        "strength_score": 29,
+        "rarity": "legendary",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.boots_of_elvenkind",
       "name": "Boots of Elvenkind",
       "localization": {
