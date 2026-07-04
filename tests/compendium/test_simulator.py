@@ -37,6 +37,16 @@ def test_extra_attack_marker_does_not_spend_action_budget() -> None:
     ]
 
 
+def test_class_any_level_min_simulation_uses_required_level() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    report = CompendiumSimulator(compendium).simulate_action("srd.evasion")
+
+    assert report.ok is True
+    assert report.serialized_state is not None
+    actor = report.serialized_state["characters"]["pc_actor"]
+    assert actor["class_levels"]["monk"] == 7
+
+
 def test_every_loaded_hazard_can_be_simulated_and_serialized() -> None:
     compendium = CompendiumLoader("rules_data").load()
     reports = CompendiumSimulator(compendium).simulate_all_hazards()

@@ -10379,6 +10379,87 @@ def test_monk_evasion_disabled_while_incapacitated(make_state) -> None:
     assert state.encounter.combatants["pc1"].hp_current == 5
 
 
+def test_rogue_evasion_applies_to_successful_and_failed_dex_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].saving_throw_proficiencies = ["dex"]
+    action = ActionDefinition(
+        id="test.rogue_dex_save_half_damage",
+        name="Rogue Dex Save Half Damage",
+        localization={"en": "Rogue Dex Save Half Damage", "zh": "游荡者敏捷半伤", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"},
+            {"type": "damage", "amount": 10, "damage_type": "fire", "save_half": True},
+        ],
+    )
+
+    success = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([12]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+    failed = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    success_damage = next(change for change in success.state_changes if change["type"] == "damage")
+    failed_damage = next(change for change in failed.state_changes if change["type"] == "damage")
+    assert success.node_results["automation[0]"]["success"] is True
+    assert success_damage["amount"] == 0
+    assert success_damage["applied"] == 0
+    assert success_damage["evasion"]["amount_after_evasion"] == 0
+    assert failed.node_results["automation[0]"]["success"] is False
+    assert failed_damage["amount"] == 5
+    assert failed_damage["applied"] == 5
+    assert failed_damage["evasion"]["amount_after_evasion"] == 5
+
+
+def test_rogue_evasion_disabled_while_incapacitated(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].saving_throw_proficiencies = ["dex"]
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "incapacitated-test", "condition": "incapacitated"}
+    )
+    action = ActionDefinition(
+        id="test.rogue_dex_save_half_damage",
+        name="Rogue Dex Save Half Damage",
+        localization={"en": "Rogue Dex Save Half Damage", "zh": "游荡者敏捷半伤", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"},
+            {"type": "damage", "amount": 10, "damage_type": "fire", "save_half": True},
+        ],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([12]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc1"])
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert result.node_results["automation[0]"]["success"] is True
+    assert damage_change["amount"] == 5
+    assert damage_change["applied"] == 5
+    assert "evasion" not in damage_change
+
+
 def test_automation_ability_check_uses_backing_character_skill_proficiency(
     make_state,
 ) -> None:

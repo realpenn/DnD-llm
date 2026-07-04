@@ -3944,6 +3944,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.steady_aim" in compendium.classes["rogue"].levels["3"]["actions"]
     assert compendium.classes["rogue"].levels["6"]["features"] == ["Expertise"]
     assert "srd.rogue_expertise" in compendium.classes["rogue"].levels["6"]["actions"]
+    assert compendium.classes["rogue"].levels["7"]["features"] == ["Evasion"]
+    assert "srd.evasion" in compendium.classes["rogue"].levels["7"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",
@@ -4090,7 +4092,10 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.evasion" in compendium.classes["monk"].levels["7"]["actions"]
     evasion = compendium.action("srd.evasion")
     assert evasion.action_economy == "none"
-    assert evasion.requirements == {"class": "monk", "class_level_min": 7}
+    assert evasion.requirements == {
+        "class_any": ["monk", "rogue"],
+        "class_any_level_min": 7,
+    }
     assert evasion.properties == {
         "dexterity_save_half_damage": True,
         "success_damage": 0,

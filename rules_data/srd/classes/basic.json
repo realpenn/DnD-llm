@@ -1277,6 +1277,23 @@
                         "srd.cunning_action_hide",
                         "srd.steady_aim"
                     ]
+                },
+                "7": {
+                    "features": ["Evasion"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.hide",
+                        "srd.rogue_expertise",
+                        "srd.sneak_attack",
+                        "srd.thieves_cant",
+                        "srd.cunning_strike",
+                        "srd.uncanny_dodge",
+                        "srd.cunning_action_dash",
+                        "srd.cunning_action_disengage",
+                        "srd.cunning_action_hide",
+                        "srd.steady_aim",
+                        "srd.evasion"
+                    ]
                 }
             },
             "subclasses": {

@@ -187,6 +187,14 @@ def monk_evasion_applies(character: Character) -> bool:
     return has_monk_feature(character, level=7)
 
 
+def rogue_evasion_applies(character: Character) -> bool:
+    return int(character.class_levels.get("rogue", 0)) >= 7
+
+
+def evasion_applies(character: Character) -> bool:
+    return monk_evasion_applies(character) or rogue_evasion_applies(character)
+
+
 def monk_acrobatic_movement_applies(character: Character) -> bool:
     return (
         has_monk_feature(character, level=9)

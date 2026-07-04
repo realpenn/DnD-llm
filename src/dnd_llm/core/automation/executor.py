@@ -30,6 +30,7 @@ from ..rules.class_features import (
     draconic_resilience_armor_class,
     druid_magician_check_bonus,
     druid_natures_ward_resistance_type,
+    evasion_applies,
     has_barbarian_berserker_feature,
     has_colossus_slayer,
     has_condition,
@@ -52,7 +53,6 @@ from ..rules.class_features import (
     is_bloodied,
     is_wearing_armor,
     monk_disciplined_survivor_applies,
-    monk_evasion_applies,
     monk_forgoing_food_drink_exhaustion_immunity,
     monk_martial_arts_die,
     monk_slow_fall_damage_reduction,
@@ -7366,7 +7366,7 @@ class AutomationExecutor:
             return None
         target = self._entity(target_id)
         owner = self._proficiency_source(target)
-        if not isinstance(owner, Character) or not monk_evasion_applies(owner):
+        if not isinstance(owner, Character) or not evasion_applies(owner):
             return None
         incapacitated_sources = self._condition_sources(
             target,

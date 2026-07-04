@@ -190,10 +190,11 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                 subclasses[str(class_name)] = str(subclass_id)
         elif action.requirements.get("class_any") is not None:
             class_any = action.requirements["class_any"]
+            class_any_level_min = int(action.requirements.get("class_any_level_min", 1))
             if isinstance(class_any, str):
-                class_levels = {class_any: 1}
+                class_levels = {class_any: max(1, class_any_level_min)}
             elif isinstance(class_any, list) and class_any:
-                class_levels = {str(class_any[0]): 1}
+                class_levels = {str(class_any[0]): max(1, class_any_level_min)}
         elif "class_level_min" in action.requirements:
             class_levels = {"fighter": max(1, class_level_min)}
         if action.id == "srd.hunters_lore":

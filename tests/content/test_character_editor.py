@@ -2471,6 +2471,17 @@ def test_natural_language_character_edit_assigns_rogue_level_6_expertise_slots()
     assert "srd.rogue_expertise" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_rogue_evasion() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 rogue7")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"rogue": 7}
+    assert "srd.evasion" in result.character.actions
+
+
 def test_natural_language_character_edit_rejects_rogue_level_5_extra_expertise_slots() -> None:
     character = default_fighter("pc1", "Penn")
     character.skill_proficiencies = ["stealth", "perception", "arcana", "history"]
