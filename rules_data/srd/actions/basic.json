@@ -1870,7 +1870,7 @@
                 "zh": "吟游诗人专精",
                 "aliases": ["Bard Expertise", "吟游诗人技能专精"]
             },
-            "source": "SRD 5.2.1 Bard Class Features: Level 2: Expertise",
+            "source": "SRD 5.2.1 Bard Class Features: Level 2: Expertise; Bard level 9 additional Expertise",
             "rules_version": "srd-5.2.1",
             "action_type": "class_feature",
             "action_economy": "none",
@@ -1882,7 +1882,7 @@
             "automation": [
                 {
                     "type": "text_result",
-                    "text": "This marker records that a Bard gains Expertise in two skill proficiencies of choice, doubling Proficiency Bonus for those skill checks."
+                    "text": "This marker records that a Bard gains Expertise in two skill proficiencies of choice at level 2, and in two more skill proficiencies of choice at Bard level 9, doubling Proficiency Bonus for those skill checks."
                 }
             ],
             "audit_label": "Bard Expertise"

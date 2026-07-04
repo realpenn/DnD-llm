@@ -3609,6 +3609,10 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.bard_expertise" not in compendium.classes["bard"].levels["1"]["actions"]
     assert "srd.bard_expertise" in compendium.classes["bard"].levels["2"]["actions"]
     assert "srd.bard_expertise" in compendium.classes["bard"].levels["5"]["actions"]
+    assert compendium.classes["bard"].levels["8"]["features"] == ["Ability Score Improvement"]
+    assert compendium.classes["bard"].levels["9"]["features"] == ["Expertise"]
+    assert "srd.bard_expertise" in compendium.classes["bard"].levels["9"]["actions"]
+    assert "Bard level 9" in compendium.action("srd.bard_expertise").source
     assert "srd.jack_of_all_trades" not in compendium.classes["bard"].levels["1"]["actions"]
     assert "srd.jack_of_all_trades" in compendium.classes["bard"].levels["2"]["actions"]
     assert "srd.jack_of_all_trades" in compendium.classes["bard"].levels["5"]["actions"]

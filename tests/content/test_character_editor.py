@@ -2226,6 +2226,37 @@ def test_natural_language_character_edit_assigns_bard_countercharm() -> None:
     assert "srd.countercharm" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_bard_level_nine_expertise_slots() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.skill_proficiencies = ["stealth", "perception", "arcana", "history"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 bard9 专精 潜行 察觉 奥秘 历史",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"bard": 9}
+    assert result.character.skill_expertise == ["stealth", "perception", "arcana", "history"]
+    assert "srd.bard_expertise" in result.character.actions
+    assert "srd.countercharm" in result.character.actions
+
+
+def test_natural_language_character_edit_rejects_bard_level_eight_extra_expertise_slots() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.skill_proficiencies = ["stealth", "perception", "arcana", "history"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 bard8 专精 潜行 察觉 奥秘 历史",
+    )
+
+    assert result.accepted is False
+    assert result.errors is not None
+    assert any("Expertise 槽位" in error for error in result.errors)
+
+
 def test_natural_language_character_edit_supports_multiclass_progression() -> None:
     character = default_fighter("pc1", "Penn")
 
