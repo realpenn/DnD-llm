@@ -4355,13 +4355,19 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["rogue"].subclasses["thief"] == {
         "name": "Thief",
         "level": 3,
-        "features": ["Fast Hands", "Second-Story Work", "Supreme Sneak"],
+        "features": [
+            "Fast Hands",
+            "Second-Story Work",
+            "Supreme Sneak",
+            "Thief's Reflexes",
+        ],
         "actions": [
             "srd.fast_hands_sleight_of_hand",
             "srd.fast_hands_utilize",
             "srd.fast_hands_magic_item",
             "srd.second_story_work",
             "srd.supreme_sneak",
+            "srd.thiefs_reflexes",
         ],
     }
     supreme_sneak = compendium.action("srd.supreme_sneak")
@@ -4378,6 +4384,17 @@ def test_compendium_loads_srd_actions() -> None:
             "three_quarters",
             "total",
         ],
+    }
+    thiefs_reflexes = compendium.action("srd.thiefs_reflexes")
+    assert thiefs_reflexes.requirements == {
+        "class": "rogue",
+        "class_level_min": 17,
+        "subclass": "thief",
+    }
+    assert thiefs_reflexes.properties == {
+        "first_round_turns": 2,
+        "second_turn_initiative_penalty": -10,
+        "only_first_round": True,
     }
     fast_hands = compendium.action("srd.fast_hands_sleight_of_hand")
     assert fast_hands.action_economy == "bonus_action"

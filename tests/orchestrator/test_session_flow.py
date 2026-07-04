@@ -482,6 +482,57 @@ def test_roll_initiative_applies_champion_remarkable_athlete_advantage(make_stat
     assert any(roll["advantage"] == "advantage" for roll in audit.events[-1].dice_rolls)
 
 
+def test_roll_initiative_adds_thief_reflexes_second_first_round_turn(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 17}
+    character.subclasses = {"rogue": "thief"}
+    audit = AuditLog()
+
+    order = roll_initiative(state, audit)
+
+    pc1_turns = [index for index, combatant_id in enumerate(order) if combatant_id == "pc1"]
+    groups = {group["group_key"]: group for group in audit.events[-1].tool_result["groups"]}
+    thiefs_reflexes = audit.events[-1].tool_result["thiefs_reflexes"]
+
+    assert pc1_turns[1] > pc1_turns[0]
+    assert len(pc1_turns) == 2
+    assert thiefs_reflexes == [
+        {
+            "combatant_id": "pc1",
+            "character_id": "pc1",
+            "source_action_id": "srd.thiefs_reflexes",
+            "normal_initiative": groups["combatant:pc1"]["initiative"],
+            "second_turn_initiative": groups["combatant:pc1"]["initiative"] - 10,
+            "initiative_penalty": -10,
+            "round": 1,
+        }
+    ]
+
+
+def test_thief_reflexes_extra_turn_is_removed_after_first_round(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 17}
+    character.subclasses = {"rogue": "thief"}
+    roll_initiative(state, AuditLog())
+    assert state.encounter.initiative_order.count("pc1") == 2
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    advances = 0
+    while state.encounter.round_number == 1:
+        session.advance_turn(f"advance-thiefs-reflexes-{advances}")
+        advances += 1
+        assert advances <= 10
+
+    assert state.encounter.round_number == 2
+    assert state.encounter.initiative_order.count("pc1") == 1
+    assert state.encounter.turn_index == 0
+    assert state.encounter.current_combatant_id == state.encounter.initiative_order[0]
+
+
 def test_roll_initiative_applies_monk_uncanny_metabolism_when_beneficial(
     make_state,
 ) -> None:

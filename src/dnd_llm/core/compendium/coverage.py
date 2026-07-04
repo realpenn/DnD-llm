@@ -190,6 +190,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.step_of_the_wind",
     "srd.step_of_the_wind_focus",
     "srd.thieves_cant",
+    "srd.thiefs_reflexes",
     "srd.thirsting_blade",
     "srd.turn_undead",
     "srd.uncanny_metabolism",

@@ -4343,6 +4343,36 @@
             "audit_label": "Supreme Sneak"
         },
         {
+            "id": "srd.thiefs_reflexes",
+            "name": "Thief's Reflexes",
+            "localization": {
+                "en": "Thief's Reflexes",
+                "zh": "盗贼反射",
+                "aliases": ["Thief Reflexes", "盗贼反射"]
+            },
+            "source": "SRD 5.2.1 Rogue Subclass: Thief, Level 17: Thief's Reflexes",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 17, "subclass": "thief"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "properties": {
+                "first_round_turns": 2,
+                "second_turn_initiative_penalty": -10,
+                "only_first_round": true
+            },
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Thief can take two turns during the first round of any combat: one at normal Initiative and one at Initiative minus 10."
+                }
+            ],
+            "audit_label": "Thief's Reflexes"
+        },
+        {
             "id": "srd.cunning_action_dash",
             "name": "Cunning Action: Dash",
             "localization": {

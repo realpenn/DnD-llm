@@ -363,6 +363,7 @@ SUBCLASS_ACTIONS = {
                 "srd.second_story_work",
             ],
             9: ["srd.supreme_sneak"],
+            17: ["srd.thiefs_reflexes"],
         },
     },
     "sorcerer": {

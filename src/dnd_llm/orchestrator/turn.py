@@ -9,11 +9,13 @@ from ..core.rules.class_features import (
     UNCANNY_METABOLISM_RESOURCE,
     has_fighter_champion_feature,
     has_monk_feature,
+    has_rogue_thief_feature,
     monk_martial_arts_die,
     monk_perfect_focus_applies,
 )
 
 FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
+THIEFS_REFLEXES_ACTION_ID = "srd.thiefs_reflexes"
 
 
 def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
@@ -57,8 +59,14 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
             if isinstance(healing_roll, dict):
                 uncanny_metabolism_rolls.append(healing_roll)
     scored.sort(key=lambda item: (-item[0], item[1]))
+    initiative_entries, thiefs_reflexes_results = _initiative_entries_with_thiefs_reflexes(
+        state,
+        scored,
+    )
     state.encounter.initiative_order = [
-        combatant_id for _, _, combatant_ids, _ in scored for combatant_id in combatant_ids
+        combatant_id
+        for _, _, combatant_ids, _ in initiative_entries
+        for combatant_id in combatant_ids
     ]
     state.encounter.turn_index = 0
     state.encounter.round_number = 1
@@ -81,6 +89,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
             ],
             "uncanny_metabolism": uncanny_metabolism_results,
             "perfect_focus": perfect_focus_results,
+            "thiefs_reflexes": thiefs_reflexes_results,
         },
         dice_rolls=[roll for _, _, _, roll in scored] + uncanny_metabolism_rolls,
     )
@@ -162,13 +171,74 @@ def _apply_perfect_focus(state: GameState, combatant_id: str) -> dict[str, objec
     }
 
 
+def _initiative_entries_with_thiefs_reflexes(
+    state: GameState,
+    scored: list[tuple[int, str, list[str], dict[str, object]]],
+) -> tuple[list[tuple[int, str, list[str], dict[str, object]]], list[dict[str, object]]]:
+    if state.encounter is None:
+        return scored, []
+    entries: list[tuple[int, str, list[str], dict[str, object]]] = []
+    results: list[dict[str, object]] = []
+    for score, group_key, combatant_ids, roll_dict in scored:
+        entries.append((score, group_key, combatant_ids, roll_dict))
+        for combatant_id in combatant_ids:
+            combatant = state.encounter.combatants.get(combatant_id)
+            if combatant is None:
+                continue
+            source = _initiative_source(state, combatant)
+            if not isinstance(source, Character) or not has_rogue_thief_feature(
+                source,
+                level=17,
+            ):
+                continue
+            second_turn_initiative = score - 10
+            entries.append(
+                (
+                    second_turn_initiative,
+                    f"{group_key}:thiefs_reflexes:{combatant_id}",
+                    [combatant_id],
+                    {},
+                )
+            )
+            results.append(
+                {
+                    "combatant_id": combatant_id,
+                    "character_id": source.id,
+                    "source_action_id": THIEFS_REFLEXES_ACTION_ID,
+                    "normal_initiative": score,
+                    "second_turn_initiative": second_turn_initiative,
+                    "initiative_penalty": -10,
+                    "round": 1,
+                }
+            )
+    entries.sort(key=lambda item: (-item[0], item[1]))
+    return entries, results
+
+
 def advance_turn(encounter: Encounter) -> str | None:
     if not encounter.initiative_order:
         return None
     encounter.turn_index = (encounter.turn_index + 1) % len(encounter.initiative_order)
     if encounter.turn_index == 0:
         encounter.round_number += 1
+        if encounter.round_number > 1:
+            _remove_first_round_extra_turns(encounter)
     return encounter.current_combatant_id
+
+
+def _remove_first_round_extra_turns(encounter: Encounter) -> None:
+    seen: set[str] = set()
+    pruned: list[str] = []
+    for combatant_id in encounter.initiative_order:
+        if combatant_id in seen:
+            continue
+        seen.add(combatant_id)
+        pruned.append(combatant_id)
+    if len(pruned) == len(encounter.initiative_order):
+        return
+    current = encounter.current_combatant_id
+    encounter.initiative_order = pruned
+    encounter.turn_index = pruned.index(current) if current in pruned else 0
 
 
 def _initiative_groups(state: GameState) -> dict[str, list[str]]:
