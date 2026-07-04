@@ -2647,8 +2647,17 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
-        "features": ["Hunter's Lore", "Hunter's Prey", "Defensive Tactics"],
-        "actions": ["srd.hunters_lore", "srd.defensive_tactics"],
+        "features": [
+            "Hunter's Lore",
+            "Hunter's Prey",
+            "Defensive Tactics",
+            "Superior Hunter's Prey",
+        ],
+        "actions": [
+            "srd.hunters_lore",
+            "srd.defensive_tactics",
+            "srd.superior_hunters_prey",
+        ],
         "feature_options": {
             "hunters_prey": [
                 "srd.hunters_prey_colossus_slayer",
@@ -2702,6 +2711,20 @@ def test_compendium_loads_srd_actions() -> None:
     assert multiattack_defense.properties == {
         "defensive_tactics_option": "multiattack_defense",
         "same_attacker_follow_up_attacks_disadvantage": True,
+    }
+    superior_hunters_prey = compendium.action("srd.superior_hunters_prey")
+    assert superior_hunters_prey.action_economy == "none"
+    assert superior_hunters_prey.requirements == {
+        "class": "ranger",
+        "class_level_min": 11,
+        "subclass": "hunter",
+    }
+    assert superior_hunters_prey.properties == {
+        "requires_hunters_mark": True,
+        "once_per_turn": True,
+        "secondary_target_within_ft_of_marked_target": 30,
+        "secondary_target_must_be_visible": True,
+        "copies_hunters_mark_extra_damage": True,
     }
     assert {
         "srd.cunning_action_dash",
@@ -5030,6 +5053,9 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.ranger_expertise" in compendium.classes["ranger"].levels["9"]["actions"]
     assert compendium.classes["ranger"].levels["10"]["features"] == ["Tireless"]
     assert "srd.tireless" in compendium.classes["ranger"].levels["10"]["actions"]
+    assert compendium.classes["ranger"].levels["11"]["features"] == ["Subclass Feature"]
+    assert "srd.tireless" in compendium.classes["ranger"].levels["11"]["actions"]
+    assert "srd.superior_hunters_prey" not in compendium.classes["ranger"].levels["11"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

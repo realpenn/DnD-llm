@@ -4131,6 +4131,38 @@
             "audit_label": "Hunter's Prey: Horde Breaker"
         },
         {
+            "id": "srd.superior_hunters_prey",
+            "name": "Superior Hunter's Prey",
+            "localization": {
+                "en": "Superior Hunter's Prey",
+                "zh": "高等猎人猎物",
+                "aliases": ["Superior Hunter’s Prey", "高等猎人猎物"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 11: Superior Hunter's Prey",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 11, "subclass": "hunter"},
+            "properties": {
+                "requires_hunters_mark": true,
+                "once_per_turn": true,
+                "secondary_target_within_ft_of_marked_target": 30,
+                "secondary_target_must_be_visible": true,
+                "copies_hunters_mark_extra_damage": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "Once per turn when this Ranger Hunter deals damage to a creature marked by Hunter's Mark, the Ranger can also deal that spell's extra damage to a different visible creature within 30 feet of the first creature."
+                }
+            ],
+            "audit_label": "Superior Hunter's Prey"
+        },
+        {
             "id": "srd.dodge",
             "name": "Dodge",
             "localization": {"en": "Dodge", "zh": "闪避", "aliases": ["防御", "专心防守"]},

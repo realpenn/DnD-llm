@@ -2778,6 +2778,178 @@ def test_multiattack_defense_marks_attacker_and_expires_on_turn_owner_end(
     assert after_expiry.node_results["automation[1]"]["status_sources"] == []
 
 
+def test_superior_hunters_prey_deals_hunters_mark_damage_to_second_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 11}
+    hunter.subclasses = {"ranger": "hunter"}
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Second Prey",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        position_node_id="front",
+    )
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "hunters-mark-superior-prey",
+            "source_action_id": "srd.favored_enemy_hunters_mark",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "passive_modifiers": {
+                "hunters_mark": True,
+                "attacker_bonus_damage": "1d6",
+                "damage_type": "force",
+            },
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 2, 4, 5]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        params={
+            "use_superior_hunters_prey": True,
+            "superior_hunters_prey_target_id": "goblin2",
+        },
+        idempotency_key="superior-hunters-prey",
+    )
+
+    assert result["success"] is True
+    original_damage = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "damage" and change["target_id"] == "goblin1"
+    )
+    assert original_damage["amount"] == 5
+    assert original_damage["extra_damage"][0]["amount"] == 4
+    superior_damage = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "damage" and change["target_id"] == "goblin2"
+    )
+    assert superior_damage == {
+        "type": "damage",
+        "target_id": "goblin2",
+        "amount": 5,
+        "applied": 5,
+        "damage_type": "force",
+        "feature": "superior_hunters_prey",
+        "source_action_id": "srd.superior_hunters_prey",
+        "original_target_id": "goblin1",
+        "path": "automation[2].superior_hunters_prey",
+        "sources": [
+            {
+                "feature": "superior_hunters_prey",
+                "source_action_id": "srd.superior_hunters_prey",
+                "hunters_mark_source_action_id": "srd.favored_enemy_hunters_mark",
+                "effect_id": "hunters-mark-superior-prey",
+                "dice": "1d6",
+                "damage_type": "force",
+            }
+        ],
+    }
+    assert state.encounter.combatants["goblin1"].hp_current == 21
+    assert state.encounter.combatants["goblin2"].hp_current == 15
+    marker = next(
+        change for change in result["state_changes"] if change["type"] == "superior_hunters_prey"
+    )
+    assert marker["target_id"] == "goblin2"
+    assert marker["source_action_id"] == "srd.superior_hunters_prey"
+
+    tools.economy.set("pc1", "action", 1)
+    with pytest.raises(AutomationError, match="only once per turn"):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_superior_hunters_prey": True,
+                "superior_hunters_prey_target_id": "goblin2",
+            },
+            idempotency_key="superior-hunters-prey-repeat",
+        )
+
+
+def test_superior_hunters_prey_requires_level_11_hunter(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 10}
+    hunter.subclasses = {"ranger": "hunter"}
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Second Prey",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        position_node_id="front",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires Ranger Hunter level 11"):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_superior_hunters_prey": True,
+                "superior_hunters_prey_target_id": "goblin2",
+            },
+            idempotency_key="superior-hunters-prey-too-early",
+        )
+
+
+def test_superior_hunters_prey_requires_marked_original_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 11}
+    hunter.subclasses = {"ranger": "hunter"}
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Second Prey",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        position_node_id="front",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="marked by your Hunter's Mark"):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_superior_hunters_prey": True,
+                "superior_hunters_prey_target_id": "goblin2",
+            },
+            idempotency_key="superior-hunters-prey-unmarked",
+        )
+
+
 def test_sneak_attack_adds_damage_on_finesse_attack_with_advantage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

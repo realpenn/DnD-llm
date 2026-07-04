@@ -790,6 +790,10 @@ def has_multiattack_defense(character: Character) -> bool:
     )
 
 
+def has_superior_hunters_prey(character: Character) -> bool:
+    return has_ranger_hunter_feature(character, level=11)
+
+
 def second_story_work_climb_speed(character: Character) -> int | None:
     if not has_rogue_thief_feature(character, level=3):
         return None

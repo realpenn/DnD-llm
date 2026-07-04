@@ -364,7 +364,11 @@ SUBCLASS_ACTIONS = {
         "devotion": {3: ["srd.sacred_weapon"]},
     },
     "ranger": {
-        "hunter": {3: ["srd.hunters_lore"], 7: ["srd.defensive_tactics"]},
+        "hunter": {
+            3: ["srd.hunters_lore"],
+            7: ["srd.defensive_tactics"],
+            11: ["srd.superior_hunters_prey"],
+        },
     },
     "rogue": {
         "thief": {

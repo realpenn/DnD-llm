@@ -52,6 +52,7 @@ from ..rules.class_features import (
     has_paladin_feature,
     has_ranger_hunter_feature,
     has_rogue_thief_feature,
+    has_superior_hunters_prey,
     has_warlock_eldritch_mind,
     has_warlock_eldritch_smite,
     has_warlock_fiend_feature,
@@ -168,6 +169,8 @@ ELDRITCH_SMITE_ACTION_ID = "srd.eldritch_smite"
 COLOSSUS_SLAYER_ACTION_ID = "srd.hunters_prey_colossus_slayer"
 HORDE_BREAKER_ACTION_ID = "srd.hunters_prey_horde_breaker"
 HORDE_BREAKER_USED_CONDITION = "horde_breaker_used"
+SUPERIOR_HUNTERS_PREY_ACTION_ID = "srd.superior_hunters_prey"
+SUPERIOR_HUNTERS_PREY_USED_CONDITION = "superior_hunters_prey_used"
 WEAPON_ATTACK_TARGET_THIS_TURN_CONDITION = "weapon_attack_target_this_turn"
 THIRSTING_BLADE_PACT_WEAPON_ATTACK_CONDITION = "thirsting_blade_pact_weapon_attack_this_turn"
 ROD_OF_ABSORPTION_ITEM_ID = "srd.rod_of_absorption"
@@ -350,6 +353,7 @@ class _Context:
     last_attack_node: dict[str, Any] | None = None
     horde_breaker_applied: bool = False
     horde_breaker_resolving: bool = False
+    superior_hunters_prey_applied: bool = False
     quivering_palm_applied: bool = False
 
 
@@ -444,6 +448,12 @@ class AutomationExecutor:
         self._validate_open_hand_technique_preconditions(action, actor_id, targets or [], params)
         self._validate_hunters_lore_preconditions(action, actor_id, targets or [])
         self._validate_horde_breaker_preconditions(action, actor_id, targets or [], params)
+        self._validate_superior_hunters_prey_preconditions(
+            action,
+            actor_id,
+            targets or [],
+            params,
+        )
         self._validate_repelling_blast_preconditions(action, actor_id, targets or [], params)
         self._validate_slow_fall_preconditions(action, targets or [], params)
         self._validate_stunning_strike_preconditions(action, actor_id, targets or [], params)
@@ -1394,6 +1404,12 @@ class AutomationExecutor:
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
+            self._apply_superior_hunters_prey_if_requested(
+                ctx,
+                target_id,
+                total_damage_taken,
+                path,
+            )
             if brutal_strike.amount:
                 self._apply_brutal_strike_effect(ctx, target_id, brutal_strike.effect or "", path)
             for cunning_strike in self._cunning_strike_effects(sneak_attack.cunning_strike):
@@ -5423,6 +5439,205 @@ class AutomationExecutor:
         return any(
             effect.get("condition") == HORDE_BREAKER_USED_CONDITION
             and effect.get("source_action_id") == HORDE_BREAKER_ACTION_ID
+            for effect in self._status_effects_for(actor)
+        )
+
+    @staticmethod
+    def _superior_hunters_prey_target_id(params: dict[str, Any]) -> str | None:
+        raw = params.get("superior_hunters_prey_target_id") or params.get(
+            "superior_hunter_prey_target_id"
+        )
+        if raw in (None, "", False):
+            return None
+        return str(raw)
+
+    def _validate_superior_hunters_prey_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        target_id = self._superior_hunters_prey_target_id(params)
+        if params.get("use_superior_hunters_prey") is not True and target_id is None:
+            return
+        if target_id is None:
+            raise AutomationError("Superior Hunter's Prey requires superior_hunters_prey_target_id")
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or not has_superior_hunters_prey(actor_owner):
+            raise AutomationError("Superior Hunter's Prey requires Ranger Hunter level 11")
+        if self._has_superior_hunters_prey_used(actor_id):
+            raise AutomationError("Superior Hunter's Prey can be used only once per turn")
+        if len(targets) != 1:
+            raise AutomationError("Superior Hunter's Prey requires exactly one marked target")
+        original_target_id = targets[0]
+        if not self._target_marked_by_hunters_mark(actor_id, original_target_id):
+            raise AutomationError(
+                "Superior Hunter's Prey requires a target marked by your Hunter's Mark"
+            )
+        if target_id == original_target_id:
+            raise AutomationError("Superior Hunter's Prey target must be a different creature")
+        self._entity(target_id)
+        self._validate_superior_hunters_prey_secondary_target(
+            actor_id,
+            original_target_id,
+            target_id,
+        )
+
+    def _validate_superior_hunters_prey_secondary_target(
+        self,
+        actor_id: str,
+        original_target_id: str,
+        secondary_target_id: str,
+    ) -> None:
+        actor = self._entity(actor_id)
+        original_target = self._entity(original_target_id)
+        secondary_target = self._entity(secondary_target_id)
+        if not (
+            isinstance(actor, Combatant)
+            and isinstance(original_target, Combatant)
+            and isinstance(secondary_target, Combatant)
+        ):
+            raise AutomationError("Superior Hunter's Prey requires tactical combat targets")
+        if (
+            self.state.encounter is None
+            or self.state.encounter.tactical_graph is None
+            or actor.position_node_id is None
+            or original_target.position_node_id is None
+            or secondary_target.position_node_id is None
+        ):
+            raise AutomationError("Superior Hunter's Prey requires tactical positions")
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        distance = graph.shortest_distance(
+            original_target.position_node_id,
+            secondary_target.position_node_id,
+        )
+        if distance is None or int(distance) > 30:
+            raise AutomationError(
+                "Superior Hunter's Prey target must be within 30 feet of the marked target"
+            )
+        if not graph.has_line_of_sight(actor.position_node_id, secondary_target.position_node_id):
+            raise AutomationError("Superior Hunter's Prey target must be visible")
+
+    def _apply_superior_hunters_prey_if_requested(
+        self,
+        ctx: _Context,
+        original_target_id: str,
+        original_damage_taken: int,
+        path: str,
+    ) -> None:
+        secondary_target_id = self._superior_hunters_prey_target_id(ctx.params)
+        if ctx.params.get("use_superior_hunters_prey") is not True and secondary_target_id is None:
+            return
+        if secondary_target_id is None or ctx.superior_hunters_prey_applied:
+            return
+        if original_damage_taken <= 0:
+            return
+        actor_owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(actor_owner, Character) or not has_superior_hunters_prey(actor_owner):
+            return
+        if self._has_superior_hunters_prey_used(ctx.actor_id):
+            return
+        mark_effect = self._hunters_mark_effect(ctx.actor_id, original_target_id)
+        if mark_effect is None:
+            return
+        modifiers = mark_effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            return
+        dice = modifiers.get("attacker_bonus_damage")
+        if not isinstance(dice, str) or not dice:
+            return
+        damage_type = str(modifiers.get("damage_type", "force"))
+        roll = self.roll_service.roll(dice)
+        ctx.result.dice_rolls.append(roll.to_dict())
+        amount = roll.total
+        secondary_target = self._entity(secondary_target_id)
+        damage_taken = self._mitigated_damage(secondary_target, amount, damage_type)
+        applied = self._apply_damage(secondary_target_id, amount, damage_type)
+        ctx.last_damage_taken[secondary_target_id] = damage_taken
+        ctx.superior_hunters_prey_applied = True
+        self._mark_superior_hunters_prey_used(ctx, secondary_target_id)
+        ctx.result.state_changes.append(
+            {
+                "type": "damage",
+                "target_id": secondary_target_id,
+                "amount": amount,
+                "applied": applied,
+                "damage_type": damage_type,
+                "feature": "superior_hunters_prey",
+                "source_action_id": SUPERIOR_HUNTERS_PREY_ACTION_ID,
+                "original_target_id": original_target_id,
+                "path": f"{path}.superior_hunters_prey",
+                "sources": [
+                    {
+                        "feature": "superior_hunters_prey",
+                        "source_action_id": SUPERIOR_HUNTERS_PREY_ACTION_ID,
+                        "hunters_mark_source_action_id": mark_effect.get("source_action_id"),
+                        "effect_id": mark_effect.get("effect_id"),
+                        "dice": dice,
+                        "damage_type": damage_type,
+                    }
+                ],
+            }
+        )
+        concentration = self._concentration_save_after_damage(
+            secondary_target_id,
+            damage_taken,
+            f"{path}.superior_hunters_prey",
+        )
+        if concentration is not None:
+            concentration_change, concentration_roll = concentration
+            ctx.result.dice_rolls.append(concentration_roll.to_dict())
+            ctx.result.state_changes.append(concentration_change)
+        if damage_taken > 0:
+            ctx.result.state_changes.extend(
+                self._expire_target_effects_on_damage(
+                    secondary_target_id,
+                    f"{path}.superior_hunters_prey",
+                    damage_source_actor_id=ctx.actor_id,
+                )
+            )
+
+    def _hunters_mark_effect(self, actor_id: str, target_id: str) -> dict[str, Any] | None:
+        target = self._entity(target_id)
+        for effect in self._status_effects_for(target):
+            if effect.get("applied_by") != actor_id:
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if isinstance(modifiers, dict) and modifiers.get("hunters_mark") is True:
+                return effect
+        return None
+
+    def _mark_superior_hunters_prey_used(self, ctx: _Context, target_id: str) -> None:
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, SUPERIOR_HUNTERS_PREY_USED_CONDITION),
+            source_ref=("SRD 5.2.1 Ranger Subclass: Hunter, Level 11: Superior Hunter's Prey"),
+            source_action_id=SUPERIOR_HUNTERS_PREY_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=SUPERIOR_HUNTERS_PREY_USED_CONDITION,
+            duration={"until": "start_of_next_turn"},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"target_id": target_id},
+        )
+        getattr(actor, "status_effects").append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "superior_hunters_prey",
+                "target_id": target_id,
+                "effect_id": effect.effect_id,
+                "condition": effect.condition,
+                "source_action_id": effect.source_action_id,
+            }
+        )
+
+    def _has_superior_hunters_prey_used(self, actor_id: str) -> bool:
+        actor = self._entity(actor_id)
+        return any(
+            effect.get("condition") == SUPERIOR_HUNTERS_PREY_USED_CONDITION
+            and effect.get("source_action_id") == SUPERIOR_HUNTERS_PREY_ACTION_ID
             for effect in self._status_effects_for(actor)
         )
 
