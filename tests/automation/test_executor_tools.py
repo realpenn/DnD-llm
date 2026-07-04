@@ -9460,6 +9460,112 @@ def test_eyes_of_the_eagle_item_requirement_accepts_equipment_and_rejects_missin
     )
 
 
+def test_eyes_of_minute_seeing_grant_close_investigation_advantage_and_darkvision(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.eyes_of_minute_seeing"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    eyes = tools.use_item(
+        "pc1",
+        "srd.eyes_of_minute_seeing",
+        ["pc1"],
+        action_id="srd.wear_eyes_of_minute_seeing",
+        idempotency_key="wear-eyes-of-minute-seeing",
+    )
+    close_investigation = tools.roll_check(
+        "pc1",
+        "int",
+        skill="Investigation",
+        difficulty_tier="medium",
+        examines_within_1_ft=True,
+        idempotency_key="minute-eyes-close-investigation",
+    )
+    ordinary_investigation = tools.roll_check(
+        "pc1",
+        "int",
+        skill="Investigation",
+        difficulty_tier="medium",
+        relies_on_sight=True,
+        idempotency_key="minute-eyes-ordinary-investigation",
+    )
+    close_perception = tools.roll_check(
+        "pc1",
+        "wis",
+        skill="Perception",
+        difficulty_tier="medium",
+        examines_within_1_ft=True,
+        idempotency_key="minute-eyes-close-perception",
+    )
+
+    assert eyes["success"] is True
+    assert character.inventory["srd.eyes_of_minute_seeing"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_eyes_of_minute_seeing"
+    assert effect["passive_modifiers"] == {
+        "darkvision_ft": 1,
+        "ability_check_advantage_skills": [
+            {
+                "ability": "int",
+                "skill": "investigation",
+                "requires_context": "within_1_ft_examination",
+            }
+        ],
+    }
+    assert effect["duration"] == {"until": "while_wearing_eyes_of_minute_seeing"}
+    assert close_investigation["roll"]["advantage"] == "advantage"
+    assert close_investigation["status_sources"][0]["modifier"] == (
+        "ability_check_advantage_skills"
+    )
+    assert close_investigation["status_sources"][0]["source_action_id"] == (
+        "srd.wear_eyes_of_minute_seeing"
+    )
+    assert close_investigation["status_sources"][0]["contexts"] == ["within_1_ft_examination"]
+    assert ordinary_investigation["roll"]["advantage"] is None
+    assert ordinary_investigation["status_sources"] == []
+    assert close_perception["roll"]["advantage"] is None
+    assert close_perception["status_sources"] == []
+    assert darkvision_range_from_effects(state.encounter.combatants["pc1"].status_effects) == 1
+
+
+def test_eyes_of_minute_seeing_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.eyes_of_minute_seeing"):
+        tools.use_item(
+            "pc1",
+            "srd.eyes_of_minute_seeing",
+            ["pc1"],
+            action_id="srd.wear_eyes_of_minute_seeing",
+            idempotency_key="missing-eyes-of-minute-seeing",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.eyes_of_minute_seeing")
+    result = tools.use_item(
+        "pc1",
+        "srd.eyes_of_minute_seeing",
+        ["pc1"],
+        action_id="srd.wear_eyes_of_minute_seeing",
+        idempotency_key="equipped-eyes-of-minute-seeing",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_eyes_of_minute_seeing"
+    )
+
+
 def test_robe_of_eyes_grants_sight_perception_and_special_senses(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

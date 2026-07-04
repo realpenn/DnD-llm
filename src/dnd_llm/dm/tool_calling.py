@@ -143,6 +143,9 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
                 "use_stroke_of_luck": _boolean(
                     "Whether an eligible Rogue 20 uses Stroke of Luck if this D20 Test fails."
                 ),
+                "examines_within_1_ft": _boolean(
+                    "Whether this check examines something within 1 foot, for SRD effects such as Eyes of Minute Seeing."
+                ),
             },
             required=["actor_id", "ability"],
         ),

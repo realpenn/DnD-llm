@@ -3229,6 +3229,44 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_eyes_of_the_eagle"},
         "stacking_policy": "replace",
     }
+    eyes_of_minute_seeing = compendium.action("srd.wear_eyes_of_minute_seeing")
+    assert compendium.items["srd.eyes_of_minute_seeing"].actions == [
+        "srd.wear_eyes_of_minute_seeing"
+    ]
+    assert compendium.items["srd.eyes_of_minute_seeing"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": False,
+        "worn_slot": "eyes",
+    }
+    assert eyes_of_minute_seeing.action_economy == "none"
+    assert eyes_of_minute_seeing.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert eyes_of_minute_seeing.requirements == {"item": "srd.eyes_of_minute_seeing"}
+    assert eyes_of_minute_seeing.properties == {
+        "eyes_of_minute_seeing": True,
+        "self_only": True,
+        "requires_attunement": False,
+        "worn_slot": "eyes",
+    }
+    assert eyes_of_minute_seeing.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "darkvision_ft": 1,
+            "ability_check_advantage_skills": [
+                {
+                    "ability": "int",
+                    "skill": "investigation",
+                    "requires_context": "within_1_ft_examination",
+                }
+            ],
+        },
+        "duration": {"until": "while_wearing_eyes_of_minute_seeing"},
+        "stacking_policy": "replace",
+    }
     gauntlets_of_ogre_power = compendium.action("srd.wear_gauntlets_of_ogre_power")
     assert compendium.items["srd.gauntlets_of_ogre_power"].actions == [
         "srd.wear_gauntlets_of_ogre_power"
@@ -4866,6 +4904,9 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.items["srd.bracers_of_defense"].actions == ["srd.wear_bracers_of_defense"]
     assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]
     assert compendium.items["srd.eyes_of_the_eagle"].actions == ["srd.wear_eyes_of_the_eagle"]
+    assert compendium.items["srd.eyes_of_minute_seeing"].actions == [
+        "srd.wear_eyes_of_minute_seeing"
+    ]
     assert compendium.items["srd.gauntlets_of_ogre_power"].actions == [
         "srd.wear_gauntlets_of_ogre_power"
     ]

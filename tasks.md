@@ -383,6 +383,7 @@ P0 脚手架
   - [x] **P2-4ai** SRD 5.2.1 `Headband of Intellect` 落地：新增 uncommon wondrous item（requires attunement）与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 将 Intelligence 视为 19，且基础 Intelligence 已 19 或更高时不降低；复用 `ability_score_set` 接入 direct check/save 与 Wizard spell save DC 结算；严格限制目标只能是自己，不虚构额外熟练、语言、记忆或完整 attunement 槽位系统；覆盖 compendium、executor 与 resolver 测试。
   - [x] **P2-4aj** SRD 5.2.1 `Eyes of the Eagle` 落地：新增 uncommon wondrous item 与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 仅对依赖视觉的 Wisdom (Perception) checks 提供 Advantage，并记录 clear visibility 下可辨认极远处 2 尺及以上细节的规则 marker；严格限制目标只能是自己，不虚构额外 Darkvision、Truesight、侦察距离算法或完整视觉系统；覆盖 compendium、executor 与 resolver 测试。
   - [x] **P2-4ak** SRD 5.2.1 `Periapt of Proof against Poison` 落地：新增 rare wondrous item（requires attunement）与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 获得 Poisoned condition 与 Poison damage Immunity；为被动状态效果补齐 `damage_immunities` 伤害归零读取路径，并保留免疫来源审计；严格限制目标只能是自己，不虚构解毒、疾病、抗性或额外豁免效果；覆盖 compendium、executor、GM direct damage 与 resolver 测试。
+  - [x] **P2-4al** SRD 5.2.1 `Eyes of Minute Seeing` 落地：新增 uncommon wondrous item 与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 获得 1 foot Darkvision，且仅对检查 1 foot 内物体的 Intelligence (Investigation) checks 提供 Advantage；为 direct `roll_check` 增加 `examines_within_1_ft` 上下文以避免泛化到所有 Investigation；严格限制目标只能是自己，不虚构放大倍率、额外感知、远距侦察或完整微观检查系统；覆盖 compendium、executor、DM tool schema 与 resolver 测试。
 - [x] **P2-5** 难度/CR 预算自动化。
 
 # Phase 3 — 动态内容

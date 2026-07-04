@@ -648,6 +648,7 @@ def test_dm_tool_schema_exposes_only_public_tools() -> None:
     assert "as_ritual" in cast_spell_properties
     assert "skill" in roll_check_properties
     assert "tool" in roll_check_properties
+    assert "examines_within_1_ft" in roll_check_properties
     assert "use_tactical_mind" in roll_check_properties
     assert "use_primal_knowledge" in roll_check_properties
     assert "gm_override" not in names

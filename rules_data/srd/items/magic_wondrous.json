@@ -77,6 +77,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.eyes_of_minute_seeing",
+      "name": "Eyes of Minute Seeing",
+      "localization": {
+        "en": "Eyes of Minute Seeing",
+        "zh": "显微镜片",
+        "aliases": ["Minute Seeing Eyes"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Eyes of Minute Seeing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_eyes_of_minute_seeing"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.gauntlets_of_ogre_power",
       "name": "Gauntlets of Ogre Power",
       "localization": {

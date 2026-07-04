@@ -75,6 +75,7 @@ class EngineTools:
         dc_ref: str | None = None,
         advantage: str | None = None,
         relies_on_sight: bool = False,
+        examines_within_1_ft: bool = False,
         use_dark_ones_own_luck: bool = False,
         use_tactical_mind: bool = False,
         use_primal_knowledge: bool = False,
@@ -147,11 +148,16 @@ class EngineTools:
         if use_stroke_of_luck:
             self._validate_stroke_of_luck_available(proficiency_source)
         d20_penalty, d20_penalty_sources = self._exhaustion_penalty_for(actor_id)
+        contexts: set[str] = set()
+        if relies_on_sight:
+            contexts.add("sight")
+        if examines_within_1_ft:
+            contexts.add("within_1_ft_examination")
         status_advantage, status_sources = self._ability_check_status_advantage(
             actor_id,
             effective_ability,
             normalized_skill,
-            contexts={"sight"} if relies_on_sight else set(),
+            contexts=contexts,
         )
         merged_advantage = _merge_advantage(
             _merge_advantage(advantage, status_advantage),
@@ -229,6 +235,7 @@ class EngineTools:
                 "dc_ref": dc_ref,
                 "advantage": merged_advantage,
                 "relies_on_sight": relies_on_sight,
+                "examines_within_1_ft": examines_within_1_ft,
                 "use_dark_ones_own_luck": use_dark_ones_own_luck,
                 "use_tactical_mind": use_tactical_mind,
                 "use_primal_knowledge": use_primal_knowledge,
