@@ -1361,6 +1361,33 @@
                         "srd.ranger_expertise",
                         "srd.tireless"
                     ]
+                },
+                "12": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless"
+                    ]
+                },
+                "13": {
+                    "features": ["Relentless Hunter"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless",
+                        "srd.relentless_hunter"
+                    ]
                 }
             },
             "subclasses": {

@@ -275,6 +275,7 @@ CLASS_LEVEL_ACTIONS = {
         6: ["srd.roving"],
         9: ["srd.ranger_expertise"],
         10: ["srd.tireless"],
+        13: ["srd.relentless_hunter"],
     },
     "rogue": {
         1: ["srd.rogue_expertise", "srd.thieves_cant"],

@@ -4054,6 +4054,35 @@
             "audit_label": "Tireless"
         },
         {
+            "id": "srd.relentless_hunter",
+            "name": "Relentless Hunter",
+            "localization": {
+                "en": "Relentless Hunter",
+                "zh": "不懈猎手",
+                "aliases": ["Ranger Relentless Hunter", "游侠不懈猎手"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 13: Relentless Hunter",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 13},
+            "properties": {
+                "damage_cannot_break_concentration_on_hunters_mark": true,
+                "protected_action_id": "srd.favored_enemy_hunters_mark"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "Taking damage can't break this Ranger's Concentration on Hunter's Mark."
+                }
+            ],
+            "audit_label": "Relentless Hunter"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {

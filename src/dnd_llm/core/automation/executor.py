@@ -51,6 +51,7 @@ from ..rules.class_features import (
     has_multiattack_defense,
     has_paladin_feature,
     has_ranger_hunter_feature,
+    has_relentless_hunter,
     has_rogue_thief_feature,
     has_superior_hunters_prey,
     has_warlock_eldritch_mind,
@@ -162,6 +163,8 @@ OPEN_HAND_TECHNIQUE_ACTION_ID = "srd.open_hand_technique"
 REPELLING_BLAST_ACTION_ID = "srd.repelling_blast"
 FAST_HANDS_SLEIGHT_OF_HAND_ACTION_ID = "srd.fast_hands_sleight_of_hand"
 HUNTERS_LORE_ACTION_ID = "srd.hunters_lore"
+FAVORED_ENEMY_HUNTERS_MARK_ACTION_ID = "srd.favored_enemy_hunters_mark"
+RELENTLESS_HUNTER_ACTION_ID = "srd.relentless_hunter"
 PACT_OF_BLADE_WEAPON_ACTION_ID = "srd.pact_of_the_blade_weapon"
 PACT_OF_CHAIN_FIND_FAMILIAR_ACTION_ID = "srd.pact_of_the_chain_find_familiar"
 THIRSTING_BLADE_ACTION_ID = "srd.thirsting_blade"
@@ -11145,6 +11148,8 @@ class AutomationExecutor:
     ) -> tuple[dict[str, Any], RollResult] | None:
         if damage_taken <= 0 or not self._actor_has_active_concentration(actor_id):
             return None
+        if self._relentless_hunter_protects_concentration(actor_id):
+            return None
         actor = self._entity(actor_id)
         dc = max(10, damage_taken // 2)
         base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(actor, "con")
@@ -11186,6 +11191,46 @@ class AutomationExecutor:
             },
             roll,
         )
+
+    def _relentless_hunter_protects_concentration(self, actor_id: str) -> bool:
+        owner = self._resource_owner(actor_id)
+        if not isinstance(owner, Character) or not has_relentless_hunter(owner):
+            return False
+        effects = self._active_concentration_effects(actor_id)
+        if not effects:
+            return False
+        return all(
+            effect.get("source_action_id") == FAVORED_ENEMY_HUNTERS_MARK_ACTION_ID
+            for effect in effects
+        )
+
+    def _active_concentration_effects(self, actor_id: str) -> list[dict[str, Any]]:
+        effects: list[dict[str, Any]] = []
+        for character in self.state.characters.values():
+            effects.extend(
+                effect
+                for effect in character.status_effects
+                if self._effect_is_actor_concentration(effect, actor_id)
+            )
+        for monster in self.state.monsters.values():
+            effects.extend(
+                effect
+                for effect in monster.status_effects
+                if self._effect_is_actor_concentration(effect, actor_id)
+            )
+        if self.state.encounter is not None:
+            for combatant in self.state.encounter.combatants.values():
+                effects.extend(
+                    effect
+                    for effect in combatant.status_effects
+                    if self._effect_is_actor_concentration(effect, actor_id)
+                )
+        effects.extend(
+            effect
+            for effect in self.state.world.active_effects
+            if self._effect_is_actor_concentration(effect, actor_id)
+        )
+        return effects
 
     def _actor_has_active_concentration(self, actor_id: str) -> bool:
         for character in self.state.characters.values():

@@ -18313,6 +18313,79 @@ def test_successful_concentration_save_keeps_effect(make_state) -> None:
     assert state.encounter.combatants["pc2"].status_effects[0]["source_action_id"] == "srd.bless"
 
 
+def test_relentless_hunter_prevents_damage_breaking_hunters_mark_concentration(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    ranger = state.characters["pc1"]
+    ranger.class_levels = {"ranger": 13}
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "relentless-hunters-mark",
+            "source_action_id": "srd.favored_enemy_hunters_mark",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "concentration": True,
+            "passive_modifiers": {
+                "hunters_mark": True,
+                "attacker_bonus_damage": "1d6",
+                "damage_type": "force",
+            },
+        }
+    )
+    action = _damage_action(60)
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    assert not any(change["type"] == "concentration_save" for change in result.state_changes)
+    assert state.encounter.combatants["goblin1"].status_effects[0]["effect_id"] == (
+        "relentless-hunters-mark"
+    )
+
+
+def test_relentless_hunter_does_not_protect_other_concentration_spells(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    ranger = state.characters["pc1"]
+    ranger.class_levels = {"ranger": 13}
+    state.encounter.combatants["pc2"].status_effects.append(
+        {
+            "effect_id": "ranger-bless",
+            "source_action_id": "srd.bless",
+            "applied_by": "pc1",
+            "concentration": True,
+            "passive_modifiers": {"attack_roll_bonus_dice": "1d4"},
+        }
+    )
+    action = _damage_action(60)
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    concentration_change = [
+        change for change in result.state_changes if change["type"] == "concentration_save"
+    ][0]
+    assert concentration_change["success"] is False
+    assert concentration_change["removed"][0]["source_action_id"] == "srd.bless"
+    assert state.encounter.combatants["pc2"].status_effects == []
+
+
 def test_eldritch_mind_grants_advantage_on_concentration_saves(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

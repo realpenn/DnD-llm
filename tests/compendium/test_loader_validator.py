@@ -2644,6 +2644,13 @@ def test_compendium_loads_srd_actions() -> None:
     roving = compendium.action("srd.roving")
     assert roving.action_economy == "none"
     assert roving.requirements == {"class": "ranger", "class_level_min": 6}
+    relentless_hunter = compendium.action("srd.relentless_hunter")
+    assert relentless_hunter.action_economy == "none"
+    assert relentless_hunter.requirements == {"class": "ranger", "class_level_min": 13}
+    assert relentless_hunter.properties == {
+        "damage_cannot_break_concentration_on_hunters_mark": True,
+        "protected_action_id": "srd.favored_enemy_hunters_mark",
+    }
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
@@ -5056,6 +5063,9 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["ranger"].levels["11"]["features"] == ["Subclass Feature"]
     assert "srd.tireless" in compendium.classes["ranger"].levels["11"]["actions"]
     assert "srd.superior_hunters_prey" not in compendium.classes["ranger"].levels["11"]["actions"]
+    assert compendium.classes["ranger"].levels["12"]["features"] == ["Ability Score Improvement"]
+    assert compendium.classes["ranger"].levels["13"]["features"] == ["Relentless Hunter"]
+    assert "srd.relentless_hunter" in compendium.classes["ranger"].levels["13"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

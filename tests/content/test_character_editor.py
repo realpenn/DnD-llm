@@ -2242,6 +2242,27 @@ def test_natural_language_character_edit_assigns_hunter_superior_hunters_prey_at
     assert "srd.defensive_tactics" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_ranger_relentless_hunter_at_level_13() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger13")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 13}
+    assert "srd.relentless_hunter" in result.character.actions
+
+
+def test_natural_language_character_edit_does_not_grant_relentless_hunter_too_early() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger12")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert "srd.relentless_hunter" not in result.character.actions
+
+
 def test_natural_language_character_edit_does_not_grant_hunter_superior_prey_too_early() -> None:
     character = default_fighter("pc1", "Penn")
 
