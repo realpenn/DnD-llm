@@ -98,6 +98,8 @@ DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
 RELIABLE_TALENT_ACTION_ID = "srd.reliable_talent"
 RELIABLE_TALENT_D20_FLOOR = 10
 RELIABLE_TALENT_MAX_NATURAL = 9
+SLIPPERY_MIND_ACTION_ID = "srd.slippery_mind"
+SLIPPERY_MIND_SAVING_THROWS = frozenset({"wis", "cha"})
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -203,6 +205,10 @@ def reliable_talent_applies(character: Character) -> bool:
     return int(character.class_levels.get("rogue", 0)) >= 7
 
 
+def rogue_slippery_mind_applies(character: Character) -> bool:
+    return int(character.class_levels.get("rogue", 0)) >= 15
+
+
 def reliable_talent_d20_adjustment(
     character: Character,
     *,
@@ -276,6 +282,18 @@ def saving_throw_proficiency_sources(actor: Any, ability: str) -> list[dict[str,
             {
                 "kind": "disciplined_survivor",
                 "source_action_id": DISCIPLINED_SURVIVOR_ACTION_ID,
+                "ability": ability_key,
+            }
+        )
+    if (
+        isinstance(actor, Character)
+        and ability_key in SLIPPERY_MIND_SAVING_THROWS
+        and rogue_slippery_mind_applies(actor)
+    ):
+        sources.append(
+            {
+                "kind": "slippery_mind",
+                "source_action_id": SLIPPERY_MIND_ACTION_ID,
                 "ability": ability_key,
             }
         )

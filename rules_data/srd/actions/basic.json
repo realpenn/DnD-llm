@@ -4043,6 +4043,34 @@
             "audit_label": "Improved Cunning Strike"
         },
         {
+            "id": "srd.slippery_mind",
+            "name": "Slippery Mind",
+            "localization": {
+                "en": "Slippery Mind",
+                "zh": "心智灵动",
+                "aliases": ["Rogue Slippery Mind", "游荡者心智灵动"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 15: Slippery Mind",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 15},
+            "properties": {
+                "saving_throw_proficiencies": ["wis", "cha"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Rogue gains proficiency in Wisdom and Charisma saving throws."
+                }
+            ],
+            "audit_label": "Slippery Mind"
+        },
+        {
             "id": "srd.uncanny_dodge",
             "name": "Uncanny Dodge",
             "localization": {

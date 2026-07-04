@@ -350,6 +350,57 @@ def test_disciplined_survivor_grants_proficiency_on_repeat_save(make_state) -> N
     assert "disciplined_survivor" not in repeat_save
 
 
+def test_slippery_mind_grants_proficiency_on_repeat_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    rogue = state.characters["pc1"]
+    rogue.class_levels = {"rogue": 15}
+    rogue.proficiency_bonus = 5
+    rogue.saving_throw_proficiencies = ["dex", "int"]
+    rogue.abilities["cha"] = 10
+    target = state.encounter.combatants["pc1"]
+    target.status_effects.append(
+        {
+            "effect_id": "repeat-save-test",
+            "source_ref": "test",
+            "source_action_id": "test.repeat_save",
+            "target_id": "pc1",
+            "applied_by": "goblin1",
+            "condition": "frightened",
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "cha",
+                    "dc": 1,
+                    "dc_source": "test",
+                    "end_on_success": True,
+                },
+            },
+            "tick_on": "self_turn_end",
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="self_turn_end",
+        actor_id="pc1",
+        roll_service=RollService(state),
+    )
+
+    repeat_save = result.expired[0]["repeat_save"]
+    assert repeat_save["base_bonus"] == 5
+    assert repeat_save["bonus"] == 5
+    assert repeat_save["proficient"] is True
+    assert repeat_save["proficiency_sources"] == [
+        {
+            "kind": "slippery_mind",
+            "source_action_id": "srd.slippery_mind",
+            "ability": "cha",
+        }
+    ]
+    assert repeat_save["roll"]["expression"] == "1d20+5"
+
+
 def test_monk_self_restoration_removes_single_eligible_condition(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

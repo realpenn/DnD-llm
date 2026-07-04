@@ -180,6 +180,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.slow_fall",
     "srd.sneak_attack",
     "srd.sorcerous_restoration",
+    "srd.slippery_mind",
     "srd.steady_aim",
     "srd.stunning_strike",
     "srd.superior_defense",

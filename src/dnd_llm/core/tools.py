@@ -329,8 +329,11 @@ class EngineTools:
                 _merge_advantage(advantage, danger_sense_advantage),
                 status_advantage,
             ),
-            proficiency=proficient,
-            extra_bonus=passive_bonus,
+            proficiency=False,
+            extra_bonus=(
+                (int(getattr(proficiency_source, "proficiency_bonus", 2)) if proficient else 0)
+                + passive_bonus
+            ),
             d20_penalty=d20_penalty,
             d20_penalty_sources=d20_penalty_sources,
             status_effects=self._status_effects_for_actor(actor_id),
@@ -341,6 +344,7 @@ class EngineTools:
         payload["status_sources"] = status_sources
         payload["passive_bonus"] = passive_bonus
         payload["passive_bonus_sources"] = passive_bonus_sources
+        payload["proficient"] = proficient
         payload["proficiency_sources"] = proficiency_sources
         dice_rolls = [result.roll.to_dict()]
         dark_ones_own_luck = self._apply_dark_ones_own_luck_to_roll(

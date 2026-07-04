@@ -4973,6 +4973,73 @@ def test_monk_disciplined_survivor_grants_all_save_proficiency_and_rerolls_faile
     assert character.resources["srd.resource.focus_points"] == 1
 
 
+def test_rogue_slippery_mind_grants_wisdom_and_charisma_save_proficiency(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 15}
+    character.proficiency_bonus = 5
+    character.saving_throw_proficiencies = ["dex", "int"]
+    state.encounter.combatants["pc1"].abilities = {
+        "str": 10,
+        "dex": 10,
+        "con": 10,
+        "int": 10,
+        "wis": 10,
+        "cha": 10,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10, 10]),
+    )
+
+    wisdom = tools.roll_save(
+        "pc1",
+        "wis",
+        difficulty_tier="medium",
+        idempotency_key="slippery-mind-wis",
+    )
+    charisma = tools.roll_save(
+        "pc1",
+        "cha",
+        difficulty_tier="medium",
+        idempotency_key="slippery-mind-cha",
+    )
+    constitution = tools.roll_save(
+        "pc1",
+        "con",
+        difficulty_tier="medium",
+        idempotency_key="slippery-mind-con",
+    )
+
+    assert wisdom["proficient"] is True
+    assert wisdom["roll"]["expression"] == "1d20+5"
+    assert wisdom["proficiency_sources"] == [
+        {
+            "kind": "slippery_mind",
+            "source_action_id": "srd.slippery_mind",
+            "ability": "wis",
+        }
+    ]
+    assert charisma["proficient"] is True
+    assert charisma["roll"]["expression"] == "1d20+5"
+    assert charisma["proficiency_sources"] == [
+        {
+            "kind": "slippery_mind",
+            "source_action_id": "srd.slippery_mind",
+            "ability": "cha",
+        }
+    ]
+    assert constitution["proficient"] is False
+    assert constitution["roll"]["expression"] == "1d20+0"
+    assert constitution["proficiency_sources"] == []
+
+
 def test_monk_disciplined_survivor_successful_save_does_not_spend_focus(
     make_state,
 ) -> None:
@@ -5103,6 +5170,55 @@ def test_monk_disciplined_survivor_automation_save_must_use_new_roll(
         and change["source_action_id"] == "srd.disciplined_survivor"
         for change in result.state_changes
     )
+
+
+def test_automation_saving_throw_applies_rogue_slippery_mind(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.characters["pc2"]
+    target.class_levels = {"rogue": 15}
+    target.proficiency_bonus = 5
+    target.saving_throw_proficiencies = ["dex", "int"]
+    state.encounter.combatants["pc2"].abilities = {
+        "str": 10,
+        "dex": 10,
+        "con": 10,
+        "int": 10,
+        "wis": 10,
+        "cha": 10,
+    }
+    action = ActionDefinition(
+        id="test.slippery_mind_save",
+        name="Slippery Mind Save",
+        localization={"en": "Slippery Mind Save", "zh": "心智灵动豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "cha", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc2"])
+
+    save_node = result.node_results["automation[0]"]
+    assert result.dice_rolls[0]["expression"] == "1d20+5"
+    assert save_node["base_bonus"] == 5
+    assert save_node["proficient"] is True
+    assert save_node["proficiency_sources"] == [
+        {
+            "kind": "slippery_mind",
+            "source_action_id": "srd.slippery_mind",
+            "ability": "cha",
+        }
+    ]
 
 
 def test_monk_disciplined_survivor_automation_requires_explicit_target_for_multi_save(

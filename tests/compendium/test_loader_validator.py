@@ -253,6 +253,15 @@ def test_compendium_loads_srd_actions() -> None:
         "max_cunning_strike_effects_per_sneak_attack": 2,
         "pay_die_cost_for_each_effect": True,
     }
+    slippery_mind = compendium.action("srd.slippery_mind")
+    assert slippery_mind.requirements == {
+        "class": "rogue",
+        "class_level_min": 15,
+    }
+    assert slippery_mind.action_economy == "none"
+    assert slippery_mind.properties == {
+        "saving_throw_proficiencies": ["wis", "cha"],
+    }
     assert compendium.action("srd.deft_explorer").requirements == {
         "class": "ranger",
         "class_level_min": 2,
@@ -3973,6 +3982,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.reliable_talent" in compendium.classes["rogue"].levels["7"]["actions"]
     assert compendium.classes["rogue"].levels["11"]["features"] == ["Improved Cunning Strike"]
     assert "srd.improved_cunning_strike" in compendium.classes["rogue"].levels["11"]["actions"]
+    assert compendium.classes["rogue"].levels["15"]["features"] == ["Slippery Mind"]
+    assert "srd.slippery_mind" in compendium.classes["rogue"].levels["15"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",
