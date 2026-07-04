@@ -1676,6 +1676,18 @@ def test_natural_language_character_edit_assigns_paladin_aura_of_courage() -> No
     assert aura_of_courage_applies(result.character) is True
 
 
+def test_natural_language_character_edit_assigns_paladin_radiant_strikes() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 圣武士11")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"paladin": 11}
+    assert "srd.aura_of_courage" in result.character.actions
+    assert "srd.radiant_strikes" in result.character.actions
+
+
 def test_natural_language_character_edit_assigns_paladin_restoring_touch() -> None:
     character = default_fighter("pc1", "Penn")
 

@@ -261,6 +261,7 @@ CLASS_LEVEL_ACTIONS = {
         ],
         6: ["srd.aura_of_protection"],
         10: ["srd.aura_of_courage"],
+        11: ["srd.radiant_strikes"],
         14: ["srd.restoring_touch"],
     },
     "ranger": {

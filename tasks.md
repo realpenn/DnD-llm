@@ -341,6 +341,7 @@ P0 脚手架
   - [x] **P2-1ce** SRD 5.2.1 Barbarian 9 `Brutal Strike` 落地：新增 `srd.brutal_strike` class feature marker 与 Barbarian 9 职业数据/角色成长授予；按 SRD 在使用 Reckless Attack 后可显式放弃一次 Strength-based weapon 或 Unarmed Strike attack roll 的 Advantage，且该攻击不能带 Disadvantage；命中时额外造成 `1d10` 同类型伤害，并支持 9 级 `Forceful Blow` 推离 15 尺与可选半速跟进移动（不触发 Opportunity Attacks）、`Hamstring Blow` 将目标 Speed 降低 15 尺直到野蛮人下回合开始；非法等级、未 Reckless、非力量攻击、带 Disadvantage、非法推离/跟进节点均在扣行动经济前拒绝；覆盖 compendium、resolver、executor、生命周期与自然语言建角测试。
   - [x] **P2-1cf** SRD 5.2.1 Bard 7 `Countercharm` 落地：新增 `srd.countercharm` class feature marker 与 Bard 7 职业数据/角色成长授予；按 SRD 当吟游诗人自身或 30 尺内生物对会施加 Charmed 或 Frightened condition 的效果保存豁免失败时，可显式指定 Bard 消耗 Reaction 使该保存豁免重掷且新掷骰具有 Advantage；多目标必须显式指定目标，非法等级、Reaction 不足、非适用保存豁免、超距或自动失败均在扣原动作成本前拒绝；覆盖 compendium、resolver、executor 与自然语言建角测试。
   - [x] **P2-1cg** SRD 5.2.1 Bard 9 `Expertise` 落地：补齐 Bard 8/9 职业数据，并将既有 `srd.bard_expertise` marker 校准为 Bard 2 获得两项技能 Expertise、Bard 9 再获得两项技能 Expertise；角色成长显式保留 Bard 9 Expertise 槽位，Bard 8 不能提前选择四项，Bard 9 可选择四项已熟练 SRD 技能；覆盖 compendium 与自然语言建角测试。
+  - [x] **P2-1ch** SRD 5.2.1 Paladin 11 `Radiant Strikes` 落地：新增 `srd.radiant_strikes` class feature marker 与 Paladin 11 职业数据/角色成长授予；按 SRD 当 Paladin 11+ 使用 Melee weapon 或 Unarmed Strike 的 attack roll 命中目标时，额外造成 `1d8` Radiant damage，重击时该额外伤害骰按攻击额外伤害骰规则加掷；不泛化到远程武器、spell attack、未命中或低等级 Paladin，并作为独立 radiant extra damage 结算抗性/免疫；覆盖 compendium、executor 与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

@@ -118,6 +118,7 @@ MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
+RADIANT_STRIKES_ACTION_ID = "srd.radiant_strikes"
 RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
     {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}
 )
@@ -337,6 +338,7 @@ class _Context:
     elemental_affinity_applied: bool = False
     remarkable_athlete_moved: bool = False
     eldritch_smite_targets: set[str] = field(default_factory=set)
+    radiant_strikes_targets: set[str] = field(default_factory=set)
     open_hand_strike_index: int = 0
     ability_success: bool | None = None
     concentration_cleared: bool = False
@@ -1285,6 +1287,9 @@ class AutomationExecutor:
             eldritch_smite = self._eldritch_smite_bonus(ctx, target_id, path)
             if eldritch_smite.amount:
                 extra_damage.append(eldritch_smite)
+            radiant_strikes = self._radiant_strikes_bonus(ctx, target_id)
+            if radiant_strikes.amount:
+                extra_damage.append(radiant_strikes)
             for extra_result in extra_damage:
                 ctx.result.dice_rolls.extend(roll.to_dict() for roll in extra_result.rolls)
             amount_before_uncanny_dodge = amount
@@ -5638,6 +5643,55 @@ class AutomationExecutor:
                 }
             ],
         )
+
+    def _radiant_strikes_bonus(
+        self,
+        ctx: _Context,
+        target_id: str,
+    ) -> _ExtraDamageResult:
+        if target_id in ctx.radiant_strikes_targets:
+            return _ExtraDamageResult()
+        if not self._action_is_melee_weapon_or_unarmed(ctx.action):
+            return _ExtraDamageResult()
+        if not ctx.attack_hits.get(target_id, False):
+            return _ExtraDamageResult()
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character) or not has_paladin_feature(owner, level=11):
+            return _ExtraDamageResult()
+        dice = "1d8"
+        roll = self.roll_service.roll(dice)
+        rolls = [roll]
+        amount = roll.total
+        if ctx.attack_critical.get(target_id, False):
+            critical_roll = self.roll_service.roll(dice)
+            rolls.append(critical_roll)
+            amount += critical_roll.total
+        ctx.radiant_strikes_targets.add(target_id)
+        return _ExtraDamageResult(
+            amount=amount,
+            damage_type="radiant",
+            rolls=rolls,
+            sources=[
+                {
+                    "feature": "radiant_strikes",
+                    "source_action_id": RADIANT_STRIKES_ACTION_ID,
+                    "dice": dice,
+                    "damage_type": "radiant",
+                }
+            ],
+        )
+
+    @staticmethod
+    def _action_is_melee_weapon_or_unarmed(action: ActionDefinition) -> bool:
+        if action.action_type == "unarmed_attack":
+            return True
+        if action.action_type != "weapon_attack":
+            return False
+        weapon_category = str(action.properties.get("weapon_category", "")).lower()
+        if weapon_category:
+            return weapon_category == "melee"
+        normal_range = int(action.range.get("normal_ft", 0))
+        return normal_range <= 5
 
     def _spend_eldritch_smite_slot(
         self,

@@ -4062,7 +4062,17 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.aura_of_protection" in compendium.classes["paladin"].levels["6"]["actions"]
     assert compendium.classes["paladin"].levels["10"]["features"] == ["Aura of Courage"]
     assert "srd.aura_of_courage" in compendium.classes["paladin"].levels["10"]["actions"]
+    assert compendium.classes["paladin"].levels["11"]["features"] == ["Radiant Strikes"]
+    assert "srd.radiant_strikes" in compendium.classes["paladin"].levels["11"]["actions"]
+    radiant_strikes = compendium.action("srd.radiant_strikes")
+    assert radiant_strikes.requirements == {"class": "paladin", "class_level_min": 11}
+    assert radiant_strikes.properties == {
+        "extra_damage": "1d8",
+        "damage_type": "radiant",
+        "applies_to": ["melee_weapon_attack_hit", "unarmed_strike_hit"],
+    }
     assert compendium.classes["paladin"].levels["14"]["features"] == ["Restoring Touch"]
+    assert "srd.radiant_strikes" in compendium.classes["paladin"].levels["14"]["actions"]
     assert "srd.restoring_touch" in compendium.classes["paladin"].levels["14"]["actions"]
     assert {
         "srd.cunning_action_dash",

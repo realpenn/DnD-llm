@@ -108,6 +108,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.flurry_of_blows",
     "srd.quivering_palm",
     "srd.quivering_palm_release",
+    "srd.radiant_strikes",
     "srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
     "srd.font_of_inspiration_restore_bardic_inspiration_slot_2",
     "srd.font_of_inspiration_restore_bardic_inspiration_slot_3",

@@ -3752,6 +3752,36 @@
             "audit_label": "Aura of Courage"
         },
         {
+            "id": "srd.radiant_strikes",
+            "name": "Radiant Strikes",
+            "localization": {
+                "en": "Radiant Strikes",
+                "zh": "光耀打击",
+                "aliases": ["Paladin Radiant Strikes", "圣武士光耀打击"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 11: Radiant Strikes",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 11},
+            "properties": {
+                "extra_damage": "1d8",
+                "damage_type": "radiant",
+                "applies_to": ["melee_weapon_attack_hit", "unarmed_strike_hit"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Paladin's Melee weapon or Unarmed Strike hit deals an extra 1d8 Radiant damage."
+                }
+            ],
+            "audit_label": "Radiant Strikes"
+        },
+        {
             "id": "srd.faithful_steed_find_steed",
             "name": "Faithful Steed: Find Steed",
             "localization": {

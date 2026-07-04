@@ -5020,6 +5020,151 @@ def test_paladins_smite_casts_divine_smite_without_spell_slot_once_per_long_rest
     assert character.resources["srd.resource.paladins_smite"] == 1
 
 
+def test_paladin_radiant_strikes_adds_radiant_damage_to_melee_weapon_hit(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"paladin": 11}
+    character.actions.append("srd.radiant_strikes")
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 2, 5]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="paladin-radiant-strikes",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 5
+    assert damage_change["extra_damage"] == [
+        {
+            "amount": 5,
+            "applied": 5,
+            "damage_type": "radiant",
+            "sources": [
+                {
+                    "feature": "radiant_strikes",
+                    "source_action_id": "srd.radiant_strikes",
+                    "dice": "1d8",
+                    "damage_type": "radiant",
+                }
+            ],
+        }
+    ]
+    assert damage_change["total_applied"] == 10
+    assert state.encounter.combatants["goblin1"].hp_current == 20
+    assert result["dice_rolls"][2]["expression"] == "1d8"
+
+
+def test_paladin_radiant_strikes_requires_paladin_level_eleven(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"paladin": 10}
+    character.actions.append("srd.radiant_strikes")
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 2]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="paladin-radiant-strikes-low-level",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 5
+    assert "extra_damage" not in damage_change
+    assert state.encounter.combatants["goblin1"].hp_current == 25
+
+
+def test_paladin_radiant_strikes_applies_to_unarmed_strike(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"paladin": 11, "monk": 1}
+    character.actions.extend(["srd.monk_unarmed_strike", "srd.radiant_strikes"])
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 2, 5]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.monk_unarmed_strike",
+        ["goblin1"],
+        idempotency_key="paladin-radiant-strikes-unarmed",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["extra_damage"][0]["damage_type"] == "radiant"
+    assert damage_change["extra_damage"][0]["amount"] == 5
+    assert damage_change["extra_damage"][0]["sources"][0]["source_action_id"] == (
+        "srd.radiant_strikes"
+    )
+
+
+def test_paladin_radiant_strikes_does_not_apply_to_ranged_weapon_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"paladin": 11}
+    character.actions.append("srd.radiant_strikes")
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    action = compendium.action("srd.bandit_light_crossbow")
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 2]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="pc1",
+        targets=["goblin1"],
+        idempotency_key="paladin-radiant-strikes-ranged",
+    )
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 3
+    assert "extra_damage" not in damage_change
+    assert state.encounter.combatants["goblin1"].hp_current == 27
+
+
 def test_faithful_steed_casts_find_steed_without_spell_slot_once_per_long_rest(
     make_state,
 ) -> None:
