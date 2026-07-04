@@ -8937,6 +8937,150 @@ def test_gauntlets_of_ogre_power_do_not_lower_equal_or_higher_strength(make_stat
     assert strength_check["roll"]["expression"] == "1d20+5"
 
 
+def test_headband_of_intellect_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.headband_of_intellect"):
+        tools.use_item(
+            "pc1",
+            "srd.headband_of_intellect",
+            ["pc1"],
+            action_id="srd.wear_headband_of_intellect",
+            idempotency_key="missing-headband-of-intellect",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.headband_of_intellect")
+    result = tools.use_item(
+        "pc1",
+        "srd.headband_of_intellect",
+        ["pc1"],
+        action_id="srd.wear_headband_of_intellect",
+        idempotency_key="equipped-headband-of-intellect",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_headband_of_intellect"
+    )
+
+
+def test_headband_of_intellect_sets_intelligence_for_checks_saves_and_wizard_spell_dc(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 1}
+    character.inventory["srd.headband_of_intellect"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10]),
+    )
+
+    headband = tools.use_item(
+        "pc1",
+        "srd.headband_of_intellect",
+        ["pc1"],
+        action_id="srd.wear_headband_of_intellect",
+        idempotency_key="wear-headband-of-intellect",
+    )
+    intelligence_check = tools.roll_check(
+        "pc1",
+        "int",
+        difficulty_tier="medium",
+        idempotency_key="headband-intelligence-check",
+    )
+    intelligence_save = tools.roll_save(
+        "pc1",
+        "int",
+        difficulty_tier="medium",
+        idempotency_key="headband-intelligence-save",
+    )
+    spell_dc_action = ActionDefinition(
+        id="test.headband.spell_dc",
+        name="Headband Spell DC",
+        localization={"en": "Headband Spell DC", "zh": "智力头带法术 DC", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="spell",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "wizard"}},
+        ],
+    )
+    spell_dc = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(spell_dc_action, actor_id="pc1", targets=["goblin1"])
+
+    assert headband["success"] is True
+    assert character.inventory["srd.headband_of_intellect"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_headband_of_intellect"
+    assert effect["passive_modifiers"] == {"ability_score_set": {"int": 19}}
+    assert effect["duration"] == {"until": "while_wearing_headband_of_intellect"}
+    assert intelligence_check["bonus"] == 4
+    assert intelligence_check["roll"]["expression"] == "1d20+4"
+    assert intelligence_save["bonus"] == 4
+    assert intelligence_save["roll"]["expression"] == "1d20+4"
+    spell_dc_node = spell_dc.node_results["automation[1]"]
+    assert spell_dc_node["dc"] == 14
+    assert spell_dc_node["dc_source"] == "spell_save_dc:wizard"
+
+
+def test_headband_of_intellect_does_not_lower_equal_or_higher_intelligence(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.abilities["int"] = 20
+    character.inventory["srd.headband_of_intellect"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    )
+
+    headband = tools.use_item(
+        "pc1",
+        "srd.headband_of_intellect",
+        ["pc1"],
+        action_id="srd.wear_headband_of_intellect",
+        idempotency_key="wear-headband-no-lower",
+    )
+    intelligence_check = tools.roll_check(
+        "pc1",
+        "int",
+        difficulty_tier="medium",
+        idempotency_key="headband-no-lower-check",
+    )
+
+    assert headband["success"] is True
+    assert character.inventory["srd.headband_of_intellect"] == 1
+    assert state.encounter.combatants["pc1"].status_effects[-1]["passive_modifiers"] == {
+        "ability_score_set": {"int": 19}
+    }
+    assert intelligence_check["bonus"] == 5
+    assert intelligence_check["roll"]["expression"] == "1d20+5"
+
+
 def test_cloak_of_protection_item_requirement_accepts_equipment_and_rejects_missing(
     make_state,
 ) -> None:

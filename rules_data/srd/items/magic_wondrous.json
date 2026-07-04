@@ -77,6 +77,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.headband_of_intellect",
+      "name": "Headband of Intellect",
+      "localization": {
+        "en": "Headband of Intellect",
+        "zh": "智力头带",
+        "aliases": ["Intellect Headband"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Headband of Intellect",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_headband_of_intellect"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "head"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.robe_of_eyes",
       "name": "Robe of Eyes",
       "localization": {

@@ -2460,6 +2460,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert gauntlets.status == "accepted"
     assert gauntlets.action_id == "srd.wear_gauntlets_of_ogre_power"
 
+    state.characters["pc1"].equipment.append("srd.headband_of_intellect")
+    headband = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.headband_of_intellect",
+        )
+    )
+
+    assert headband.status == "accepted"
+    assert headband.action_id == "srd.wear_headband_of_intellect"
+
     state.characters["pc1"].equipment.append("srd.ring_of_protection")
     ring = resolver.resolve(
         PlayerActionDraft(
@@ -2532,6 +2545,26 @@ def test_resolver_rejects_gauntlets_of_ogre_power_non_self_target(make_state) ->
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_gauntlets_of_ogre_power"
+
+
+def test_resolver_rejects_headband_of_intellect_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.headband_of_intellect"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.headband_of_intellect",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_headband_of_intellect"
 
 
 def test_resolver_rejects_ring_of_protection_non_self_target(make_state) -> None:

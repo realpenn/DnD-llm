@@ -150,6 +150,42 @@
       "audit_label": "Wear Gauntlets of Ogre Power"
     },
     {
+      "id": "srd.wear_headband_of_intellect",
+      "name": "Wear Headband of Intellect",
+      "localization": {
+        "en": "Wear Headband of Intellect",
+        "zh": "佩戴智力头带",
+        "aliases": ["启用智力头带"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Headband of Intellect",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.headband_of_intellect" },
+      "properties": {
+        "headband_of_intellect": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "head"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "int": 19 }
+          },
+          "duration": { "until": "while_wearing_headband_of_intellect" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this headband, the target's Intelligence is 19 unless it is already 19 or higher without it." }
+      ],
+      "audit_label": "Wear Headband of Intellect"
+    },
+    {
       "id": "srd.wear_robe_of_eyes",
       "name": "Wear Robe of Eyes",
       "localization": {
