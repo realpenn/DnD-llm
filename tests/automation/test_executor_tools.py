@@ -6323,6 +6323,98 @@ def test_rage_applies_srd_passive_effects_and_blocks_spellcasting(make_state) ->
     assert damage_change["applied"] == 4
 
 
+def test_rage_instinctive_pounce_moves_half_speed_and_checks_opportunity_attacks(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 7}
+    character.actions.extend(["srd.rage", "srd.instinctive_pounce"])
+    character.resources["srd.resource.rage"] = 3
+    state.encounter.combatants["pc1"].speed_ft = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.rage",
+        [],
+        params={"instinctive_pounce_to_position_node_id": "back"},
+        idempotency_key="rage-instinctive-pounce",
+    )
+
+    move_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "move" and change.get("feature") == "instinctive_pounce"
+    )
+    assert result["success"] is True
+    assert character.resources["srd.resource.rage"] == 2
+    assert state.encounter.combatants["pc1"].position_node_id == "back"
+    assert move_change["source_action_id"] == "srd.instinctive_pounce"
+    assert move_change["movement_cost"] == 35
+    assert move_change["movement_limit"] == 45
+    assert move_change["opportunity_attack_triggers"] == ["goblin1"]
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    assert state.encounter.action_budgets["pc1"]["movement_used"] == 35
+
+
+def test_rage_instinctive_pounce_rejects_over_half_speed_before_spending(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 7}
+    character.actions.extend(["srd.rage", "srd.instinctive_pounce"])
+    character.resources["srd.resource.rage"] = 1
+    state.encounter.combatants["pc1"].speed_ft = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError, match="Instinctive Pounce movement cannot exceed half Speed"
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.rage",
+            [],
+            params={"instinctive_pounce_to_position_node_id": "back"},
+            idempotency_key="rage-instinctive-pounce-too-far",
+        )
+
+    assert character.resources["srd.resource.rage"] == 1
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 1
+    assert state.encounter.combatants["pc1"].position_node_id == "front"
+
+
+def test_rage_instinctive_pounce_requires_barbarian_seven_before_spending(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 6}
+    character.actions.append("srd.rage")
+    character.resources["srd.resource.rage"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="Instinctive Pounce requires Barbarian level 7"):
+        tools.perform_action(
+            "pc1",
+            "srd.rage",
+            [],
+            params={"instinctive_pounce_to_position_node_id": "cover"},
+            idempotency_key="rage-instinctive-pounce-too-low",
+        )
+
+    assert character.resources["srd.resource.rage"] == 1
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 1
+    assert state.encounter.combatants["pc1"].position_node_id == "front"
+
+
 def test_berserker_mindless_rage_ends_charmed_frightened_and_grants_immunity(
     make_state,
 ) -> None:

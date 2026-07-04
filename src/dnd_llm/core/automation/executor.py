@@ -109,6 +109,7 @@ UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
 RAGE_ACTION_ID = "srd.rage"
 ACTION_SURGE_ACTION_ID = "srd.action_surge"
 ACTION_SURGE_USED_CONDITION = "action_surge_used"
+INSTINCTIVE_POUNCE_ACTION_ID = "srd.instinctive_pounce"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
@@ -448,6 +449,7 @@ class AutomationExecutor:
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
         self._validate_tactical_shift_preconditions(action, actor_id, params)
+        self._validate_instinctive_pounce_preconditions(action, actor_id, params)
         self._validate_wild_resurgence_preconditions(action, actor_id)
         self._validate_cost(action, actor_id, params)
         self._spend_action_economy(action, actor_id, params, result)
@@ -550,6 +552,8 @@ class AutomationExecutor:
             self._node_quivering_palm_release(ctx, node, path)
         elif node_type == "tactical_shift_move":
             self._node_tactical_shift_move(ctx, node, path)
+        elif node_type == "instinctive_pounce_move":
+            self._node_instinctive_pounce_move(ctx, node, path)
         elif node_type == "move":
             self._node_move(ctx, node)
         elif node_type == "branch":
@@ -3653,6 +3657,49 @@ class AutomationExecutor:
                 "movement_used_before": before_used,
                 "movement_used_after": after_used,
                 "opportunity_attack_triggers": [],
+                "path": path,
+            }
+        )
+
+    def _node_instinctive_pounce_move(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        destination_param = str(
+            node.get("destination_param", "instinctive_pounce_to_position_node_id")
+        )
+        destination = ctx.params.get(destination_param)
+        if destination is None:
+            return
+        plan = self._instinctive_pounce_move_plan(ctx.actor_id, str(destination))
+        actor = plan["actor"]
+        assert isinstance(actor, Combatant)
+        before_position = actor.position_node_id
+        actor.position_node_id = str(destination)
+        before_used, after_used = self.economy.add(
+            ctx.actor_id,
+            "movement_used",
+            int(plan["movement_cost"]),
+        )
+        ctx.result.state_changes.append(
+            {
+                "type": "move",
+                "actor_id": ctx.actor_id,
+                "feature": "instinctive_pounce",
+                "source_action_id": INSTINCTIVE_POUNCE_ACTION_ID,
+                "from": before_position,
+                "to": actor.position_node_id,
+                "movement_cost": int(plan["movement_cost"]),
+                "movement_limit": int(plan["movement_limit"]),
+                "movement_used_before": before_used,
+                "movement_used_after": after_used,
+                "opportunity_attack_triggers": self._opportunity_attack_triggers_for_move(
+                    actor,
+                    from_position=before_position,
+                    to_position=actor.position_node_id,
+                ),
                 "path": path,
             }
         )
@@ -9331,6 +9378,99 @@ class AutomationExecutor:
             if not isinstance(class_levels, dict) or int(class_levels.get("fighter", 0)) < 5:
                 raise AutomationError("Tactical Shift requires Fighter level 5")
             self._tactical_shift_move_plan(actor_id, str(destination))
+
+    def _validate_instinctive_pounce_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        for node in self._automation_nodes(action.automation):
+            if node.get("type") != "instinctive_pounce_move":
+                continue
+            destination_param = str(
+                node.get("destination_param", "instinctive_pounce_to_position_node_id")
+            )
+            destination = params.get(destination_param)
+            if destination is None:
+                continue
+            owner = self._resource_owner(actor_id)
+            class_levels = getattr(owner, "class_levels", {})
+            if not isinstance(class_levels, dict) or int(class_levels.get("barbarian", 0)) < 7:
+                raise AutomationError("Instinctive Pounce requires Barbarian level 7")
+            self._instinctive_pounce_move_plan(actor_id, str(destination))
+
+    def _instinctive_pounce_move_plan(self, actor_id: str, destination: str) -> dict[str, Any]:
+        actor = self._entity(actor_id)
+        if not isinstance(actor, Combatant):
+            raise AutomationError("Instinctive Pounce requires a combatant")
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            raise AutomationError("Instinctive Pounce requires a combat tactical graph")
+        if actor.position_node_id is None:
+            raise AutomationError("Instinctive Pounce requires a current position")
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            raise AutomationError("Instinctive Pounce destination position does not exist")
+        movement_cost = graph.shortest_distance(
+            actor.position_node_id,
+            destination,
+            movement_cost=True,
+        )
+        if movement_cost is None:
+            raise AutomationError("Instinctive Pounce destination position is not reachable")
+        movement_limit = self._effective_speed(actor) // 2
+        if int(movement_cost) > movement_limit:
+            raise AutomationError("Instinctive Pounce movement cannot exceed half Speed")
+        return {
+            "actor": actor,
+            "movement_cost": int(movement_cost),
+            "movement_limit": movement_limit,
+        }
+
+    def _opportunity_attack_triggers_for_move(
+        self,
+        actor: Combatant,
+        *,
+        from_position: str | None,
+        to_position: str | None,
+    ) -> list[str]:
+        if (
+            self.state.encounter is None
+            or self.state.encounter.tactical_graph is None
+            or from_position is None
+            or to_position is None
+        ):
+            return []
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        enemy_positions: dict[str, str] = {}
+        if not has_condition(actor.status_effects, "disengaged"):
+            enemy_positions = {
+                combatant_id: other.position_node_id
+                for combatant_id, other in self.state.encounter.combatants.items()
+                if other.side != actor.side
+                and other.position_node_id is not None
+                and not self._cannot_make_opportunity_attacks(other)
+            }
+        enemy_reach = {
+            combatant_id: other.reach_ft
+            for combatant_id, other in self.state.encounter.combatants.items()
+        }
+        return graph.opportunity_attack_triggers(
+            actor_from=from_position,
+            actor_to=to_position,
+            enemy_positions=enemy_positions,
+            enemy_reach_ft=enemy_reach,
+        )
+
+    @staticmethod
+    def _cannot_make_opportunity_attacks(actor: Character | Monster | Combatant) -> bool:
+        if has_condition(actor.status_effects, "open_hand_addled"):
+            return True
+        return any(
+            bool(effect.get("passive_modifiers", {}).get("cannot_make_opportunity_attacks"))
+            for effect in actor.status_effects
+            if isinstance(effect.get("passive_modifiers", {}), dict)
+        )
 
     def _tactical_shift_move_plan(self, actor_id: str, destination: str) -> dict[str, Any]:
         actor = self._entity(actor_id)

@@ -1581,6 +1581,7 @@ def test_natural_language_character_edit_assigns_barbarian_feral_instinct() -> N
     assert result.character is not None
     assert result.character.class_levels == {"barbarian": 7}
     assert "srd.feral_instinct" in result.character.actions
+    assert "srd.instinctive_pounce" in result.character.actions
 
 
 def test_natural_language_character_edit_assigns_explicit_berserker_subclass() -> None:

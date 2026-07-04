@@ -34,6 +34,7 @@ NODE_TYPES = {
     "heightened_focus_step_of_the_wind",
     "quivering_palm_release",
     "tactical_shift_move",
+    "instinctive_pounce_move",
     "move",
     "branch",
     "text_result",
@@ -65,6 +66,7 @@ STATE_CHANGING_NODE_TYPES = {
     "heightened_focus_step_of_the_wind",
     "quivering_palm_release",
     "tactical_shift_move",
+    "instinctive_pounce_move",
     "move",
 }
 
@@ -313,6 +315,13 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         points_param = node.get("points_param", "preserve_life_points")
         if not isinstance(points_param, str) or not points_param:
             errors.append(f"{path}: preserve_life_healing points_param must be a string")
+    if node_type == "instinctive_pounce_move":
+        destination_param = node.get(
+            "destination_param",
+            "instinctive_pounce_to_position_node_id",
+        )
+        if not isinstance(destination_param, str) or not destination_param:
+            errors.append(f"{path}: instinctive_pounce_move destination_param must be a string")
     if node_type == "passive_effect":
         modifiers = node.get("passive_modifiers")
         if not isinstance(modifiers, dict) or not modifiers:

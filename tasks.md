@@ -337,6 +337,7 @@ P0 脚手架
   - [x] **P2-1ca** SRD 5.2.1 Rogue Thief 17 `Thief's Reflexes` 落地：新增 `srd.thiefs_reflexes` class feature marker 与 Thief 17 子职授予；按 SRD 在任意战斗第一轮为 Thief 17+ 插入第二个回合，位置为正常 Initiative 减 10，进入第二轮时移除该额外回合，避免后续轮重复；不新增资源、反应或休息恢复，也不虚构额外伏击条件；覆盖 compendium、先攻 audit、第一轮双回合、第二轮清理与自然语言建角测试。
   - [x] **P2-1cb** SRD 5.2.1 Barbarian 7 `Feral Instinct` 落地：新增 `srd.feral_instinct` class feature marker 与 Barbarian 7 职业数据/角色成长授予；按 SRD 使 Barbarian 7+ 的 Initiative rolls 获得 Advantage，并通过现有先攻优势来源审计记录 `feral_instinct`；不附加旧版惊讶规则或额外移动效果，`Instinctive Pounce` 留待后续独立实现；覆盖 compendium、orchestrator 先攻与自然语言建角测试。
   - [x] **P2-1cc** SRD 5.2.1 Paladin 14 `Restoring Touch` 落地：新增 `srd.restoring_touch` class feature action 与 Paladin 14 职业数据/角色成长授予；按 SRD 在使用 Lay On Hands 池时可选择移除 Blinded、Charmed、Deafened、Frightened、Paralyzed 或 Stunned conditions，每个被移除 condition 消耗 5 点且这些点不恢复 HP，剩余所花点数才治疗；非法 condition、重复 condition、目标缺少所选 condition、点数不足或资源不足均在扣 Bonus Action/资源前拒绝；覆盖 compendium、resolver、executor、自动模拟与自然语言建角测试。
+  - [x] **P2-1cd** SRD 5.2.1 Barbarian 7 `Instinctive Pounce` 落地：新增 `srd.instinctive_pounce` class feature marker 与 Barbarian 7 职业数据/角色成长授予；按 SRD 在进入 Rage 的同一个 Bonus Action 中可显式移动最多半速，并按普通移动语义计算可能触发的 Opportunity Attacks；缺少战斗图、当前位置、非法目的地、超过半速或低于 Barbarian 7 均在扣 Rage 资源/Bonus Action 前拒绝；覆盖 compendium、resolver、executor、自动模拟与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

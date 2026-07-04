@@ -767,6 +767,53 @@ def test_resolver_rejects_spellcasting_blocked_by_passive_effect(make_state) -> 
     assert result.reason == "actor cannot cast spells while affected by srd.rage"
 
 
+def test_resolver_checks_instinctive_pounce_movement_preconditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 7}
+    character.actions.append("srd.rage")
+    character.resources["srd.resource.rage"] = 1
+    state.encounter.combatants["pc1"].speed_ft = 30
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴并跃扑",
+            target_ids=[],
+            candidate_action_id="srd.rage",
+            params={"instinctive_pounce_to_position_node_id": "cover"},
+        )
+    )
+    too_far = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴并跃扑",
+            target_ids=[],
+            candidate_action_id="srd.rage",
+            params={"instinctive_pounce_to_position_node_id": "back"},
+        )
+    )
+    character.class_levels = {"barbarian": 6}
+    too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴并跃扑",
+            target_ids=[],
+            candidate_action_id="srd.rage",
+            params={"instinctive_pounce_to_position_node_id": "cover"},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert too_far.status == "rejected"
+    assert too_far.reason == "Instinctive Pounce movement cannot exceed half Speed"
+    assert too_low.status == "rejected"
+    assert too_low.reason == "Instinctive Pounce requires Barbarian level 7"
+
+
 def test_resolver_checks_dynamic_resource_cost_params(make_state) -> None:
     state = make_state()
     state.characters["pc1"].class_levels = {"paladin": 1}

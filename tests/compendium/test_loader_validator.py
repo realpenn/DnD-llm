@@ -201,6 +201,18 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.action("srd.rage").automation[1]["passive_modifiers"][
         "damage_resistances"
     ] == ["bludgeoning", "piercing", "slashing"]
+    assert compendium.action("srd.rage").automation[2] == {
+        "type": "branch",
+        "condition": "actor_class_level_min",
+        "class": "barbarian",
+        "level": 7,
+        "if_true": [
+            {
+                "type": "instinctive_pounce_move",
+                "destination_param": "instinctive_pounce_to_position_node_id",
+            }
+        ],
+    }
     assert compendium.action("srd.barbarian_unarmored_defense").requirements == {
         "class": "barbarian",
         "class_level_min": 1,
@@ -3940,11 +3952,23 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mindless_rage",
     ]
     assert "srd.frenzy" not in compendium.classes["barbarian"].levels["3"]["actions"]
-    assert compendium.classes["barbarian"].levels["7"]["features"] == ["Feral Instinct"]
+    assert compendium.classes["barbarian"].levels["7"]["features"] == [
+        "Feral Instinct",
+        "Instinctive Pounce",
+    ]
     assert "srd.feral_instinct" in compendium.classes["barbarian"].levels["7"]["actions"]
+    assert "srd.instinctive_pounce" in compendium.classes["barbarian"].levels["7"]["actions"]
     feral_instinct = compendium.action("srd.feral_instinct")
     assert feral_instinct.requirements == {"class": "barbarian", "class_level_min": 7}
     assert feral_instinct.properties == {"initiative_advantage": True}
+    instinctive_pounce = compendium.action("srd.instinctive_pounce")
+    assert instinctive_pounce.requirements == {"class": "barbarian", "class_level_min": 7}
+    assert instinctive_pounce.properties == {
+        "rage_bonus_action_move": True,
+        "movement_limit": "half_speed",
+        "destination_param": "instinctive_pounce_to_position_node_id",
+        "triggers_opportunity_attacks": True,
+    }
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {
         "name": "College of Lore",

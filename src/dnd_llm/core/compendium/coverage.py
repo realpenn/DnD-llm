@@ -130,6 +130,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.improved_critical",
     "srd.investment_of_the_chain_master",
     "srd.innate_sorcery",
+    "srd.instinctive_pounce",
     "srd.lay_on_hands",
     "srd.lay_on_hands_remove_poisoned",
     "srd.lands_aid",

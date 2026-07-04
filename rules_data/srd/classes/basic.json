@@ -76,7 +76,7 @@
                     ]
                 },
                 "7": {
-                    "features": ["Feral Instinct"],
+                    "features": ["Feral Instinct", "Instinctive Pounce"],
                     "actions": [
                         "srd.shortsword_attack",
                         "srd.rage",
@@ -85,7 +85,8 @@
                         "srd.primal_knowledge",
                         "srd.reckless_attack",
                         "srd.extra_attack",
-                        "srd.feral_instinct"
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce"
                     ]
                 }
             },

@@ -246,6 +246,13 @@ class ActionResolver:
         rod_alertness_check = self._check_rod_of_alertness(draft, actor, action)
         if rod_alertness_check is not None:
             return rod_alertness_check
+        instinctive_pounce_error = self._instinctive_pounce_error(draft, actor, action)
+        if instinctive_pounce_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=instinctive_pounce_error,
+                action_id=action.id,
+            )
         if self._uses_thirsting_blade_extra_attack(draft):
             action_economy = "none"
         if self._uses_fleet_step(draft, actor, action):
@@ -594,6 +601,51 @@ class ActionResolver:
             ),
             None,
         )
+
+    def _instinctive_pounce_error(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> str | None:
+        for node in self._automation_nodes(action.automation):
+            if node.get("type") != "instinctive_pounce_move":
+                continue
+            destination_param = str(
+                node.get("destination_param", "instinctive_pounce_to_position_node_id")
+            )
+            destination = draft.params.get(destination_param)
+            if destination is None:
+                continue
+            owner = self._resource_owner(draft.actor_id, actor)
+            class_levels = getattr(owner, "class_levels", {})
+            if not isinstance(class_levels, dict) or int(class_levels.get("barbarian", 0)) < 7:
+                return "Instinctive Pounce requires Barbarian level 7"
+            return self._instinctive_pounce_move_error(draft.actor_id, str(destination))
+        return None
+
+    def _instinctive_pounce_move_error(self, actor_id: str, destination: str) -> str | None:
+        actor = self.state.entity_for_actor(actor_id)
+        if not isinstance(actor, Combatant):
+            return "Instinctive Pounce requires a combatant"
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return "Instinctive Pounce requires a combat tactical graph"
+        if actor.position_node_id is None:
+            return "Instinctive Pounce requires a current position"
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            return "Instinctive Pounce destination position does not exist"
+        movement_cost = graph.shortest_distance(
+            actor.position_node_id,
+            destination,
+            movement_cost=True,
+        )
+        if movement_cost is None:
+            return "Instinctive Pounce destination position is not reachable"
+        movement_limit = self._effective_speed(actor) // 2
+        if int(movement_cost) > movement_limit:
+            return "Instinctive Pounce movement cannot exceed half Speed"
+        return None
 
     def _prepare_size_based_oil_vial_cost(
         self,
