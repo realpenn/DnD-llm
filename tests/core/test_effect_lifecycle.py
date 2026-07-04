@@ -180,6 +180,45 @@ def test_eight_hour_duration_ticks_from_inferred_remaining_ticks(make_state) -> 
     assert result.ticked[0]["remaining_ticks_after"] == 4799
 
 
+def test_effect_with_ends_if_condition_expires_when_condition_present(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["pc1"].status_effects.extend(
+        [
+            {
+                "effect_id": "superior-defense-test",
+                "source_ref": "test",
+                "source_action_id": "srd.superior_defense",
+                "target_id": "pc1",
+                "applied_by": "pc1",
+                "condition": "superior_defense",
+                "passive_modifiers": {"ends_if_condition": "incapacitated"},
+                "duration": {"until": "duration_1_minute"},
+                "tick_on": "self_turn_start",
+            },
+            {
+                "effect_id": "incapacitated-test",
+                "source_ref": "test",
+                "source_action_id": "test.incapacitated",
+                "target_id": "pc1",
+                "applied_by": "goblin1",
+                "condition": "incapacitated",
+                "duration": {"until": "duration_1_minute"},
+                "tick_on": "self_turn_start",
+            },
+        ]
+    )
+
+    result = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+
+    assert result.expired[0]["source_action_id"] == "srd.superior_defense"
+    assert result.expired[0]["ended_by_condition"] == "incapacitated"
+    assert result.ticked[0]["source_action_id"] == "test.incapacitated"
+    assert [
+        effect["source_action_id"] for effect in state.encounter.combatants["pc1"].status_effects
+    ] == ["test.incapacitated"]
+
+
 def test_multi_day_duration_variants_tick_from_inferred_remaining_ticks(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -81,6 +81,7 @@ ALLOWED_ACTION_MARKERS = {
     "raging",
     "sacred_weapon",
     "steady_aim",
+    "superior_defense",
     "turned",
     "wild_shape",
 }

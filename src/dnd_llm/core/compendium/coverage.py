@@ -179,6 +179,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.sorcerous_restoration",
     "srd.steady_aim",
     "srd.stunning_strike",
+    "srd.superior_defense",
     "srd.step_of_the_wind",
     "srd.step_of_the_wind_focus",
     "srd.thieves_cant",

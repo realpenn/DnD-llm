@@ -4640,6 +4640,50 @@
             "audit_label": "Perfect Focus"
         },
         {
+            "id": "srd.superior_defense",
+            "name": "Superior Defense",
+            "localization": {
+                "en": "Superior Defense",
+                "zh": "卓越防御",
+                "aliases": ["Monk Superior Defense", "武僧卓越防御"]
+            },
+            "source": "SRD 5.2.1 Monk Class Features: Level 18: Superior Defense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "monk", "class_level_min": 18},
+            "properties": {
+                "trigger": "self_turn_start",
+                "focus_point_cost": 3,
+                "duration": "duration_1_minute_or_incapacitated",
+                "damage_resistance": "all_except_force"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.focus_points": 3}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "passive_effect",
+                    "condition": "superior_defense",
+                    "passive_modifiers": {
+                        "all_damage_resistance": true,
+                        "all_damage_resistance_except": ["force"],
+                        "ends_if_condition": "incapacitated"
+                    },
+                    "duration": {"until": "duration_1_minute"},
+                    "tick_on": "self_turn_start",
+                    "stacking_policy": "replace"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The Monk spends 3 Focus Points at the start of their turn to gain Resistance to all damage except Force damage for 1 minute, ending early if Incapacitated."
+                }
+            ],
+            "audit_label": "Superior Defense"
+        },
+        {
             "id": "srd.quivering_palm_release",
             "name": "End Quivering Palm",
             "localization": {

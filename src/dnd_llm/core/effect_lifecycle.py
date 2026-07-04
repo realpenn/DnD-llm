@@ -55,6 +55,20 @@ def tick_effects(
             if not isinstance(duration, dict):
                 duration = {}
                 effect["duration"] = duration
+            ended_by_condition = _ended_by_condition(state, effect, actor_id)
+            if ended_by_condition is not None:
+                result.expired.append(
+                    _entry(
+                        effect,
+                        owner_type=owner_type,
+                        owner_id=owner_id,
+                        trigger=trigger,
+                        remaining_before=_remaining_ticks(duration) or 0,
+                        remaining_after=0,
+                        ended_by_condition=ended_by_condition,
+                    )
+                )
+                continue
             repeat_save = _repeat_save(effect, trigger)
             repeat_save_entry = None
             if repeat_save is not None and roll_service is not None:
@@ -282,6 +296,28 @@ def _remaining_ticks(duration: dict[str, Any]) -> int | None:
     return inferred
 
 
+def _ended_by_condition(state: GameState, effect: dict[str, Any], actor_id: str) -> str | None:
+    modifiers = effect.get("passive_modifiers", {})
+    if not isinstance(modifiers, dict):
+        return None
+    condition = modifiers.get("ends_if_condition")
+    if not isinstance(condition, str) or not condition:
+        return None
+    target_id = effect.get("target_id")
+    checked_actor_id = target_id if isinstance(target_id, str) else actor_id
+    if _actor_has_condition(state, checked_actor_id, condition):
+        return condition
+    return None
+
+
+def _actor_has_condition(state: GameState, actor_id: str, condition: str) -> bool:
+    return any(
+        effect.get("condition") == condition
+        for _, _, effects in _target_effect_lists(state, actor_id)
+        for effect in effects
+    )
+
+
 def _initial_ticks(until: str) -> int | None:
     timed_until = until.split("_or_", 1)[0]
     if timed_until in {"start_of_next_turn", "end_of_next_turn", "end_of_current_turn"}:
@@ -393,6 +429,7 @@ def _entry(
     remaining_before: int,
     remaining_after: int,
     repeat_save: dict[str, Any] | None = None,
+    ended_by_condition: str | None = None,
 ) -> dict[str, Any]:
     entry = {
         "owner_type": owner_type,
@@ -406,4 +443,6 @@ def _entry(
     }
     if repeat_save is not None:
         entry["repeat_save"] = repeat_save
+    if ended_by_condition is not None:
+        entry["ended_by_condition"] = ended_by_condition
     return entry

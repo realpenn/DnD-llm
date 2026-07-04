@@ -4176,6 +4176,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["monk"].levels["17"]["features"] == ["Subclass Feature"]
     assert "srd.quivering_palm" in compendium.classes["monk"].levels["17"]["actions"]
     assert "srd.quivering_palm_release" in compendium.classes["monk"].levels["17"]["actions"]
+    assert "srd.superior_defense" not in compendium.classes["monk"].levels["17"]["actions"]
     quivering_palm = compendium.action("srd.quivering_palm")
     assert quivering_palm.action_economy == "none"
     assert quivering_palm.requirements == {
@@ -4195,6 +4196,30 @@ def test_compendium_loads_srd_actions() -> None:
     quivering_release = compendium.action("srd.quivering_palm_release")
     assert quivering_release.action_economy == "action"
     assert quivering_release.range == {"same_plane": True}
+    assert compendium.classes["monk"].levels["18"]["features"] == ["Superior Defense"]
+    assert "srd.superior_defense" in compendium.classes["monk"].levels["18"]["actions"]
+    superior_defense = compendium.action("srd.superior_defense")
+    assert superior_defense.action_economy == "none"
+    assert superior_defense.requirements == {"class": "monk", "class_level_min": 18}
+    assert superior_defense.cost.resources == {"srd.resource.focus_points": 3}
+    assert superior_defense.properties == {
+        "trigger": "self_turn_start",
+        "focus_point_cost": 3,
+        "duration": "duration_1_minute_or_incapacitated",
+        "damage_resistance": "all_except_force",
+    }
+    assert superior_defense.automation[1] == {
+        "type": "passive_effect",
+        "condition": "superior_defense",
+        "passive_modifiers": {
+            "all_damage_resistance": True,
+            "all_damage_resistance_except": ["force"],
+            "ends_if_condition": "incapacitated",
+        },
+        "duration": {"until": "duration_1_minute"},
+        "tick_on": "self_turn_start",
+        "stacking_policy": "replace",
+    }
     assert quivering_release.requirements == {
         "class": "monk",
         "class_level_min": 17,

@@ -223,6 +223,10 @@ def monk_perfect_focus_applies(character: Character) -> bool:
     return has_monk_feature(character, level=15)
 
 
+def monk_superior_defense_applies(character: Character) -> bool:
+    return has_monk_feature(character, level=18)
+
+
 def saving_throw_proficiency_sources(actor: Any, ability: str) -> list[dict[str, Any]]:
     ability_key = ability.lower()
     sources: list[dict[str, Any]] = []

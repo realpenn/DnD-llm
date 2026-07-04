@@ -1522,6 +1522,9 @@ class AutomationExecutor:
             )
             if effect.passive_modifiers:
                 ctx.result.state_changes[-1]["passive_modifiers"] = effect.passive_modifiers
+            ctx.result.state_changes.extend(
+                self._expire_effects_ended_by_condition(target_id, condition, path)
+            )
 
     def _node_remove_condition(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         conditions = [str(condition) for condition in node.get("conditions", [])]
@@ -6577,14 +6580,17 @@ class AutomationExecutor:
             if not isinstance(modifiers, dict):
                 continue
             if modifiers.get("all_damage_resistance") is True:
-                sources.append(
-                    {
+                exceptions = _string_set(modifiers.get("all_damage_resistance_except"))
+                if damage_type not in exceptions:
+                    source = {
                         "effect_id": effect.get("effect_id"),
                         "source_action_id": effect.get("source_action_id"),
                         "modifier": "all_damage_resistance",
                     }
-                )
-                continue
+                    if exceptions:
+                        source["except"] = sorted(exceptions)
+                    sources.append(source)
+                    continue
             resistances = modifiers.get("damage_resistances", [])
             if isinstance(resistances, str):
                 resistances = [resistances]
@@ -6600,6 +6606,40 @@ class AutomationExecutor:
                     }
                 )
         return sources
+
+    def _expire_effects_ended_by_condition(
+        self,
+        target_id: str,
+        condition: str,
+        path: str,
+    ) -> list[dict[str, Any]]:
+        expired: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if self._effect_ends_if_condition(effect, condition):
+                    expired.append(
+                        {
+                            "type": "effect_expired",
+                            "target_id": target_id,
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                            "condition": effect.get("condition"),
+                            "ended_by_condition": condition,
+                            "path": path,
+                        }
+                    )
+                    continue
+                retained.append(effect)
+            effects[:] = retained
+        return expired
+
+    @staticmethod
+    def _effect_ends_if_condition(effect: dict[str, Any], condition: str) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        return isinstance(modifiers, dict) and modifiers.get("ends_if_condition") == condition
 
     def _status_effects_for(self, entity: Character | Monster | Combatant) -> list[dict[str, Any]]:
         effects = list(getattr(entity, "status_effects", []))

@@ -4991,6 +4991,176 @@ def test_monk_disciplined_survivor_rejects_indomitable_combo(make_state) -> None
     assert character.resources["srd.resource.indomitable"] == 1
 
 
+def test_monk_superior_defense_resists_all_damage_except_force(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 18}
+    character.actions.append("srd.superior_defense")
+    character.resources["srd.resource.focus_points"] = 18
+    state.encounter.combatants["pc1"].hp_current = 40
+    state.encounter.combatants["pc1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.superior_defense",
+        [],
+        idempotency_key="monk-superior-defense",
+    )
+    fire = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="fire"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="fire-damage-after-superior-defense",
+    )
+    force = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="force"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="force-damage-after-superior-defense",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.focus_points"] == 15
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.superior_defense"
+    assert effect["condition"] == "superior_defense"
+    assert effect["passive_modifiers"] == {
+        "all_damage_resistance": True,
+        "all_damage_resistance_except": ["force"],
+        "ends_if_condition": "incapacitated",
+    }
+    assert effect["duration"] == {"until": "duration_1_minute"}
+    assert effect["tick_on"] == "self_turn_start"
+    fire_damage = next(change for change in fire.state_changes if change["type"] == "damage")
+    force_damage = next(change for change in force.state_changes if change["type"] == "damage")
+    assert fire_damage["amount"] == 9
+    assert fire_damage["applied"] == 4
+    assert force_damage["amount"] == 9
+    assert force_damage["applied"] == 9
+    assert state.encounter.combatants["pc1"].hp_current == 27
+
+
+def test_monk_superior_defense_requires_three_focus_points(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 18}
+    character.actions.append("srd.superior_defense")
+    character.resources["srd.resource.focus_points"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="focus_points"):
+        tools.perform_action(
+            "pc1",
+            "srd.superior_defense",
+            [],
+            idempotency_key="monk-superior-defense-no-focus",
+        )
+
+    assert character.resources["srd.resource.focus_points"] == 2
+    assert all(
+        effect.get("source_action_id") != "srd.superior_defense"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
+def test_monk_superior_defense_ends_when_incapacitated(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 18}
+    character.actions.append("srd.superior_defense")
+    character.resources["srd.resource.focus_points"] = 18
+    state.encounter.combatants["pc1"].hp_current = 40
+    state.encounter.combatants["pc1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action(
+        "pc1",
+        "srd.superior_defense",
+        [],
+        idempotency_key="monk-superior-defense-before-incapacitated",
+    )
+    incapacitated_action = ActionDefinition(
+        id="test.incapacitated_superior_defense",
+        name="Incapacitate",
+        localization={"en": "Incapacitate", "zh": "失能", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {
+                "type": "condition",
+                "condition": "incapacitated",
+                "duration": {"until": "duration_1_minute"},
+                "tick_on": "self_turn_start",
+            },
+        ],
+    )
+
+    incapacitated = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        incapacitated_action,
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="incapacitate-superior-defense",
+    )
+    fire = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="fire"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="fire-damage-after-superior-defense-ended",
+    )
+
+    assert any(
+        change["type"] == "effect_expired"
+        and change["source_action_id"] == "srd.superior_defense"
+        and change["ended_by_condition"] == "incapacitated"
+        for change in incapacitated.state_changes
+    )
+    assert not any(
+        effect.get("source_action_id") == "srd.superior_defense"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+    fire_damage = next(change for change in fire.state_changes if change["type"] == "damage")
+    assert fire_damage["amount"] == 9
+    assert fire_damage["applied"] == 9
+
+
+def test_monk_superior_defense_expires_after_one_minute(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 18}
+    character.actions.append("srd.superior_defense")
+    character.resources["srd.resource.focus_points"] = 18
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action(
+        "pc1",
+        "srd.superior_defense",
+        [],
+        idempotency_key="monk-superior-defense-duration",
+    )
+
+    for _ in range(9):
+        lifecycle = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+        assert lifecycle.expired == []
+    final_lifecycle = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+
+    assert final_lifecycle.expired[0]["source_action_id"] == "srd.superior_defense"
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+
 def test_fighter_studied_attacks_grants_targeted_advantage_after_miss(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
