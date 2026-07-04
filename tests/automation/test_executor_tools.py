@@ -17,6 +17,7 @@ from dnd_llm.core.rules.class_features import (
     second_story_work_jump_ability,
 )
 from dnd_llm.core.rules.conditions import (
+    blindsight_range_from_effects,
     can_hover_from_effects,
     can_walk_on_liquid_surface_from_effects,
     climb_speed_from_effects,
@@ -10659,6 +10660,20 @@ def test_goggles_of_night_grant_darkvision_and_extend_existing_darkvision(
             ]
         )
         == 180
+    )
+
+
+def test_blindsight_range_from_effects_uses_largest_numeric_range() -> None:
+    assert (
+        blindsight_range_from_effects(
+            [
+                {"passive_modifiers": {"blindsight_ft": 10}},
+                {"passive_modifiers": {"blindsight_ft": True}},
+                {"passive_modifiers": {"blindsight_ft": 30}},
+                {"passive_modifiers": {"darkvision_ft": 120}},
+            ]
+        )
+        == 30
     )
 
 

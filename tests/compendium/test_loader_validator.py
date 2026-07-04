@@ -2677,6 +2677,10 @@ def test_compendium_loads_srd_actions() -> None:
         "requires_hunters_mark": True,
         "attack_roll_advantage_against_current_hunters_mark_target": True,
     }
+    feral_senses = compendium.action("srd.feral_senses")
+    assert feral_senses.action_economy == "none"
+    assert feral_senses.requirements == {"class": "ranger", "class_level_min": 18}
+    assert feral_senses.properties == {"blindsight_ft": 30}
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
@@ -5100,6 +5104,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.precise_hunter" not in compendium.classes["ranger"].levels["16"]["actions"]
     assert compendium.classes["ranger"].levels["17"]["features"] == ["Precise Hunter"]
     assert "srd.precise_hunter" in compendium.classes["ranger"].levels["17"]["actions"]
+    assert compendium.classes["ranger"].levels["18"]["features"] == ["Feral Senses"]
+    assert "srd.feral_senses" in compendium.classes["ranger"].levels["18"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

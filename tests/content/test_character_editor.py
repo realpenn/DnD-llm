@@ -21,6 +21,7 @@ from dnd_llm.core.rules.class_features import (
     monk_perfect_focus_applies,
     monk_self_restoration_applies,
     monk_superior_defense_applies,
+    ranger_feral_senses_blindsight_ft,
     ranger_roving_climb_speed_ft,
     ranger_roving_speed_bonus,
     ranger_roving_swim_speed_ft,
@@ -2298,6 +2299,30 @@ def test_natural_language_character_edit_does_not_grant_precise_hunter_too_early
     assert result.character is not None
     assert "srd.precise_hunter" not in result.character.actions
     assert "srd.natures_veil" in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_ranger_feral_senses_at_level_18() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger18")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 18}
+    assert "srd.feral_senses" in result.character.actions
+    assert "srd.precise_hunter" in result.character.actions
+    assert ranger_feral_senses_blindsight_ft(result.character) == 30
+
+
+def test_natural_language_character_edit_does_not_grant_feral_senses_too_early() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger17")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert "srd.feral_senses" not in result.character.actions
+    assert ranger_feral_senses_blindsight_ft(result.character) == 0
 
 
 def test_natural_language_character_edit_does_not_grant_relentless_hunter_too_early() -> None:

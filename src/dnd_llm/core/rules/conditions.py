@@ -153,6 +153,10 @@ def truesight_range_from_effects(status_effects: list[dict[str, Any]]) -> int | 
     return _sense_range_from_effects(status_effects, "truesight_ft")
 
 
+def blindsight_range_from_effects(status_effects: list[dict[str, Any]]) -> int | None:
+    return _sense_range_from_effects(status_effects, "blindsight_ft")
+
+
 def _sense_range_from_effects(
     status_effects: list[dict[str, Any]],
     modifier_key: str,
