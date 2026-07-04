@@ -491,6 +491,7 @@ class DMRuntime:
                 advantage=_optional_str(args.get("advantage")),
                 use_tactical_mind=_optional_bool(args.get("use_tactical_mind")),
                 use_primal_knowledge=_optional_bool(args.get("use_primal_knowledge")),
+                use_stroke_of_luck=_optional_bool(args.get("use_stroke_of_luck")),
                 idempotency_key=tool_key,
             )
         if tool_call.name == "roll_save":
@@ -501,6 +502,7 @@ class DMRuntime:
                 difficulty_tier=_optional_str(args.get("difficulty_tier")),
                 dc_ref=_optional_str(args.get("dc_ref")),
                 advantage=_optional_str(args.get("advantage")),
+                use_stroke_of_luck=_optional_bool(args.get("use_stroke_of_luck")),
                 idempotency_key=tool_key,
             )
         if tool_call.name == "interact":

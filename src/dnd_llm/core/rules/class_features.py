@@ -90,6 +90,7 @@ FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
 GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
 INDOMITABLE_RESOURCE = "srd.resource.indomitable"
+STROKE_OF_LUCK_RESOURCE = "srd.resource.stroke_of_luck"
 HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
@@ -101,6 +102,8 @@ RELIABLE_TALENT_MAX_NATURAL = 9
 SLIPPERY_MIND_ACTION_ID = "srd.slippery_mind"
 SLIPPERY_MIND_SAVING_THROWS = frozenset({"wis", "cha"})
 ELUSIVE_ACTION_ID = "srd.elusive"
+STROKE_OF_LUCK_ACTION_ID = "srd.stroke_of_luck"
+STROKE_OF_LUCK_D20 = 20
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -212,6 +215,10 @@ def rogue_slippery_mind_applies(character: Character) -> bool:
 
 def rogue_elusive_applies(character: Character) -> bool:
     return int(character.class_levels.get("rogue", 0)) >= 18
+
+
+def rogue_stroke_of_luck_applies(character: Character) -> bool:
+    return int(character.class_levels.get("rogue", 0)) >= 20
 
 
 def reliable_talent_d20_adjustment(

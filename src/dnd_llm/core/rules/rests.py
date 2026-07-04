@@ -10,6 +10,7 @@ from .class_features import (
     INDOMITABLE_RESOURCE,
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
+    STROKE_OF_LUCK_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WHOLENESS_OF_BODY_RESOURCE,
     dark_ones_own_luck_uses,
@@ -250,6 +251,14 @@ def _restore_short_rest_resources(character: Character) -> dict[str, int]:
         after = min(wild_shape_max, before + 1)
         character.resources[WILD_SHAPE_RESOURCE] = after
         restored[WILD_SHAPE_RESOURCE] = after - before
+    stroke_of_luck_max = maxima.get(STROKE_OF_LUCK_RESOURCE, 0)
+    if stroke_of_luck_max:
+        before = min(
+            character.resources.get(STROKE_OF_LUCK_RESOURCE, stroke_of_luck_max),
+            stroke_of_luck_max,
+        )
+        character.resources[STROKE_OF_LUCK_RESOURCE] = stroke_of_luck_max
+        restored[STROKE_OF_LUCK_RESOURCE] = stroke_of_luck_max - before
     return restored
 
 
@@ -495,6 +504,8 @@ def resource_maxima(character: Character) -> dict[str, int]:
     indomitable_max = fighter_indomitable_uses(character)
     if indomitable_max:
         maxima[INDOMITABLE_RESOURCE] = indomitable_max
+    if int(character.class_levels.get("rogue", 0)) >= 20:
+        maxima[STROKE_OF_LUCK_RESOURCE] = 1
     if has_warlock_gift_of_depths(character):
         maxima[GIFT_OF_DEPTHS_RESOURCE] = 1
     wizard_level = int(character.class_levels.get("wizard", 0))

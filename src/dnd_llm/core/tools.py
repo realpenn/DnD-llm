@@ -22,6 +22,9 @@ from .rules.class_features import (
     PRIMAL_KNOWLEDGE_SKILLS,
     RELIABLE_TALENT_ACTION_ID,
     RELIABLE_TALENT_D20_FLOOR,
+    STROKE_OF_LUCK_ACTION_ID,
+    STROKE_OF_LUCK_D20,
+    STROKE_OF_LUCK_RESOURCE,
     aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
     druid_magician_check_bonus,
@@ -32,6 +35,7 @@ from .rules.class_features import (
     monk_disciplined_survivor_applies,
     reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
+    rogue_stroke_of_luck_applies,
     saving_throw_proficiency_sources,
 )
 from .rules.combat import apply_damage as apply_damage_rule
@@ -74,6 +78,7 @@ class EngineTools:
         use_dark_ones_own_luck: bool = False,
         use_tactical_mind: bool = False,
         use_primal_knowledge: bool = False,
+        use_stroke_of_luck: bool = False,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"roll_check:{self.state.event_counter}"
@@ -133,10 +138,14 @@ class EngineTools:
         if magician_bonus:
             extra_bonus += magician_bonus
             proficiency_sources = [*proficiency_sources, "feature:primal_order_magician"]
+        if use_tactical_mind and use_stroke_of_luck:
+            raise ValueError("choose only one failed ability check feature")
         if use_tactical_mind:
             self._validate_tactical_mind_available(proficiency_source)
         if use_dark_ones_own_luck:
             self._validate_dark_ones_own_luck_available(proficiency_source)
+        if use_stroke_of_luck:
+            self._validate_stroke_of_luck_available(proficiency_source)
         d20_penalty, d20_penalty_sources = self._exhaustion_penalty_for(actor_id)
         status_advantage, status_sources = self._ability_check_status_advantage(
             actor_id,
@@ -165,7 +174,7 @@ class EngineTools:
             d20_penalty_sources=d20_penalty_sources,
             status_effects=self._status_effects_for_actor(actor_id),
         )
-        payload = result.to_dict()
+        payload: dict[str, Any] = result.to_dict()
         payload["original_ability"] = original_ability
         payload["status_advantage"] = status_advantage
         payload["status_sources"] = status_sources
@@ -198,6 +207,15 @@ class EngineTools:
         if tactical_mind is not None:
             payload["tactical_mind"] = tactical_mind["result"]
             dice_rolls.append(tactical_mind["roll"])
+        stroke_of_luck = self._apply_stroke_of_luck_to_failed_d20_test(
+            actor_id,
+            payload,
+            proficiency_source,
+            result.roll,
+            use_stroke_of_luck=use_stroke_of_luck,
+        )
+        if stroke_of_luck is not None:
+            payload["stroke_of_luck"] = stroke_of_luck
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -214,6 +232,7 @@ class EngineTools:
                 "use_dark_ones_own_luck": use_dark_ones_own_luck,
                 "use_tactical_mind": use_tactical_mind,
                 "use_primal_knowledge": use_primal_knowledge,
+                "use_stroke_of_luck": use_stroke_of_luck,
             },
             tool_result=payload,
             dice_rolls=dice_rolls,
@@ -232,6 +251,7 @@ class EngineTools:
         use_dark_ones_own_luck: bool = False,
         use_indomitable: bool = False,
         use_disciplined_survivor: bool = False,
+        use_stroke_of_luck: bool = False,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"roll_save:{self.state.event_counter}"
@@ -261,11 +281,15 @@ class EngineTools:
             self._validate_indomitable_available(proficiency_source)
         if use_disciplined_survivor:
             self._validate_disciplined_survivor_available(proficiency_source)
-        if use_indomitable and use_disciplined_survivor:
-            raise ValueError("choose only one failed saving throw reroll feature")
+        if use_stroke_of_luck:
+            self._validate_stroke_of_luck_available(proficiency_source)
+        if sum([use_indomitable, use_disciplined_survivor, use_stroke_of_luck]) > 1:
+            raise ValueError("choose only one failed saving throw feature")
         auto_fail_sources = self._saving_throw_auto_failure_sources(actor_id, ability)
         if auto_fail_sources and (use_indomitable or use_disciplined_survivor):
             raise ValueError("failed saving throw reroll features require a rolled failed save")
+        if auto_fail_sources and use_stroke_of_luck:
+            raise ValueError("Stroke of Luck requires a rolled failed D20 Test")
         dc, dc_source = resolve_dc(difficulty_tier=difficulty_tier, dc_ref=dc_ref)
         bonus = (
             actor_ability_modifier(
@@ -278,7 +302,7 @@ class EngineTools:
             - d20_penalty
         )
         if auto_fail_sources:
-            payload = {
+            auto_fail_payload: dict[str, Any] = {
                 "actor_id": actor_id,
                 "ability": ability,
                 "skill": None,
@@ -312,12 +336,13 @@ class EngineTools:
                     "use_dark_ones_own_luck": use_dark_ones_own_luck,
                     "use_indomitable": use_indomitable,
                     "use_disciplined_survivor": use_disciplined_survivor,
+                    "use_stroke_of_luck": use_stroke_of_luck,
                 },
-                tool_result=payload,
+                tool_result=auto_fail_payload,
                 dice_rolls=[],
             )
             require_game_state_invariants(self.state)
-            return payload
+            return auto_fail_payload
         result = roll_check(
             actor_id=actor_id,
             actor=actor,
@@ -338,7 +363,7 @@ class EngineTools:
             d20_penalty_sources=d20_penalty_sources,
             status_effects=self._status_effects_for_actor(actor_id),
         )
-        payload = result.to_dict()
+        payload: dict[str, Any] = result.to_dict()
         payload["tool"] = "roll_save"
         payload["status_advantage"] = status_advantage
         payload["status_sources"] = status_sources
@@ -372,6 +397,15 @@ class EngineTools:
         if disciplined_survivor is not None:
             payload["disciplined_survivor"] = disciplined_survivor["result"]
             dice_rolls.append(disciplined_survivor["roll"])
+        stroke_of_luck = self._apply_stroke_of_luck_to_failed_d20_test(
+            actor_id,
+            payload,
+            proficiency_source,
+            result.roll,
+            use_stroke_of_luck=use_stroke_of_luck,
+        )
+        if stroke_of_luck is not None:
+            payload["stroke_of_luck"] = stroke_of_luck
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -385,6 +419,7 @@ class EngineTools:
                 "use_dark_ones_own_luck": use_dark_ones_own_luck,
                 "use_indomitable": use_indomitable,
                 "use_disciplined_survivor": use_disciplined_survivor,
+                "use_stroke_of_luck": use_stroke_of_luck,
             },
             tool_result=payload,
             dice_rolls=dice_rolls,
@@ -1716,6 +1751,52 @@ class EngineTools:
             raise ValueError("Dark One's Own Luck requires Fiend Patron Warlock level 6")
         if int(actor.resources.get(DARK_ONES_OWN_LUCK_RESOURCE, 0)) <= 0:
             raise ValueError("Dark One's Own Luck requires an available use")
+
+    @staticmethod
+    def _validate_stroke_of_luck_available(actor: Character | Monster | Combatant) -> None:
+        if not isinstance(actor, Character) or not rogue_stroke_of_luck_applies(actor):
+            raise ValueError("Stroke of Luck requires Rogue level 20")
+        if int(actor.resources.get(STROKE_OF_LUCK_RESOURCE, 0)) <= 0:
+            raise ValueError("Stroke of Luck requires an available use")
+
+    def _apply_stroke_of_luck_to_failed_d20_test(
+        self,
+        actor_id: str,
+        payload: dict[str, Any],
+        actor: Character | Monster | Combatant,
+        roll: RollResult,
+        *,
+        use_stroke_of_luck: bool,
+    ) -> dict[str, Any] | None:
+        if not use_stroke_of_luck or bool(payload["success"]):
+            return None
+        if not isinstance(actor, Character):
+            raise ValueError("Stroke of Luck requires a character")
+        natural_d20 = _kept_d20(roll)
+        adjustment = STROKE_OF_LUCK_D20 - natural_d20
+        if adjustment <= 0:
+            return None
+        before_resource = int(actor.resources.get(STROKE_OF_LUCK_RESOURCE, 0))
+        after_resource = before_resource - 1
+        before_total = int(payload["total"])
+        after_total = before_total + adjustment
+        actor.resources[STROKE_OF_LUCK_RESOURCE] = after_resource
+        payload["total"] = after_total
+        payload["success"] = after_total >= int(payload["dc"])
+        return {
+            "source_action_id": STROKE_OF_LUCK_ACTION_ID,
+            "resource": STROKE_OF_LUCK_RESOURCE,
+            "resource_before": before_resource,
+            "resource_after": after_resource,
+            "actor_id": actor_id,
+            "d20_before": natural_d20,
+            "d20_after": STROKE_OF_LUCK_D20,
+            "adjustment": adjustment,
+            "total_before": before_total,
+            "total_after": after_total,
+            "spent": True,
+            "success": payload["success"],
+        }
 
     def _apply_dark_ones_own_luck_to_roll(
         self,

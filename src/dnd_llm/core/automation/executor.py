@@ -18,6 +18,9 @@ from ..rules.class_features import (
     PRIMAL_KNOWLEDGE_SKILLS,
     RELIABLE_TALENT_ACTION_ID,
     RELIABLE_TALENT_D20_FLOOR,
+    STROKE_OF_LUCK_ACTION_ID,
+    STROKE_OF_LUCK_D20,
+    STROKE_OF_LUCK_RESOURCE,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     aura_of_protection_saving_throw_bonus,
     barbarian_rage_damage_bonus,
@@ -64,6 +67,7 @@ from ..rules.class_features import (
     reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
     rogue_elusive_applies,
+    rogue_stroke_of_luck_applies,
     saving_throw_proficiency_sources,
     warlock_agonizing_blast_bonus,
 )
@@ -618,6 +622,9 @@ class AutomationExecutor:
         base_attack_bonus, attack_bonus_sources = self._attack_bonus(ctx, node, ability)
         node_advantage = _advantage_value(node.get("advantage"))
         actor = self._entity(ctx.actor_id)
+        if bool(ctx.params.get("use_stroke_of_luck")):
+            self._validate_stroke_of_luck_target_selection(ctx)
+            self._validate_stroke_of_luck_available(actor)
         actor_exhaustion_level, exhaustion_penalty = self._exhaustion_details(actor)
         attack_bonus = base_attack_bonus - exhaustion_penalty
         for target_id in ctx.targets:
@@ -675,6 +682,21 @@ class AutomationExecutor:
             )
             natural_critical = natural >= critical_threshold
             hit = natural_critical or (natural != 1 and total >= ac)
+            stroke_of_luck_result = self._apply_stroke_of_luck_to_failed_d20_test(
+                ctx,
+                actor,
+                roll,
+                total,
+                path,
+                use_stroke_of_luck=self._use_stroke_of_luck_for_target(ctx, target_id),
+                failed=not hit,
+                d20_test_type="attack_roll",
+            )
+            if stroke_of_luck_result is not None:
+                natural = STROKE_OF_LUCK_D20
+                total = int(stroke_of_luck_result["total_after"])
+                natural_critical = natural >= critical_threshold
+                hit = True
             auto_critical_sources = (
                 self._target_auto_critical_sources(target, distance_ft) if hit else []
             )
@@ -706,6 +728,8 @@ class AutomationExecutor:
                 "hit": hit,
                 "critical": critical,
             }
+            if stroke_of_luck_result is not None:
+                ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
             ctx.result.state_changes.extend(
                 self._expire_target_effects_on_incoming_attack(target_id, path)
             )
@@ -773,6 +797,8 @@ class AutomationExecutor:
             and len(ctx.targets) > 1
         ):
             raise AutomationError("Disciplined Survivor saving throw requires an explicit target")
+        if bool(ctx.params.get("use_stroke_of_luck")):
+            self._validate_stroke_of_luck_target_selection(ctx)
         disciplined_survivor_target_id = ctx.params.get("disciplined_survivor_target_id")
         if (
             bool(ctx.params.get("use_disciplined_survivor"))
@@ -791,8 +817,11 @@ class AutomationExecutor:
             use_disciplined_survivor = self._use_disciplined_survivor_for_save(ctx, target_id)
             if use_disciplined_survivor:
                 self._validate_disciplined_survivor_available(target)
-            if use_indomitable and use_disciplined_survivor:
-                raise AutomationError("choose only one failed saving throw reroll feature")
+            use_stroke_of_luck = self._use_stroke_of_luck_for_target(ctx, target_id)
+            if use_stroke_of_luck:
+                self._validate_stroke_of_luck_available(target)
+            if sum([use_indomitable, use_disciplined_survivor, use_stroke_of_luck]) > 1:
+                raise AutomationError("choose only one failed saving throw feature")
             auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
                 if use_indomitable:
@@ -801,6 +830,8 @@ class AutomationExecutor:
                     raise AutomationError(
                         "Disciplined Survivor requires a rolled failed saving throw"
                     )
+                if use_stroke_of_luck:
+                    raise AutomationError("Stroke of Luck requires a rolled failed D20 Test")
                 ctx.save_successes[target_id] = False
                 ctx.save_abilities[target_id] = ability.lower()
                 ctx.result.node_results[path] = {
@@ -845,6 +876,19 @@ class AutomationExecutor:
             if dark_ones_own_luck_result is not None:
                 total = int(dark_ones_own_luck_result["total_after"])
             success = total >= dc
+            stroke_of_luck_result = self._apply_stroke_of_luck_to_failed_d20_test(
+                ctx,
+                target,
+                roll,
+                total,
+                path,
+                use_stroke_of_luck=use_stroke_of_luck,
+                failed=not success,
+                d20_test_type="saving_throw",
+            )
+            if stroke_of_luck_result is not None:
+                total = int(stroke_of_luck_result["total_after"])
+                success = total >= dc
             indomitable_result = self._apply_indomitable_to_failed_save(
                 ctx,
                 target,
@@ -896,6 +940,8 @@ class AutomationExecutor:
             }
             if dark_ones_own_luck_result is not None:
                 ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
+            if stroke_of_luck_result is not None:
+                ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
             if indomitable_result is not None:
                 ctx.result.node_results[path]["indomitable"] = indomitable_result
             if disciplined_survivor_result is not None:
@@ -926,10 +972,14 @@ class AutomationExecutor:
         )
         actor_exhaustion_level, exhaustion_penalty = self._exhaustion_details(actor)
         bonus = base_bonus - exhaustion_penalty
+        if bool(ctx.params.get("use_tactical_mind")) and bool(ctx.params.get("use_stroke_of_luck")):
+            raise AutomationError("choose only one failed ability check feature")
         if bool(ctx.params.get("use_tactical_mind")):
             self._validate_tactical_mind_available(ctx.actor_id)
         if bool(ctx.params.get("use_dark_ones_own_luck")):
             self._validate_dark_ones_own_luck_available(actor)
+        if bool(ctx.params.get("use_stroke_of_luck")):
+            self._validate_stroke_of_luck_available(actor)
         status_advantage, status_sources = self._ability_check_status_advantage(
             actor,
             ability,
@@ -976,6 +1026,18 @@ class AutomationExecutor:
         )
         if tactical_mind_result is not None:
             total = int(tactical_mind_result["total_after"])
+        stroke_of_luck_result = self._apply_stroke_of_luck_to_failed_d20_test(
+            ctx,
+            actor,
+            roll,
+            total,
+            path,
+            use_stroke_of_luck=bool(ctx.params.get("use_stroke_of_luck")),
+            failed=total < dc,
+            d20_test_type="ability_check",
+        )
+        if stroke_of_luck_result is not None:
+            total = int(stroke_of_luck_result["total_after"])
         ctx.ability_success = total >= dc
         ctx.result.node_results[path] = {
             "actor_id": ctx.actor_id,
@@ -1007,6 +1069,8 @@ class AutomationExecutor:
             ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
         if tactical_mind_result is not None:
             ctx.result.node_results[path]["tactical_mind"] = tactical_mind_result
+        if stroke_of_luck_result is not None:
+            ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
 
     def _node_damage(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         damage_type = self._pact_weapon_damage_type(
@@ -3073,6 +3137,23 @@ class AutomationExecutor:
             return str(explicit_target) == target_id
         return len(ctx.targets) == 1
 
+    def _use_stroke_of_luck_for_target(self, ctx: _Context, target_id: str) -> bool:
+        if not bool(ctx.params.get("use_stroke_of_luck")):
+            return False
+        explicit_target = ctx.params.get("stroke_of_luck_target_id")
+        if explicit_target is not None:
+            return str(explicit_target) == target_id
+        return len(ctx.targets) == 1
+
+    def _validate_stroke_of_luck_target_selection(self, ctx: _Context) -> None:
+        explicit_target = ctx.params.get("stroke_of_luck_target_id")
+        if explicit_target is None:
+            if len(ctx.targets) > 1:
+                raise AutomationError("Stroke of Luck requires an explicit target")
+            return
+        if str(explicit_target) not in ctx.targets:
+            raise AutomationError("Stroke of Luck target must be one of the action targets")
+
     def _dark_ones_own_luck_character(
         self,
         entity: Character | Monster | Combatant,
@@ -3094,6 +3175,80 @@ class AutomationExecutor:
             raise AutomationError("Dark One's Own Luck requires Fiend Patron Warlock level 6")
         if int(character.resources.get(DARK_ONES_OWN_LUCK_RESOURCE, 0)) <= 0:
             raise AutomationError("Dark One's Own Luck requires an available use")
+
+    def _stroke_of_luck_character(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> Character | None:
+        if isinstance(entity, Character):
+            return entity
+        if isinstance(entity, Combatant):
+            backing = self.state.characters.get(entity.entity_id)
+            if backing is not None:
+                return backing
+        return None
+
+    def _validate_stroke_of_luck_available(
+        self,
+        entity: Character | Monster | Combatant,
+    ) -> None:
+        character = self._stroke_of_luck_character(entity)
+        if character is None or not rogue_stroke_of_luck_applies(character):
+            raise AutomationError("Stroke of Luck requires Rogue level 20")
+        if int(character.resources.get(STROKE_OF_LUCK_RESOURCE, 0)) <= 0:
+            raise AutomationError("Stroke of Luck requires an available use")
+
+    def _apply_stroke_of_luck_to_failed_d20_test(
+        self,
+        ctx: _Context,
+        entity: Character | Monster | Combatant,
+        roll: RollResult,
+        total: int,
+        path: str,
+        *,
+        use_stroke_of_luck: bool,
+        failed: bool,
+        d20_test_type: str,
+    ) -> dict[str, Any] | None:
+        if not use_stroke_of_luck or not failed:
+            return None
+        character = self._stroke_of_luck_character(entity)
+        if character is None:
+            raise AutomationError("Stroke of Luck requires a character")
+        natural_d20 = self._kept_d20(roll)
+        adjustment = STROKE_OF_LUCK_D20 - natural_d20
+        if adjustment <= 0:
+            return None
+        before_resource = int(character.resources.get(STROKE_OF_LUCK_RESOURCE, 0))
+        after_resource = before_resource - 1
+        character.resources[STROKE_OF_LUCK_RESOURCE] = after_resource
+        entity_id = str(getattr(entity, "id", character.id))
+        after_total = total + adjustment
+        ctx.result.state_changes.append(
+            {
+                "type": "stroke_of_luck",
+                "actor_id": entity_id,
+                "source_action_id": STROKE_OF_LUCK_ACTION_ID,
+                "resource": STROKE_OF_LUCK_RESOURCE,
+                "before": before_resource,
+                "after": after_resource,
+                "d20_test_type": d20_test_type,
+                "path": path,
+            }
+        )
+        return {
+            "source_action_id": STROKE_OF_LUCK_ACTION_ID,
+            "resource": STROKE_OF_LUCK_RESOURCE,
+            "resource_before": before_resource,
+            "resource_after": after_resource,
+            "d20_test_type": d20_test_type,
+            "d20_before": natural_d20,
+            "d20_after": STROKE_OF_LUCK_D20,
+            "adjustment": adjustment,
+            "total_before": total,
+            "total_after": after_total,
+            "spent": True,
+        }
 
     def _apply_dark_ones_own_luck_to_roll(
         self,

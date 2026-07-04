@@ -21,6 +21,7 @@ from dnd_llm.core.rules.class_features import (
     HUNTERS_PREY_HORDE_BREAKER,
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
+    STROKE_OF_LUCK_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WARLOCK_AGONIZING_BLAST_CANTRIP_KEY,
     WARLOCK_AGONIZING_BLAST_ELDRITCH_BLAST,
@@ -277,6 +278,7 @@ CLASS_LEVEL_ACTIONS = {
         11: ["srd.improved_cunning_strike"],
         15: ["srd.slippery_mind"],
         18: ["srd.elusive"],
+        20: ["srd.stroke_of_luck"],
     },
     "sorcerer": {
         2: ["srd.font_of_magic_convert_slot_1", "srd.font_of_magic_create_slot_1"],
@@ -2443,6 +2445,8 @@ def _resources_for_levels(
             1,
             _ability_modifier_from_scores(abilities, "cha"),
         )
+    if int(class_levels.get("rogue", 0)) >= 20:
+        resources[STROKE_OF_LUCK_RESOURCE] = 1
     if (
         warlock_level >= 5
         and feature_choices.get(WARLOCK_GIFT_OF_DEPTHS_CHOICE_KEY)

@@ -332,6 +332,7 @@ P0 脚手架
   - [x] **P2-1bv** SRD 5.2.1 Rogue 11 `Improved Cunning Strike` 落地：新增 `srd.improved_cunning_strike` class feature marker 与 Rogue 11 级职业数据/角色成长授予；按 SRD 允许 Rogue 11+ 在造成 Sneak Attack damage 时同次使用最多两个已实现 Cunning Strike 效果，并为每个效果分别支付骰子成本；保留 Rogue 5 单效果兼容，低等级双效果在扣行动经济前拒绝，不新增 Rogue 14 Devious Strikes 的 Daze/Knock Out/Obscure；覆盖 compendium、executor 双效果、resolver 拒绝与自然语言建角测试。
   - [x] **P2-1bw** SRD 5.2.1 Rogue 15 `Slippery Mind` 落地：新增 `srd.slippery_mind` class feature marker 与 Rogue 15 级职业数据/角色成长授予；按 SRD 使 Rogue 15+ 获得 Wisdom 和 Charisma saving throw proficiency，并通过统一豁免熟练来源接入 direct `roll_save`、automation `saving_throw` 与持续效果 repeat save；不泛化到其他豁免，也不新增资源或重掷效果；覆盖 compendium、豁免结算、effect lifecycle 与自然语言建角测试。
   - [x] **P2-1bx** SRD 5.2.1 Rogue 18 `Elusive` 落地：新增 `srd.elusive` class feature marker 与 Rogue 18 级职业数据/角色成长授予；按 SRD 使未处于 Incapacitated 的 Rogue 18+ 不会成为带有 Advantage 的 attack roll 目标，同时保留 Disadvantage 来源和 Incapacitated 例外；覆盖 compendium、executor incoming/node/prone 优势阻断、低等级/失能反例与自然语言建角测试。
+  - [x] **P2-1by** SRD 5.2.1 Rogue 20 `Stroke of Luck` 落地：新增 `srd.stroke_of_luck` class feature marker、Rogue 20 级职业数据/角色成长授予与一次/Short or Long Rest 资源；按 SRD 在显式请求且 D20 Test 失败时将该 d20 roll 视为 20 后重新结算，覆盖 direct `roll_check`/`roll_save` 与 automation ability check/saving throw/attack roll，攻击会按 effective natural 20 命中并触发 Critical Hit；不把它写成无条件自动成功，也不作用于未掷骰的 auto-fail；覆盖 compendium、休息恢复、低噪多目标显式目标与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

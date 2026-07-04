@@ -272,6 +272,18 @@ def test_compendium_loads_srd_actions() -> None:
         "blocks_attack_roll_advantage_against_self": True,
         "disabled_by_condition": "incapacitated",
     }
+    stroke_of_luck = compendium.action("srd.stroke_of_luck")
+    assert stroke_of_luck.requirements == {
+        "class": "rogue",
+        "class_level_min": 20,
+    }
+    assert stroke_of_luck.action_economy == "none"
+    assert stroke_of_luck.properties == {
+        "applies_to": "failed_d20_test",
+        "turns_d20_roll_into": 20,
+        "resource": "srd.resource.stroke_of_luck",
+        "restores_on": ["short_rest", "long_rest"],
+    }
     assert compendium.action("srd.deft_explorer").requirements == {
         "class": "ranger",
         "class_level_min": 2,
@@ -3996,6 +4008,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.slippery_mind" in compendium.classes["rogue"].levels["15"]["actions"]
     assert compendium.classes["rogue"].levels["18"]["features"] == ["Elusive"]
     assert "srd.elusive" in compendium.classes["rogue"].levels["18"]["actions"]
+    assert compendium.classes["rogue"].levels["20"]["features"] == ["Stroke of Luck"]
+    assert "srd.stroke_of_luck" in compendium.classes["rogue"].levels["20"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",

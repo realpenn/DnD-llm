@@ -26,6 +26,7 @@ from dnd_llm.core.rules.class_features import (
     ranger_roving_swim_speed_ft,
     rogue_elusive_applies,
     rogue_slippery_mind_applies,
+    rogue_stroke_of_luck_applies,
     warlock_devils_sight_range_ft,
     warlock_gift_of_depths_swim_speed_ft,
 )
@@ -2518,6 +2519,19 @@ def test_natural_language_character_edit_assigns_rogue_elusive() -> None:
     assert result.character.class_levels == {"rogue": 18}
     assert "srd.elusive" in result.character.actions
     assert rogue_elusive_applies(result.character) is True
+
+
+def test_natural_language_character_edit_assigns_rogue_stroke_of_luck() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 rogue20")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"rogue": 20}
+    assert "srd.stroke_of_luck" in result.character.actions
+    assert result.character.resources["srd.resource.stroke_of_luck"] == 1
+    assert rogue_stroke_of_luck_applies(result.character) is True
 
 
 def test_natural_language_character_edit_rejects_rogue_level_5_extra_expertise_slots() -> None:

@@ -183,6 +183,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.sorcerous_restoration",
     "srd.slippery_mind",
     "srd.steady_aim",
+    "srd.stroke_of_luck",
     "srd.stunning_strike",
     "srd.superior_defense",
     "srd.step_of_the_wind",

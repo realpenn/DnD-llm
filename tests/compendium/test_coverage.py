@@ -18,7 +18,7 @@ def test_compendium_coverage_report_is_explicit_about_phase1_gaps() -> None:
     assert sections["spells_0_to_3"].loaded_count == 183
     assert sections["spells_0_to_3"].complete is True
     assert sections["spells_0_to_3"].missing == []
-    assert sections["actions"].expected_count == 147
+    assert sections["actions"].expected_count == 148
     assert sections["actions"].complete is True
     assert sections["actions"].missing == []
     assert sections["monsters"].expected_count == 9

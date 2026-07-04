@@ -140,6 +140,9 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
                 "use_primal_knowledge": _boolean(
                     "Whether an eligible raging Barbarian uses Primal Knowledge to make the check with Strength."
                 ),
+                "use_stroke_of_luck": _boolean(
+                    "Whether an eligible Rogue 20 uses Stroke of Luck if this D20 Test fails."
+                ),
             },
             required=["actor_id", "ability"],
         ),
@@ -152,6 +155,9 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
                 "difficulty_tier": _nullable_string("Named difficulty tier."),
                 "dc_ref": _nullable_string("Rules or campaign DC reference."),
                 "advantage": _nullable_string("advantage, disadvantage, or null."),
+                "use_stroke_of_luck": _boolean(
+                    "Whether an eligible Rogue 20 uses Stroke of Luck if this D20 Test fails."
+                ),
             },
             required=["actor_id", "ability"],
         ),

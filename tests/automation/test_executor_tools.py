@@ -10355,6 +10355,128 @@ def test_roll_check_reliable_talent_does_not_adjust_d20_ten(make_state) -> None:
     assert "reliable_talent" not in result
 
 
+def test_rogue_stroke_of_luck_turns_failed_direct_check_d20_into_twenty(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([2]),
+    )
+
+    result = tools.roll_check(
+        "pc1",
+        "dex",
+        difficulty_tier="hard",
+        use_stroke_of_luck=True,
+        idempotency_key="stroke-direct-check",
+    )
+
+    assert result["roll"]["total"] == 4
+    assert result["total"] == 22
+    assert result["success"] is True
+    assert result["stroke_of_luck"] == {
+        "source_action_id": "srd.stroke_of_luck",
+        "resource": "srd.resource.stroke_of_luck",
+        "resource_before": 1,
+        "resource_after": 0,
+        "actor_id": "pc1",
+        "d20_before": 2,
+        "d20_after": 20,
+        "adjustment": 18,
+        "total_before": 4,
+        "total_after": 22,
+        "spent": True,
+        "success": True,
+    }
+    assert character.resources["srd.resource.stroke_of_luck"] == 0
+
+
+def test_rogue_stroke_of_luck_does_not_spend_on_successful_direct_check(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([18]),
+    )
+
+    result = tools.roll_check(
+        "pc1",
+        "dex",
+        difficulty_tier="hard",
+        use_stroke_of_luck=True,
+        idempotency_key="stroke-direct-check-success",
+    )
+
+    assert result["success"] is True
+    assert "stroke_of_luck" not in result
+    assert character.resources["srd.resource.stroke_of_luck"] == 1
+
+
+def test_rogue_stroke_of_luck_turns_failed_direct_save_d20_into_twenty(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([2]),
+    )
+
+    result = tools.roll_save(
+        "pc1",
+        "wis",
+        difficulty_tier="medium",
+        use_stroke_of_luck=True,
+        idempotency_key="stroke-direct-save",
+    )
+
+    assert result["roll"]["total"] == 5
+    assert result["total"] == 23
+    assert result["success"] is True
+    assert result["stroke_of_luck"]["d20_before"] == 2
+    assert result["stroke_of_luck"]["d20_after"] == 20
+    assert character.resources["srd.resource.stroke_of_luck"] == 0
+
+
+def test_rogue_stroke_of_luck_restores_on_short_or_long_rest(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    short = tools.short_rest("pc1", {}, idempotency_key="stroke-short-rest")
+
+    assert short["restored_resources"]["srd.resource.stroke_of_luck"] == 1
+    assert character.resources["srd.resource.stroke_of_luck"] == 1
+    character.resources["srd.resource.stroke_of_luck"] = 0
+
+    long = tools.long_rest(["pc1"], idempotency_key="stroke-long-rest")
+
+    assert long["results"]["pc1"]["restored_resources"]["srd.resource.stroke_of_luck"] == 1
+    assert character.resources["srd.resource.stroke_of_luck"] == 1
+
+
 def test_roll_check_applies_bard_jack_of_all_trades_to_unproficient_skill(
     make_state,
 ) -> None:
@@ -11301,6 +11423,166 @@ def test_automation_ability_check_tactical_mind_spends_second_wind_on_success(
         and change["after"] == 0
         for change in result.state_changes
     )
+
+
+def test_automation_ability_check_stroke_of_luck_turns_failed_d20_into_twenty(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 1
+    action = ActionDefinition(
+        id="test.stroke_of_luck_check",
+        name="Stroke of Luck Check",
+        localization={"en": "Stroke of Luck Check", "zh": "幸运一击检定", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"self": True},
+        target_policy={"min": 0, "max": 0, "harmful": False},
+        automation=[{"type": "ability_check", "ability": "dex", "difficulty_tier": "hard"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([2]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", params={"use_stroke_of_luck": True})
+
+    check_node = result.node_results["automation[0]"]
+    assert check_node["total"] == 22
+    assert check_node["success"] is True
+    assert check_node["stroke_of_luck"]["d20_before"] == 2
+    assert check_node["stroke_of_luck"]["d20_after"] == 20
+    assert character.resources["srd.resource.stroke_of_luck"] == 0
+    assert any(
+        change["type"] == "stroke_of_luck" and change["source_action_id"] == "srd.stroke_of_luck"
+        for change in result.state_changes
+    )
+
+
+def test_automation_saving_throw_stroke_of_luck_turns_failed_d20_into_twenty(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 1
+    action = ActionDefinition(
+        id="test.stroke_of_luck_save",
+        name="Stroke of Luck Save",
+        localization={"en": "Stroke of Luck Save", "zh": "幸运一击豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([2]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+        params={"use_stroke_of_luck": True},
+    )
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["total"] == 22
+    assert save_node["success"] is True
+    assert save_node["stroke_of_luck"]["d20_before"] == 2
+    assert save_node["stroke_of_luck"]["d20_after"] == 20
+    assert character.resources["srd.resource.stroke_of_luck"] == 0
+
+
+def test_automation_attack_stroke_of_luck_turns_miss_into_critical_hit(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 20}
+    character.resources["srd.resource.stroke_of_luck"] = 1
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1, 2, 3]),
+        AuditLog(),
+    ).execute(
+        _attack_action(attack_bonus=0),
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={"use_stroke_of_luck": True},
+    )
+
+    attack_node = result.node_results["automation[1]"]
+    damage_rolls = [roll for roll in result.dice_rolls if roll["expression"] == "1d6"]
+    assert attack_node["natural"] == 20
+    assert attack_node["total"] == 20
+    assert attack_node["hit"] is True
+    assert attack_node["critical"] is True
+    assert attack_node["stroke_of_luck"]["d20_before"] == 1
+    assert attack_node["stroke_of_luck"]["total_before"] == 1
+    assert attack_node["stroke_of_luck"]["total_after"] == 20
+    assert len(damage_rolls) == 2
+    assert character.resources["srd.resource.stroke_of_luck"] == 0
+
+
+def test_automation_stroke_of_luck_requires_explicit_target_for_multi_save(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc2"].class_levels = {"rogue": 20}
+    state.characters["pc2"].resources["srd.resource.stroke_of_luck"] = 1
+    action = ActionDefinition(
+        id="test.stroke_of_luck_multi_save",
+        name="Stroke of Luck Multi Save",
+        localization={
+            "en": "Stroke of Luck Multi Save",
+            "zh": "幸运一击群体豁免",
+            "aliases": [],
+        },
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 2, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+
+    with pytest.raises(AutomationError, match="explicit target"):
+        AutomationExecutor(state, _FixedSingleDieRollService([2, 2]), AuditLog()).execute(
+            action,
+            actor_id="goblin1",
+            targets=["pc1", "pc2"],
+            params={"use_stroke_of_luck": True},
+        )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([2, 2]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1", "pc2"],
+        params={"use_stroke_of_luck": True, "stroke_of_luck_target_id": "pc2"},
+    )
+
+    save_node = result.node_results["automation[0]"]
+    assert save_node["target_id"] == "pc2"
+    assert save_node["total"] == 20
+    assert save_node["success"] is True
+    assert save_node["stroke_of_luck"]["d20_before"] == 2
+    assert state.characters["pc2"].resources["srd.resource.stroke_of_luck"] == 0
 
 
 def test_lesser_restoration_removes_core_conditions(make_state) -> None:
