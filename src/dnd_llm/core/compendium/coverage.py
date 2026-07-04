@@ -170,6 +170,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.potent_cantrip",
     "srd.primal_order",
     "srd.rage",
+    "srd.ranger_expertise",
     "srd.preserve_life",
     "srd.primal_knowledge",
     "srd.restoring_touch",

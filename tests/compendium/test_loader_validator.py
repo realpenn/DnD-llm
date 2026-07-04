@@ -300,6 +300,16 @@ def test_compendium_loads_srd_actions() -> None:
         "class": "ranger",
         "class_level_min": 2,
     }
+    ranger_expertise = compendium.action("srd.ranger_expertise")
+    assert ranger_expertise.requirements == {
+        "class": "ranger",
+        "class_level_min": 9,
+    }
+    assert ranger_expertise.properties == {
+        "skill_expertise_choices": 2,
+        "requires_skill_proficiency": True,
+        "requires_lacking_expertise": True,
+    }
     assert compendium.action("srd.scholar").requirements == {
         "class": "wizard",
         "class_level_min": 2,
@@ -4441,6 +4451,10 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.deft_explorer" in compendium.classes["ranger"].levels["5"]["actions"]
     assert compendium.classes["ranger"].levels["6"]["features"] == ["Roving"]
     assert "srd.roving" in compendium.classes["ranger"].levels["6"]["actions"]
+    assert compendium.classes["ranger"].levels["7"]["features"] == ["Subclass Feature"]
+    assert "srd.ranger_expertise" not in compendium.classes["ranger"].levels["8"]["actions"]
+    assert compendium.classes["ranger"].levels["9"]["features"] == ["Expertise"]
+    assert "srd.ranger_expertise" in compendium.classes["ranger"].levels["9"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

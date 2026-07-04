@@ -2056,6 +2056,38 @@ def test_natural_language_character_edit_assigns_ranger_roving_at_level_6() -> N
     assert ranger_roving_swim_speed_ft(result.character) is None
 
 
+def test_natural_language_character_edit_assigns_ranger_level_nine_expertise_slots() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.skill_proficiencies = ["stealth", "perception", "arcana"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger9 专精 潜行 察觉 奥秘",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 9}
+    assert result.character.skill_expertise == ["stealth", "perception", "arcana"]
+    assert "srd.deft_explorer" in result.character.actions
+    assert "srd.roving" in result.character.actions
+    assert "srd.ranger_expertise" in result.character.actions
+
+
+def test_natural_language_character_edit_rejects_ranger_level_eight_extra_expertise_slots() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.skill_proficiencies = ["stealth", "perception", "arcana"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger8 专精 潜行 察觉 奥秘",
+    )
+
+    assert result.accepted is False
+    assert result.errors is not None
+    assert any("Expertise 槽位" in error for error in result.errors)
+
+
 def test_natural_language_character_edit_assigns_hunter_subclass_default_prey() -> None:
     character = default_fighter("pc1", "Penn")
 

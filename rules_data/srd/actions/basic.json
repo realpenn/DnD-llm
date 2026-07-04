@@ -3899,6 +3899,36 @@
             "audit_label": "Roving"
         },
         {
+            "id": "srd.ranger_expertise",
+            "name": "Expertise",
+            "localization": {
+                "en": "Ranger Expertise",
+                "zh": "游侠专精",
+                "aliases": ["Ranger Expertise", "游侠技能专精"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 9: Expertise",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 9},
+            "properties": {
+                "skill_expertise_choices": 2,
+                "requires_skill_proficiency": true,
+                "requires_lacking_expertise": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Ranger gains Expertise in two skill proficiencies of choice with which the Ranger lacks Expertise."
+                }
+            ],
+            "audit_label": "Ranger Expertise"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {
