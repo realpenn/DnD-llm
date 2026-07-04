@@ -88,6 +88,35 @@
                         "srd.feral_instinct",
                         "srd.instinctive_pounce"
                     ]
+                },
+                "8": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce"
+                    ]
+                },
+                "9": {
+                    "features": ["Brutal Strike"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike"
+                    ]
                 }
             },
             "subclasses": {

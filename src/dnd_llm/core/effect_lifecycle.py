@@ -280,6 +280,11 @@ def _matches_trigger(effect: dict[str, Any], *, trigger: str, actor_id: str) -> 
     target_id = effect.get("target_id")
     applied_by = effect.get("applied_by")
     if trigger.startswith("self_turn"):
+        duration = effect.get("duration", {})
+        if isinstance(duration, dict):
+            turn_owner_id = duration.get("turn_owner_id")
+            if isinstance(turn_owner_id, str) and turn_owner_id:
+                return turn_owner_id == actor_id
         return target_id == actor_id or applied_by == actor_id
     if trigger.startswith("target_"):
         return target_id == actor_id

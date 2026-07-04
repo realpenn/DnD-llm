@@ -6557,6 +6557,158 @@ def test_reckless_attack_does_not_grant_dex_attack_advantage(make_state) -> None
     assert attack_node["status_advantage"] is None
 
 
+def test_brutal_strike_hamstring_forgoes_reckless_advantage_and_slows_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 9}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 4, 7]),
+    )
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="brutal-reckless")
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        params={"use_brutal_strike": True, "brutal_strike_effect": "hamstring_blow"},
+        idempotency_key="brutal-hamstring",
+    )
+
+    attack_node = result["node_results"]["automation[1]"]
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    hamstring = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "brutal_strike" and change["effect"] == "hamstring_blow"
+    )
+    condition_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "condition" and change["condition"] == "hamstring_blow"
+    )
+
+    assert result["dice_rolls"][0]["advantage"] is None
+    assert attack_node["brutal_strike"]["advantage_before_forgo"] == "advantage"
+    assert attack_node["brutal_strike"]["forgone_advantage"] is True
+    assert attack_node["brutal_strike"]["forgone_advantage_sources"][0]["modifier"] == (
+        "weapon_attack_advantage_by_ability"
+    )
+    assert damage_change["brutal_strike_bonus"] == 7
+    assert damage_change["brutal_strike_sources"][0]["damage_type"] == "slashing"
+    assert hamstring["source_action_id"] == "srd.brutal_strike"
+    assert condition_change["passive_modifiers"] == {"speed_bonus_ft": -15}
+    assert effective_speed(30, state.encounter.combatants["goblin1"].status_effects) == 15
+
+
+def test_brutal_strike_forceful_pushes_target_and_can_follow_without_opportunity_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    assert state.encounter.tactical_graph is not None
+    state.encounter.tactical_graph["nodes"]["far"] = {
+        "node_id": "far",
+        "name": "Far",
+        "tags": [],
+        "capacity": None,
+        "default_cover": "none",
+        "terrain": "normal",
+    }
+    state.encounter.tactical_graph["edges"].append(
+        {
+            "source": "cover",
+            "target": "far",
+            "distance_ft": 15,
+            "movement_cost": None,
+            "line_of_sight": True,
+            "cover": "none",
+            "difficult_terrain": False,
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 9}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 4, 7]),
+    )
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="forceful-reckless")
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        params={
+            "use_brutal_strike": True,
+            "brutal_strike_effect": "forceful_blow",
+            "brutal_strike_forceful_to_position_node_id": "far",
+            "brutal_strike_forceful_follow_to_position_node_id": "cover",
+        },
+        idempotency_key="brutal-forceful",
+    )
+
+    forceful = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "brutal_strike" and change["effect"] == "forceful_blow"
+    )
+    assert forceful["from"] == "cover"
+    assert forceful["to"] == "far"
+    assert forceful["forced_movement_distance"] == 15
+    assert forceful["follow_move"]["from"] == "front"
+    assert forceful["follow_move"]["to"] == "cover"
+    assert forceful["follow_move"]["movement_cost"] == 5
+    assert forceful["follow_move"]["movement_limit"] == 20
+    assert forceful["follow_move"]["opportunity_attack_triggers"] == []
+    assert state.encounter.combatants["goblin1"].position_node_id == "far"
+    assert state.encounter.combatants["pc1"].position_node_id == "cover"
+
+
+def test_brutal_strike_rejects_disadvantaged_attack_before_spending_action(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 9}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["pc1"].status_effects.append(
+        {"effect_id": "poison-test", "condition": "poisoned"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="brutal-disadv-reckless")
+    with pytest.raises(
+        AutomationError,
+        match="Brutal Strike cannot be used on an attack roll with Disadvantage",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.longsword_attack",
+            ["goblin1"],
+            params={"use_brutal_strike": True, "brutal_strike_effect": "hamstring_blow"},
+            idempotency_key="brutal-disadvantage",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
 def test_reckless_attack_grants_incoming_attack_advantage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

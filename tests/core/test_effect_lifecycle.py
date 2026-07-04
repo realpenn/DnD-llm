@@ -119,6 +119,30 @@ def test_rage_expires_at_end_of_next_self_turn(make_state) -> None:
     assert lifecycle[0]["expired"][0]["condition"] == "raging"
 
 
+def test_turn_owner_self_turn_effect_waits_for_owner_turn_start(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "hamstring-test",
+            "source_action_id": "srd.brutal_strike",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "condition": "hamstring_blow",
+            "duration": {"until": "start_of_next_turn", "turn_owner_id": "pc1"},
+            "tick_on": "self_turn_start",
+            "passive_modifiers": {"speed_bonus_ft": -15},
+        }
+    )
+
+    target_turn = tick_effects(state, trigger="self_turn_start", actor_id="goblin1")
+    owner_turn = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+
+    assert target_turn.changed is False
+    assert owner_turn.expired[0]["condition"] == "hamstring_blow"
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
 def test_longer_duration_ticks_and_round_trips(tmp_path: Path, make_state) -> None:
     state = make_state()
     assert state.encounter is not None

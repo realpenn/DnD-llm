@@ -12,6 +12,7 @@ from .rules.class_features import (
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     bloodied_hp_cap,
     class_feature_speed_bonus,
+    has_barbarian_feature,
     has_monk_open_hand_feature,
     has_rogue_thief_feature,
     has_warlock_eldritch_smite,
@@ -30,6 +31,7 @@ from .rules.spell_slots import warlock_pact_slot_maxima_for_class_levels
 
 RESOLVER_CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 RESOLVER_MAX_CUNNING_STRIKE_EFFECTS = 2
+RESOLVER_BRUTAL_STRIKE_EFFECTS = {"forceful_blow", "hamstring_blow"}
 RESOLVER_POISONERS_KIT_ITEM_ID = "srd.poisoners_kit"
 RESOLVER_ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
 RESOLVER_HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
@@ -322,6 +324,9 @@ class ActionResolver:
         uncanny_dodge_check = self._check_uncanny_dodge(draft, action)
         if uncanny_dodge_check is not None:
             return uncanny_dodge_check
+        brutal_strike_check = self._check_brutal_strike(draft, actor, action)
+        if brutal_strike_check is not None:
+            return brutal_strike_check
         cunning_strike_check = self._check_cunning_strike(draft, actor, action)
         if cunning_strike_check is not None:
             return cunning_strike_check
@@ -1207,6 +1212,103 @@ class ActionResolver:
                 )
         return None
 
+    def _check_brutal_strike(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> ResolverResult | None:
+        try:
+            effect = self._brutal_strike_effect(draft.params)
+        except ValueError as exc:
+            return ResolverResult(status="rejected", reason=str(exc), action_id=action.id)
+        if not self._brutal_strike_requested(draft.params):
+            return None
+        if effect is None:
+            return ResolverResult(
+                status="rejected",
+                reason="Brutal Strike requires an effect choice",
+                action_id=action.id,
+            )
+        if effect not in RESOLVER_BRUTAL_STRIKE_EFFECTS:
+            return ResolverResult(
+                status="rejected",
+                reason=f"unsupported Brutal Strike effect: {effect}",
+                action_id=action.id,
+            )
+        owner = self._resource_owner(draft.actor_id, actor)
+        if not isinstance(owner, Character) or not has_barbarian_feature(owner, level=9):
+            return ResolverResult(
+                status="rejected",
+                reason="Brutal Strike requires Barbarian level 9",
+                action_id=action.id,
+            )
+        if not self._action_qualifies_for_brutal_strike(action):
+            return ResolverResult(
+                status="rejected",
+                reason="Brutal Strike requires a weapon or Unarmed Strike attack",
+                action_id=action.id,
+            )
+        attack_node = self._first_attack_roll_node(action)
+        if attack_node is None or str(attack_node.get("ability", "str")).lower() != "str":
+            return ResolverResult(
+                status="rejected",
+                reason="Brutal Strike requires a Strength-based attack roll",
+                action_id=action.id,
+            )
+        if not any(
+            effect_entry.get("condition") == "reckless_attack"
+            for effect_entry in self._status_effects_for(actor)
+        ):
+            return ResolverResult(
+                status="rejected",
+                reason="Brutal Strike requires Reckless Attack",
+                action_id=action.id,
+            )
+        if len(draft.target_ids) != 1:
+            return ResolverResult(
+                status="rejected",
+                reason="Brutal Strike requires exactly one target",
+                action_id=action.id,
+            )
+        if effect == "forceful_blow":
+            target_id = draft.target_ids[0]
+            destination = self._brutal_strike_forceful_destination(
+                draft.params,
+                target_id=target_id,
+            )
+            if destination is None:
+                return ResolverResult(
+                    status="rejected",
+                    reason="Brutal Strike Forceful Blow requires a destination position",
+                    action_id=action.id,
+                )
+            plan_error = self._brutal_strike_forceful_error(
+                draft.actor_id,
+                target_id,
+                destination,
+            )
+            if plan_error is not None:
+                return ResolverResult(status="rejected", reason=plan_error, action_id=action.id)
+            follow_destination = self._brutal_strike_forceful_follow_destination(
+                draft.params,
+                target_id=target_id,
+            )
+            if follow_destination is not None:
+                follow_error = self._brutal_strike_forceful_follow_error(
+                    draft.actor_id,
+                    target_id,
+                    follow_destination,
+                    target_position=destination,
+                )
+                if follow_error is not None:
+                    return ResolverResult(
+                        status="rejected",
+                        reason=follow_error,
+                        action_id=action.id,
+                    )
+        return None
+
     @staticmethod
     def _resource_delta_cap(
         owner: Character | Monster | Combatant,
@@ -1228,6 +1330,150 @@ class ActionResolver:
             if not isinstance(owner, Character):
                 return 0
             return max(0, int(resource_maxima(owner).get(class_resource, 0)))
+        return None
+
+    @staticmethod
+    def _brutal_strike_requested(params: dict[str, Any]) -> bool:
+        return (
+            params.get("use_brutal_strike") is True
+            or params.get("brutal_strike_effect") not in (None, "", False)
+            or params.get("brutal_strike") not in (None, "", False)
+        )
+
+    @staticmethod
+    def _brutal_strike_effect(params: dict[str, Any]) -> str | None:
+        raw = params.get("brutal_strike_effect", params.get("brutal_strike"))
+        if raw in (None, "", False):
+            return None
+        normalized = str(raw).casefold().strip().replace("-", "_").replace(" ", "_")
+        aliases = {
+            "forceful": "forceful_blow",
+            "forceful_blow": "forceful_blow",
+            "hamstring": "hamstring_blow",
+            "hamstring_blow": "hamstring_blow",
+        }
+        return aliases.get(normalized, normalized)
+
+    def _action_qualifies_for_brutal_strike(self, action: ActionDefinition) -> bool:
+        if action.action_type not in {"weapon_attack", "unarmed_attack"}:
+            return False
+        nodes = self._automation_nodes(action.automation)
+        return any(node.get("type") == "attack_roll" for node in nodes) and any(
+            node.get("type") == "damage" and node.get("requires_hit") is True for node in nodes
+        )
+
+    def _first_attack_roll_node(self, action: ActionDefinition) -> dict[str, Any] | None:
+        return next(
+            (
+                node
+                for node in self._automation_nodes(action.automation)
+                if node.get("type") == "attack_roll"
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _brutal_strike_forceful_destination(
+        params: dict[str, Any],
+        *,
+        target_id: str,
+    ) -> str | None:
+        by_target = params.get("brutal_strike_forceful_to_position_node_id_by_target")
+        if isinstance(by_target, dict):
+            selected = by_target.get(target_id)
+            if selected not in (None, "", False):
+                return str(selected)
+        selected = params.get("brutal_strike_forceful_to_position_node_id")
+        if selected in (None, "", False):
+            return None
+        return str(selected)
+
+    @staticmethod
+    def _brutal_strike_forceful_follow_destination(
+        params: dict[str, Any],
+        *,
+        target_id: str,
+    ) -> str | None:
+        by_target = params.get("brutal_strike_forceful_follow_to_position_node_id_by_target")
+        if isinstance(by_target, dict):
+            selected = by_target.get(target_id)
+            if selected not in (None, "", False):
+                return str(selected)
+        selected = params.get("brutal_strike_forceful_follow_to_position_node_id")
+        if selected in (None, "", False):
+            return None
+        return str(selected)
+
+    def _brutal_strike_forceful_error(
+        self,
+        actor_id: str,
+        target_id: str,
+        destination: str,
+    ) -> str | None:
+        actor = self.state.entity_for_actor(actor_id)
+        target = self.state.entity_for_actor(target_id)
+        if not isinstance(actor, Combatant) or not isinstance(target, Combatant):
+            return "Brutal Strike Forceful Blow requires combatants"
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return "Brutal Strike Forceful Blow requires a combat tactical graph"
+        if actor.position_node_id is None or target.position_node_id is None:
+            return "Brutal Strike Forceful Blow requires current positions"
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            return "Brutal Strike Forceful Blow destination position does not exist"
+        movement_distance = graph.shortest_distance(target.position_node_id, destination)
+        if movement_distance is None:
+            return "Brutal Strike Forceful Blow destination position is not reachable"
+        if int(movement_distance) > 15:
+            return "Brutal Strike Forceful Blow cannot exceed 15 feet"
+        before_distance = graph.shortest_distance(actor.position_node_id, target.position_node_id)
+        after_distance = graph.shortest_distance(actor.position_node_id, destination)
+        if (
+            before_distance is not None
+            and after_distance is not None
+            and after_distance <= before_distance
+        ):
+            return "Brutal Strike Forceful Blow destination must be away from the Barbarian"
+        return None
+
+    def _brutal_strike_forceful_follow_error(
+        self,
+        actor_id: str,
+        target_id: str,
+        destination: str,
+        *,
+        target_position: str | None = None,
+    ) -> str | None:
+        actor = self.state.entity_for_actor(actor_id)
+        target = self.state.entity_for_actor(target_id)
+        if not isinstance(actor, Combatant) or not isinstance(target, Combatant):
+            return "Brutal Strike Forceful Blow follow movement requires combatants"
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return "Brutal Strike Forceful Blow follow movement requires a combat tactical graph"
+        if actor.position_node_id is None or target.position_node_id is None:
+            return "Brutal Strike Forceful Blow follow movement requires positions"
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            return "Brutal Strike Forceful Blow follow destination position does not exist"
+        target_position = target_position or target.position_node_id
+        movement_cost = graph.shortest_distance(
+            actor.position_node_id,
+            destination,
+            movement_cost=True,
+        )
+        if movement_cost is None:
+            return "Brutal Strike Forceful Blow follow destination position is not reachable"
+        movement_limit = self._effective_speed(actor) // 2
+        if int(movement_cost) > movement_limit:
+            return "Brutal Strike Forceful Blow follow movement cannot exceed half Speed"
+        before_distance = graph.shortest_distance(actor.position_node_id, target_position)
+        after_distance = graph.shortest_distance(destination, target_position)
+        if (
+            before_distance is not None
+            and after_distance is not None
+            and after_distance >= before_distance
+        ):
+            return "Brutal Strike Forceful Blow follow destination must be toward the target"
         return None
 
     def _check_cunning_strike(

@@ -63,6 +63,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.barbarian_unarmored_defense",
     "srd.bard_expertise",
     "srd.bardic_inspiration",
+    "srd.brutal_strike",
     "srd.cure_wounds",
     "srd.cunning_strike",
     "srd.cunning_action_dash",

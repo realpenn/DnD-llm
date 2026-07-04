@@ -1584,6 +1584,17 @@ def test_natural_language_character_edit_assigns_barbarian_feral_instinct() -> N
     assert "srd.instinctive_pounce" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_barbarian_brutal_strike() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 barbarian9")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"barbarian": 9}
+    assert "srd.brutal_strike" in result.character.actions
+
+
 def test_natural_language_character_edit_assigns_explicit_berserker_subclass() -> None:
     character = default_fighter("pc1", "Penn")
 

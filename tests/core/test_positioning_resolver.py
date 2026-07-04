@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dnd_llm.core.compendium.loader import CompendiumLoader
 from dnd_llm.core.models import Combatant
+from dnd_llm.core.persistence import AuditLog
 from dnd_llm.core.positioning import PositionEdge, PositionNode, TacticalGraph
 from dnd_llm.core.resolver import ActionResolver, PlayerActionDraft
+from dnd_llm.core.tools import EngineTools
 
 
 def test_tactical_graph_distance_area_and_opportunity(make_state) -> None:
@@ -812,6 +814,83 @@ def test_resolver_checks_instinctive_pounce_movement_preconditions(make_state) -
     assert too_far.reason == "Instinctive Pounce movement cannot exceed half Speed"
     assert too_low.status == "rejected"
     assert too_low.reason == "Instinctive Pounce requires Barbarian level 7"
+
+
+def test_resolver_checks_brutal_strike_preconditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    assert state.encounter.tactical_graph is not None
+    state.encounter.tactical_graph["nodes"]["far"] = {
+        "node_id": "far",
+        "name": "Far",
+        "tags": [],
+        "capacity": None,
+        "default_cover": "none",
+        "terrain": "normal",
+    }
+    state.encounter.tactical_graph["edges"].append(
+        {
+            "source": "cover",
+            "target": "far",
+            "distance_ft": 15,
+            "movement_cost": None,
+            "line_of_sight": True,
+            "cover": "none",
+            "difficult_terrain": False,
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 9}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="resolver-brutal")
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effect": "forceful_blow",
+                "brutal_strike_forceful_to_position_node_id": "far",
+            },
+        )
+    )
+    invalid_destination = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effect": "forceful_blow",
+                "brutal_strike_forceful_to_position_node_id": "front",
+            },
+        )
+    )
+    character.class_levels = {"barbarian": 8}
+    too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_brutal_strike": True, "brutal_strike_effect": "hamstring_blow"},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert invalid_destination.status == "rejected"
+    assert invalid_destination.reason == (
+        "Brutal Strike Forceful Blow destination must be away from the Barbarian"
+    )
+    assert too_low.status == "rejected"
+    assert too_low.reason == "Brutal Strike requires Barbarian level 9"
 
 
 def test_resolver_checks_dynamic_resource_cost_params(make_state) -> None:

@@ -3969,6 +3969,28 @@ def test_compendium_loads_srd_actions() -> None:
         "destination_param": "instinctive_pounce_to_position_node_id",
         "triggers_opportunity_attacks": True,
     }
+    assert compendium.classes["barbarian"].levels["9"]["features"] == ["Brutal Strike"]
+    assert "srd.brutal_strike" in compendium.classes["barbarian"].levels["9"]["actions"]
+    brutal_strike = compendium.action("srd.brutal_strike")
+    assert brutal_strike.requirements == {"class": "barbarian", "class_level_min": 9}
+    assert brutal_strike.properties == {
+        "requires_reckless_attack": True,
+        "requires_strength_attack": True,
+        "forgoes_advantage": True,
+        "extra_damage": "1d10",
+        "damage_type": "same_as_attack",
+        "effects": {
+            "forceful_blow": {
+                "push_ft": 15,
+                "follow_move_limit": "half_speed",
+                "follow_move_opportunity_attacks": False,
+            },
+            "hamstring_blow": {
+                "speed_penalty_ft": 15,
+                "duration": "start_of_next_turn",
+            },
+        },
+    }
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {
         "name": "College of Lore",

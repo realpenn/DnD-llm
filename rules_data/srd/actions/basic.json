@@ -415,6 +415,54 @@
             "audit_label": "Instinctive Pounce"
         },
         {
+            "id": "srd.brutal_strike",
+            "name": "Brutal Strike",
+            "localization": {
+                "en": "Brutal Strike",
+                "zh": "残暴打击",
+                "aliases": [
+                    "Barbarian Brutal Strike",
+                    "残暴打击",
+                    "Forceful Blow",
+                    "Hamstring Blow"
+                ]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 9: Brutal Strike",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 9},
+            "properties": {
+                "requires_reckless_attack": true,
+                "requires_strength_attack": true,
+                "forgoes_advantage": true,
+                "extra_damage": "1d10",
+                "damage_type": "same_as_attack",
+                "effects": {
+                    "forceful_blow": {
+                        "push_ft": 15,
+                        "follow_move_limit": "half_speed",
+                        "follow_move_opportunity_attacks": false
+                    },
+                    "hamstring_blow": {
+                        "speed_penalty_ft": 15,
+                        "duration": "start_of_next_turn"
+                    }
+                }
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Barbarian can forgo Advantage from Reckless Attack on one Strength-based weapon or Unarmed Strike attack roll; on a hit, the attack deals 1d10 extra damage of the same type and applies Forceful Blow or Hamstring Blow."
+                }
+            ],
+            "audit_label": "Brutal Strike"
+        },
+        {
             "id": "srd.frenzy",
             "name": "Frenzy",
             "localization": {

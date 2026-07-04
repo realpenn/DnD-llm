@@ -38,6 +38,7 @@ from ..rules.class_features import (
     druid_natures_ward_resistance_type,
     evasion_applies,
     has_barbarian_berserker_feature,
+    has_barbarian_feature,
     has_colossus_slayer,
     has_condition,
     has_druid_circle_of_the_land_feature,
@@ -91,6 +92,7 @@ from .nodes import STATE_CHANGING_NODE_TYPES
 ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
 CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 MAX_CUNNING_STRIKE_EFFECTS = 2
+BRUTAL_STRIKE_EFFECTS = {"forceful_blow", "hamstring_blow"}
 IMPROVED_CUNNING_STRIKE_ACTION_ID = "srd.improved_cunning_strike"
 SUPREME_SNEAK_ACTION_ID = "srd.supreme_sneak"
 HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
@@ -110,6 +112,7 @@ RAGE_ACTION_ID = "srd.rage"
 ACTION_SURGE_ACTION_ID = "srd.action_surge"
 ACTION_SURGE_USED_CONDITION = "action_surge_used"
 INSTINCTIVE_POUNCE_ACTION_ID = "srd.instinctive_pounce"
+BRUTAL_STRIKE_ACTION_ID = "srd.brutal_strike"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
@@ -319,6 +322,7 @@ class _Context:
     attack_hits: dict[str, bool] = field(default_factory=dict)
     attack_critical: dict[str, bool] = field(default_factory=dict)
     attack_advantage: dict[str, str | None] = field(default_factory=dict)
+    brutal_strike_effects: dict[str, str] = field(default_factory=dict)
     save_successes: dict[str, bool] = field(default_factory=dict)
     save_abilities: dict[str, str] = field(default_factory=dict)
     last_damage_taken: dict[str, int] = field(default_factory=dict)
@@ -350,6 +354,14 @@ class _SneakAttackResult:
 @dataclass
 class _FrenzyResult:
     amount: int = 0
+    rolls: list[RollResult] = field(default_factory=list)
+    sources: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class _BrutalStrikeResult:
+    amount: int = 0
+    effect: str | None = None
     rolls: list[RollResult] = field(default_factory=list)
     sources: list[dict[str, Any]] = field(default_factory=list)
 
@@ -414,6 +426,7 @@ class AutomationExecutor:
         self._validate_one_with_shadows_lighting(action, params)
         self._validate_ritual_casting(action, actor_id, params)
         self._validate_cunning_strike_preconditions(action, actor_id, targets or [], params)
+        self._validate_brutal_strike_preconditions(action, actor_id, targets or [], params)
         self._validate_fast_hands_preconditions(action, actor_id)
         self._validate_deflect_attacks_preconditions(action, targets or [], params)
         self._validate_uncanny_dodge_preconditions(action, actor_id, targets or [], params)
@@ -668,7 +681,21 @@ class AutomationExecutor:
                 if any(source.get("kind") == "advantage_blocked" for source in status_sources)
                 else node_advantage
             )
-            advantage = _merge_advantage(effective_node_advantage, status_advantage)
+            advantage_before_brutal_strike = _merge_advantage(
+                effective_node_advantage,
+                status_advantage,
+            )
+            brutal_strike = self._brutal_strike_attack_forgo_advantage(
+                ctx,
+                node,
+                target_id,
+                ability,
+                node_advantage=effective_node_advantage,
+                status_advantage=status_advantage,
+                status_sources=status_sources,
+                advantage=advantage_before_brutal_strike,
+            )
+            advantage = None if brutal_strike is not None else advantage_before_brutal_strike
             roll = self.roll_service.roll(d20_expression(attack_bonus), advantage=advantage)
             adjustment, adjustment_rolls, adjustment_sources = self._passive_roll_adjustment(
                 actor,
@@ -726,6 +753,10 @@ class AutomationExecutor:
             ctx.attack_hits[target_id] = hit
             ctx.attack_critical[target_id] = critical
             ctx.attack_advantage[target_id] = advantage
+            if brutal_strike is not None:
+                effect = str(brutal_strike["effect"])
+                ctx.brutal_strike_effects[target_id] = effect
+                self._mark_brutal_strike_used(ctx, target_id, effect)
             ctx.result.node_results[path] = {
                 "target_id": target_id,
                 "base_ac": base_ac,
@@ -750,6 +781,8 @@ class AutomationExecutor:
                 "hit": hit,
                 "critical": critical,
             }
+            if brutal_strike is not None:
+                ctx.result.node_results[path]["brutal_strike"] = brutal_strike
             if stroke_of_luck_result is not None:
                 ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
             ctx.result.state_changes.extend(
@@ -1145,6 +1178,9 @@ class AutomationExecutor:
                 ctx.result.dice_rolls.extend(roll.to_dict() for roll in extra_rolls)
             passive_bonus, passive_bonus_sources = self._passive_damage_bonus(ctx, node)
             amount += passive_bonus
+            brutal_strike = self._brutal_strike_bonus(ctx, node, target_id, damage_type)
+            amount += brutal_strike.amount
+            ctx.result.dice_rolls.extend(roll.to_dict() for roll in brutal_strike.rolls)
             frenzy = self._frenzy_bonus(ctx, node, target_id, damage_type)
             amount += frenzy.amount
             ctx.result.dice_rolls.extend(roll.to_dict() for roll in frenzy.rolls)
@@ -1277,6 +1313,9 @@ class AutomationExecutor:
             if passive_bonus:
                 change["passive_damage_bonus"] = passive_bonus
                 change["passive_sources"] = passive_bonus_sources
+            if brutal_strike.amount:
+                change["brutal_strike_bonus"] = brutal_strike.amount
+                change["brutal_strike_sources"] = brutal_strike.sources
             if frenzy.amount:
                 change["frenzy_bonus"] = frenzy.amount
                 change["frenzy_sources"] = frenzy.sources
@@ -1301,6 +1340,8 @@ class AutomationExecutor:
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
+            if brutal_strike.amount:
+                self._apply_brutal_strike_effect(ctx, target_id, brutal_strike.effect or "", path)
             for cunning_strike in self._cunning_strike_effects(sneak_attack.cunning_strike):
                 self._apply_cunning_strike_effect(ctx, target_id, cunning_strike, path)
             self._apply_open_hand_technique_if_requested(
@@ -4610,6 +4651,310 @@ class AutomationExecutor:
                 ],
             )
         return None
+
+    def _brutal_strike_attack_forgo_advantage(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        ability: str,
+        *,
+        node_advantage: str | None,
+        status_advantage: str | None,
+        status_sources: list[dict[str, Any]],
+        advantage: str | None,
+    ) -> dict[str, Any] | None:
+        if not self._brutal_strike_requested(ctx.params):
+            return None
+        self._validate_brutal_strike_attack_context(
+            ctx.action,
+            ctx.actor_id,
+            target_id,
+            node,
+            ability,
+            params=ctx.params,
+            node_advantage=node_advantage,
+            status_advantage=status_advantage,
+            status_sources=status_sources,
+            advantage=advantage,
+        )
+        effect = self._brutal_strike_effect(ctx.params)
+        if effect is None:
+            raise AutomationError("Brutal Strike requires an effect choice")
+        forgone_sources = [source for source in status_sources if source.get("kind") == "advantage"]
+        if node_advantage == "advantage":
+            forgone_sources.append({"kind": "advantage", "modifier": "attack_node_advantage"})
+        return {
+            "source_action_id": BRUTAL_STRIKE_ACTION_ID,
+            "effect": effect,
+            "forgone_advantage": True,
+            "advantage_before_forgo": advantage,
+            "forgone_advantage_sources": forgone_sources,
+        }
+
+    def _validate_brutal_strike_attack_context(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        target_id: str,
+        node: dict[str, Any],
+        ability: str,
+        *,
+        params: dict[str, Any],
+        node_advantage: str | None,
+        status_advantage: str | None,
+        status_sources: list[dict[str, Any]],
+        advantage: str | None,
+    ) -> None:
+        if action.action_type not in {"weapon_attack", "unarmed_attack"}:
+            raise AutomationError("Brutal Strike requires a weapon or Unarmed Strike attack")
+        if str(ability).lower() != "str":
+            raise AutomationError("Brutal Strike requires a Strength-based attack roll")
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or not has_barbarian_feature(
+            actor_owner,
+            level=9,
+        ):
+            raise AutomationError("Brutal Strike requires Barbarian level 9")
+        actor = self._entity(actor_id)
+        if not has_condition(self._status_effects_for(actor), "reckless_attack"):
+            raise AutomationError("Brutal Strike requires Reckless Attack")
+        if self._has_brutal_strike_used(actor_id):
+            raise AutomationError("Brutal Strike can be used on only one attack roll per turn")
+        disadvantage_sources = [
+            source for source in status_sources if source.get("kind") == "disadvantage"
+        ]
+        if (
+            node_advantage == "disadvantage"
+            or status_advantage == "disadvantage"
+            or disadvantage_sources
+        ):
+            raise AutomationError(
+                "Brutal Strike cannot be used on an attack roll with Disadvantage"
+            )
+        if advantage != "advantage":
+            raise AutomationError("Brutal Strike requires Advantage to forgo")
+        effect = self._brutal_strike_effect(params)
+        if effect is not None and effect not in BRUTAL_STRIKE_EFFECTS:
+            raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
+        if target_id not in (self.state.encounter.combatants if self.state.encounter else {}):
+            self._entity(target_id)
+
+    def _brutal_strike_bonus(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        damage_type: str,
+    ) -> _BrutalStrikeResult:
+        effect = ctx.brutal_strike_effects.get(target_id)
+        if effect is None:
+            return _BrutalStrikeResult()
+        if ctx.action.action_type not in {"weapon_attack", "unarmed_attack"}:
+            return _BrutalStrikeResult()
+        if str(node.get("ability", "")).lower() != "str":
+            return _BrutalStrikeResult()
+        if not ctx.attack_hits.get(target_id, False):
+            return _BrutalStrikeResult(effect=effect)
+        actor_owner = self._resource_owner(ctx.actor_id)
+        barbarian_level = (
+            int(actor_owner.class_levels.get("barbarian", 0))
+            if isinstance(actor_owner, Character)
+            else 0
+        )
+        dice = "1d10"
+        roll = self.roll_service.roll(dice)
+        rolls = [roll]
+        amount = roll.total
+        if ctx.attack_critical.get(target_id, False):
+            critical_roll = self.roll_service.roll(dice)
+            rolls.append(critical_roll)
+            amount += critical_roll.total
+        return _BrutalStrikeResult(
+            amount=amount,
+            effect=effect,
+            rolls=rolls,
+            sources=[
+                {
+                    "feature": "brutal_strike",
+                    "source_action_id": BRUTAL_STRIKE_ACTION_ID,
+                    "barbarian_level": barbarian_level,
+                    "dice": dice,
+                    "damage_type": damage_type,
+                    "effect": effect,
+                    "forgone_advantage": True,
+                }
+            ],
+        )
+
+    def _apply_brutal_strike_effect(
+        self,
+        ctx: _Context,
+        target_id: str,
+        effect: str,
+        path: str,
+    ) -> None:
+        base_change: dict[str, Any] = {
+            "type": "brutal_strike",
+            "actor_id": ctx.actor_id,
+            "target_id": target_id,
+            "effect": effect,
+            "source_action_id": BRUTAL_STRIKE_ACTION_ID,
+            "path": path,
+        }
+        if effect == "forceful_blow":
+            destination = self._brutal_strike_forceful_destination(ctx.params, target_id=target_id)
+            if destination is None:
+                raise AutomationError("Brutal Strike Forceful Blow requires a destination position")
+            base_change.update(
+                self._apply_brutal_strike_forceful_push(ctx, target_id, destination, path)
+            )
+            follow_destination = self._brutal_strike_forceful_follow_destination(
+                ctx.params,
+                target_id=target_id,
+            )
+            if follow_destination is not None:
+                base_change["follow_move"] = self._apply_brutal_strike_forceful_follow(
+                    ctx,
+                    target_id,
+                    follow_destination,
+                    path,
+                )
+            ctx.result.state_changes.append(base_change)
+            return
+        if effect == "hamstring_blow":
+            ctx.result.state_changes.append(base_change)
+            self._apply_brutal_strike_hamstring(ctx, target_id, path)
+            return
+        raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
+
+    def _apply_brutal_strike_forceful_push(
+        self,
+        ctx: _Context,
+        target_id: str,
+        destination: str,
+        path: str,
+    ) -> dict[str, Any]:
+        plan = self._brutal_strike_forceful_plan(ctx.actor_id, target_id, destination)
+        target = plan["target"]
+        assert isinstance(target, Combatant)
+        before_position = target.position_node_id
+        target.position_node_id = destination
+        return {
+            "from": before_position,
+            "to": target.position_node_id,
+            "forced_movement_distance": int(plan["movement_distance"]),
+            "distance_from_actor_before": plan["distance_from_actor_before"],
+            "distance_from_actor_after": plan["distance_from_actor_after"],
+            "path": f"{path}.brutal_strike",
+        }
+
+    def _apply_brutal_strike_forceful_follow(
+        self,
+        ctx: _Context,
+        target_id: str,
+        destination: str,
+        path: str,
+    ) -> dict[str, Any]:
+        plan = self._brutal_strike_forceful_follow_plan(ctx.actor_id, target_id, destination)
+        actor = plan["actor"]
+        assert isinstance(actor, Combatant)
+        before_position = actor.position_node_id
+        actor.position_node_id = destination
+        before_used, after_used = self.economy.add(
+            ctx.actor_id,
+            "movement_used",
+            int(plan["movement_cost"]),
+        )
+        return {
+            "actor_id": ctx.actor_id,
+            "from": before_position,
+            "to": actor.position_node_id,
+            "movement_cost": int(plan["movement_cost"]),
+            "movement_limit": int(plan["movement_limit"]),
+            "movement_used_before": before_used,
+            "movement_used_after": after_used,
+            "distance_to_target_before": plan["distance_to_target_before"],
+            "distance_to_target_after": plan["distance_to_target_after"],
+            "opportunity_attack_triggers": [],
+            "path": f"{path}.brutal_strike.follow",
+        }
+
+    def _apply_brutal_strike_hamstring(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        target = self._entity(target_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, "brutal_strike_hamstring"),
+            source_ref="SRD 5.2.1 Barbarian Class Features: Level 9: Brutal Strike",
+            source_action_id=BRUTAL_STRIKE_ACTION_ID,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition="hamstring_blow",
+            duration={"until": "start_of_next_turn", "turn_owner_id": ctx.actor_id},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            passive_modifiers={"speed_bonus_ft": -15},
+            audit={"node_path": path, "feature": "brutal_strike", "effect": "hamstring_blow"},
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != "hamstring_blow"
+            or existing.get("source_action_id") != BRUTAL_STRIKE_ACTION_ID
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "condition",
+                "target_id": target_id,
+                "condition": effect.condition,
+                "effect_id": effect.effect_id,
+                "source_action_id": effect.source_action_id,
+                "passive_modifiers": effect.passive_modifiers,
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+                "path": f"{path}.brutal_strike",
+            }
+        )
+
+    def _has_brutal_strike_used(self, actor_id: str) -> bool:
+        actor = self._entity(actor_id)
+        return any(
+            effect.get("condition") == "brutal_strike_used"
+            and effect.get("source_action_id") == BRUTAL_STRIKE_ACTION_ID
+            for effect in self._status_effects_for(actor)
+        )
+
+    def _mark_brutal_strike_used(self, ctx: _Context, target_id: str, effect: str) -> None:
+        actor = self._entity(ctx.actor_id)
+        marker = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, "brutal_strike_used"),
+            source_ref="SRD 5.2.1 Barbarian Class Features: Level 9: Brutal Strike",
+            source_action_id=BRUTAL_STRIKE_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition="brutal_strike_used",
+            duration={"until": "start_of_next_turn"},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"target_id": target_id, "effect": effect},
+        )
+        getattr(actor, "status_effects").append(marker.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "brutal_strike_used",
+                "actor_id": ctx.actor_id,
+                "target_id": target_id,
+                "effect": effect,
+                "effect_id": marker.effect_id,
+                "source_action_id": marker.source_action_id,
+            }
+        )
 
     def _agonizing_blast_damage_bonus(self, ctx: _Context) -> int:
         if ctx.action.action_type != "spell":
@@ -8032,6 +8377,236 @@ class AutomationExecutor:
                     "Supreme Sneak Stealth Attack requires end-turn cover of "
                     "Three-Quarters Cover or Total Cover"
                 )
+
+    def _validate_brutal_strike_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if not self._brutal_strike_requested(params):
+            return
+        effect = self._brutal_strike_effect(params)
+        if effect is None:
+            raise AutomationError("Brutal Strike requires an effect choice")
+        if effect not in BRUTAL_STRIKE_EFFECTS:
+            raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
+        if len(targets) != 1:
+            raise AutomationError("Brutal Strike requires exactly one target")
+        target_id = targets[0]
+        attack_node = self._first_attack_roll_node(action)
+        if attack_node is None:
+            raise AutomationError("Brutal Strike requires an attack roll")
+        ability = str(attack_node.get("ability", "str")).lower()
+        actor = self._entity(actor_id)
+        target = self._entity(target_id)
+        distance_ft = self._combat_distance(actor, target)
+        node_advantage = _advantage_value(attack_node.get("advantage"))
+        status_advantage, status_sources = self._attack_status_advantage(
+            actor,
+            target,
+            distance_ft,
+            target_id=target_id,
+            action=action,
+            ability=ability,
+            node_advantage=node_advantage,
+        )
+        effective_node_advantage = (
+            None
+            if any(source.get("kind") == "advantage_blocked" for source in status_sources)
+            else node_advantage
+        )
+        advantage = _merge_advantage(effective_node_advantage, status_advantage)
+        self._validate_brutal_strike_attack_context(
+            action,
+            actor_id,
+            target_id,
+            attack_node,
+            ability,
+            params=params,
+            node_advantage=effective_node_advantage,
+            status_advantage=status_advantage,
+            status_sources=status_sources,
+            advantage=advantage,
+        )
+        if effect == "forceful_blow":
+            destination = self._brutal_strike_forceful_destination(params, target_id=target_id)
+            if destination is None:
+                raise AutomationError("Brutal Strike Forceful Blow requires a destination position")
+            self._brutal_strike_forceful_plan(actor_id, target_id, destination)
+            follow_destination = self._brutal_strike_forceful_follow_destination(
+                params,
+                target_id=target_id,
+            )
+            if follow_destination is not None:
+                self._brutal_strike_forceful_follow_plan(
+                    actor_id,
+                    target_id,
+                    follow_destination,
+                    target_position=destination,
+                )
+
+    @staticmethod
+    def _brutal_strike_requested(params: dict[str, Any]) -> bool:
+        return (
+            params.get("use_brutal_strike") is True
+            or params.get("brutal_strike_effect") not in (None, "", False)
+            or params.get("brutal_strike") not in (None, "", False)
+        )
+
+    @staticmethod
+    def _brutal_strike_effect(params: dict[str, Any]) -> str | None:
+        raw = params.get("brutal_strike_effect", params.get("brutal_strike"))
+        if raw in (None, "", False):
+            return None
+        normalized = str(raw).casefold().strip().replace("-", "_").replace(" ", "_")
+        aliases = {
+            "forceful": "forceful_blow",
+            "forceful_blow": "forceful_blow",
+            "hamstring": "hamstring_blow",
+            "hamstring_blow": "hamstring_blow",
+        }
+        return aliases.get(normalized, normalized)
+
+    @staticmethod
+    def _brutal_strike_forceful_destination(
+        params: dict[str, Any],
+        *,
+        target_id: str,
+    ) -> str | None:
+        by_target = params.get("brutal_strike_forceful_to_position_node_id_by_target")
+        if isinstance(by_target, dict):
+            selected = by_target.get(target_id)
+            if selected not in (None, "", False):
+                return str(selected)
+        selected = params.get("brutal_strike_forceful_to_position_node_id")
+        if selected in (None, "", False):
+            return None
+        return str(selected)
+
+    @staticmethod
+    def _brutal_strike_forceful_follow_destination(
+        params: dict[str, Any],
+        *,
+        target_id: str,
+    ) -> str | None:
+        by_target = params.get("brutal_strike_forceful_follow_to_position_node_id_by_target")
+        if isinstance(by_target, dict):
+            selected = by_target.get(target_id)
+            if selected not in (None, "", False):
+                return str(selected)
+        selected = params.get("brutal_strike_forceful_follow_to_position_node_id")
+        if selected in (None, "", False):
+            return None
+        return str(selected)
+
+    def _first_attack_roll_node(self, action: ActionDefinition) -> dict[str, Any] | None:
+        return next(
+            (
+                node
+                for node in self._automation_nodes(action.automation)
+                if node.get("type") == "attack_roll"
+            ),
+            None,
+        )
+
+    def _brutal_strike_forceful_plan(
+        self,
+        actor_id: str,
+        target_id: str,
+        destination: str,
+    ) -> dict[str, Any]:
+        actor = self._entity(actor_id)
+        target = self._entity(target_id)
+        if not isinstance(actor, Combatant) or not isinstance(target, Combatant):
+            raise AutomationError("Brutal Strike Forceful Blow requires combatants")
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            raise AutomationError("Brutal Strike Forceful Blow requires a combat tactical graph")
+        if actor.position_node_id is None or target.position_node_id is None:
+            raise AutomationError("Brutal Strike Forceful Blow requires current positions")
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            raise AutomationError("Brutal Strike Forceful Blow destination position does not exist")
+        movement_distance = graph.shortest_distance(target.position_node_id, destination)
+        if movement_distance is None:
+            raise AutomationError(
+                "Brutal Strike Forceful Blow destination position is not reachable"
+            )
+        if int(movement_distance) > 15:
+            raise AutomationError("Brutal Strike Forceful Blow cannot exceed 15 feet")
+        before_distance = graph.shortest_distance(actor.position_node_id, target.position_node_id)
+        after_distance = graph.shortest_distance(actor.position_node_id, destination)
+        if (
+            before_distance is not None
+            and after_distance is not None
+            and after_distance <= before_distance
+        ):
+            raise AutomationError(
+                "Brutal Strike Forceful Blow destination must be away from the Barbarian"
+            )
+        return {
+            "target": target,
+            "movement_distance": int(movement_distance),
+            "distance_from_actor_before": before_distance,
+            "distance_from_actor_after": after_distance,
+        }
+
+    def _brutal_strike_forceful_follow_plan(
+        self,
+        actor_id: str,
+        target_id: str,
+        destination: str,
+        *,
+        target_position: str | None = None,
+    ) -> dict[str, Any]:
+        actor = self._entity(actor_id)
+        target = self._entity(target_id)
+        if not isinstance(actor, Combatant) or not isinstance(target, Combatant):
+            raise AutomationError("Brutal Strike Forceful Blow follow movement requires combatants")
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            raise AutomationError(
+                "Brutal Strike Forceful Blow follow movement requires a combat tactical graph"
+            )
+        if actor.position_node_id is None or target.position_node_id is None:
+            raise AutomationError("Brutal Strike Forceful Blow follow movement requires positions")
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        if destination not in graph.nodes:
+            raise AutomationError(
+                "Brutal Strike Forceful Blow follow destination position does not exist"
+            )
+        target_position = target_position or target.position_node_id
+        movement_cost = graph.shortest_distance(
+            actor.position_node_id,
+            destination,
+            movement_cost=True,
+        )
+        if movement_cost is None:
+            raise AutomationError(
+                "Brutal Strike Forceful Blow follow destination position is not reachable"
+            )
+        movement_limit = self._effective_speed(actor) // 2
+        if int(movement_cost) > movement_limit:
+            raise AutomationError(
+                "Brutal Strike Forceful Blow follow movement cannot exceed half Speed"
+            )
+        before_distance = graph.shortest_distance(actor.position_node_id, target_position)
+        after_distance = graph.shortest_distance(destination, target_position)
+        if (
+            before_distance is not None
+            and after_distance is not None
+            and after_distance >= before_distance
+        ):
+            raise AutomationError(
+                "Brutal Strike Forceful Blow follow destination must be toward the target"
+            )
+        return {
+            "actor": actor,
+            "movement_cost": int(movement_cost),
+            "movement_limit": int(movement_limit),
+            "distance_to_target_before": before_distance,
+            "distance_to_target_after": after_distance,
+        }
 
     def _validate_fast_hands_preconditions(
         self,
