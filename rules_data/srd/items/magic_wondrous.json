@@ -216,6 +216,25 @@
         "worn_slot": "body"
       },
       "quantity": 1
+    },
+    {
+      "id": "srd.stone_of_good_luck",
+      "name": "Stone of Good Luck (Luckstone)",
+      "localization": {
+        "en": "Stone of Good Luck (Luckstone)",
+        "zh": "幸运石",
+        "aliases": ["Luckstone"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Stone of Good Luck (Luckstone)",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.carry_stone_of_good_luck"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "carried_on_person": true
+      },
+      "quantity": 1
     }
   ]
 }

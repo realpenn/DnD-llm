@@ -139,6 +139,11 @@ class EngineTools:
         if magician_bonus:
             extra_bonus += magician_bonus
             proficiency_sources = [*proficiency_sources, "feature:primal_order_magician"]
+        passive_bonus, passive_bonus_sources = self._ability_check_passive_bonus(
+            actor_id,
+            effective_ability,
+        )
+        extra_bonus += passive_bonus
         if use_tactical_mind and use_stroke_of_luck:
             raise ValueError("choose only one failed ability check feature")
         if use_tactical_mind:
@@ -184,6 +189,8 @@ class EngineTools:
         payload["original_ability"] = original_ability
         payload["status_advantage"] = status_advantage
         payload["status_sources"] = status_sources
+        payload["passive_bonus"] = passive_bonus
+        payload["passive_bonus_sources"] = passive_bonus_sources
         if primal_knowledge is not None:
             payload["primal_knowledge"] = primal_knowledge
         reliable_talent = _apply_reliable_talent_to_check_payload(
@@ -1622,6 +1629,34 @@ class EngineTools:
                     "effect_id": effect.get("effect_id"),
                     "source_action_id": effect.get("source_action_id"),
                     "modifier": "saving_throw_bonus",
+                    "ability": ability,
+                    "amount": amount,
+                }
+            )
+        return bonus, sources
+
+    def _ability_check_passive_bonus(
+        self,
+        actor_id: str,
+        ability: str,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        ability = ability.lower()
+        bonus = 0
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for_actor(actor_id):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            amount = modifiers.get("ability_check_bonus")
+            if not isinstance(amount, int) or isinstance(amount, bool):
+                continue
+            bonus += amount
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "ability_check_bonus",
                     "ability": ability,
                     "amount": amount,
                 }

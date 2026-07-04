@@ -2512,6 +2512,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert periapt_poison.status == "accepted"
     assert periapt_poison.action_id == "srd.wear_periapt_of_proof_against_poison"
 
+    state.characters["pc1"].equipment.append("srd.stone_of_good_luck")
+    luckstone = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.stone_of_good_luck",
+        )
+    )
+
+    assert luckstone.status == "accepted"
+    assert luckstone.action_id == "srd.carry_stone_of_good_luck"
+
     state.characters["pc1"].equipment.append("srd.ring_of_protection")
     ring = resolver.resolve(
         PlayerActionDraft(
@@ -2666,6 +2679,26 @@ def test_resolver_rejects_periapt_of_proof_against_poison_non_self_target(
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_periapt_of_proof_against_poison"
+
+
+def test_resolver_rejects_stone_of_good_luck_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.stone_of_good_luck"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.stone_of_good_luck",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.carry_stone_of_good_luck"
 
 
 def test_resolver_rejects_ring_of_protection_non_self_target(make_state) -> None:

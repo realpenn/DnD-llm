@@ -680,6 +680,43 @@
         { "type": "text_result", "text": "A Daylight spell cast within 5 feet of the robe gives the wearer the Blinded condition for 1 minute; at the end of each of their turns, they make a DC 15 Constitution saving throw, ending the condition on a success." }
       ],
       "audit_label": "Robe of Eyes: Daylight Drawback"
+    },
+    {
+      "id": "srd.carry_stone_of_good_luck",
+      "name": "Carry Stone of Good Luck",
+      "localization": {
+        "en": "Carry Stone of Good Luck",
+        "zh": "携带幸运石",
+        "aliases": ["启用幸运石", "携带 Luckstone"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Stone of Good Luck (Luckstone)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.stone_of_good_luck" },
+      "properties": {
+        "stone_of_good_luck": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "carried_on_person": true
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_check_bonus": 1,
+            "saving_throw_bonus": 1
+          },
+          "duration": { "until": "while_carrying_stone_of_good_luck" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While this polished agate is on the target's person, the target gains a +1 bonus to ability checks and saving throws." }
+      ],
+      "audit_label": "Carry Stone of Good Luck"
     }
   ]
 }

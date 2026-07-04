@@ -3357,6 +3357,36 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_periapt_of_proof_against_poison"},
         "stacking_policy": "replace",
     }
+    stone_of_good_luck = compendium.action("srd.carry_stone_of_good_luck")
+    assert compendium.items["srd.stone_of_good_luck"].actions == ["srd.carry_stone_of_good_luck"]
+    assert compendium.items["srd.stone_of_good_luck"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": True,
+        "carried_on_person": True,
+    }
+    assert stone_of_good_luck.action_economy == "none"
+    assert stone_of_good_luck.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert stone_of_good_luck.requirements == {"item": "srd.stone_of_good_luck"}
+    assert stone_of_good_luck.properties == {
+        "stone_of_good_luck": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "carried_on_person": True,
+    }
+    assert stone_of_good_luck.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "ability_check_bonus": 1,
+            "saving_throw_bonus": 1,
+        },
+        "duration": {"until": "while_carrying_stone_of_good_luck"},
+        "stacking_policy": "replace",
+    }
     robe_of_eyes = compendium.action("srd.wear_robe_of_eyes")
     robe_light = compendium.action("srd.robe_of_eyes_light_drawback")
     robe_daylight = compendium.action("srd.robe_of_eyes_daylight_drawback")
@@ -4916,6 +4946,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.items["srd.periapt_of_proof_against_poison"].actions == [
         "srd.wear_periapt_of_proof_against_poison"
     ]
+    assert compendium.items["srd.stone_of_good_luck"].actions == ["srd.carry_stone_of_good_luck"]
     assert compendium.items["srd.ring_of_protection"].actions == ["srd.wear_ring_of_protection"]
     assert compendium.items["srd.ring_of_swimming"].actions == ["srd.wear_ring_of_swimming"]
     assert compendium.items["srd.leather_armor"].properties["armor_category"] == "light"
