@@ -3136,6 +3136,36 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_boots_of_elvenkind"},
         "stacking_policy": "replace",
     }
+    cloak_of_protection = compendium.action("srd.wear_cloak_of_protection")
+    assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]
+    assert compendium.items["srd.cloak_of_protection"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": True,
+        "worn_slot": "shoulders",
+    }
+    assert cloak_of_protection.action_economy == "none"
+    assert cloak_of_protection.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert cloak_of_protection.requirements == {"item": "srd.cloak_of_protection"}
+    assert cloak_of_protection.properties == {
+        "cloak_of_protection": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "shoulders",
+    }
+    assert cloak_of_protection.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "armor_class_bonus": 1,
+            "saving_throw_bonus": 1,
+        },
+        "duration": {"until": "while_wearing_cloak_of_protection"},
+        "stacking_policy": "replace",
+    }
     robe_of_eyes = compendium.action("srd.wear_robe_of_eyes")
     robe_light = compendium.action("srd.robe_of_eyes_light_drawback")
     robe_daylight = compendium.action("srd.robe_of_eyes_daylight_drawback")
@@ -4650,6 +4680,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.items["srd.potion_of_vitality"].actions == ["srd.use_potion_of_vitality"]
     assert compendium.items["srd.potion_of_resistance"].actions == ["srd.use_potion_of_resistance"]
     assert compendium.items["srd.boots_of_elvenkind"].actions == ["srd.wear_boots_of_elvenkind"]
+    assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]
     assert compendium.items["srd.ring_of_swimming"].actions == ["srd.wear_ring_of_swimming"]
     assert compendium.items["srd.leather_armor"].properties["armor_category"] == "light"
     assert compendium.items["srd.chain_mail"].properties["armor_category"] == "heavy"

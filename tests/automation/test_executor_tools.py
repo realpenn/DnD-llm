@@ -8687,6 +8687,114 @@ def test_boots_of_elvenkind_item_requirement_accepts_equipment_and_rejects_missi
     )
 
 
+def test_cloak_of_protection_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.cloak_of_protection"):
+        tools.use_item(
+            "pc1",
+            "srd.cloak_of_protection",
+            ["pc1"],
+            action_id="srd.wear_cloak_of_protection",
+            idempotency_key="missing-cloak-of-protection",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.cloak_of_protection")
+    result = tools.use_item(
+        "pc1",
+        "srd.cloak_of_protection",
+        ["pc1"],
+        action_id="srd.wear_cloak_of_protection",
+        idempotency_key="equipped-cloak-of-protection",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_cloak_of_protection"
+    )
+
+
+def test_cloak_of_protection_adds_ac_and_saving_throw_bonus(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.cloak_of_protection"] = 1
+    character.armor_class = 14
+    state.encounter.combatants["pc1"].armor_class = 14
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.use_item(
+        "pc1",
+        "srd.cloak_of_protection",
+        ["pc1"],
+        action_id="srd.wear_cloak_of_protection",
+        idempotency_key="wear-cloak-of-protection",
+    )
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([14]),
+        AuditLog(),
+    ).execute(_attack_action(attack_bonus=0), actor_id="goblin1", targets=["pc1"])
+    save_action = ActionDefinition(
+        id="test.cloak_of_protection_save",
+        name="Cloak of Protection Save",
+        localization={"en": "Cloak of Protection Save", "zh": "防护斗篷豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+    save = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(save_action, actor_id="goblin1", targets=["pc1"])
+    direct_save = tools.roll_save(
+        "pc1",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="cloak-of-protection-direct-save",
+    )
+
+    assert result["success"] is True
+    assert character.inventory["srd.cloak_of_protection"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_cloak_of_protection"
+    assert effect["duration"] == {"until": "while_wearing_cloak_of_protection"}
+    assert effect["passive_modifiers"] == {
+        "armor_class_bonus": 1,
+        "saving_throw_bonus": 1,
+    }
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack_node["ac"] == 15
+    assert attack_node["hit"] is False
+    assert attack_node["armor_class_sources"][0]["modifier"] == "armor_class_bonus"
+    assert attack_node["armor_class_sources"][0]["source_action_id"] == (
+        "srd.wear_cloak_of_protection"
+    )
+
+    save_node = save.node_results["automation[0]"]
+    assert save_node["passive_adjustment"] == 1
+    assert save_node["passive_sources"][0]["modifier"] == "saving_throw_bonus"
+    assert save_node["passive_sources"][0]["source_action_id"] == ("srd.wear_cloak_of_protection")
+    assert direct_save["passive_bonus"] == 1
+    assert direct_save["passive_bonus_sources"][0]["source_action_id"] == (
+        "srd.wear_cloak_of_protection"
+    )
+
+
 def test_robe_of_eyes_grants_sight_perception_and_special_senses(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

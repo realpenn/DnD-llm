@@ -20,6 +20,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.cloak_of_protection",
+      "name": "Cloak of Protection",
+      "localization": {
+        "en": "Cloak of Protection",
+        "zh": "防护斗篷",
+        "aliases": ["Protection Cloak"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Cloak of Protection",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_cloak_of_protection"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "shoulders"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.robe_of_eyes",
       "name": "Robe of Eyes",
       "localization": {
