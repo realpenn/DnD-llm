@@ -8,7 +8,7 @@ from .automation.effects import EffectInstance
 from .automation.executor import AutomationExecutor
 from .compendium.loader import Compendium
 from .compendium.validators import ALLOWED_DAMAGE_TYPES
-from .dice import RollService
+from .dice import RollResult, RollService
 from .economy import EconomyTracker
 from .invariants import require_game_state_invariants
 from .models import Character, Combatant, GameState, Monster
@@ -20,6 +20,8 @@ from .rules.class_features import (
     FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
+    RELIABLE_TALENT_ACTION_ID,
+    RELIABLE_TALENT_D20_FLOOR,
     aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
     druid_magician_check_bonus,
@@ -28,6 +30,7 @@ from .rules.class_features import (
     has_rogue_thief_feature,
     has_warlock_fiend_feature,
     monk_disciplined_survivor_applies,
+    reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
     saving_throw_proficiency_sources,
 )
@@ -168,6 +171,14 @@ class EngineTools:
         payload["status_sources"] = status_sources
         if primal_knowledge is not None:
             payload["primal_knowledge"] = primal_knowledge
+        reliable_talent = _apply_reliable_talent_to_check_payload(
+            proficiency_source,
+            payload,
+            result.roll,
+            proficiency_sources,
+        )
+        if reliable_talent is not None:
+            payload["reliable_talent"] = reliable_talent
         dice_rolls = [result.roll.to_dict()]
         dark_ones_own_luck = self._apply_dark_ones_own_luck_to_roll(
             actor_id,
@@ -1900,6 +1911,45 @@ class EngineTools:
         if isinstance(target, Combatant) and target.entity_id in self.state.monsters:
             return self.state.monsters[target.entity_id]
         return target
+
+
+def _kept_d20(roll: RollResult) -> int:
+    for die in roll.dice:
+        if die.sides == 20 and die.kept:
+            return die.value
+    raise ValueError("ability check roll did not include a kept d20")
+
+
+def _apply_reliable_talent_to_check_payload(
+    actor: Character | Monster | Combatant,
+    payload: dict[str, Any],
+    roll: RollResult,
+    proficiency_sources: list[str],
+) -> dict[str, Any] | None:
+    if not isinstance(actor, Character):
+        return None
+    natural_d20 = _kept_d20(roll)
+    adjustment = reliable_talent_d20_adjustment(
+        actor,
+        proficiency_sources=proficiency_sources,
+        natural_d20=natural_d20,
+    )
+    if adjustment <= 0:
+        return None
+    before_total = int(payload["total"])
+    after_total = before_total + adjustment
+    payload["total"] = after_total
+    payload["success"] = after_total >= int(payload["dc"])
+    return {
+        "source_action_id": RELIABLE_TALENT_ACTION_ID,
+        "d20_before": natural_d20,
+        "d20_after": RELIABLE_TALENT_D20_FLOOR,
+        "adjustment": adjustment,
+        "total_before": before_total,
+        "total_after": after_total,
+        "proficiency_sources": list(proficiency_sources),
+        "success": payload["success"],
+    }
 
 
 def _check_proficiency(

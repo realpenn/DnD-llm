@@ -232,6 +232,17 @@ def test_compendium_loads_srd_actions() -> None:
         "class": "rogue",
         "class_level_min": 1,
     }
+    reliable_talent = compendium.action("srd.reliable_talent")
+    assert reliable_talent.requirements == {
+        "class": "rogue",
+        "class_level_min": 7,
+    }
+    assert reliable_talent.action_economy == "none"
+    assert reliable_talent.properties == {
+        "ability_check_uses_skill_or_tool_proficiency": True,
+        "d20_floor": 10,
+        "d20_floor_applies_to_rolls_at_or_below": 9,
+    }
     assert compendium.action("srd.deft_explorer").requirements == {
         "class": "ranger",
         "class_level_min": 2,
@@ -3944,8 +3955,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.steady_aim" in compendium.classes["rogue"].levels["3"]["actions"]
     assert compendium.classes["rogue"].levels["6"]["features"] == ["Expertise"]
     assert "srd.rogue_expertise" in compendium.classes["rogue"].levels["6"]["actions"]
-    assert compendium.classes["rogue"].levels["7"]["features"] == ["Evasion"]
+    assert compendium.classes["rogue"].levels["7"]["features"] == [
+        "Evasion",
+        "Reliable Talent",
+    ]
     assert "srd.evasion" in compendium.classes["rogue"].levels["7"]["actions"]
+    assert "srd.reliable_talent" in compendium.classes["rogue"].levels["7"]["actions"]
     assert {
         "srd.cunning_strike",
         "srd.uncanny_dodge",

@@ -15,6 +15,8 @@ from ..rules.class_features import (
     FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
+    RELIABLE_TALENT_ACTION_ID,
+    RELIABLE_TALENT_D20_FLOOR,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     aura_of_protection_saving_throw_bonus,
     barbarian_rage_damage_bonus,
@@ -58,6 +60,7 @@ from ..rules.class_features import (
     monk_slow_fall_damage_reduction,
     monk_unarmored_defense_armor_class,
     preserve_life_healing_pool,
+    reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
     saving_throw_proficiency_sources,
     warlock_agonizing_blast_bonus,
@@ -937,6 +940,15 @@ class AutomationExecutor:
         ctx.result.dice_rolls.append(roll.to_dict())
         ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
         total = roll.total + adjustment
+        reliable_talent_result = self._apply_reliable_talent_to_ability_check(
+            self._proficiency_source(actor),
+            roll,
+            total,
+            proficiency_sources,
+            dc,
+        )
+        if reliable_talent_result is not None:
+            total = int(reliable_talent_result["total_after"])
         dark_ones_own_luck_result = self._apply_dark_ones_own_luck_to_roll(
             ctx,
             actor,
@@ -979,6 +991,8 @@ class AutomationExecutor:
         }
         if primal_knowledge is not None:
             ctx.result.node_results[path]["primal_knowledge"] = primal_knowledge
+        if reliable_talent_result is not None:
+            ctx.result.node_results[path]["reliable_talent"] = reliable_talent_result
         if dark_ones_own_luck_result is not None:
             ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
         if tactical_mind_result is not None:
@@ -2998,6 +3012,36 @@ class AutomationExecutor:
             "total_after": after_total,
             "spent": success,
             "success": success,
+        }
+
+    def _apply_reliable_talent_to_ability_check(
+        self,
+        actor: Character | Monster | Combatant,
+        roll: RollResult,
+        total: int,
+        proficiency_sources: list[str],
+        dc: int,
+    ) -> dict[str, Any] | None:
+        if not isinstance(actor, Character):
+            return None
+        natural_d20 = self._kept_d20(roll)
+        adjustment = reliable_talent_d20_adjustment(
+            actor,
+            proficiency_sources=proficiency_sources,
+            natural_d20=natural_d20,
+        )
+        if adjustment <= 0:
+            return None
+        after_total = total + adjustment
+        return {
+            "source_action_id": RELIABLE_TALENT_ACTION_ID,
+            "d20_before": natural_d20,
+            "d20_after": RELIABLE_TALENT_D20_FLOOR,
+            "adjustment": adjustment,
+            "total_before": total,
+            "total_after": after_total,
+            "proficiency_sources": list(proficiency_sources),
+            "success": after_total >= dc,
         }
 
     def _use_dark_ones_own_luck_for_save(self, ctx: _Context, target_id: str) -> bool:
@@ -11289,7 +11333,7 @@ class AutomationExecutor:
         for die in roll.dice:
             if die.sides == 20 and die.kept:
                 return die.value
-        raise AutomationError("attack roll did not include a kept d20")
+        raise AutomationError("roll did not include a kept d20")
 
     def _ability_modifier(self, entity: Character | Monster | Combatant, ability: str) -> int:
         source = self._ability_source(entity)

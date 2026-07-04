@@ -2480,6 +2480,7 @@ def test_natural_language_character_edit_assigns_rogue_evasion() -> None:
     assert result.character is not None
     assert result.character.class_levels == {"rogue": 7}
     assert "srd.evasion" in result.character.actions
+    assert "srd.reliable_talent" in result.character.actions
 
 
 def test_natural_language_character_edit_rejects_rogue_level_5_extra_expertise_slots() -> None:

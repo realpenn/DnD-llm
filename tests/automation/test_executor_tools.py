@@ -9869,6 +9869,104 @@ def test_roll_check_applies_skill_expertise(make_state) -> None:
     assert result["roll"]["expression"] == "1d20+6"
 
 
+def test_roll_check_reliable_talent_floors_proficient_skill_d20(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].proficiency_bonus = 3
+    state.characters["pc1"].abilities["dex"] = 14
+    state.characters["pc1"].skill_proficiencies = ["stealth"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([9]),
+    )
+
+    result = tools.roll_check("pc1", "dex", skill="Stealth", difficulty_tier="medium")
+
+    assert result["roll"]["total"] == 14
+    assert result["total"] == 15
+    assert result["success"] is True
+    assert result["proficiency_sources"] == ["skill:stealth"]
+    assert result["reliable_talent"] == {
+        "source_action_id": "srd.reliable_talent",
+        "d20_before": 9,
+        "d20_after": 10,
+        "adjustment": 1,
+        "total_before": 14,
+        "total_after": 15,
+        "proficiency_sources": ["skill:stealth"],
+        "success": True,
+    }
+
+
+def test_roll_check_reliable_talent_floors_proficient_tool_d20(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].proficiency_bonus = 3
+    state.characters["pc1"].abilities["dex"] = 14
+    state.characters["pc1"].tool_proficiencies = ["thieves_tools"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([9]),
+    )
+
+    result = tools.roll_check("pc1", "dex", tool="Thieves' Tools", difficulty_tier="medium")
+
+    assert result["tool"] == "thieves_tools"
+    assert result["proficiency_sources"] == ["tool:thieves_tools"]
+    assert result["total"] == 15
+    assert result["reliable_talent"]["d20_before"] == 9
+    assert result["reliable_talent"]["d20_after"] == 10
+
+
+def test_roll_check_reliable_talent_requires_skill_or_tool_proficiency(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"rogue": 7, "bard": 2}
+    state.characters["pc1"].proficiency_bonus = 3
+    state.characters["pc1"].abilities["dex"] = 14
+    state.characters["pc1"].skill_proficiencies = []
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([9]),
+    )
+
+    result = tools.roll_check("pc1", "dex", skill="Stealth", difficulty_tier="medium")
+
+    assert result["proficiency_sources"] == ["feature:jack_of_all_trades"]
+    assert result["total"] == 12
+    assert "reliable_talent" not in result
+
+
+def test_roll_check_reliable_talent_does_not_adjust_d20_ten(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].proficiency_bonus = 3
+    state.characters["pc1"].abilities["dex"] = 14
+    state.characters["pc1"].skill_proficiencies = ["stealth"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    )
+
+    result = tools.roll_check("pc1", "dex", skill="Stealth", difficulty_tier="medium")
+
+    assert result["total"] == 15
+    assert "reliable_talent" not in result
+
+
 def test_roll_check_applies_bard_jack_of_all_trades_to_unproficient_skill(
     make_state,
 ) -> None:
@@ -10510,6 +10608,81 @@ def test_automation_ability_check_applies_skill_expertise(make_state) -> None:
     assert check_node["proficient"] is True
     assert check_node["proficiency_sources"] == ["skill:stealth", "feature:expertise:stealth"]
     assert check_node["bonus"] == 4
+
+
+def test_automation_ability_check_reliable_talent_floors_proficient_skill_d20(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].proficiency_bonus = 3
+    state.characters["pc1"].skill_proficiencies = ["stealth"]
+    state.encounter.combatants["pc1"].abilities = {
+        "str": 10,
+        "dex": 14,
+        "con": 10,
+        "int": 10,
+        "wis": 10,
+        "cha": 10,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([9]),
+    )
+
+    result = tools.perform_action("pc1", "srd.hide", [])
+
+    check_node = result["node_results"]["automation[1]"]
+    assert result["dice_rolls"][0]["total"] == 14
+    assert check_node["total"] == 15
+    assert check_node["success"] is True
+    assert check_node["proficiency_sources"] == ["skill:stealth"]
+    assert check_node["reliable_talent"] == {
+        "source_action_id": "srd.reliable_talent",
+        "d20_before": 9,
+        "d20_after": 10,
+        "adjustment": 1,
+        "total_before": 14,
+        "total_after": 15,
+        "proficiency_sources": ["skill:stealth"],
+        "success": True,
+    }
+
+
+def test_automation_ability_check_reliable_talent_requires_proficiency(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 7}
+    state.characters["pc1"].proficiency_bonus = 3
+    state.characters["pc1"].skill_proficiencies = []
+    state.encounter.combatants["pc1"].abilities = {
+        "str": 10,
+        "dex": 14,
+        "con": 10,
+        "int": 10,
+        "wis": 10,
+        "cha": 10,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([9]),
+    )
+
+    result = tools.perform_action("pc1", "srd.hide", [])
+
+    check_node = result["node_results"]["automation[1]"]
+    assert check_node["proficiency_sources"] == []
+    assert check_node["total"] == 11
+    assert "reliable_talent" not in check_node
 
 
 def test_automation_ability_check_applies_bard_jack_of_all_trades(make_state) -> None:

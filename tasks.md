@@ -328,6 +328,7 @@ P0 脚手架
   - [x] **P2-1br** SRD 5.2.1 Monk 18 `Superior Defense` 落地：新增 `srd.superior_defense` class feature action 与 Monk 18 级职业数据；按 SRD 在自己回合开始可显式消耗 3 Focus Points，获得 1 分钟除 Force 外所有伤害 Resistance，若获得 Incapacitated condition 则提前结束；不虚构旧版 Empty Body、隐形、Force 抗性或额外次数，并覆盖 compendium、executor 抗性/失能结束、生命周期与自然语言建角测试。
   - [x] **P2-1bs** SRD 5.2.1 Paladin 10 `Aura of Courage` 落地：新增 `srd.aura_of_courage` class feature marker 与 Paladin 10 级职业数据；按 SRD 使圣武士与其 Aura of Protection 内盟友对 Frightened condition 具有 Immunity，且已有 Frightened ally 进入光环时该 condition 在光环内无效果；复用 10 尺 Aura of Protection、同阵营与圣武士 Incapacitated 失效语义，不虚构 Abjure Foes、Radiant Strikes 或 Aura Expansion；覆盖 compendium、executor condition 免疫/既有恐惧无效/失能反例与自然语言建角测试。
   - [x] **P2-1bt** SRD 5.2.1 Rogue 7 `Evasion` 落地：将既有 `srd.evasion` class feature marker 泛化为 Monk/Rogue 7 共用，并新增 Rogue 7 级职业数据与角色成长授予；按 SRD 在受到允许 Dexterity saving throw 成功半伤的效果时，成功改为不受伤害、失败只受半伤，且 Incapacitated 时不生效；不泛化到非 Dex save 或非半伤效果，并补齐 `class_any_level_min` 自动模拟等级；覆盖 compendium、executor Rogue 成功/失败、自然语言建角与 simulator 回归测试。
+  - [x] **P2-1bu** SRD 5.2.1 Rogue 7 `Reliable Talent` 落地：新增 `srd.reliable_talent` class feature marker 与 Rogue 7 级职业数据/角色成长授予；按 SRD 在游荡者进行使用自身技能或工具熟练的 ability check 时，将 d20 掷出 9 或更低视为 10，并保留原始骰面审计；不泛化到未熟练检定、Jack of All Trades、Thaumaturge/Magician、attack roll、saving throw、initiative 或 passive check；覆盖 compendium、direct roll_check、automation ability_check 与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from ..models import Character
@@ -94,6 +95,9 @@ NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slo
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
 SAVING_THROW_ABILITIES = frozenset({"str", "dex", "con", "int", "wis", "cha"})
 DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
+RELIABLE_TALENT_ACTION_ID = "srd.reliable_talent"
+RELIABLE_TALENT_D20_FLOOR = 10
+RELIABLE_TALENT_MAX_NATURAL = 9
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -193,6 +197,27 @@ def rogue_evasion_applies(character: Character) -> bool:
 
 def evasion_applies(character: Character) -> bool:
     return monk_evasion_applies(character) or rogue_evasion_applies(character)
+
+
+def reliable_talent_applies(character: Character) -> bool:
+    return int(character.class_levels.get("rogue", 0)) >= 7
+
+
+def reliable_talent_d20_adjustment(
+    character: Character,
+    *,
+    proficiency_sources: Iterable[str],
+    natural_d20: int,
+) -> int:
+    if not reliable_talent_applies(character):
+        return 0
+    if not any(
+        source.startswith("skill:") or source.startswith("tool:") for source in proficiency_sources
+    ):
+        return 0
+    if natural_d20 > RELIABLE_TALENT_MAX_NATURAL:
+        return 0
+    return RELIABLE_TALENT_D20_FLOOR - natural_d20
 
 
 def monk_acrobatic_movement_applies(character: Character) -> bool:

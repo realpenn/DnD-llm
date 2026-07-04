@@ -3909,6 +3909,36 @@
             "audit_label": "Rogue Expertise"
         },
         {
+            "id": "srd.reliable_talent",
+            "name": "Reliable Talent",
+            "localization": {
+                "en": "Reliable Talent",
+                "zh": "可靠才能",
+                "aliases": ["Rogue Reliable Talent", "游荡者可靠才能"]
+            },
+            "source": "SRD 5.2.1 Rogue Class Features: Level 7: Reliable Talent",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 7},
+            "properties": {
+                "ability_check_uses_skill_or_tool_proficiency": true,
+                "d20_floor": 10,
+                "d20_floor_applies_to_rolls_at_or_below": 9
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Rogue makes an ability check that uses one of their skill or tool proficiencies, they can treat a d20 roll of 9 or lower as a 10."
+                }
+            ],
+            "audit_label": "Reliable Talent"
+        },
+        {
             "id": "srd.sneak_attack",
             "name": "Sneak Attack",
             "localization": {

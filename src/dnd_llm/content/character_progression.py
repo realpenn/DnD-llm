@@ -273,7 +273,7 @@ CLASS_LEVEL_ACTIONS = {
         3: ["srd.steady_aim"],
         5: ["srd.cunning_strike", "srd.uncanny_dodge"],
         6: ["srd.rogue_expertise"],
-        7: ["srd.evasion"],
+        7: ["srd.evasion", "srd.reliable_talent"],
     },
     "sorcerer": {
         2: ["srd.font_of_magic_convert_slot_1", "srd.font_of_magic_create_slot_1"],
