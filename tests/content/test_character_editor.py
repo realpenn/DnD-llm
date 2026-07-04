@@ -2121,6 +2121,19 @@ def test_natural_language_character_edit_assigns_thief_subclass_actions() -> Non
         "srd.fast_hands_magic_item",
         "srd.second_story_work",
     } <= set(result.character.actions)
+    assert "srd.supreme_sneak" not in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_thief_supreme_sneak_at_level_nine() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 rogue9 子职 thief")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"rogue": 9}
+    assert result.character.subclasses == {"rogue": "thief"}
+    assert "srd.supreme_sneak" in result.character.actions
 
 
 def test_natural_language_character_edit_assigns_rogue_cunning_strike() -> None:

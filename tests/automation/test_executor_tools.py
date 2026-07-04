@@ -2612,6 +2612,182 @@ def test_improved_cunning_strike_applies_two_effects_and_pays_both_die_costs(
     }
 
 
+def test_attack_ends_hide_action_condition(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "hide-before-attack",
+            "condition": "hidden",
+            "source_action_id": "srd.hide",
+            "duration": {"until": "revealed_or_attacks_or_casts"},
+        }
+    )
+    state.characters["pc1"].class_levels = {"rogue": 5}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        params={"use_sneak_attack": True},
+        idempotency_key="attack-ends-hide-condition",
+    )
+
+    assert result["success"] is True
+    assert not [
+        effect
+        for effect in state.encounter.combatants["pc1"].status_effects
+        if effect.get("effect_id") == "hide-before-attack"
+    ]
+    expiry = next(
+        change for change in result["state_changes"] if change["type"] == "effect_expired"
+    )
+    assert expiry["trigger"] == "attack"
+    assert expiry["removed"][0]["condition"] == "hidden"
+    assert expiry["removed"][0]["source_action_id"] == "srd.hide"
+
+
+def test_supreme_sneak_stealth_attack_preserves_hide_action_condition(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "hide-before-supreme-sneak",
+            "condition": "hidden",
+            "source_action_id": "srd.cunning_action_hide",
+            "duration": {"until": "revealed_or_attacks_or_casts"},
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 9}
+    character.subclasses = {"rogue": "thief"}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        params={
+            "use_sneak_attack": True,
+            "cunning_strike": "stealth_attack",
+            "cunning_strike_stealth_attack_end_turn_cover": "three-quarters",
+        },
+        idempotency_key="supreme-sneak-stealth-attack",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    stealth_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "cunning_strike" and change["effect"] == "stealth_attack"
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"][2]["expression"] == "4d6"
+    assert damage_change["sneak_attack_sources"][0]["cunning_strike"] == {
+        "effect": "stealth_attack",
+        "die_cost": 1,
+        "forgone_dice": "1d6",
+    }
+    assert stealth_change["source_action_id"] == "srd.supreme_sneak"
+    assert stealth_change["end_turn_cover"] == "three_quarters"
+    assert stealth_change["preserved_condition_effects"] == [
+        {
+            "owner_type": "combatant",
+            "owner_id": "pc1",
+            "effect_id": "hide-before-supreme-sneak",
+            "condition": "hidden",
+            "source_action_id": "srd.cunning_action_hide",
+        }
+    ]
+    assert any(
+        effect.get("effect_id") == "hide-before-supreme-sneak"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+    assert not [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "effect_expired" and change.get("actor_id") == "pc1"
+    ]
+
+
+def test_supreme_sneak_stealth_attack_requires_thief_level_nine_before_spending_action(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "hide-too-low",
+            "condition": "hidden",
+            "source_action_id": "srd.hide",
+            "duration": {"until": "revealed_or_attacks_or_casts"},
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 8}
+    character.subclasses = {"rogue": "thief"}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Supreme Sneak Stealth Attack requires Rogue Thief level 9",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "stealth_attack",
+                "cunning_strike_stealth_attack_end_turn_cover": "total",
+            },
+            idempotency_key="supreme-sneak-too-low",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
+def test_supreme_sneak_stealth_attack_requires_hide_condition_before_spending_action(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].armor_class = 1
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 9}
+    character.subclasses = {"rogue": "thief"}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Supreme Sneak Stealth Attack requires the Hide action's condition",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "stealth_attack",
+                "cunning_strike_stealth_attack_end_turn_cover": "total",
+            },
+            idempotency_key="supreme-sneak-no-hide",
+        )
+
+    assert state.encounter.action_budgets == {}
+
+
 def test_improved_cunning_strike_requires_rogue_level_eleven(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

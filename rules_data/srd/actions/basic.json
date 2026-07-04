@@ -3874,7 +3874,7 @@
                         {
                             "type": "condition",
                             "condition": "hidden",
-                            "duration": {"until": "revealed"},
+                            "duration": {"until": "revealed_or_attacks_or_casts"},
                             "tick_on": "revealed"
                         }
                     ],
@@ -4309,6 +4309,40 @@
             "audit_label": "Second-Story Work"
         },
         {
+            "id": "srd.supreme_sneak",
+            "name": "Supreme Sneak",
+            "localization": {
+                "en": "Supreme Sneak",
+                "zh": "至高潜行",
+                "aliases": ["Thief Supreme Sneak", "盗贼至高潜行"]
+            },
+            "source": "SRD 5.2.1 Rogue Subclass: Thief, Level 9: Supreme Sneak",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "rogue", "class_level_min": 9, "subclass": "thief"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "properties": {
+                "adds_cunning_strike_effect": "stealth_attack",
+                "die_cost": "1d6",
+                "requires_hide_invisible_condition": true,
+                "preserves_hide_invisible_on_attack_when_end_turn_cover": [
+                    "three_quarters",
+                    "total"
+                ]
+            },
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Thief can use Stealth Attack as a Cunning Strike option, paying 1d6 Sneak Attack damage so the attack does not end the Hide action's Invisible condition if the Thief ends the turn behind Three-Quarters Cover or Total Cover."
+                }
+            ],
+            "audit_label": "Supreme Sneak"
+        },
+        {
             "id": "srd.cunning_action_dash",
             "name": "Cunning Action: Dash",
             "localization": {
@@ -4399,7 +4433,7 @@
                         {
                             "type": "condition",
                             "condition": "hidden",
-                            "duration": {"until": "revealed"},
+                            "duration": {"until": "revealed_or_attacks_or_casts"},
                             "tick_on": "revealed"
                         }
                     ],

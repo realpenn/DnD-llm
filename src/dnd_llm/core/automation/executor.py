@@ -89,9 +89,20 @@ from .effects import EffectInstance
 from .nodes import STATE_CHANGING_NODE_TYPES
 
 ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
-CUNNING_STRIKE_EFFECTS = {"poison", "trip", "withdraw"}
+CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 MAX_CUNNING_STRIKE_EFFECTS = 2
 IMPROVED_CUNNING_STRIKE_ACTION_ID = "srd.improved_cunning_strike"
+SUPREME_SNEAK_ACTION_ID = "srd.supreme_sneak"
+HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
+SUPREME_SNEAK_COVER_ALIASES = {
+    "3_4": "three_quarters",
+    "3_4_cover": "three_quarters",
+    "three_quarters": "three_quarters",
+    "three_quarters_cover": "three_quarters",
+    "total": "total",
+    "total_cover": "total",
+}
+SUPREME_SNEAK_COVERS = frozenset({"three_quarters", "total"})
 OPEN_HAND_TECHNIQUE_EFFECTS = {"addle", "push", "topple"}
 FOCUS_RESOURCE_ID = "srd.resource.focus_points"
 UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
@@ -5295,6 +5306,24 @@ class AutomationExecutor:
             base_change.update(move_change)
             ctx.result.state_changes.append(base_change)
             return
+        if effect == "stealth_attack":
+            cover = self._cunning_strike_stealth_attack_cover(ctx.params)
+            if cover is None:
+                raise AutomationError(
+                    "Supreme Sneak Stealth Attack requires end-turn cover of "
+                    "Three-Quarters Cover or Total Cover"
+                )
+            base_change.update(
+                {
+                    "source_action_id": SUPREME_SNEAK_ACTION_ID,
+                    "end_turn_cover": cover,
+                    "preserved_condition_effects": self._hide_invisible_effect_entries(
+                        ctx.actor_id
+                    ),
+                }
+            )
+            ctx.result.state_changes.append(base_change)
+            return
         raise AutomationError(f"unsupported Cunning Strike effect: {effect}")
 
     def _roll_cunning_strike_save(
@@ -7893,6 +7922,18 @@ class AutomationExecutor:
             if destination is None:
                 raise AutomationError("Cunning Strike Withdraw requires a destination position")
             self._cunning_strike_withdraw_plan(actor_id, destination)
+        if "stealth_attack" in effects:
+            if not has_rogue_thief_feature(actor, level=9):
+                raise AutomationError("Supreme Sneak Stealth Attack requires Rogue Thief level 9")
+            if not self._hide_invisible_effect_entries(actor_id):
+                raise AutomationError(
+                    "Supreme Sneak Stealth Attack requires the Hide action's condition"
+                )
+            if self._cunning_strike_stealth_attack_cover(params) is None:
+                raise AutomationError(
+                    "Supreme Sneak Stealth Attack requires end-turn cover of "
+                    "Three-Quarters Cover or Total Cover"
+                )
 
     def _validate_fast_hands_preconditions(
         self,
@@ -9047,6 +9088,19 @@ class AutomationExecutor:
             return None
         return str(destination)
 
+    @staticmethod
+    def _cunning_strike_stealth_attack_cover(params: dict[str, Any]) -> str | None:
+        raw = (
+            params.get("cunning_strike_stealth_attack_end_turn_cover")
+            or params.get("stealth_attack_end_turn_cover")
+            or params.get("supreme_sneak_end_turn_cover")
+            or params.get("end_turn_cover")
+        )
+        if raw in (None, "", False):
+            return None
+        cover = re.sub(r"[^a-z0-9]+", "_", str(raw).casefold()).strip("_")
+        return SUPREME_SNEAK_COVER_ALIASES.get(cover)
+
     def _cunning_strike_dc(self, actor_id: str) -> int:
         actor = self._resource_owner(actor_id)
         if not isinstance(actor, Character):
@@ -9355,6 +9409,36 @@ class AutomationExecutor:
                 )
         return effect_lists
 
+    @staticmethod
+    def _is_hide_invisible_effect(effect: dict[str, Any]) -> bool:
+        return (
+            effect.get("condition") in {"hidden", "invisible"}
+            and effect.get("source_action_id") in HIDE_ACTION_IDS
+        )
+
+    def _hide_invisible_effect_entries(self, actor_id: str) -> list[dict[str, Any]]:
+        entries: list[dict[str, Any]] = []
+        seen: set[tuple[str, str, str]] = set()
+        for owner_type, owner_id, effects in self._actor_effect_lists(actor_id):
+            for effect in effects:
+                if not self._is_hide_invisible_effect(effect):
+                    continue
+                effect_id = str(effect.get("effect_id"))
+                key = (owner_type, owner_id, effect_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                entries.append(
+                    {
+                        "owner_type": owner_type,
+                        "owner_id": owner_id,
+                        "effect_id": effect.get("effect_id"),
+                        "condition": effect.get("condition"),
+                        "source_action_id": effect.get("source_action_id"),
+                    }
+                )
+        return entries
+
     def _expire_actor_effects_after_action(
         self,
         ctx: _Context,
@@ -9372,6 +9456,7 @@ class AutomationExecutor:
                     effect_id is not None
                     and str(effect_id) in preexisting_effect_ids
                     and self._effect_breaks_on_trigger(effect, trigger)
+                    and not self._supreme_sneak_preserves_effect(ctx, effect, trigger)
                 ):
                     removed.append(
                         {
@@ -9485,6 +9570,24 @@ class AutomationExecutor:
         ):
             return "damage"
         return None
+
+    def _supreme_sneak_preserves_effect(
+        self,
+        ctx: _Context,
+        effect: dict[str, Any],
+        trigger: str,
+    ) -> bool:
+        if trigger != "attack":
+            return False
+        cover = self._cunning_strike_stealth_attack_cover(ctx.params)
+        if cover not in SUPREME_SNEAK_COVERS:
+            return False
+        if not self._is_hide_invisible_effect(effect):
+            return False
+        return any(
+            change.get("type") == "cunning_strike" and change.get("effect") == "stealth_attack"
+            for change in ctx.result.state_changes
+        )
 
     @staticmethod
     def _effect_breaks_on_trigger(effect: dict[str, Any], trigger: str) -> bool:

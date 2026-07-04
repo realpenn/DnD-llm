@@ -527,6 +527,75 @@ def test_resolver_checks_cunning_strike_poison_requires_poisoners_kit(make_state
     assert accepted.status == "accepted"
 
 
+def test_resolver_checks_supreme_sneak_stealth_attack_preconditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 9}
+    character.subclasses = {"rogue": "thief"}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_hide = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="至高潜行",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "stealth_attack",
+                "cunning_strike_stealth_attack_end_turn_cover": "three_quarters",
+            },
+        )
+    )
+
+    assert missing_hide.status == "rejected"
+    assert missing_hide.reason == (
+        "Supreme Sneak Stealth Attack requires the Hide action's condition"
+    )
+
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "hide-test",
+            "condition": "hidden",
+            "source_action_id": "srd.hide",
+            "duration": {"until": "revealed_or_attacks_or_casts"},
+        }
+    )
+    missing_cover = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="至高潜行",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"use_sneak_attack": True, "cunning_strike": "stealth_attack"},
+        )
+    )
+
+    assert missing_cover.status == "rejected"
+    assert missing_cover.reason == (
+        "Supreme Sneak Stealth Attack requires end-turn cover of "
+        "Three-Quarters Cover or Total Cover"
+    )
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="至高潜行",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "stealth_attack",
+                "cunning_strike_stealth_attack_end_turn_cover": "total",
+            },
+        )
+    )
+
+    assert accepted.status == "accepted"
+
+
 def test_resolver_rejects_cunning_strike_withdraw_over_half_speed(make_state) -> None:
     state = make_state()
     state.characters["pc1"].class_levels = {"rogue": 5}

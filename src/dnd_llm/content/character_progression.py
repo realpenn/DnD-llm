@@ -361,7 +361,8 @@ SUBCLASS_ACTIONS = {
                 "srd.fast_hands_utilize",
                 "srd.fast_hands_magic_item",
                 "srd.second_story_work",
-            ]
+            ],
+            9: ["srd.supreme_sneak"],
         },
     },
     "sorcerer": {

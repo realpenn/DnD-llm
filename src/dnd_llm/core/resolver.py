@@ -28,10 +28,19 @@ from .rules.rests import resource_maxima
 from .rules.rituals import ritual_casting_eligibility
 from .rules.spell_slots import warlock_pact_slot_maxima_for_class_levels
 
-RESOLVER_CUNNING_STRIKE_EFFECTS = {"poison", "trip", "withdraw"}
+RESOLVER_CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 RESOLVER_MAX_CUNNING_STRIKE_EFFECTS = 2
 RESOLVER_POISONERS_KIT_ITEM_ID = "srd.poisoners_kit"
 RESOLVER_ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
+RESOLVER_HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
+RESOLVER_SUPREME_SNEAK_COVER_ALIASES = {
+    "3_4": "three_quarters",
+    "3_4_cover": "three_quarters",
+    "three_quarters": "three_quarters",
+    "three_quarters_cover": "three_quarters",
+    "total": "total",
+    "total_cover": "total",
+}
 RESOLVER_CREATURE_SIZE_RANKS = {
     "tiny": 1,
     "small": 2,
@@ -1125,6 +1134,28 @@ class ActionResolver:
             plan_error = self._cunning_strike_withdraw_error(draft.actor_id, destination)
             if plan_error is not None:
                 return ResolverResult(status="rejected", reason=plan_error, action_id=action.id)
+        if "stealth_attack" in effects:
+            if not has_rogue_thief_feature(owner, level=9):
+                return ResolverResult(
+                    status="rejected",
+                    reason="Supreme Sneak Stealth Attack requires Rogue Thief level 9",
+                    action_id=action.id,
+                )
+            if not self._has_hide_invisible_condition(draft.actor_id):
+                return ResolverResult(
+                    status="rejected",
+                    reason="Supreme Sneak Stealth Attack requires the Hide action's condition",
+                    action_id=action.id,
+                )
+            if self._cunning_strike_stealth_attack_cover(draft.params) is None:
+                return ResolverResult(
+                    status="rejected",
+                    reason=(
+                        "Supreme Sneak Stealth Attack requires end-turn cover of "
+                        "Three-Quarters Cover or Total Cover"
+                    ),
+                    action_id=action.id,
+                )
         return None
 
     def _check_repelling_blast(
@@ -1439,6 +1470,19 @@ class ActionResolver:
             return None
         return str(destination)
 
+    @staticmethod
+    def _cunning_strike_stealth_attack_cover(params: dict[str, Any]) -> str | None:
+        raw = (
+            params.get("cunning_strike_stealth_attack_end_turn_cover")
+            or params.get("stealth_attack_end_turn_cover")
+            or params.get("supreme_sneak_end_turn_cover")
+            or params.get("end_turn_cover")
+        )
+        if raw in (None, "", False):
+            return None
+        cover = re.sub(r"[^a-z0-9]+", "_", str(raw).casefold()).strip("_")
+        return RESOLVER_SUPREME_SNEAK_COVER_ALIASES.get(cover)
+
     def _cunning_strike_withdraw_error(self, actor_id: str, destination: str) -> str | None:
         actor = self.state.entity_for_actor(actor_id)
         if not isinstance(actor, Combatant):
@@ -1461,6 +1505,14 @@ class ActionResolver:
         if int(movement_cost) > movement_limit:
             return "Cunning Strike Withdraw movement cannot exceed half Speed"
         return None
+
+    def _has_hide_invisible_condition(self, actor_id: str) -> bool:
+        actor = self.state.entity_for_actor(actor_id)
+        return any(
+            effect.get("condition") in {"hidden", "invisible"}
+            and effect.get("source_action_id") in RESOLVER_HIDE_ACTION_IDS
+            for effect in self._status_effects_for(actor)
+        )
 
     def _automation_nodes(self, nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         flattened: list[dict[str, Any]] = []

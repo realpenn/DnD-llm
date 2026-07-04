@@ -1383,12 +1383,13 @@
                 "thief": {
                     "name": "Thief",
                     "level": 3,
-                    "features": ["Fast Hands", "Second-Story Work"],
+                    "features": ["Fast Hands", "Second-Story Work", "Supreme Sneak"],
                     "actions": [
                         "srd.fast_hands_sleight_of_hand",
                         "srd.fast_hands_utilize",
                         "srd.fast_hands_magic_item",
-                        "srd.second_story_work"
+                        "srd.second_story_work",
+                        "srd.supreme_sneak"
                     ]
                 }
             }

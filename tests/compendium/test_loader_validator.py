@@ -2649,6 +2649,12 @@ def test_compendium_loads_srd_actions() -> None:
         "skill": "stealth",
         "difficulty_tier": "medium",
     }
+    assert compendium.action("srd.hide").automation[2]["if_true"][0]["duration"] == {
+        "until": "revealed_or_attacks_or_casts"
+    }
+    assert compendium.action("srd.cunning_action_hide").automation[2]["if_true"][0]["duration"] == {
+        "until": "revealed_or_attacks_or_casts"
+    }
     assert {
         "srd.patient_defense",
         "srd.patient_defense_focus",
@@ -4349,12 +4355,28 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["rogue"].subclasses["thief"] == {
         "name": "Thief",
         "level": 3,
-        "features": ["Fast Hands", "Second-Story Work"],
+        "features": ["Fast Hands", "Second-Story Work", "Supreme Sneak"],
         "actions": [
             "srd.fast_hands_sleight_of_hand",
             "srd.fast_hands_utilize",
             "srd.fast_hands_magic_item",
             "srd.second_story_work",
+            "srd.supreme_sneak",
+        ],
+    }
+    supreme_sneak = compendium.action("srd.supreme_sneak")
+    assert supreme_sneak.requirements == {
+        "class": "rogue",
+        "class_level_min": 9,
+        "subclass": "thief",
+    }
+    assert supreme_sneak.properties == {
+        "adds_cunning_strike_effect": "stealth_attack",
+        "die_cost": "1d6",
+        "requires_hide_invisible_condition": True,
+        "preserves_hide_invisible_on_attack_when_end_turn_cover": [
+            "three_quarters",
+            "total",
         ],
     }
     fast_hands = compendium.action("srd.fast_hands_sleight_of_hand")
