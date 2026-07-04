@@ -379,6 +379,7 @@ P0 脚手架
   - [x] **P2-4ae** SRD 5.2.1 `Cloak of Protection` 落地：新增 uncommon wondrous item（requires attunement）与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后按 SRD 获得 +1 Armor Class 与 +1 saving throws，被动修正接入 executor 攻击 AC 与 automation/direct saving throw 结算；严格限制目标只能是自己，不虚构额外防护或完整 attunement 槽位系统；覆盖 compendium、executor 与 resolver 测试。
   - [x] **P2-4af** SRD 5.2.1 `Bracers of Defense` 落地：新增 rare wondrous item（requires attunement）与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后仅在未穿 armor 且未使用 Shield 时按 SRD 获得 +2 Armor Class，并为 AC 被动修正新增独立 `armor_class_requires_no_shield` 条件以免影响既有未穿甲规则；严格限制目标只能是自己，不虚构额外防护；覆盖 compendium、executor 穿甲/持盾反例与 resolver 测试。
   - [x] **P2-4ag** SRD 5.2.1 `Ring of Protection` 落地：新增 rare ring item（requires attunement）与佩戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；佩戴后按 SRD 获得 +1 Armor Class 与 +1 saving throws，被动修正接入 executor 攻击 AC 与 automation/direct saving throw 结算；严格限制目标只能是自己，不虚构额外防护或完整 attunement 槽位系统；覆盖 compendium、executor 与 resolver 测试。
+  - [x] **P2-4ah** SRD 5.2.1 `Gauntlets of Ogre Power` 落地：新增 uncommon wondrous item（requires attunement）与穿戴 action；持有校验复用 inventory/equipment 路径，不消耗物品；穿戴后按 SRD 将 Strength 视为 19，且基础 Strength 已 19 或更高时不降低；复用 `ability_score_set` 接入 direct check/save 与 weapon attack/damage 结算；严格限制目标只能是自己，不虚构额外巨人力量或完整 attunement 槽位系统；覆盖 compendium、executor 与 resolver 测试。
 - [x] **P2-5** 难度/CR 预算自动化。
 
 # Phase 3 — 动态内容

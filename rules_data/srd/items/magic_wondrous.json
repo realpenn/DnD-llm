@@ -58,6 +58,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.gauntlets_of_ogre_power",
+      "name": "Gauntlets of Ogre Power",
+      "localization": {
+        "en": "Gauntlets of Ogre Power",
+        "zh": "食人魔力量护手",
+        "aliases": ["Ogre Power Gauntlets"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Gauntlets of Ogre Power",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_gauntlets_of_ogre_power"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "hands"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.robe_of_eyes",
       "name": "Robe of Eyes",
       "localization": {

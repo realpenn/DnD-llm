@@ -8792,6 +8792,151 @@ def test_bracers_of_defense_add_ac_only_without_armor_or_shield(make_state) -> N
     )
 
 
+def test_gauntlets_of_ogre_power_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError, match="actor does not have item srd.gauntlets_of_ogre_power"
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.gauntlets_of_ogre_power",
+            ["pc1"],
+            action_id="srd.wear_gauntlets_of_ogre_power",
+            idempotency_key="missing-gauntlets-of-ogre-power",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.gauntlets_of_ogre_power")
+    result = tools.use_item(
+        "pc1",
+        "srd.gauntlets_of_ogre_power",
+        ["pc1"],
+        action_id="srd.wear_gauntlets_of_ogre_power",
+        idempotency_key="equipped-gauntlets-of-ogre-power",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_gauntlets_of_ogre_power"
+    )
+
+
+def test_gauntlets_of_ogre_power_set_strength_for_checks_saves_attacks_and_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.gauntlets_of_ogre_power"] = 1
+    character.actions.append("srd.longsword_attack")
+    state.encounter.combatants["goblin1"].armor_class = 1
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10, 10, 4]),
+    )
+
+    gauntlets = tools.use_item(
+        "pc1",
+        "srd.gauntlets_of_ogre_power",
+        ["pc1"],
+        action_id="srd.wear_gauntlets_of_ogre_power",
+        idempotency_key="wear-gauntlets-of-ogre-power",
+    )
+    strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        idempotency_key="gauntlets-strength-check",
+    )
+    strength_save = tools.roll_save(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        idempotency_key="gauntlets-strength-save",
+    )
+    attack = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        idempotency_key="gauntlets-longsword",
+    )
+
+    assert gauntlets["success"] is True
+    assert character.inventory["srd.gauntlets_of_ogre_power"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_gauntlets_of_ogre_power"
+    assert effect["passive_modifiers"] == {"ability_score_set": {"str": 19}}
+    assert effect["duration"] == {"until": "while_wearing_gauntlets_of_ogre_power"}
+    assert strength_check["bonus"] == 4
+    assert strength_check["roll"]["expression"] == "1d20+4"
+    assert strength_save["bonus"] == 4
+    assert strength_save["roll"]["expression"] == "1d20+4"
+
+    attack_node = attack["node_results"]["automation[1]"]
+    assert attack_node["base_attack_bonus"] == 4
+    assert attack_node["passive_adjustment"] == 2
+    assert attack_node["total"] == 16
+    assert attack_node["passive_sources"][0]["modifier"] == "ability_score_set"
+    assert attack_node["passive_sources"][0]["score"] == 19
+    assert attack_node["passive_sources"][0]["amount"] == 2
+    damage = next(change for change in attack["state_changes"] if change["type"] == "damage")
+    assert damage["amount"] == 8
+    assert damage["applied"] == 8
+    assert damage["passive_damage_bonus"] == 2
+    assert damage["passive_sources"][0]["modifier"] == "ability_score_set"
+    assert damage["passive_sources"][0]["score"] == 19
+    assert damage["passive_sources"][0]["amount"] == 2
+
+
+def test_gauntlets_of_ogre_power_do_not_lower_equal_or_higher_strength(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.abilities["str"] = 20
+    character.inventory["srd.gauntlets_of_ogre_power"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    )
+
+    gauntlets = tools.use_item(
+        "pc1",
+        "srd.gauntlets_of_ogre_power",
+        ["pc1"],
+        action_id="srd.wear_gauntlets_of_ogre_power",
+        idempotency_key="wear-gauntlets-no-lower",
+    )
+    strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        idempotency_key="gauntlets-no-lower-check",
+    )
+
+    assert gauntlets["success"] is True
+    assert character.inventory["srd.gauntlets_of_ogre_power"] == 1
+    assert state.encounter.combatants["pc1"].status_effects[-1]["passive_modifiers"] == {
+        "ability_score_set": {"str": 19}
+    }
+    assert strength_check["bonus"] == 5
+    assert strength_check["roll"]["expression"] == "1d20+5"
+
+
 def test_cloak_of_protection_item_requirement_accepts_equipment_and_rejects_missing(
     make_state,
 ) -> None:

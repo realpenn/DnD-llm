@@ -114,6 +114,42 @@
       "audit_label": "Wear Cloak of Protection"
     },
     {
+      "id": "srd.wear_gauntlets_of_ogre_power",
+      "name": "Wear Gauntlets of Ogre Power",
+      "localization": {
+        "en": "Wear Gauntlets of Ogre Power",
+        "zh": "穿戴食人魔力量护手",
+        "aliases": ["启用食人魔力量护手"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Gauntlets of Ogre Power",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.gauntlets_of_ogre_power" },
+      "properties": {
+        "gauntlets_of_ogre_power": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "hands"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 19 }
+          },
+          "duration": { "until": "while_wearing_gauntlets_of_ogre_power" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing these gauntlets, the target's Strength is 19 unless it is already 19 or higher without them." }
+      ],
+      "audit_label": "Wear Gauntlets of Ogre Power"
+    },
+    {
       "id": "srd.wear_robe_of_eyes",
       "name": "Wear Robe of Eyes",
       "localization": {
