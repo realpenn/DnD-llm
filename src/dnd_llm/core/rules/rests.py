@@ -10,6 +10,7 @@ from .class_features import (
     INDOMITABLE_RESOURCE,
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
+    NATURES_VEIL_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
@@ -19,6 +20,7 @@ from .class_features import (
     has_druid_circle_of_the_land_feature,
     has_monk_open_hand_feature,
     has_warlock_gift_of_depths,
+    ranger_natures_veil_uses,
     ranger_tireless_uses,
 )
 from .conditions import exhaustion_level, lower_exhaustion
@@ -486,6 +488,9 @@ def resource_maxima(character: Character) -> dict[str, int]:
     tireless_uses = ranger_tireless_uses(character)
     if tireless_uses:
         maxima[TIRELESS_RESOURCE] = tireless_uses
+    natures_veil_uses = ranger_natures_veil_uses(character)
+    if natures_veil_uses:
+        maxima[NATURES_VEIL_RESOURCE] = natures_veil_uses
     cleric_level = int(character.class_levels.get("cleric", 0))
     if cleric_level >= 2:
         maxima[CHANNEL_DIVINITY_RESOURCE] = 2

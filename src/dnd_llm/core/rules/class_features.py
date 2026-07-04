@@ -98,6 +98,7 @@ HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
 TIRELESS_RESOURCE = "srd.resource.tireless"
+NATURES_VEIL_RESOURCE = "srd.resource.natures_veil"
 SAVING_THROW_ABILITIES = frozenset({"str", "dex", "con", "int", "wis", "cha"})
 DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
 RELIABLE_TALENT_ACTION_ID = "srd.reliable_talent"
@@ -138,6 +139,13 @@ def ranger_roving_speed_bonus(character: Character) -> int:
 
 def ranger_tireless_uses(character: Character) -> int:
     if int(character.class_levels.get("ranger", 0)) < 10:
+        return 0
+    wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
+    return max(1, ability_modifier(wisdom))
+
+
+def ranger_natures_veil_uses(character: Character) -> int:
+    if int(character.class_levels.get("ranger", 0)) < 14:
         return 0
     wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
     return max(1, ability_modifier(wisdom))

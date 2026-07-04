@@ -2333,6 +2333,74 @@ def test_ranger_tireless_grants_temp_hp_and_spends_resource(make_state) -> None:
     assert state.encounter.action_budgets["pc1"]["action"] == 0
 
 
+def test_ranger_natures_veil_turns_invisible_and_recharges_on_long_rest(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 14}
+    character.abilities["wis"] = 16
+    character.actions.append("srd.natures_veil")
+    character.resources["srd.resource.natures_veil"] = 3
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.natures_veil",
+        [],
+        idempotency_key="ranger-natures-veil",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.natures_veil"] == 2
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.natures_veil"
+    assert effect["condition"] == "invisible"
+    assert effect["duration"] == {"until": "end_of_next_turn", "remaining_ticks": 2}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+
+    first_tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert first_tick.ticked[0]["condition"] == "invisible"
+    assert first_tick.ticked[0]["remaining_ticks_after"] == 1
+    second_tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert second_tick.expired[0]["condition"] == "invisible"
+    assert not any(
+        active.get("source_action_id") == "srd.natures_veil"
+        for active in state.encounter.combatants["pc1"].status_effects
+    )
+
+    character.resources["srd.resource.natures_veil"] = 0
+    long_rest = tools.long_rest(["pc1"], idempotency_key="natures-veil-long-rest")
+    assert long_rest["results"]["pc1"]["restored_resources"]["srd.resource.natures_veil"] == 3
+    assert character.resources["srd.resource.natures_veil"] == 3
+
+
+def test_ranger_natures_veil_uses_minimum_one_wisdom_modifier(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 14}
+    character.abilities["wis"] = 8
+    character.actions.append("srd.natures_veil")
+    character.resources["srd.resource.natures_veil"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.natures_veil",
+        [],
+        idempotency_key="ranger-natures-veil-minimum",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.natures_veil"] == 0
+    long_rest = tools.long_rest(["pc1"], idempotency_key="natures-veil-minimum-long-rest")
+    assert long_rest["results"]["pc1"]["restored_resources"]["srd.resource.natures_veil"] == 1
+    assert character.resources["srd.resource.natures_veil"] == 1
+
+
 def test_hunters_mark_adds_force_damage_to_marked_target_hit(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

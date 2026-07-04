@@ -24,6 +24,7 @@ from dnd_llm.core.rules.class_features import (
     HUNTERS_PREY_HORDE_BREAKER,
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
+    NATURES_VEIL_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
@@ -276,6 +277,7 @@ CLASS_LEVEL_ACTIONS = {
         9: ["srd.ranger_expertise"],
         10: ["srd.tireless"],
         13: ["srd.relentless_hunter"],
+        14: ["srd.natures_veil"],
     },
     "rogue": {
         1: ["srd.rogue_expertise", "srd.thieves_cant"],
@@ -2487,6 +2489,8 @@ def _resources_for_levels(
         resources["srd.resource.favored_enemy_hunters_mark"] = 3 if ranger_level >= 5 else 2
     if ranger_level >= 10:
         resources[TIRELESS_RESOURCE] = max(1, _ability_modifier_from_scores(abilities, "wis"))
+    if ranger_level >= 14:
+        resources[NATURES_VEIL_RESOURCE] = max(1, _ability_modifier_from_scores(abilities, "wis"))
     cleric_level = int(class_levels.get("cleric", 0))
     if cleric_level >= 2:
         resources["srd.resource.channel_divinity"] = 2

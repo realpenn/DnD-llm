@@ -2253,6 +2253,30 @@ def test_natural_language_character_edit_assigns_ranger_relentless_hunter_at_lev
     assert "srd.relentless_hunter" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_ranger_natures_veil_at_level_14() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.abilities["wis"] = 16
+
+    result = apply_natural_language_character_edit(character, "职业 ranger14")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 14}
+    assert "srd.natures_veil" in result.character.actions
+    assert result.character.resources["srd.resource.natures_veil"] == 3
+
+
+def test_natural_language_character_edit_does_not_grant_natures_veil_too_early() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger13")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert "srd.natures_veil" not in result.character.actions
+    assert "srd.resource.natures_veil" not in result.character.resources
+
+
 def test_natural_language_character_edit_does_not_grant_relentless_hunter_too_early() -> None:
     character = default_fighter("pc1", "Penn")
 

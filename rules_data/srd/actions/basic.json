@@ -4083,6 +4083,43 @@
             "audit_label": "Relentless Hunter"
         },
         {
+            "id": "srd.natures_veil",
+            "name": "Nature's Veil",
+            "localization": {
+                "en": "Nature's Veil",
+                "zh": "自然帷幕",
+                "aliases": ["Nature’s Veil", "Ranger Nature's Veil", "游侠自然帷幕"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 14: Nature's Veil",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 14},
+            "properties": {
+                "resource": "srd.resource.natures_veil",
+                "uses": "wisdom_modifier_min_1_per_long_rest",
+                "condition": "invisible",
+                "duration": "until_end_of_next_turn",
+                "concentration": false
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.natures_veil": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "invisible",
+                    "duration": {"until": "end_of_next_turn", "remaining_ticks": 2},
+                    "tick_on": "self_turn_end",
+                    "concentration": false,
+                    "stacking_policy": "replace"
+                }
+            ],
+            "audit_label": "Nature's Veil"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {

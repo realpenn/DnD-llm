@@ -152,6 +152,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.misty_visions_silent_image",
     "srd.martial_arts_bonus_unarmed_strike",
     "srd.move",
+    "srd.natures_veil",
     "srd.monk_unarmed_strike",
     "srd.monk_unarmored_defense",
     "srd.monk_unarmored_movement",

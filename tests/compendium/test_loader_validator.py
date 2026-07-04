@@ -2651,6 +2651,25 @@ def test_compendium_loads_srd_actions() -> None:
         "damage_cannot_break_concentration_on_hunters_mark": True,
         "protected_action_id": "srd.favored_enemy_hunters_mark",
     }
+    natures_veil = compendium.action("srd.natures_veil")
+    assert natures_veil.action_economy == "bonus_action"
+    assert natures_veil.requirements == {"class": "ranger", "class_level_min": 14}
+    assert natures_veil.properties == {
+        "resource": "srd.resource.natures_veil",
+        "uses": "wisdom_modifier_min_1_per_long_rest",
+        "condition": "invisible",
+        "duration": "until_end_of_next_turn",
+        "concentration": False,
+    }
+    assert natures_veil.cost.resources == {"srd.resource.natures_veil": 1}
+    assert natures_veil.automation[1] == {
+        "type": "condition",
+        "condition": "invisible",
+        "duration": {"until": "end_of_next_turn", "remaining_ticks": 2},
+        "tick_on": "self_turn_end",
+        "concentration": False,
+        "stacking_policy": "replace",
+    }
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
@@ -5066,6 +5085,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["ranger"].levels["12"]["features"] == ["Ability Score Improvement"]
     assert compendium.classes["ranger"].levels["13"]["features"] == ["Relentless Hunter"]
     assert "srd.relentless_hunter" in compendium.classes["ranger"].levels["13"]["actions"]
+    assert compendium.classes["ranger"].levels["14"]["features"] == ["Nature's Veil"]
+    assert "srd.natures_veil" in compendium.classes["ranger"].levels["14"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",
