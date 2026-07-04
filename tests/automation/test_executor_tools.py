@@ -9895,6 +9895,59 @@ def test_cloak_of_protection_adds_ac_and_saving_throw_bonus(make_state) -> None:
     )
 
 
+def test_cloak_of_the_manta_ray_grants_underwater_breathing_and_swim_speed(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="actor does not have item srd.cloak_of_the_manta_ray",
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.cloak_of_the_manta_ray",
+            ["pc1"],
+            action_id="srd.wear_cloak_of_the_manta_ray",
+            idempotency_key="missing-cloak-of-the-manta-ray",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    character.equipment.append("srd.cloak_of_the_manta_ray")
+    with pytest.raises(AutomationError, match="target must be self"):
+        tools.use_item(
+            "pc1",
+            "srd.cloak_of_the_manta_ray",
+            ["pc2"],
+            action_id="srd.wear_cloak_of_the_manta_ray",
+            idempotency_key="manta-ray-cloak-other-target",
+        )
+
+    result = tools.use_item(
+        "pc1",
+        "srd.cloak_of_the_manta_ray",
+        ["pc1"],
+        action_id="srd.wear_cloak_of_the_manta_ray",
+        idempotency_key="wear-cloak-of-the-manta-ray",
+    )
+
+    assert result["success"] is True
+    assert "srd.cloak_of_the_manta_ray" in character.equipment
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_cloak_of_the_manta_ray"
+    assert effect["duration"] == {"until": "while_wearing_cloak_of_the_manta_ray"}
+    assert effect["passive_modifiers"] == {
+        "can_breathe_underwater": True,
+        "swim_speed_ft": 60,
+    }
+    assert swim_speed_from_effects(30, state.encounter.combatants["pc1"].status_effects) == 60
+
+
 def test_eyes_of_the_eagle_grant_sight_perception_advantage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

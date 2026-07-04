@@ -3319,6 +3319,38 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_cloak_of_protection"},
         "stacking_policy": "replace",
     }
+    cloak_of_manta_ray = compendium.action("srd.wear_cloak_of_the_manta_ray")
+    assert compendium.items["srd.cloak_of_the_manta_ray"].actions == [
+        "srd.wear_cloak_of_the_manta_ray"
+    ]
+    assert compendium.items["srd.cloak_of_the_manta_ray"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": True,
+        "worn_slot": "shoulders",
+    }
+    assert cloak_of_manta_ray.action_economy == "none"
+    assert cloak_of_manta_ray.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert cloak_of_manta_ray.requirements == {"item": "srd.cloak_of_the_manta_ray"}
+    assert cloak_of_manta_ray.properties == {
+        "cloak_of_the_manta_ray": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "shoulders",
+    }
+    assert cloak_of_manta_ray.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "can_breathe_underwater": True,
+            "swim_speed_ft": 60,
+        },
+        "duration": {"until": "while_wearing_cloak_of_the_manta_ray"},
+        "stacking_policy": "replace",
+    }
     eyes_of_the_eagle = compendium.action("srd.wear_eyes_of_the_eagle")
     assert compendium.items["srd.eyes_of_the_eagle"].actions == ["srd.wear_eyes_of_the_eagle"]
     assert compendium.items["srd.eyes_of_the_eagle"].properties == {
@@ -5097,6 +5129,9 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert compendium.items["srd.bracers_of_defense"].actions == ["srd.wear_bracers_of_defense"]
     assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]
+    assert compendium.items["srd.cloak_of_the_manta_ray"].actions == [
+        "srd.wear_cloak_of_the_manta_ray"
+    ]
     assert compendium.items["srd.eyes_of_the_eagle"].actions == ["srd.wear_eyes_of_the_eagle"]
     assert compendium.items["srd.eyes_of_minute_seeing"].actions == [
         "srd.wear_eyes_of_minute_seeing"

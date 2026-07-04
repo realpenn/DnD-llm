@@ -222,6 +222,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.cloak_of_the_manta_ray",
+      "name": "Cloak of the Manta Ray",
+      "localization": {
+        "en": "Cloak of the Manta Ray",
+        "zh": "蝠鲼斗篷",
+        "aliases": ["Manta Ray Cloak"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Cloak of the Manta Ray",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_cloak_of_the_manta_ray"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "shoulders"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.eyes_of_the_eagle",
       "name": "Eyes of the Eagle",
       "localization": {

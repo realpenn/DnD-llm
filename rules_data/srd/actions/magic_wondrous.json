@@ -423,6 +423,43 @@
       "audit_label": "Wear Cloak of Protection"
     },
     {
+      "id": "srd.wear_cloak_of_the_manta_ray",
+      "name": "Wear Cloak of the Manta Ray",
+      "localization": {
+        "en": "Wear Cloak of the Manta Ray",
+        "zh": "穿戴蝠鲼斗篷",
+        "aliases": ["启用蝠鲼斗篷"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Cloak of the Manta Ray",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.cloak_of_the_manta_ray" },
+      "properties": {
+        "cloak_of_the_manta_ray": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "shoulders"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "can_breathe_underwater": true,
+            "swim_speed_ft": 60
+          },
+          "duration": { "until": "while_wearing_cloak_of_the_manta_ray" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this cloak, the target can breathe underwater and has a Swim Speed of 60 feet." }
+      ],
+      "audit_label": "Wear Cloak of the Manta Ray"
+    },
+    {
       "id": "srd.wear_eyes_of_the_eagle",
       "name": "Wear Eyes of the Eagle",
       "localization": {
