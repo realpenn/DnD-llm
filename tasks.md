@@ -356,6 +356,7 @@ P0 脚手架
   - [x] **P2-1ct** SRD 5.2.1 Barbarian 11 `Relentless Rage` 落地：新增 `srd.relentless_rage` marker、Barbarian 11+ 职业数据与角色成长授予；按 SRD 在 Rage active 且降至 0 HP 并未直接死亡时进行 Constitution saving throw，DC 从 10 开始、每次使用后 +5，成功时 HP 变为 `2 * Barbarian level`，短休或长休重置 DC；不新增次数上限或反应/动作消耗，并覆盖 compendium、executor 成功/失败/DC 递增/非 Rage/直接死亡反例、休息重置与自然语言建角测试。
   - [x] **P2-1cu** SRD 5.2.1 Barbarian 15 `Persistent Rage` 落地：新增 `srd.persistent_rage` marker、Barbarian 14/15 职业数据与角色成长授予；按 SRD 在掷 Initiative 时若 Rage uses 有消耗则恢复至上限且每 Long Rest 前只触发一次，并使 Rage 持续 10 分钟且仅因 Unconscious condition 或穿上 Heavy armor 提前结束；不实现 17 级 `Brutal Strike` 升级或其他高等级特性，覆盖 compendium、executor、initiative、生命周期、休息恢复与自然语言建角测试。
   - [x] **P2-1cv** SRD 5.2.1 Barbarian 18 `Indomitable Might` 落地：新增 `srd.indomitable_might` marker 与 Barbarian 18 职业数据/角色成长授予；按 SRD 当 Strength check 或 Strength saving throw 的 total 低于 Strength score 时用 Strength score 替代 total，并覆盖 direct roll、automation ability check/saving throw 与持续效果 repeat save；不作用于非 Strength、attack roll、自动失败或等于 Strength score 的 total，也不实现 17/20 级其他高等级特性。
+  - [x] **P2-1cw** SRD 5.2.1 Barbarian 17 `Improved Brutal Strike` 升级落地：按 SRD 将 Barbarian 17+ 使用 Brutal Strike 时的额外伤害从 `1d10` 提升为 `2d10`，并允许同次 Brutal Strike 选择两个不同的已实现 Brutal Strike effects；低于 17 级的双效果、重复效果和超过两个效果均在扣行动经济前拒绝，13 级 Staggering/Sundering 门槛保持不变；补齐 Barbarian 16/17 职业数据、compendium、resolver、executor 与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

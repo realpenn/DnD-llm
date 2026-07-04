@@ -1230,21 +1230,15 @@ class ActionResolver:
         action: ActionDefinition,
     ) -> ResolverResult | None:
         try:
-            effect = self._brutal_strike_effect(draft.params)
+            effects = self._brutal_strike_effects(draft.params)
         except ValueError as exc:
             return ResolverResult(status="rejected", reason=str(exc), action_id=action.id)
         if not self._brutal_strike_requested(draft.params):
             return None
-        if effect is None:
+        if not effects:
             return ResolverResult(
                 status="rejected",
                 reason="Brutal Strike requires an effect choice",
-                action_id=action.id,
-            )
-        if effect not in RESOLVER_BRUTAL_STRIKE_EFFECTS:
-            return ResolverResult(
-                status="rejected",
-                reason=f"unsupported Brutal Strike effect: {effect}",
                 action_id=action.id,
             )
         owner = self._resource_owner(draft.actor_id, actor)
@@ -1254,13 +1248,20 @@ class ActionResolver:
                 reason="Brutal Strike requires Barbarian level 9",
                 action_id=action.id,
             )
-        if effect in RESOLVER_IMPROVED_BRUTAL_STRIKE_EFFECTS and not has_barbarian_feature(
-            owner,
-            level=13,
-        ):
+        for effect in effects:
+            if effect in RESOLVER_IMPROVED_BRUTAL_STRIKE_EFFECTS and not has_barbarian_feature(
+                owner,
+                level=13,
+            ):
+                return ResolverResult(
+                    status="rejected",
+                    reason="Improved Brutal Strike requires Barbarian level 13",
+                    action_id=action.id,
+                )
+        if len(effects) > 1 and not has_barbarian_feature(owner, level=17):
             return ResolverResult(
                 status="rejected",
-                reason="Improved Brutal Strike requires Barbarian level 13",
+                reason="Improved Brutal Strike requires Barbarian level 17",
                 action_id=action.id,
             )
         if not self._action_qualifies_for_brutal_strike(action):
@@ -1291,7 +1292,7 @@ class ActionResolver:
                 reason="Brutal Strike requires exactly one target",
                 action_id=action.id,
             )
-        if effect == "forceful_blow":
+        if "forceful_blow" in effects:
             target_id = draft.target_ids[0]
             destination = self._brutal_strike_forceful_destination(
                 draft.params,
@@ -1356,16 +1357,28 @@ class ActionResolver:
     def _brutal_strike_requested(params: dict[str, Any]) -> bool:
         return (
             params.get("use_brutal_strike") is True
+            or params.get("brutal_strike_effects") not in (None, "", False)
+            or params.get("brutal_strikes") not in (None, "", False)
             or params.get("brutal_strike_effect") not in (None, "", False)
             or params.get("brutal_strike") not in (None, "", False)
         )
 
     @staticmethod
     def _brutal_strike_effect(params: dict[str, Any]) -> str | None:
-        raw = params.get("brutal_strike_effect", params.get("brutal_strike"))
+        effects = ActionResolver._brutal_strike_effects(params)
+        return effects[0] if effects else None
+
+    @staticmethod
+    def _brutal_strike_effects(params: dict[str, Any]) -> list[str]:
+        raw = params.get("brutal_strikes")
+        if raw is None:
+            raw = params.get("brutal_strike_effects")
+        if raw is None:
+            raw = params.get("brutal_strike_effect")
+        if raw is None:
+            raw = params.get("brutal_strike")
         if raw in (None, "", False):
-            return None
-        normalized = str(raw).casefold().strip().replace("-", "_").replace(" ", "_")
+            return []
         aliases = {
             "forceful": "forceful_blow",
             "forceful_blow": "forceful_blow",
@@ -1376,7 +1389,24 @@ class ActionResolver:
             "sundering": "sundering_blow",
             "sundering_blow": "sundering_blow",
         }
-        return aliases.get(normalized, normalized)
+        if isinstance(raw, str):
+            raw_values = [part for part in re.split(r"[,;]+", raw) if part.strip()]
+        elif isinstance(raw, (list, tuple)):
+            raw_values = list(raw)
+        else:
+            raw_values = [raw]
+        effects: list[str] = []
+        for value in raw_values:
+            normalized = str(value).casefold().strip().replace("-", "_").replace(" ", "_")
+            effect = aliases.get(normalized, normalized)
+            if effect not in RESOLVER_BRUTAL_STRIKE_EFFECTS:
+                raise ValueError(f"unsupported Brutal Strike effect: {effect}")
+            if effect in effects:
+                raise ValueError(f"duplicate Brutal Strike effect: {effect}")
+            effects.append(effect)
+        if len(effects) > 2:
+            raise ValueError("Improved Brutal Strike allows at most two effects")
+        return effects
 
     def _action_qualifies_for_brutal_strike(self, action: ActionDefinition) -> bool:
         if action.action_type not in {"weapon_attack", "unarmed_attack"}:

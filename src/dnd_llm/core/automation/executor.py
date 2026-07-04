@@ -360,7 +360,7 @@ class _Context:
     attack_hits: dict[str, bool] = field(default_factory=dict)
     attack_critical: dict[str, bool] = field(default_factory=dict)
     attack_advantage: dict[str, str | None] = field(default_factory=dict)
-    brutal_strike_effects: dict[str, str] = field(default_factory=dict)
+    brutal_strike_effects: dict[str, list[str]] = field(default_factory=dict)
     save_successes: dict[str, bool] = field(default_factory=dict)
     save_abilities: dict[str, str] = field(default_factory=dict)
     last_damage_taken: dict[str, int] = field(default_factory=dict)
@@ -403,6 +403,7 @@ class _FrenzyResult:
 class _BrutalStrikeResult:
     amount: int = 0
     effect: str | None = None
+    effects: list[str] = field(default_factory=list)
     rolls: list[RollResult] = field(default_factory=list)
     sources: list[dict[str, Any]] = field(default_factory=list)
 
@@ -809,9 +810,9 @@ class AutomationExecutor:
             ctx.attack_critical[target_id] = critical
             ctx.attack_advantage[target_id] = advantage
             if brutal_strike is not None:
-                effect = str(brutal_strike["effect"])
-                ctx.brutal_strike_effects[target_id] = effect
-                self._mark_brutal_strike_used(ctx, target_id, effect)
+                effects = [str(effect) for effect in brutal_strike.get("effects", [])]
+                ctx.brutal_strike_effects[target_id] = effects
+                self._mark_brutal_strike_used(ctx, target_id, effects)
             ctx.result.node_results[path] = {
                 "target_id": target_id,
                 "base_ac": base_ac,
@@ -1507,7 +1508,13 @@ class AutomationExecutor:
                 path,
             )
             if brutal_strike.amount:
-                self._apply_brutal_strike_effect(ctx, target_id, brutal_strike.effect or "", path)
+                for brutal_strike_effect in brutal_strike.effects:
+                    self._apply_brutal_strike_effect(
+                        ctx,
+                        target_id,
+                        brutal_strike_effect,
+                        path,
+                    )
             for cunning_strike in self._cunning_strike_effects(sneak_attack.cunning_strike):
                 self._apply_cunning_strike_effect(ctx, target_id, cunning_strike, path)
             self._apply_open_hand_technique_if_requested(
@@ -5109,15 +5116,16 @@ class AutomationExecutor:
             status_sources=status_sources,
             advantage=advantage,
         )
-        effect = self._brutal_strike_effect(ctx.params)
-        if effect is None:
+        effects = self._brutal_strike_effects(ctx.params)
+        if not effects:
             raise AutomationError("Brutal Strike requires an effect choice")
         forgone_sources = [source for source in status_sources if source.get("kind") == "advantage"]
         if node_advantage == "advantage":
             forgone_sources.append({"kind": "advantage", "modifier": "attack_node_advantage"})
         return {
             "source_action_id": BRUTAL_STRIKE_ACTION_ID,
-            "effect": effect,
+            "effect": effects[0],
+            "effects": effects,
             "forgone_advantage": True,
             "advantage_before_forgo": advantage,
             "forgone_advantage_sources": forgone_sources,
@@ -5165,14 +5173,17 @@ class AutomationExecutor:
             )
         if advantage != "advantage":
             raise AutomationError("Brutal Strike requires Advantage to forgo")
-        effect = self._brutal_strike_effect(params)
-        if effect is not None and effect not in BRUTAL_STRIKE_EFFECTS:
-            raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
-        if effect in IMPROVED_BRUTAL_STRIKE_EFFECTS and not has_barbarian_feature(
-            actor_owner,
-            level=13,
-        ):
-            raise AutomationError("Improved Brutal Strike requires Barbarian level 13")
+        effects = self._brutal_strike_effects(params)
+        if not effects:
+            raise AutomationError("Brutal Strike requires an effect choice")
+        for effect in effects:
+            if effect in IMPROVED_BRUTAL_STRIKE_EFFECTS and not has_barbarian_feature(
+                actor_owner,
+                level=13,
+            ):
+                raise AutomationError("Improved Brutal Strike requires Barbarian level 13")
+        if len(effects) > 1 and not has_barbarian_feature(actor_owner, level=17):
+            raise AutomationError("Improved Brutal Strike requires Barbarian level 17")
         if target_id not in (self.state.encounter.combatants if self.state.encounter else {}):
             self._entity(target_id)
 
@@ -5183,22 +5194,22 @@ class AutomationExecutor:
         target_id: str,
         damage_type: str,
     ) -> _BrutalStrikeResult:
-        effect = ctx.brutal_strike_effects.get(target_id)
-        if effect is None:
+        effects = ctx.brutal_strike_effects.get(target_id, [])
+        if not effects:
             return _BrutalStrikeResult()
         if ctx.action.action_type not in {"weapon_attack", "unarmed_attack"}:
             return _BrutalStrikeResult()
         if str(node.get("ability", "")).lower() != "str":
             return _BrutalStrikeResult()
         if not ctx.attack_hits.get(target_id, False):
-            return _BrutalStrikeResult(effect=effect)
+            return _BrutalStrikeResult(effect=effects[0], effects=effects)
         actor_owner = self._resource_owner(ctx.actor_id)
         barbarian_level = (
             int(actor_owner.class_levels.get("barbarian", 0))
             if isinstance(actor_owner, Character)
             else 0
         )
-        dice = "1d10"
+        dice = "2d10" if barbarian_level >= 17 else "1d10"
         roll = self.roll_service.roll(dice)
         rolls = [roll]
         amount = roll.total
@@ -5208,7 +5219,8 @@ class AutomationExecutor:
             amount += critical_roll.total
         return _BrutalStrikeResult(
             amount=amount,
-            effect=effect,
+            effect=effects[0],
+            effects=effects,
             rolls=rolls,
             sources=[
                 {
@@ -5217,7 +5229,8 @@ class AutomationExecutor:
                     "barbarian_level": barbarian_level,
                     "dice": dice,
                     "damage_type": damage_type,
-                    "effect": effect,
+                    "effect": effects[0],
+                    "effects": effects,
                     "forgone_advantage": True,
                 }
             ],
@@ -5457,8 +5470,14 @@ class AutomationExecutor:
             for effect in self._status_effects_for(actor)
         )
 
-    def _mark_brutal_strike_used(self, ctx: _Context, target_id: str, effect: str) -> None:
+    def _mark_brutal_strike_used(
+        self,
+        ctx: _Context,
+        target_id: str,
+        effects: list[str],
+    ) -> None:
         actor = self._entity(ctx.actor_id)
+        primary_effect = effects[0] if effects else None
         marker = EffectInstance(
             effect_id=self._effect_id(ctx.actor_id, "brutal_strike_used"),
             source_ref="SRD 5.2.1 Barbarian Class Features: Level 9: Brutal Strike",
@@ -5469,7 +5488,7 @@ class AutomationExecutor:
             duration={"until": "start_of_next_turn"},
             tick_on="self_turn_start",
             stacking_policy="replace",
-            audit={"target_id": target_id, "effect": effect},
+            audit={"target_id": target_id, "effect": primary_effect, "effects": effects},
         )
         getattr(actor, "status_effects").append(marker.to_dict())
         ctx.result.state_changes.append(
@@ -5477,7 +5496,8 @@ class AutomationExecutor:
                 "type": "brutal_strike_used",
                 "actor_id": ctx.actor_id,
                 "target_id": target_id,
-                "effect": effect,
+                "effect": primary_effect,
+                "effects": effects,
                 "effect_id": marker.effect_id,
                 "source_action_id": marker.source_action_id,
             }
@@ -9395,11 +9415,9 @@ class AutomationExecutor:
     ) -> None:
         if not self._brutal_strike_requested(params):
             return
-        effect = self._brutal_strike_effect(params)
-        if effect is None:
+        effects = self._brutal_strike_effects(params)
+        if not effects:
             raise AutomationError("Brutal Strike requires an effect choice")
-        if effect not in BRUTAL_STRIKE_EFFECTS:
-            raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
         if len(targets) != 1:
             raise AutomationError("Brutal Strike requires exactly one target")
         target_id = targets[0]
@@ -9439,7 +9457,7 @@ class AutomationExecutor:
             status_sources=status_sources,
             advantage=advantage,
         )
-        if effect == "forceful_blow":
+        if "forceful_blow" in effects:
             destination = self._brutal_strike_forceful_destination(params, target_id=target_id)
             if destination is None:
                 raise AutomationError("Brutal Strike Forceful Blow requires a destination position")
@@ -9460,16 +9478,28 @@ class AutomationExecutor:
     def _brutal_strike_requested(params: dict[str, Any]) -> bool:
         return (
             params.get("use_brutal_strike") is True
+            or params.get("brutal_strike_effects") not in (None, "", False)
+            or params.get("brutal_strikes") not in (None, "", False)
             or params.get("brutal_strike_effect") not in (None, "", False)
             or params.get("brutal_strike") not in (None, "", False)
         )
 
     @staticmethod
     def _brutal_strike_effect(params: dict[str, Any]) -> str | None:
-        raw = params.get("brutal_strike_effect", params.get("brutal_strike"))
+        effects = AutomationExecutor._brutal_strike_effects(params)
+        return effects[0] if effects else None
+
+    @staticmethod
+    def _brutal_strike_effects(params: dict[str, Any]) -> list[str]:
+        raw = params.get("brutal_strikes")
+        if raw is None:
+            raw = params.get("brutal_strike_effects")
+        if raw is None:
+            raw = params.get("brutal_strike_effect")
+        if raw is None:
+            raw = params.get("brutal_strike")
         if raw in (None, "", False):
-            return None
-        normalized = str(raw).casefold().strip().replace("-", "_").replace(" ", "_")
+            return []
         aliases = {
             "forceful": "forceful_blow",
             "forceful_blow": "forceful_blow",
@@ -9480,7 +9510,24 @@ class AutomationExecutor:
             "sundering": "sundering_blow",
             "sundering_blow": "sundering_blow",
         }
-        return aliases.get(normalized, normalized)
+        if isinstance(raw, str):
+            raw_values = [part for part in re.split(r"[,;]+", raw) if part.strip()]
+        elif isinstance(raw, (list, tuple)):
+            raw_values = list(raw)
+        else:
+            raw_values = [raw]
+        effects: list[str] = []
+        for value in raw_values:
+            normalized = str(value).casefold().strip().replace("-", "_").replace(" ", "_")
+            effect = aliases.get(normalized, normalized)
+            if effect not in BRUTAL_STRIKE_EFFECTS:
+                raise AutomationError(f"unsupported Brutal Strike effect: {effect}")
+            if effect in effects:
+                raise AutomationError(f"duplicate Brutal Strike effect: {effect}")
+            effects.append(effect)
+        if len(effects) > 2:
+            raise AutomationError("Improved Brutal Strike allows at most two effects")
+        return effects
 
     @staticmethod
     def _brutal_strike_forceful_destination(

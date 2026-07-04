@@ -7989,6 +7989,106 @@ def test_brutal_strike_forceful_pushes_target_and_can_follow_without_opportunity
     assert state.encounter.combatants["pc1"].position_node_id == "cover"
 
 
+def test_improved_brutal_strike_level_17_single_effect_uses_2d10(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 17}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 4, 7]),
+    )
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="brutal-17-reckless")
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        params={"use_brutal_strike": True, "brutal_strike_effect": "hamstring_blow"},
+        idempotency_key="brutal-17-single",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    brutal_source = damage_change["brutal_strike_sources"][0]
+
+    assert damage_change["brutal_strike_bonus"] == 7
+    assert brutal_source["barbarian_level"] == 17
+    assert brutal_source["dice"] == "2d10"
+    assert brutal_source["effect"] == "hamstring_blow"
+    assert brutal_source["effects"] == ["hamstring_blow"]
+
+
+def test_improved_brutal_strike_level_17_applies_two_different_effects(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 17}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 4, 7]),
+    )
+
+    tools.perform_action(
+        "pc1",
+        "srd.reckless_attack",
+        [],
+        idempotency_key="brutal-17-dual-reckless",
+    )
+    result = tools.perform_action(
+        "pc1",
+        "srd.longsword_attack",
+        ["goblin1"],
+        params={
+            "use_brutal_strike": True,
+            "brutal_strike_effects": ["hamstring_blow", "staggering_blow"],
+        },
+        idempotency_key="brutal-17-dual",
+    )
+
+    attack_node = result["node_results"]["automation[1]"]
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    brutal_changes = [
+        change for change in result["state_changes"] if change["type"] == "brutal_strike"
+    ]
+    used_change = next(
+        change for change in result["state_changes"] if change["type"] == "brutal_strike_used"
+    )
+    conditions = state.encounter.combatants["goblin1"].status_effects
+
+    assert attack_node["brutal_strike"]["effect"] == "hamstring_blow"
+    assert attack_node["brutal_strike"]["effects"] == ["hamstring_blow", "staggering_blow"]
+    assert damage_change["brutal_strike_bonus"] == 7
+    assert damage_change["brutal_strike_sources"][0]["dice"] == "2d10"
+    assert damage_change["brutal_strike_sources"][0]["effects"] == [
+        "hamstring_blow",
+        "staggering_blow",
+    ]
+    assert [change["effect"] for change in brutal_changes] == [
+        "hamstring_blow",
+        "staggering_blow",
+    ]
+    assert used_change["effects"] == ["hamstring_blow", "staggering_blow"]
+    assert any(effect["condition"] == "hamstring_blow" for effect in conditions)
+    assert any(effect["condition"] == "staggering_blow_save_disadvantage" for effect in conditions)
+    assert any(
+        effect["condition"] == "staggering_blow_no_opportunity_attacks" for effect in conditions
+    )
+
+
 def test_improved_brutal_strike_staggering_disadvantages_next_save_and_blocks_opportunity_attack(
     make_state,
 ) -> None:
@@ -8271,6 +8371,68 @@ def test_improved_brutal_strike_options_require_barbarian_level_13(make_state) -
             ["goblin1"],
             params={"use_brutal_strike": True, "brutal_strike_effect": "staggering_blow"},
             idempotency_key="improved-brutal-too-low",
+        )
+
+
+def test_improved_brutal_strike_two_effects_require_level_17_and_unique_choices(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 16}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="dual-low-reckless")
+    with pytest.raises(
+        AutomationError,
+        match="Improved Brutal Strike requires Barbarian level 17",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.longsword_attack",
+            ["goblin1"],
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": ["hamstring_blow", "forceful_blow"],
+            },
+            idempotency_key="dual-too-low",
+        )
+
+    character.class_levels = {"barbarian": 17}
+    with pytest.raises(
+        AutomationError,
+        match="duplicate Brutal Strike effect: hamstring_blow",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.longsword_attack",
+            ["goblin1"],
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": ["hamstring", "hamstring_blow"],
+            },
+            idempotency_key="dual-duplicate",
+        )
+    with pytest.raises(
+        AutomationError,
+        match="Improved Brutal Strike allows at most two effects",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.longsword_attack",
+            ["goblin1"],
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": [
+                    "forceful_blow",
+                    "hamstring_blow",
+                    "staggering_blow",
+                ],
+            },
+            idempotency_key="dual-too-many",
         )
 
 

@@ -4734,8 +4734,11 @@ def test_compendium_loads_srd_actions() -> None:
     assert improved_brutal_strike.action_economy == "none"
     assert improved_brutal_strike.properties == {
         "adds_brutal_strike_options": ["staggering_blow", "sundering_blow"],
-        "does_not_increase_brutal_strike_damage": True,
-        "does_not_allow_two_brutal_strike_effects": True,
+        "level_13_extra_damage": "1d10",
+        "level_13_max_effects_per_brutal_strike": 1,
+        "level_17_extra_damage": "2d10",
+        "level_17_max_effects_per_brutal_strike": 2,
+        "level_17_requires_different_effects": True,
     }
     assert compendium.classes["barbarian"].levels["14"]["features"] == ["Subclass Feature"]
     assert "srd.persistent_rage" not in compendium.classes["barbarian"].levels["14"]["actions"]
@@ -4754,6 +4757,11 @@ def test_compendium_loads_srd_actions() -> None:
         "rage_ends_early_on_conditions": ["unconscious"],
         "rage_ends_early_on_heavy_armor": True,
     }
+    assert compendium.classes["barbarian"].levels["16"]["features"] == ["Ability Score Improvement"]
+    assert "srd.persistent_rage" in compendium.classes["barbarian"].levels["16"]["actions"]
+    assert compendium.classes["barbarian"].levels["17"]["features"] == ["Improved Brutal Strike"]
+    assert "srd.improved_brutal_strike" in compendium.classes["barbarian"].levels["17"]["actions"]
+    assert "srd.indomitable_might" not in compendium.classes["barbarian"].levels["17"]["actions"]
     assert compendium.classes["barbarian"].levels["18"]["features"] == ["Indomitable Might"]
     assert "srd.indomitable_might" in compendium.classes["barbarian"].levels["18"]["actions"]
     indomitable_might = compendium.action("srd.indomitable_might")

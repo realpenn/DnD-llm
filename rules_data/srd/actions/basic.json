@@ -516,7 +516,7 @@
                 "zh": "精通残暴打击",
                 "aliases": ["Barbarian Improved Brutal Strike", "精通残暴打击"]
             },
-            "source": "SRD 5.2.1 Barbarian Class Features: Level 13: Improved Brutal Strike",
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 13 and 17: Improved Brutal Strike",
             "rules_version": "srd-5.2.1",
             "action_type": "class_feature",
             "action_economy": "none",
@@ -525,15 +525,18 @@
             "requirements": {"class": "barbarian", "class_level_min": 13},
             "properties": {
                 "adds_brutal_strike_options": ["staggering_blow", "sundering_blow"],
-                "does_not_increase_brutal_strike_damage": true,
-                "does_not_allow_two_brutal_strike_effects": true
+                "level_13_extra_damage": "1d10",
+                "level_13_max_effects_per_brutal_strike": 1,
+                "level_17_extra_damage": "2d10",
+                "level_17_max_effects_per_brutal_strike": 2,
+                "level_17_requires_different_effects": true
             },
             "friendly_fire_policy": "raw",
             "cost": {},
             "automation": [
                 {
                     "type": "text_result",
-                    "text": "This marker records that Barbarian 13 adds Staggering Blow and Sundering Blow to Brutal Strike options. The 2d10 damage and two-effect upgrade are not part of this level 13 feature."
+                    "text": "This marker records that Barbarian 13 adds Staggering Blow and Sundering Blow to Brutal Strike options. At Barbarian 17, Brutal Strike deals 2d10 extra damage and can apply two different Brutal Strike effects whenever it is used."
                 }
             ],
             "audit_label": "Improved Brutal Strike"

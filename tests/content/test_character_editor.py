@@ -1635,6 +1635,21 @@ def test_natural_language_character_edit_assigns_barbarian_persistent_rage() -> 
     assert result.character.resources["srd.resource.persistent_rage_initiative_restore"] == 1
 
 
+def test_natural_language_character_edit_assigns_barbarian17_upgrade() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 barbarian17")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"barbarian": 17}
+    assert "srd.brutal_strike" in result.character.actions
+    assert "srd.improved_brutal_strike" in result.character.actions
+    assert "srd.persistent_rage" in result.character.actions
+    assert "srd.indomitable_might" not in result.character.actions
+    assert result.character.resources["srd.resource.rage"] == 6
+
+
 def test_natural_language_character_edit_assigns_barbarian_indomitable_might() -> None:
     character = default_fighter("pc1", "Penn")
 
