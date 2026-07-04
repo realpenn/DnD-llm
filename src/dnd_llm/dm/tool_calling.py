@@ -158,6 +158,9 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
                 "difficulty_tier": _nullable_string("Named difficulty tier."),
                 "dc_ref": _nullable_string("Rules or campaign DC reference."),
                 "advantage": _nullable_string("advantage, disadvantage, or null."),
+                "avoid_or_end_condition": _nullable_string(
+                    "Optional condition key, such as poisoned, when this save avoids or ends that condition."
+                ),
                 "use_stroke_of_luck": _boolean(
                     "Whether an eligible Rogue 20 uses Stroke of Luck if this D20 Test fails."
                 ),

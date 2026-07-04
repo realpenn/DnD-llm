@@ -498,6 +498,43 @@
       "audit_label": "Wear Headband of Intellect"
     },
     {
+      "id": "srd.wear_necklace_of_adaptation",
+      "name": "Wear Necklace of Adaptation",
+      "localization": {
+        "en": "Wear Necklace of Adaptation",
+        "zh": "佩戴适应项链",
+        "aliases": ["启用适应项链"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Necklace of Adaptation",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.necklace_of_adaptation" },
+      "properties": {
+        "necklace_of_adaptation": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "can_breathe_normally_any_environment": true,
+            "saving_throw_advantage_contexts": ["avoid_or_end_condition:poisoned"]
+          },
+          "duration": { "until": "while_wearing_necklace_of_adaptation" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this necklace, the target can breathe normally in any environment and has Advantage on saving throws made to avoid or end the Poisoned condition." }
+      ],
+      "audit_label": "Wear Necklace of Adaptation"
+    },
+    {
       "id": "srd.wear_periapt_of_proof_against_poison",
       "name": "Wear Periapt of Proof against Poison",
       "localization": {

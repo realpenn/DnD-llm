@@ -260,6 +260,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.necklace_of_adaptation",
+      "name": "Necklace of Adaptation",
+      "localization": {
+        "en": "Necklace of Adaptation",
+        "zh": "适应项链",
+        "aliases": ["Adaptation Necklace"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Necklace of Adaptation",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_necklace_of_adaptation"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.periapt_of_proof_against_poison",
       "name": "Periapt of Proof against Poison",
       "localization": {

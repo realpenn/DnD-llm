@@ -9230,6 +9230,133 @@ def test_headband_of_intellect_does_not_lower_equal_or_higher_intelligence(make_
     assert intelligence_check["roll"]["expression"] == "1d20+5"
 
 
+def test_necklace_of_adaptation_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError, match="actor does not have item srd.necklace_of_adaptation"
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.necklace_of_adaptation",
+            ["pc1"],
+            action_id="srd.wear_necklace_of_adaptation",
+            idempotency_key="missing-necklace-of-adaptation",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.necklace_of_adaptation")
+    result = tools.use_item(
+        "pc1",
+        "srd.necklace_of_adaptation",
+        ["pc1"],
+        action_id="srd.wear_necklace_of_adaptation",
+        idempotency_key="equipped-necklace-of-adaptation",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_necklace_of_adaptation"
+    )
+
+
+def test_necklace_of_adaptation_grants_breathing_and_poisoned_save_advantage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.necklace_of_adaptation"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10]),
+    )
+
+    necklace = tools.use_item(
+        "pc1",
+        "srd.necklace_of_adaptation",
+        ["pc1"],
+        action_id="srd.wear_necklace_of_adaptation",
+        idempotency_key="wear-necklace-of-adaptation",
+    )
+    poison_save_action = ActionDefinition(
+        id="test.necklace.poisoned_save",
+        name="Necklace Poisoned Save",
+        localization={"en": "Necklace Poisoned Save", "zh": "适应项链中毒豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[
+            {
+                "type": "saving_throw",
+                "ability": "con",
+                "difficulty_tier": "medium",
+                "contexts": ["avoid_or_end_condition:poisoned"],
+            }
+        ],
+    )
+    poison_save = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(poison_save_action, actor_id="goblin1", targets=["pc1"])
+    direct_poison_save = tools.roll_save(
+        "pc1",
+        "con",
+        difficulty_tier="medium",
+        avoid_or_end_condition="poisoned",
+        idempotency_key="necklace-direct-poison-save",
+    )
+    direct_plain_save = tools.roll_save(
+        "pc1",
+        "con",
+        difficulty_tier="medium",
+        idempotency_key="necklace-direct-plain-save",
+    )
+
+    assert necklace["success"] is True
+    assert character.inventory["srd.necklace_of_adaptation"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_necklace_of_adaptation"
+    assert effect["duration"] == {"until": "while_wearing_necklace_of_adaptation"}
+    assert effect["passive_modifiers"] == {
+        "can_breathe_normally_any_environment": True,
+        "saving_throw_advantage_contexts": ["avoid_or_end_condition:poisoned"],
+    }
+
+    save_node = poison_save.node_results["automation[0]"]
+    assert save_node["status_advantage"] == "advantage"
+    assert save_node["status_sources"][0]["modifier"] == "saving_throw_advantage_contexts"
+    assert save_node["status_sources"][0]["source_action_id"] == ("srd.wear_necklace_of_adaptation")
+    assert save_node["status_sources"][0]["contexts"] == ["avoid_or_end_condition:poisoned"]
+    assert poison_save.dice_rolls[0]["advantage"] == "advantage"
+
+    assert direct_poison_save["status_advantage"] == "advantage"
+    assert direct_poison_save["status_sources"][0]["modifier"] == (
+        "saving_throw_advantage_contexts"
+    )
+    assert direct_poison_save["status_sources"][0]["source_action_id"] == (
+        "srd.wear_necklace_of_adaptation"
+    )
+    assert direct_poison_save["status_sources"][0]["contexts"] == [
+        "avoid_or_end_condition:poisoned"
+    ]
+    assert direct_plain_save["status_advantage"] is None
+    assert direct_plain_save["status_sources"] == []
+
+
 def test_periapt_of_proof_against_poison_item_requirement_accepts_equipment_and_rejects_missing(
     make_state,
 ) -> None:

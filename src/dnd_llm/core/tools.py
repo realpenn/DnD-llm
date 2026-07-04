@@ -266,6 +266,7 @@ class EngineTools:
         use_indomitable: bool = False,
         use_disciplined_survivor: bool = False,
         use_stroke_of_luck: bool = False,
+        avoid_or_end_condition: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"roll_save:{self.state.event_counter}"
@@ -284,9 +285,13 @@ class EngineTools:
             ability,
             proficiency_source,
         )
+        contexts: set[str] = set()
+        if avoid_or_end_condition:
+            contexts.add(f"avoid_or_end_condition:{avoid_or_end_condition.lower()}")
         status_advantage, status_sources = self._saving_throw_status_advantage(
             actor_id,
             ability,
+            contexts=contexts,
         )
         passive_bonus, passive_bonus_sources = self._saving_throw_passive_bonus(actor_id, ability)
         if use_dark_ones_own_luck:
@@ -351,6 +356,7 @@ class EngineTools:
                     "use_indomitable": use_indomitable,
                     "use_disciplined_survivor": use_disciplined_survivor,
                     "use_stroke_of_luck": use_stroke_of_luck,
+                    "avoid_or_end_condition": avoid_or_end_condition,
                 },
                 tool_result=auto_fail_payload,
                 dice_rolls=[],
@@ -434,6 +440,7 @@ class EngineTools:
                 "use_indomitable": use_indomitable,
                 "use_disciplined_survivor": use_disciplined_survivor,
                 "use_stroke_of_luck": use_stroke_of_luck,
+                "avoid_or_end_condition": avoid_or_end_condition,
             },
             tool_result=payload,
             dice_rolls=dice_rolls,
@@ -1561,8 +1568,11 @@ class EngineTools:
         self,
         actor_id: str,
         ability: str,
+        *,
+        contexts: set[str] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         ability = ability.lower()
+        contexts = {context.lower() for context in (contexts or set())}
         advantage_sources: list[dict[str, Any]] = []
         disadvantage_sources: list[dict[str, Any]] = []
         for effect in self._status_effects_for_actor(actor_id):
@@ -1584,6 +1594,22 @@ class EngineTools:
                         "ability": ability,
                     }
                 )
+            context_entries = modifiers.get("saving_throw_advantage_contexts", [])
+            if isinstance(context_entries, str):
+                context_entries = [context_entries]
+            if isinstance(context_entries, list) and contexts:
+                matched = sorted(contexts & {str(entry).lower() for entry in context_entries})
+                if matched:
+                    advantage_sources.append(
+                        {
+                            "condition": effect.get("condition"),
+                            "effect_id": effect.get("effect_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                            "modifier": "saving_throw_advantage_contexts",
+                            "ability": ability,
+                            "contexts": matched,
+                        }
+                    )
             disadvantage_abilities = modifiers.get("saving_throw_disadvantage_abilities", [])
             if isinstance(disadvantage_abilities, str):
                 disadvantage_abilities = [disadvantage_abilities]

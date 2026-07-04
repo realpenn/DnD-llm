@@ -503,6 +503,7 @@ class DMRuntime:
                 difficulty_tier=_optional_str(args.get("difficulty_tier")),
                 dc_ref=_optional_str(args.get("dc_ref")),
                 advantage=_optional_str(args.get("advantage")),
+                avoid_or_end_condition=_optional_str(args.get("avoid_or_end_condition")),
                 use_stroke_of_luck=_optional_bool(args.get("use_stroke_of_luck")),
                 idempotency_key=tool_key,
             )

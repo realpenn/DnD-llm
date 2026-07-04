@@ -178,6 +178,16 @@ def test_dm_tool_calling_retries_with_backing_character_affordance(make_state) -
 def test_dm_tool_calling_executes_direct_roll_save_tool(make_state) -> None:
     session = _session(make_state)
     session.state.characters["pc1"].saving_throw_proficiencies = ["con"]
+    assert session.state.encounter is not None
+    session.state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "necklace-test",
+            "source_action_id": "srd.wear_necklace_of_adaptation",
+            "passive_modifiers": {
+                "saving_throw_advantage_contexts": ["avoid_or_end_condition:poisoned"]
+            },
+        }
+    )
     client = FakeClient(
         _tool_response(
             "roll_save",
@@ -187,6 +197,7 @@ def test_dm_tool_calling_executes_direct_roll_save_tool(make_state) -> None:
                 "difficulty_tier": "medium",
                 "dc_ref": None,
                 "advantage": None,
+                "avoid_or_end_condition": "poisoned",
             },
         )
     )
@@ -201,6 +212,10 @@ def test_dm_tool_calling_executes_direct_roll_save_tool(make_state) -> None:
     assert response.accepted is True
     assert response.engine_payload["tool"] == "roll_save"
     assert response.engine_payload["roll"]["expression"] == "1d20+4"
+    assert response.engine_payload["status_advantage"] == "advantage"
+    assert response.engine_payload["status_sources"][0]["modifier"] == (
+        "saving_throw_advantage_contexts"
+    )
     assert any(event.tool_name == "roll_save" for event in session.audit_log.events)
     assert any(event.tool_name == "dm.model_direct_tool" for event in session.audit_log.events)
     assert not any(event.tool_name == "resolver.resolve" for event in session.audit_log.events)
@@ -636,10 +651,14 @@ def test_dm_tool_schema_exposes_only_public_tools() -> None:
     roll_check_schema = next(
         schema for schema in dm_tool_schemas() if schema["function"]["name"] == "roll_check"
     )
+    roll_save_schema = next(
+        schema for schema in dm_tool_schemas() if schema["function"]["name"] == "roll_save"
+    )
     cast_spell_schema = next(
         schema for schema in dm_tool_schemas() if schema["function"]["name"] == "cast_spell"
     )
     roll_check_properties = roll_check_schema["function"]["parameters"]["properties"]
+    roll_save_properties = roll_save_schema["function"]["parameters"]["properties"]
     cast_spell_properties = cast_spell_schema["function"]["parameters"]["properties"]
 
     assert "attack" in names
@@ -649,6 +668,7 @@ def test_dm_tool_schema_exposes_only_public_tools() -> None:
     assert "skill" in roll_check_properties
     assert "tool" in roll_check_properties
     assert "examines_within_1_ft" in roll_check_properties
+    assert "avoid_or_end_condition" in roll_save_properties
     assert "use_tactical_mind" in roll_check_properties
     assert "use_primal_knowledge" in roll_check_properties
     assert "gm_override" not in names

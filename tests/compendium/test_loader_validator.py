@@ -3371,6 +3371,38 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_headband_of_intellect"},
         "stacking_policy": "replace",
     }
+    necklace_of_adaptation = compendium.action("srd.wear_necklace_of_adaptation")
+    assert compendium.items["srd.necklace_of_adaptation"].actions == [
+        "srd.wear_necklace_of_adaptation"
+    ]
+    assert compendium.items["srd.necklace_of_adaptation"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": True,
+        "worn_slot": "neck",
+    }
+    assert necklace_of_adaptation.action_economy == "none"
+    assert necklace_of_adaptation.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert necklace_of_adaptation.requirements == {"item": "srd.necklace_of_adaptation"}
+    assert necklace_of_adaptation.properties == {
+        "necklace_of_adaptation": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "neck",
+    }
+    assert necklace_of_adaptation.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "can_breathe_normally_any_environment": True,
+            "saving_throw_advantage_contexts": ["avoid_or_end_condition:poisoned"],
+        },
+        "duration": {"until": "while_wearing_necklace_of_adaptation"},
+        "stacking_policy": "replace",
+    }
     periapt_poison = compendium.action("srd.wear_periapt_of_proof_against_poison")
     assert compendium.items["srd.periapt_of_proof_against_poison"].actions == [
         "srd.wear_periapt_of_proof_against_poison"
@@ -4992,6 +5024,9 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert compendium.items["srd.headband_of_intellect"].actions == [
         "srd.wear_headband_of_intellect"
+    ]
+    assert compendium.items["srd.necklace_of_adaptation"].actions == [
+        "srd.wear_necklace_of_adaptation"
     ]
     assert compendium.items["srd.periapt_of_proof_against_poison"].actions == [
         "srd.wear_periapt_of_proof_against_poison"
