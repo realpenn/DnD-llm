@@ -108,6 +108,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.fiendish_vigor",
     "srd.fiendish_vigor_false_life",
     "srd.fleet_step",
+    "srd.foe_slayer",
     "srd.flurry_of_blows",
     "srd.quivering_palm",
     "srd.quivering_palm_release",

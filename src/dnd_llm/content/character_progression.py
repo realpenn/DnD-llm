@@ -280,6 +280,7 @@ CLASS_LEVEL_ACTIONS = {
         14: ["srd.natures_veil"],
         17: ["srd.precise_hunter"],
         18: ["srd.feral_senses"],
+        20: ["srd.foe_slayer"],
     },
     "rogue": {
         1: ["srd.rogue_expertise", "srd.thieves_cant"],

@@ -814,6 +814,10 @@ def ranger_feral_senses_blindsight_ft(character: Character) -> int:
     return 30 if int(character.class_levels.get("ranger", 0)) >= 18 else 0
 
 
+def ranger_hunters_mark_damage_dice(character: Character) -> str:
+    return "1d10" if int(character.class_levels.get("ranger", 0)) >= 20 else "1d6"
+
+
 def second_story_work_climb_speed(character: Character) -> int | None:
     if not has_rogue_thief_feature(character, level=3):
         return None

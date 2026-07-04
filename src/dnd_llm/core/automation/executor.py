@@ -71,6 +71,7 @@ from ..rules.class_features import (
     monk_slow_fall_damage_reduction,
     monk_unarmored_defense_armor_class,
     preserve_life_healing_pool,
+    ranger_hunters_mark_damage_dice,
     reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
     rogue_elusive_applies,
@@ -140,6 +141,7 @@ COUNTERCHARM_RANGE_FT = 30
 STUDIED_ATTACKS_ACTION_ID = "srd.studied_attacks"
 STUDIED_ATTACKS_CONDITION = "studied_attacks"
 PRECISE_HUNTER_ACTION_ID = "srd.precise_hunter"
+FOE_SLAYER_ACTION_ID = "srd.foe_slayer"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 EVASION_ACTION_ID = "srd.evasion"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
@@ -5553,6 +5555,7 @@ class AutomationExecutor:
         dice = modifiers.get("attacker_bonus_damage")
         if not isinstance(dice, str) or not dice:
             return
+        dice, dice_source = self._effective_hunters_mark_damage_dice(ctx.actor_id, dice)
         damage_type = str(modifiers.get("damage_type", "force"))
         roll = self.roll_service.roll(dice)
         ctx.result.dice_rolls.append(roll.to_dict())
@@ -5581,6 +5584,7 @@ class AutomationExecutor:
                         "hunters_mark_source_action_id": mark_effect.get("source_action_id"),
                         "effect_id": mark_effect.get("effect_id"),
                         "dice": dice,
+                        **dice_source,
                         "damage_type": damage_type,
                     }
                 ],
@@ -6012,7 +6016,17 @@ class AutomationExecutor:
             dice = modifiers.get("attacker_bonus_damage")
             if not isinstance(dice, str) or not dice:
                 continue
+            source: dict[str, Any] = {
+                "feature": "hunters_mark",
+                "source_action_id": effect.get("source_action_id"),
+                "effect_id": effect.get("effect_id"),
+                "dice": dice,
+            }
+            dice, dice_source = self._effective_hunters_mark_damage_dice(ctx.actor_id, dice)
+            source.update(dice_source)
+            source["dice"] = dice
             damage_type = str(modifiers.get("damage_type", "force"))
+            source["damage_type"] = damage_type
             roll = self.roll_service.roll(dice)
             rolls = [roll]
             amount = roll.total
@@ -6025,18 +6039,26 @@ class AutomationExecutor:
                     amount=amount,
                     damage_type=damage_type,
                     rolls=rolls,
-                    sources=[
-                        {
-                            "feature": "hunters_mark",
-                            "source_action_id": effect.get("source_action_id"),
-                            "effect_id": effect.get("effect_id"),
-                            "dice": dice,
-                            "damage_type": damage_type,
-                        }
-                    ],
+                    sources=[source],
                 )
             )
         return bonuses
+
+    def _effective_hunters_mark_damage_dice(
+        self,
+        actor_id: str,
+        dice: str,
+    ) -> tuple[str, dict[str, Any]]:
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or dice != "1d6":
+            return dice, {}
+        upgraded_dice = ranger_hunters_mark_damage_dice(actor_owner)
+        if upgraded_dice == dice:
+            return dice, {}
+        return upgraded_dice, {
+            "base_dice": dice,
+            "foe_slayer_source_action_id": FOE_SLAYER_ACTION_ID,
+        }
 
     def _sneak_attack_bonus(
         self,

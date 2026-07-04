@@ -350,6 +350,7 @@ P0 脚手架
   - [x] **P2-1cn** SRD 5.2.1 Ranger 14 `Nature's Veil` 落地：新增 `srd.natures_veil` class feature action，并补齐 Ranger 14 职业数据、角色成长授予与长休资源恢复；按 SRD 以 Bonus Action 消耗 Wisdom modifier（至少 1）次/Long Rest 资源，使自己获得 Invisible condition 直到自己下回合结束，且无需 Concentration；不额外虚构隐藏、移动或攻击后提前结束规则；覆盖 compendium、自然语言建角、executor 资源/持续时间与长休恢复测试。
   - [x] **P2-1co** SRD 5.2.1 Ranger 17 `Precise Hunter` 落地：新增 `srd.precise_hunter` class feature marker，并补齐 Ranger 15/16/17 职业数据与角色成长授予；按 SRD 使 Ranger 17+ 对自己当前 `Hunter's Mark` 标记的生物进行 attack rolls 时具有 Advantage，严格限定标记必须由该 Ranger 自己施加，并沿用现有 Advantage/Disadvantage 抵消逻辑；不新增资源、动作、额外伤害或 Hunter 子职限定；覆盖 compendium、自然语言建角与 executor 攻击优势/他人标记反例测试。
   - [x] **P2-1cp** SRD 5.2.1 Ranger 18 `Feral Senses` 落地：新增 `srd.feral_senses` class feature marker，并补齐 Ranger 18 职业数据与角色成长授予；按 SRD 给予 30 feet Blindsight，提供 `ranger_feral_senses_blindsight_ft` 与通用 `blindsight_range_from_effects` helper；不虚构隐形/遮蔽/感知检定自动判定或额外视觉规则；覆盖 compendium、自然语言建角与 helper 测试。
+  - [x] **P2-1cq** SRD 5.2.1 Ranger 20 `Foe Slayer` 落地：新增 `srd.foe_slayer` class feature marker，并补齐 Ranger 19/20 职业数据与角色成长授予；按 SRD 使 Ranger 20+ 的 `Hunter's Mark` damage die 从 `d6` 变为 `d10`，在现有 Hunter's Mark 额外伤害结算中动态升级并保留审计来源；不新增额外攻击、资源、命中加值或非 Hunter's Mark 伤害；覆盖 compendium、自然语言建角与 executor 额外伤害骰测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

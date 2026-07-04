@@ -2461,6 +2461,66 @@ def test_hunters_mark_adds_force_damage_to_marked_target_hit(make_state) -> None
     assert state.encounter.combatants["goblin1"].hp_current == 13
 
 
+def test_foe_slayer_upgrades_hunters_mark_damage_die_at_ranger_20(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 20}
+    character.actions.append("srd.foe_slayer")
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.status_effects.append(
+        {
+            "effect_id": "foe-slayer-hunters-mark",
+            "source_action_id": "srd.favored_enemy_hunters_mark",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "passive_modifiers": {
+                "hunters_mark": True,
+                "attacker_bonus_damage": "1d6",
+                "damage_type": "force",
+            },
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 2, 7]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="foe-slayer-hunters-mark",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["extra_damage"] == [
+        {
+            "amount": 7,
+            "applied": 7,
+            "damage_type": "force",
+            "sources": [
+                {
+                    "feature": "hunters_mark",
+                    "source_action_id": "srd.favored_enemy_hunters_mark",
+                    "effect_id": "foe-slayer-hunters-mark",
+                    "dice": "1d10",
+                    "base_dice": "1d6",
+                    "foe_slayer_source_action_id": "srd.foe_slayer",
+                    "damage_type": "force",
+                }
+            ],
+        }
+    ]
+    assert damage_change["total_applied"] == 12
+    assert state.encounter.combatants["goblin1"].hp_current == 18
+
+
 def test_precise_hunter_grants_advantage_against_own_hunters_mark_target(
     make_state,
 ) -> None:
@@ -3039,6 +3099,85 @@ def test_superior_hunters_prey_deals_hunters_mark_damage_to_second_target(
             },
             idempotency_key="superior-hunters-prey-repeat",
         )
+
+
+def test_foe_slayer_upgrades_superior_hunters_prey_damage_die(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 20}
+    hunter.subclasses = {"ranger": "hunter"}
+    hunter.actions.extend(["srd.superior_hunters_prey", "srd.foe_slayer"])
+    state.encounter.combatants["goblin1"].hp_current = 40
+    state.encounter.combatants["goblin1"].hp_max = 40
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Second Foe",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        position_node_id="front",
+    )
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "foe-slayer-superior-prey",
+            "source_action_id": "srd.favored_enemy_hunters_mark",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "passive_modifiers": {
+                "hunters_mark": True,
+                "attacker_bonus_damage": "1d6",
+                "damage_type": "force",
+            },
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 2, 7, 6]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        params={
+            "use_superior_hunters_prey": True,
+            "superior_hunters_prey_target_id": "goblin2",
+        },
+        idempotency_key="foe-slayer-superior-hunters-prey",
+    )
+
+    original_damage = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "damage" and change["target_id"] == "goblin1"
+    )
+    assert original_damage["extra_damage"][0]["sources"][0]["dice"] == "1d10"
+    superior_damage = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "damage" and change["target_id"] == "goblin2"
+    )
+    assert superior_damage["amount"] == 6
+    assert superior_damage["sources"] == [
+        {
+            "feature": "superior_hunters_prey",
+            "source_action_id": "srd.superior_hunters_prey",
+            "hunters_mark_source_action_id": "srd.favored_enemy_hunters_mark",
+            "effect_id": "foe-slayer-superior-prey",
+            "dice": "1d10",
+            "base_dice": "1d6",
+            "foe_slayer_source_action_id": "srd.foe_slayer",
+            "damage_type": "force",
+        }
+    ]
+    assert state.encounter.combatants["goblin1"].hp_current == 28
+    assert state.encounter.combatants["goblin2"].hp_current == 14
 
 
 def test_superior_hunters_prey_requires_level_11_hunter(make_state) -> None:

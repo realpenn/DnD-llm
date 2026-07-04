@@ -1466,6 +1466,41 @@
                         "srd.precise_hunter",
                         "srd.feral_senses"
                     ]
+                },
+                "19": {
+                    "features": ["Epic Boon"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless",
+                        "srd.relentless_hunter",
+                        "srd.natures_veil",
+                        "srd.precise_hunter",
+                        "srd.feral_senses"
+                    ]
+                },
+                "20": {
+                    "features": ["Foe Slayer"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless",
+                        "srd.relentless_hunter",
+                        "srd.natures_veil",
+                        "srd.precise_hunter",
+                        "srd.feral_senses",
+                        "srd.foe_slayer"
+                    ]
                 }
             },
             "subclasses": {

@@ -4175,6 +4175,35 @@
             "audit_label": "Feral Senses"
         },
         {
+            "id": "srd.foe_slayer",
+            "name": "Foe Slayer",
+            "localization": {
+                "en": "Foe Slayer",
+                "zh": "灭敌者",
+                "aliases": ["Ranger Foe Slayer", "游侠灭敌者"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 20: Foe Slayer",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 20},
+            "properties": {
+                "hunters_mark_damage_die": "d10",
+                "replaces_hunters_mark_damage_die": "d6"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "The damage die of the Ranger's Hunter's Mark is a d10 rather than a d6."
+                }
+            ],
+            "audit_label": "Foe Slayer"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {

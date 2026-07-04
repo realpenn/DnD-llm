@@ -2681,6 +2681,13 @@ def test_compendium_loads_srd_actions() -> None:
     assert feral_senses.action_economy == "none"
     assert feral_senses.requirements == {"class": "ranger", "class_level_min": 18}
     assert feral_senses.properties == {"blindsight_ft": 30}
+    foe_slayer = compendium.action("srd.foe_slayer")
+    assert foe_slayer.action_economy == "none"
+    assert foe_slayer.requirements == {"class": "ranger", "class_level_min": 20}
+    assert foe_slayer.properties == {
+        "hunters_mark_damage_die": "d10",
+        "replaces_hunters_mark_damage_die": "d6",
+    }
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
@@ -5106,6 +5113,10 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.precise_hunter" in compendium.classes["ranger"].levels["17"]["actions"]
     assert compendium.classes["ranger"].levels["18"]["features"] == ["Feral Senses"]
     assert "srd.feral_senses" in compendium.classes["ranger"].levels["18"]["actions"]
+    assert compendium.classes["ranger"].levels["19"]["features"] == ["Epic Boon"]
+    assert "srd.foe_slayer" not in compendium.classes["ranger"].levels["19"]["actions"]
+    assert compendium.classes["ranger"].levels["20"]["features"] == ["Foe Slayer"]
+    assert "srd.foe_slayer" in compendium.classes["ranger"].levels["20"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",
