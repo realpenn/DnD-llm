@@ -2007,6 +2007,59 @@ def test_ascendant_step_casts_levitate_without_spell_slot(make_state) -> None:
     assert effect["passive_modifiers"] == {"levitated": True, "vertical_move_ft": 20}
 
 
+def test_boots_of_levitation_casts_self_levitate_without_spell_slot_or_consuming_item(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.spell_slots["2"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.boots_of_levitation"):
+        tools.use_item(
+            "pc1",
+            "srd.boots_of_levitation",
+            ["pc1"],
+            action_id="srd.boots_of_levitation_levitate",
+            idempotency_key="missing-boots-of-levitation",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    character.equipment.append("srd.boots_of_levitation")
+    with pytest.raises(AutomationError, match="target must be self"):
+        tools.use_item(
+            "pc1",
+            "srd.boots_of_levitation",
+            ["pc2"],
+            action_id="srd.boots_of_levitation_levitate",
+            idempotency_key="boots-of-levitation-other-target",
+        )
+    assert state.encounter.combatants["pc1"].status_effects == []
+    assert state.encounter.combatants["pc2"].status_effects == []
+
+    result = tools.use_item(
+        "pc1",
+        "srd.boots_of_levitation",
+        ["pc1"],
+        action_id="srd.boots_of_levitation_levitate",
+        idempotency_key="boots-of-levitation-levitate",
+    )
+
+    assert result["success"] is True
+    assert character.spell_slots["2"] == 1
+    assert not any(change.get("resource") == "spell_slot_2" for change in result["state_changes"])
+    assert "srd.boots_of_levitation" in character.equipment
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.boots_of_levitation_levitate"
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "movement"
+    assert effect["concentration"] is True
+    assert effect["passive_modifiers"] == {"levitated": True, "vertical_move_ft": 20}
+
+
 def test_one_with_shadows_casts_invisibility_without_spell_slot_in_dim_light(
     make_state,
 ) -> None:

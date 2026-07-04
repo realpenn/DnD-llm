@@ -311,6 +311,43 @@
       "audit_label": "Wear Boots of Elvenkind"
     },
     {
+      "id": "srd.boots_of_levitation_levitate",
+      "name": "Boots of Levitation: Levitate",
+      "localization": {
+        "en": "Boots of Levitation: Levitate",
+        "zh": "浮空靴：浮空术",
+        "aliases": ["Levitation Boots Levitate", "浮空靴浮空术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Boots of Levitation; SRD 5.2.1 Levitate",
+      "rules_version": "srd-5.2.1",
+      "action_type": "spell",
+      "action_economy": "action",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.boots_of_levitation", "spell_level": 2 },
+      "properties": {
+        "spell_definition_id": "srd.spell.levitate",
+        "spell_level": 2,
+        "boots_of_levitation": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "feet"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "levitated": true, "vertical_move_ft": 20 },
+          "duration": { "until": "concentration_10_minutes" },
+          "tick_on": "movement",
+          "concentration": true
+        }
+      ],
+      "audit_label": "Boots of Levitation: Levitate"
+    },
+    {
       "id": "srd.wear_bracers_of_defense",
       "name": "Wear Bracers of Defense",
       "localization": {

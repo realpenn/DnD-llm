@@ -3219,6 +3219,45 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_boots_of_elvenkind"},
         "stacking_policy": "replace",
     }
+    boots_of_levitation = compendium.action("srd.boots_of_levitation_levitate")
+    assert compendium.items["srd.boots_of_levitation"].actions == [
+        "srd.boots_of_levitation_levitate"
+    ]
+    assert compendium.items["srd.boots_of_levitation"].properties == {
+        "rarity": "rare",
+        "requires_attunement": True,
+        "worn_slot": "feet",
+    }
+    assert boots_of_levitation.action_economy == "action"
+    assert boots_of_levitation.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert boots_of_levitation.requirements == {
+        "item": "srd.boots_of_levitation",
+        "spell_level": 2,
+    }
+    assert boots_of_levitation.cost.spell_slot_level is None
+    assert boots_of_levitation.properties == {
+        "spell_definition_id": "srd.spell.levitate",
+        "spell_level": 2,
+        "boots_of_levitation": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "feet",
+    }
+    assert boots_of_levitation.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {"levitated": True, "vertical_move_ft": 20},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "movement",
+            "concentration": True,
+        },
+    ]
     bracers_of_defense = compendium.action("srd.wear_bracers_of_defense")
     assert compendium.items["srd.bracers_of_defense"].actions == ["srd.wear_bracers_of_defense"]
     assert compendium.items["srd.bracers_of_defense"].properties == {
@@ -5053,6 +5092,9 @@ def test_compendium_loads_srd_actions() -> None:
             f"srd.wear_belt_of_{giant_type}_giant_strength"
         ]
     assert compendium.items["srd.boots_of_elvenkind"].actions == ["srd.wear_boots_of_elvenkind"]
+    assert compendium.items["srd.boots_of_levitation"].actions == [
+        "srd.boots_of_levitation_levitate"
+    ]
     assert compendium.items["srd.bracers_of_defense"].actions == ["srd.wear_bracers_of_defense"]
     assert compendium.items["srd.cloak_of_protection"].actions == ["srd.wear_cloak_of_protection"]
     assert compendium.items["srd.eyes_of_the_eagle"].actions == ["srd.wear_eyes_of_the_eagle"]

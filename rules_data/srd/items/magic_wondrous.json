@@ -165,6 +165,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.boots_of_levitation",
+      "name": "Boots of Levitation",
+      "localization": {
+        "en": "Boots of Levitation",
+        "zh": "浮空靴",
+        "aliases": ["Levitation Boots"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Boots of Levitation",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.boots_of_levitation_levitate"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "feet"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.bracers_of_defense",
       "name": "Bracers of Defense",
       "localization": {
