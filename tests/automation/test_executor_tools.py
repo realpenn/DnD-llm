@@ -2299,6 +2299,40 @@ def test_favored_enemy_hunters_mark_spends_class_resource_not_spell_slot(make_st
     }
 
 
+def test_ranger_tireless_grants_temp_hp_and_spends_resource(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 10}
+    character.abilities["wis"] = 14
+    character.actions.append("srd.tireless")
+    character.resources["srd.resource.tireless"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.tireless",
+        [],
+        idempotency_key="ranger-tireless",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.tireless"] == 1
+    assert state.encounter.combatants["pc1"].temp_hp == 6
+    assert result["dice_rolls"][0]["expression"] == "1d8"
+    temp_hp_change = next(
+        change for change in result["state_changes"] if change["type"] == "temp_hp"
+    )
+    assert temp_hp_change["after"] == 6
+    assert state.encounter.action_budgets["pc1"]["action"] == 0
+
+
 def test_hunters_mark_adds_force_damage_to_marked_target_hit(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

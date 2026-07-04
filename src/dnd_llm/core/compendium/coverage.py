@@ -171,6 +171,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.primal_order",
     "srd.rage",
     "srd.ranger_expertise",
+    "srd.tireless",
     "srd.preserve_life",
     "srd.primal_knowledge",
     "srd.restoring_touch",

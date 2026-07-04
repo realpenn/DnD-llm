@@ -3929,6 +3929,44 @@
             "audit_label": "Ranger Expertise"
         },
         {
+            "id": "srd.tireless",
+            "name": "Tireless",
+            "localization": {
+                "en": "Tireless",
+                "zh": "不倦",
+                "aliases": ["Ranger Tireless", "游侠不倦"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 10: Tireless",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 10},
+            "properties": {
+                "magic_action": true,
+                "tireless": true,
+                "resource": "srd.resource.tireless",
+                "short_rest_decreases_exhaustion": 1
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resources": {"srd.resource.tireless": 1}},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "temp_hp",
+                    "dice": "1d8",
+                    "bonus_from": {"ability_modifier": "wis"},
+                    "minimum_amount": 1
+                },
+                {
+                    "type": "text_result",
+                    "text": "As a Magic action, the Ranger gains Temporary Hit Points equal to 1d8 plus Wisdom modifier (minimum 1). Tireless uses recharge on a Long Rest, and Short Rests reduce the Ranger's Exhaustion by 1."
+                }
+            ],
+            "audit_label": "Tireless"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {

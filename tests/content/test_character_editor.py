@@ -2088,6 +2088,23 @@ def test_natural_language_character_edit_rejects_ranger_level_eight_extra_expert
     assert any("Expertise 槽位" in error for error in result.errors)
 
 
+def test_natural_language_character_edit_assigns_ranger_tireless_at_level_10() -> None:
+    character = default_fighter("pc1", "Penn")
+    character.abilities["wis"] = 16
+    character.skill_proficiencies = ["stealth", "perception", "arcana"]
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger10 专精 潜行 察觉 奥秘",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 10}
+    assert "srd.tireless" in result.character.actions
+    assert result.character.resources["srd.resource.tireless"] == 3
+
+
 def test_natural_language_character_edit_assigns_hunter_subclass_default_prey() -> None:
     character = default_fighter("pc1", "Penn")
 

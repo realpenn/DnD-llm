@@ -11,6 +11,7 @@ from .class_features import (
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
+    TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WHOLENESS_OF_BODY_RESOURCE,
     dark_ones_own_luck_uses,
@@ -18,8 +19,9 @@ from .class_features import (
     has_druid_circle_of_the_land_feature,
     has_monk_open_hand_feature,
     has_warlock_gift_of_depths,
+    ranger_tireless_uses,
 )
-from .conditions import lower_exhaustion
+from .conditions import exhaustion_level, lower_exhaustion
 from .spell_slots import (
     spell_slot_maxima_for_class_levels,
     warlock_pact_slot_maxima_for_class_levels,
@@ -70,6 +72,8 @@ def short_rest(
     before_hp = character.hp_current
     before_resources = dict(character.resources)
     before_slots = dict(character.spell_slots)
+    exhaustion_before = exhaustion_level(character.status_effects)
+    exhaustion_after = exhaustion_before
     spent: dict[str, int] = {}
     healing_rolls: list[RollResult] = []
     healing_entries: list[dict[str, Any]] = []
@@ -123,6 +127,8 @@ def short_rest(
     spent_resources.update(
         _apply_natural_recovery(character, natural_recovery_slots, restored_spell_slots)
     )
+    if ranger_tireless_uses(character):
+        _, exhaustion_after = lower_exhaustion(character.status_effects)
     if character.hp_current > 0:
         _clear_death_save_state(character)
     return {
@@ -140,6 +146,8 @@ def short_rest(
         "restored_spell_slots": restored_spell_slots,
         "healing_rolls": healing_entries,
         "dice_rolls": [roll.to_dict() for roll in healing_rolls],
+        "exhaustion_before": exhaustion_before,
+        "exhaustion_after": exhaustion_after,
     }
 
 
@@ -475,6 +483,9 @@ def resource_maxima(character: Character) -> dict[str, int]:
     ranger_level = int(character.class_levels.get("ranger", 0))
     if ranger_level > 0:
         maxima[FAVORED_ENEMY_HUNTERS_MARK_RESOURCE] = 3 if ranger_level >= 5 else 2
+    tireless_uses = ranger_tireless_uses(character)
+    if tireless_uses:
+        maxima[TIRELESS_RESOURCE] = tireless_uses
     cleric_level = int(character.class_levels.get("cleric", 0))
     if cleric_level >= 2:
         maxima[CHANNEL_DIVINITY_RESOURCE] = 2

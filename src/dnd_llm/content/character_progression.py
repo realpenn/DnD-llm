@@ -22,6 +22,7 @@ from dnd_llm.core.rules.class_features import (
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
+    TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     WARLOCK_AGONIZING_BLAST_CANTRIP_KEY,
     WARLOCK_AGONIZING_BLAST_ELDRITCH_BLAST,
@@ -270,6 +271,7 @@ CLASS_LEVEL_ACTIONS = {
         5: ["srd.extra_attack"],
         6: ["srd.roving"],
         9: ["srd.ranger_expertise"],
+        10: ["srd.tireless"],
     },
     "rogue": {
         1: ["srd.rogue_expertise", "srd.thieves_cant"],
@@ -2423,6 +2425,8 @@ def _resources_for_levels(
     ranger_level = int(class_levels.get("ranger", 0))
     if ranger_level > 0:
         resources["srd.resource.favored_enemy_hunters_mark"] = 3 if ranger_level >= 5 else 2
+    if ranger_level >= 10:
+        resources[TIRELESS_RESOURCE] = max(1, _ability_modifier_from_scores(abilities, "wis"))
     cleric_level = int(class_levels.get("cleric", 0))
     if cleric_level >= 2:
         resources["srd.resource.channel_divinity"] = 2

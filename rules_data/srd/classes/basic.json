@@ -1335,6 +1335,19 @@
                         "srd.roving",
                         "srd.ranger_expertise"
                     ]
+                },
+                "10": {
+                    "features": ["Tireless"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless"
+                    ]
                 }
             },
             "subclasses": {

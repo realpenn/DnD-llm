@@ -41,6 +41,46 @@ def test_short_rest_spends_hit_dice_heals_and_is_idempotent(make_state) -> None:
     assert audit.events[-1].dice_rolls[0]["expression"] == "1d10"
 
 
+def test_short_rest_decreases_exhaustion_only_with_ranger_tireless(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.status_effects.append(
+        {"effect_id": "fighter-exhaustion", "condition": "exhaustion", "level": 2}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    fighter_rest = tools.short_rest("pc1", {}, idempotency_key="fighter-short-exhaustion")
+
+    assert fighter_rest["exhaustion_before"] == 2
+    assert fighter_rest["exhaustion_after"] == 2
+    assert character.status_effects[-1]["level"] == 2
+
+    character.class_levels = {"ranger": 10}
+    ranger_rest = tools.short_rest("pc1", {}, idempotency_key="ranger-tireless-short")
+
+    assert ranger_rest["exhaustion_before"] == 2
+    assert ranger_rest["exhaustion_after"] == 1
+    assert character.status_effects[-1]["level"] == 1
+
+
+def test_long_rest_restores_ranger_tireless_uses(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 10}
+    character.abilities["wis"] = 16
+    character.resources["srd.resource.tireless"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.long_rest(["pc1"], idempotency_key="ranger-tireless-long")
+
+    pc1_result = result["results"]["pc1"]
+    assert pc1_result["restored_resources"]["srd.resource.tireless"] == 3
+    assert character.resources["srd.resource.tireless"] == 3
+
+
 def test_rest_restores_barbarian_rage_by_srd_rule(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

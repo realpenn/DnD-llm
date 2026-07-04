@@ -310,6 +310,22 @@ def test_compendium_loads_srd_actions() -> None:
         "requires_skill_proficiency": True,
         "requires_lacking_expertise": True,
     }
+    tireless = compendium.action("srd.tireless")
+    assert tireless.action_economy == "action"
+    assert tireless.requirements == {"class": "ranger", "class_level_min": 10}
+    assert tireless.properties == {
+        "magic_action": True,
+        "tireless": True,
+        "resource": "srd.resource.tireless",
+        "short_rest_decreases_exhaustion": 1,
+    }
+    assert tireless.cost.resources == {"srd.resource.tireless": 1}
+    assert tireless.automation[1] == {
+        "type": "temp_hp",
+        "dice": "1d8",
+        "bonus_from": {"ability_modifier": "wis"},
+        "minimum_amount": 1,
+    }
     assert compendium.action("srd.scholar").requirements == {
         "class": "wizard",
         "class_level_min": 2,
@@ -4987,6 +5003,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.ranger_expertise" not in compendium.classes["ranger"].levels["8"]["actions"]
     assert compendium.classes["ranger"].levels["9"]["features"] == ["Expertise"]
     assert "srd.ranger_expertise" in compendium.classes["ranger"].levels["9"]["actions"]
+    assert compendium.classes["ranger"].levels["10"]["features"] == ["Tireless"]
+    assert "srd.tireless" in compendium.classes["ranger"].levels["10"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

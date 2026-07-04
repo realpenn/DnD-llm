@@ -94,6 +94,7 @@ STROKE_OF_LUCK_RESOURCE = "srd.resource.stroke_of_luck"
 HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
+TIRELESS_RESOURCE = "srd.resource.tireless"
 SAVING_THROW_ABILITIES = frozenset({"str", "dex", "con", "int", "wis", "cha"})
 DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
 RELIABLE_TALENT_ACTION_ID = "srd.reliable_talent"
@@ -130,6 +131,13 @@ def ranger_roving_speed_bonus(character: Character) -> int:
     if is_wearing_heavy_armor(character):
         return 0
     return 10
+
+
+def ranger_tireless_uses(character: Character) -> int:
+    if int(character.class_levels.get("ranger", 0)) < 10:
+        return 0
+    wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
+    return max(1, ability_modifier(wisdom))
 
 
 def monk_unarmored_movement_bonus(character: Character) -> int:
