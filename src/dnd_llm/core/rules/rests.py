@@ -11,6 +11,7 @@ from .class_features import (
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     NATURES_VEIL_RESOURCE,
+    RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
@@ -121,6 +122,7 @@ def short_rest(
 
     character.hp_current = min(character.hp_max, character.hp_current + total_healing)
     restored_resources = _restore_short_rest_resources(character)
+    reset_resources = _reset_rest_resources(character)
     spent_resources = _apply_sorcerous_restoration(character, restored_resources)
     restored_spell_slots = _restore_short_rest_spell_slots(character)
     spent_resources.update(
@@ -142,6 +144,7 @@ def short_rest(
         "resources_before": before_resources,
         "resources_after": dict(character.resources),
         "restored_resources": restored_resources,
+        "reset_resources": reset_resources,
         "spent_resources": spent_resources,
         "spell_slots_before": before_slots,
         "spell_slots_after": dict(character.spell_slots),
@@ -189,6 +192,7 @@ def long_rest(character: Character) -> dict[str, Any]:
         character.hit_dice.setdefault(die, maximum)
 
     restored_resources = _restore_long_rest_resources(character)
+    reset_resources = _reset_rest_resources(character)
 
     return {
         "hp_before": before_hp,
@@ -203,6 +207,7 @@ def long_rest(character: Character) -> dict[str, Any]:
         "resources_before": before_resources,
         "resources_after": dict(character.resources),
         "restored_resources": restored_resources,
+        "reset_resources": reset_resources,
         "exhaustion_before": exhaustion_before,
         "exhaustion_after": exhaustion_after,
         "removed_long_rest_effects": removed_long_rest_effects,
@@ -270,6 +275,15 @@ def _restore_short_rest_resources(character: Character) -> dict[str, int]:
         character.resources[STROKE_OF_LUCK_RESOURCE] = stroke_of_luck_max
         restored[STROKE_OF_LUCK_RESOURCE] = stroke_of_luck_max - before
     return restored
+
+
+def _reset_rest_resources(character: Character) -> dict[str, int]:
+    reset: dict[str, int] = {}
+    if int(character.resources.get(RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE, 0)) > 0:
+        before = int(character.resources[RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE])
+        character.resources[RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE] = 0
+        reset[RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE] = before
+    return reset
 
 
 def _restore_short_rest_spell_slots(character: Character) -> dict[str, int]:

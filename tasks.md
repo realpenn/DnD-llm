@@ -353,6 +353,7 @@ P0 脚手架
   - [x] **P2-1cq** SRD 5.2.1 Ranger 20 `Foe Slayer` 落地：新增 `srd.foe_slayer` class feature marker，并补齐 Ranger 19/20 职业数据与角色成长授予；按 SRD 使 Ranger 20+ 的 `Hunter's Mark` damage die 从 `d6` 变为 `d10`，在现有 Hunter's Mark 额外伤害结算中动态升级并保留审计来源；不新增额外攻击、资源、命中加值或非 Hunter's Mark 伤害；覆盖 compendium、自然语言建角与 executor 额外伤害骰测试。
   - [x] **P2-1cr** SRD 5.2.1 Ranger Hunter 15 `Superior Hunter's Defense` 落地：新增 `srd.superior_hunters_defense` reaction marker 与 Hunter 15 子职授予；按 SRD 在显式请求且受到伤害时消耗 Reaction，使自己对触发伤害类型获得 Resistance，并持续到当前回合结束以覆盖同类型后续伤害；支持显式选择同一次效果中的伤害类型，不替玩家自动消耗 Reaction；不虚构全伤害抗性、免疫、攻击惩罚或额外防御选项；覆盖 compendium、自然语言建角、executor 当前/后续同类型伤害与生命周期测试。
   - [x] **P2-1cs** SRD 5.2.1 Barbarian 13 `Improved Brutal Strike` 落地：新增 `srd.improved_brutal_strike` marker、Barbarian 10-13 职业数据与角色成长授予；按 SRD 为 `Brutal Strike` 增加 `Staggering Blow` 与 `Sundering Blow` 两个 13 级选项，前者使目标下一次 saving throw 具有 Disadvantage 且到野蛮人下回合开始前不能进行 Opportunity Attacks，后者使另一个生物对目标的下一次 attack roll 获得 +5 且一次 attack roll 只能获得一个该加值；严格不实现 17 级 `2d10` 伤害升级、双效果或额外眩晕/推离；覆盖 compendium、resolver、executor、direct save、repeat save 生命周期与自然语言建角测试。
+  - [x] **P2-1ct** SRD 5.2.1 Barbarian 11 `Relentless Rage` 落地：新增 `srd.relentless_rage` marker、Barbarian 11+ 职业数据与角色成长授予；按 SRD 在 Rage active 且降至 0 HP 并未直接死亡时进行 Constitution saving throw，DC 从 10 开始、每次使用后 +5，成功时 HP 变为 `2 * Barbarian level`，短休或长休重置 DC；不新增次数上限或反应/动作消耗，并覆盖 compendium、executor 成功/失败/DC 递增/非 Rage/直接死亡反例、休息重置与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

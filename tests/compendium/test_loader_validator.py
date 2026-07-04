@@ -4709,8 +4709,22 @@ def test_compendium_loads_srd_actions() -> None:
             },
         },
     }
+    assert compendium.classes["barbarian"].levels["11"]["features"] == ["Relentless Rage"]
+    assert "srd.relentless_rage" in compendium.classes["barbarian"].levels["11"]["actions"]
+    relentless_rage = compendium.action("srd.relentless_rage")
+    assert relentless_rage.requirements == {"class": "barbarian", "class_level_min": 11}
+    assert relentless_rage.action_economy == "none"
+    assert relentless_rage.properties == {
+        "trigger": "drop_to_0_hp_while_rage_active_and_not_die_outright",
+        "saving_throw": {"ability": "con", "initial_dc": 10},
+        "dc_increase_after_each_use": 5,
+        "dc_resets_on": ["short_rest", "long_rest"],
+        "success_hp_formula": "2 * barbarian_level",
+        "no_use_limit": True,
+    }
     assert compendium.classes["barbarian"].levels["13"]["features"] == ["Improved Brutal Strike"]
     assert "srd.brutal_strike" in compendium.classes["barbarian"].levels["13"]["actions"]
+    assert "srd.relentless_rage" in compendium.classes["barbarian"].levels["13"]["actions"]
     assert "srd.improved_brutal_strike" in compendium.classes["barbarian"].levels["13"]["actions"]
     improved_brutal_strike = compendium.action("srd.improved_brutal_strike")
     assert improved_brutal_strike.requirements == {

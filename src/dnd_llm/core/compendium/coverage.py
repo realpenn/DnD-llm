@@ -181,6 +181,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.primal_order",
     "srd.rage",
     "srd.ranger_expertise",
+    "srd.relentless_rage",
     "srd.relentless_hunter",
     "srd.tireless",
     "srd.preserve_life",

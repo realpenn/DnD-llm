@@ -7905,6 +7905,116 @@ def test_improved_brutal_strike_staggering_disadvantages_next_save_and_blocks_op
     assert move_change["opportunity_attack_triggers"] == []
 
 
+def test_relentless_rage_success_sets_hp_to_twice_barbarian_level_and_increases_dc(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_relentless_rage_barbarian_state(state)
+    state.characters["pc1"].death_save_failures = 1
+    assert state.encounter is not None
+    state.encounter.combatants["pc1"].death_save_successes = 2
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([6]),
+        AuditLog(),
+    )
+
+    result = executor.execute(_damage_action(8), actor_id="goblin1", targets=["pc1"])
+
+    relentless = next(
+        change for change in result.state_changes if change["type"] == "relentless_rage"
+    )
+    assert relentless["dc"] == 10
+    assert relentless["total"] == 10
+    assert relentless["success"] is True
+    assert relentless["hp_after"] == 22
+    assert relentless["uses_since_rest_before"] == 0
+    assert relentless["uses_since_rest_after"] == 1
+    assert relentless["next_dc"] == 15
+    assert state.encounter.combatants["pc1"].hp_current == 22
+    assert state.characters["pc1"].hp_current == 22
+    assert state.characters["pc1"].death_save_failures == 0
+    assert state.encounter.combatants["pc1"].death_save_successes == 0
+    assert state.characters["pc1"].resources["srd.resource.relentless_rage_uses_since_rest"] == 1
+
+
+def test_relentless_rage_second_use_before_rest_uses_dc_15(make_state) -> None:
+    state = make_state()
+    _prepare_relentless_rage_barbarian_state(state)
+    state.characters["pc1"].resources["srd.resource.relentless_rage_uses_since_rest"] = 1
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([11]),
+        AuditLog(),
+    )
+
+    result = executor.execute(_damage_action(8), actor_id="goblin1", targets=["pc1"])
+
+    relentless = next(
+        change for change in result.state_changes if change["type"] == "relentless_rage"
+    )
+    assert relentless["dc"] == 15
+    assert relentless["total"] == 15
+    assert relentless["success"] is True
+    assert relentless["uses_since_rest_before"] == 1
+    assert relentless["uses_since_rest_after"] == 2
+    assert state.characters["pc1"].resources["srd.resource.relentless_rage_uses_since_rest"] == 2
+
+
+def test_relentless_rage_failure_leaves_target_at_zero_and_still_increases_dc(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_relentless_rage_barbarian_state(state)
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([5]),
+        AuditLog(),
+    )
+
+    result = executor.execute(_damage_action(8), actor_id="goblin1", targets=["pc1"])
+
+    relentless = next(
+        change for change in result.state_changes if change["type"] == "relentless_rage"
+    )
+    assert relentless["dc"] == 10
+    assert relentless["total"] == 9
+    assert relentless["success"] is False
+    assert relentless["hp_after"] == 0
+    assert relentless["uses_since_rest_after"] == 1
+    assert state.encounter is not None
+    assert state.encounter.combatants["pc1"].hp_current == 0
+    assert state.characters["pc1"].hp_current == 0
+
+
+def test_relentless_rage_requires_active_rage_and_does_not_prevent_outright_death(
+    make_state,
+) -> None:
+    state = make_state()
+    _prepare_relentless_rage_barbarian_state(state, raging=False)
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20]),
+        AuditLog(),
+    )
+
+    no_rage = executor.execute(_damage_action(8), actor_id="goblin1", targets=["pc1"])
+
+    assert all(change["type"] != "relentless_rage" for change in no_rage.state_changes)
+
+    state = make_state()
+    _prepare_relentless_rage_barbarian_state(state)
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20]),
+        AuditLog(),
+    )
+
+    massive = executor.execute(_damage_action(45), actor_id="goblin1", targets=["pc1"])
+
+    assert all(change["type"] != "relentless_rage" for change in massive.state_changes)
+
+
 def test_improved_brutal_strike_sundering_bonuses_only_another_creatures_next_attack(
     make_state,
 ) -> None:
@@ -19335,6 +19445,29 @@ def test_petrified_target_has_resistance_to_gm_damage(make_state) -> None:
     assert state.encounter.combatants["pc1"].hp_current == 6
 
 
+def test_gm_damage_triggers_relentless_rage_and_audits_save(make_state) -> None:
+    state = make_state()
+    _prepare_relentless_rage_barbarian_state(state)
+    audit = AuditLog()
+    tools = EngineTools(
+        state,
+        CompendiumLoader("rules_data").load(),
+        audit,
+        roll_service=_FixedSingleDieRollService([6]),
+    )
+
+    result = tools.apply_damage("pc1", 8, "force", "test.relentless_rage_gm_damage")
+
+    relentless = result["relentless_rage"]
+    assert relentless["dc"] == 10
+    assert relentless["success"] is True
+    assert relentless["hp_after"] == 22
+    assert state.encounter is not None
+    assert state.encounter.combatants["pc1"].hp_current == 22
+    assert state.characters["pc1"].hp_current == 22
+    assert audit.events[-1].dice_rolls[0]["expression"] == "1d20+4"
+
+
 def test_gm_damage_rejects_non_srd_damage_types_and_negative_amounts(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -19485,6 +19618,33 @@ def _damage_action(amount: int, *, damage_type: str = "force") -> ActionDefiniti
         ],
         audit_label="Test Damage",
     )
+
+
+def _prepare_relentless_rage_barbarian_state(state, *, raging: bool = True) -> None:
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    combatant = state.encounter.combatants["pc1"]
+    character.class_levels = {"barbarian": 11}
+    character.actions.append("srd.relentless_rage")
+    character.saving_throw_proficiencies = ["str", "con"]
+    character.hp_current = 5
+    character.hp_max = 40
+    character.resources["srd.resource.relentless_rage_uses_since_rest"] = 0
+    combatant.hp_current = 5
+    combatant.hp_max = 40
+    if raging:
+        combatant.status_effects.append(
+            {
+                "effect_id": "test-rage",
+                "source_ref": "test",
+                "source_action_id": "srd.rage",
+                "target_id": "pc1",
+                "applied_by": "pc1",
+                "condition": "raging",
+                "duration": {"until": "end_of_next_turn"},
+                "passive_modifiers": {},
+            }
+        )
 
 
 def _attack_action(attack_bonus: int = 99) -> ActionDefinition:

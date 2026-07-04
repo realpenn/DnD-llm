@@ -476,6 +476,39 @@
             "audit_label": "Brutal Strike"
         },
         {
+            "id": "srd.relentless_rage",
+            "name": "Relentless Rage",
+            "localization": {
+                "en": "Relentless Rage",
+                "zh": "不屈狂暴",
+                "aliases": ["Barbarian Relentless Rage", "野蛮人不屈狂暴"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 11: Relentless Rage",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 11},
+            "properties": {
+                "trigger": "drop_to_0_hp_while_rage_active_and_not_die_outright",
+                "saving_throw": {"ability": "con", "initial_dc": 10},
+                "dc_increase_after_each_use": 5,
+                "dc_resets_on": ["short_rest", "long_rest"],
+                "success_hp_formula": "2 * barbarian_level",
+                "no_use_limit": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Barbarian 11+ whose Rage is active can make a Constitution saving throw when dropping to 0 Hit Points and not dying outright; on a success, Hit Points become twice Barbarian level. The DC starts at 10, increases by 5 after each use, and resets after a Short or Long Rest."
+                }
+            ],
+            "audit_label": "Relentless Rage"
+        },
+        {
             "id": "srd.improved_brutal_strike",
             "name": "Improved Brutal Strike",
             "localization": {

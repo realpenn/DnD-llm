@@ -94,6 +94,7 @@ GIFT_OF_DEPTHS_RESOURCE = "srd.resource.gift_of_the_depths"
 DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
 INDOMITABLE_RESOURCE = "srd.resource.indomitable"
 STROKE_OF_LUCK_RESOURCE = "srd.resource.stroke_of_luck"
+RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE = "srd.resource.relentless_rage_uses_since_rest"
 HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
@@ -109,6 +110,7 @@ SLIPPERY_MIND_SAVING_THROWS = frozenset({"wis", "cha"})
 ELUSIVE_ACTION_ID = "srd.elusive"
 STROKE_OF_LUCK_ACTION_ID = "srd.stroke_of_luck"
 STROKE_OF_LUCK_D20 = 20
+RELENTLESS_RAGE_ACTION_ID = "srd.relentless_rage"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -195,6 +197,22 @@ def has_barbarian_berserker_feature(character: Character, *, level: int) -> bool
     return has_barbarian_feature(character, level=level) and (
         character.subclasses.get("barbarian") == "berserker"
     )
+
+
+def has_relentless_rage(character: Character) -> bool:
+    return has_barbarian_feature(character, level=11)
+
+
+def relentless_rage_dc(character: Character) -> int:
+    uses_since_rest = max(
+        0,
+        int(character.resources.get(RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE, 0)),
+    )
+    return 10 + 5 * uses_since_rest
+
+
+def relentless_rage_success_hp(character: Character) -> int:
+    return 2 * int(character.class_levels.get("barbarian", 0))
 
 
 def barbarian_rage_damage_bonus(character: Character) -> int:

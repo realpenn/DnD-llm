@@ -1597,6 +1597,17 @@ def test_natural_language_character_edit_assigns_barbarian_brutal_strike() -> No
     assert "srd.brutal_strike" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_barbarian_relentless_rage() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 barbarian11")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"barbarian": 11}
+    assert "srd.relentless_rage" in result.character.actions
+
+
 def test_natural_language_character_edit_assigns_barbarian_improved_brutal_strike() -> None:
     character = default_fighter("pc1", "Penn")
 

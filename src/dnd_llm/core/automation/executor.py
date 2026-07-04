@@ -16,6 +16,8 @@ from ..rules.class_features import (
     FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
+    RELENTLESS_RAGE_ACTION_ID,
+    RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE,
     RELIABLE_TALENT_ACTION_ID,
     RELIABLE_TALENT_D20_FLOOR,
     STROKE_OF_LUCK_ACTION_ID,
@@ -53,6 +55,7 @@ from ..rules.class_features import (
     has_precise_hunter,
     has_ranger_hunter_feature,
     has_relentless_hunter,
+    has_relentless_rage,
     has_rogue_thief_feature,
     has_superior_hunters_defense,
     has_superior_hunters_prey,
@@ -73,6 +76,8 @@ from ..rules.class_features import (
     monk_unarmored_defense_armor_class,
     preserve_life_healing_pool,
     ranger_hunters_mark_damage_dice,
+    relentless_rage_dc,
+    relentless_rage_success_hp,
     reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
     rogue_elusive_applies,
@@ -1357,6 +1362,7 @@ class AutomationExecutor:
             )
             target_before = self._entity(target_id)
             hp_before = int(getattr(target_before, "hp_current"))
+            temp_hp_before = int(getattr(target_before, "temp_hp", 0))
             damage_immunity_sources = self._passive_damage_immunity_sources(
                 target_before,
                 damage_type,
@@ -1457,6 +1463,19 @@ class AutomationExecutor:
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
+            relentless_rage = self._relentless_rage_after_drop_to_zero(
+                target_id,
+                hp_before=hp_before,
+                hp_max=int(getattr(target_before, "hp_max")),
+                temp_hp_before=temp_hp_before,
+                total_damage_taken=total_damage_taken,
+                total_applied=total_applied,
+                path=path,
+            )
+            if relentless_rage is not None:
+                relentless_change, relentless_rolls = relentless_rage
+                ctx.result.dice_rolls.extend(roll.to_dict() for roll in relentless_rolls)
+                ctx.result.state_changes.append(relentless_change)
             self._apply_superior_hunters_prey_if_requested(
                 ctx,
                 target_id,
@@ -1496,6 +1515,7 @@ class AutomationExecutor:
                         damage_source_actor_id=ctx.actor_id,
                     )
                 )
+            hp_after = int(getattr(self._entity(target_id), "hp_current"))
             if hp_before > 0 and hp_after == 0 and total_applied > 0:
                 ctx.result.state_changes.extend(
                     self._dark_ones_blessing_changes(
@@ -11633,6 +11653,145 @@ class AutomationExecutor:
             },
             roll,
         )
+
+    def _relentless_rage_after_drop_to_zero(
+        self,
+        target_id: str,
+        *,
+        hp_before: int,
+        hp_max: int,
+        temp_hp_before: int,
+        total_damage_taken: int,
+        total_applied: int,
+        path: str,
+    ) -> tuple[dict[str, Any], list[RollResult]] | None:
+        target = self._entity(target_id)
+        owner = self._resource_owner(target_id)
+        if hp_before <= 0 or int(getattr(target, "hp_current")) != 0 or total_applied <= 0:
+            return None
+        if bool(getattr(target, "dead", False)):
+            return None
+        if not isinstance(owner, Character) or not has_relentless_rage(owner):
+            return None
+        if not has_condition(self._status_effects_for(target), "raging"):
+            return None
+        hp_damage_after_temp = max(0, int(total_damage_taken) - max(0, int(temp_hp_before)))
+        outright_death_threshold = int(hp_before) + int(hp_max)
+        if hp_damage_after_temp >= outright_death_threshold:
+            return None
+
+        dc = relentless_rage_dc(owner)
+        uses_before = max(
+            0,
+            int(owner.resources.get(RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE, 0)),
+        )
+        base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(target, "con")
+        target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
+        bonus = base_bonus - exhaustion_penalty
+        status_advantage, status_sources = self._saving_throw_status_advantage(
+            target,
+            "con",
+            contexts=set(),
+        )
+        roll = self.roll_service.roll(d20_expression(bonus), advantage=status_advantage)
+        adjustment, adjustment_rolls, adjustment_sources = self._passive_roll_adjustment(
+            target,
+            bonus_key="saving_throw_bonus_dice",
+            penalty_key="saving_throw_penalty_dice",
+        )
+        total = roll.total + adjustment
+        success = total >= dc
+        owner.resources[RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE] = uses_before + 1
+        hp_after = int(getattr(target, "hp_current"))
+        if success:
+            hp_after = relentless_rage_success_hp(owner)
+            self._set_hp_and_clear_death_state(target_id, hp_after)
+        else:
+            self._sync_hp_state_for_target(target)
+        return (
+            {
+                "type": "relentless_rage",
+                "target_id": target_id,
+                "character_id": owner.id,
+                "source_action_id": RELENTLESS_RAGE_ACTION_ID,
+                "trigger": "drop_to_0_hp_while_raging",
+                "dc": dc,
+                "roll_id": roll.roll_id,
+                "bonus": bonus,
+                "base_bonus": base_bonus,
+                "proficient": proficient,
+                "proficiency_sources": proficiency_sources,
+                "exhaustion_level": target_exhaustion_level,
+                "d20_penalty": exhaustion_penalty,
+                "base_total": roll.total,
+                "passive_adjustment": adjustment,
+                "passive_sources": adjustment_sources,
+                "status_advantage": status_advantage,
+                "status_sources": status_sources,
+                "total": total,
+                "success": success,
+                "hp_before": hp_before,
+                "hp_after": hp_after,
+                "success_hp": relentless_rage_success_hp(owner),
+                "uses_since_rest_before": uses_before,
+                "uses_since_rest_after": uses_before + 1,
+                "next_dc": dc + 5,
+                "path": path,
+            },
+            [roll, *adjustment_rolls],
+        )
+
+    def _set_hp_and_clear_death_state(self, target_id: str, hp_current: int) -> None:
+        target = self._entity(target_id)
+        if not isinstance(target, (Character, Combatant)):
+            return
+        self._set_death_recovery_state(target, hp_current)
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            character = self.state.characters[target.entity_id]
+            self._set_death_recovery_state(character, hp_current)
+            self._sync_character_to_combatants(character)
+        elif isinstance(target, Character):
+            self._sync_character_to_combatants(target)
+
+    def _sync_hp_state_for_target(self, target: Character | Monster | Combatant) -> None:
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            self._sync_combatant_to_character(target, self.state.characters[target.entity_id])
+        elif isinstance(target, Character):
+            self._sync_character_to_combatants(target)
+
+    def _sync_character_to_combatants(self, character: Character) -> None:
+        if self.state.encounter is None:
+            return
+        for combatant in self.state.encounter.combatants.values():
+            if combatant.entity_id != character.id:
+                continue
+            combatant.hp_current = character.hp_current
+            combatant.hp_max = character.hp_max
+            combatant.temp_hp = character.temp_hp
+            combatant.temp_hp_source_effect_id = character.temp_hp_source_effect_id
+            combatant.death_save_successes = character.death_save_successes
+            combatant.death_save_failures = character.death_save_failures
+            combatant.stable = character.stable
+            combatant.dead = character.dead
+
+    @staticmethod
+    def _sync_combatant_to_character(combatant: Combatant, character: Character) -> None:
+        character.hp_current = combatant.hp_current
+        character.hp_max = combatant.hp_max
+        character.temp_hp = combatant.temp_hp
+        character.temp_hp_source_effect_id = combatant.temp_hp_source_effect_id
+        character.death_save_successes = combatant.death_save_successes
+        character.death_save_failures = combatant.death_save_failures
+        character.stable = combatant.stable
+        character.dead = combatant.dead
+
+    @staticmethod
+    def _set_death_recovery_state(entity: Character | Combatant, hp_current: int) -> None:
+        entity.hp_current = int(hp_current)
+        entity.death_save_successes = 0
+        entity.death_save_failures = 0
+        entity.stable = False
+        entity.dead = False
 
     def _relentless_hunter_protects_concentration(self, actor_id: str) -> bool:
         owner = self._resource_owner(actor_id)

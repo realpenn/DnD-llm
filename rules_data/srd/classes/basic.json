@@ -145,7 +145,8 @@
                         "srd.extra_attack",
                         "srd.feral_instinct",
                         "srd.instinctive_pounce",
-                        "srd.brutal_strike"
+                        "srd.brutal_strike",
+                        "srd.relentless_rage"
                     ]
                 },
                 "12": {
@@ -160,7 +161,8 @@
                         "srd.extra_attack",
                         "srd.feral_instinct",
                         "srd.instinctive_pounce",
-                        "srd.brutal_strike"
+                        "srd.brutal_strike",
+                        "srd.relentless_rage"
                     ]
                 },
                 "13": {
@@ -176,6 +178,7 @@
                         "srd.feral_instinct",
                         "srd.instinctive_pounce",
                         "srd.brutal_strike",
+                        "srd.relentless_rage",
                         "srd.improved_brutal_strike"
                     ]
                 }

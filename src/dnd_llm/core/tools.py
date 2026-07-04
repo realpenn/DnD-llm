@@ -20,6 +20,8 @@ from .rules.class_features import (
     FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
+    RELENTLESS_RAGE_ACTION_ID,
+    RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE,
     RELIABLE_TALENT_ACTION_ID,
     RELIABLE_TALENT_D20_FLOOR,
     STROKE_OF_LUCK_ACTION_ID,
@@ -30,9 +32,12 @@ from .rules.class_features import (
     druid_magician_check_bonus,
     has_condition,
     has_fighter_feature,
+    has_relentless_rage,
     has_rogue_thief_feature,
     has_warlock_fiend_feature,
     monk_disciplined_survivor_applies,
+    relentless_rage_dc,
+    relentless_rage_success_hp,
     reliable_talent_d20_adjustment,
     remarkable_athlete_applies_to_check,
     rogue_stroke_of_luck_applies,
@@ -1019,6 +1024,14 @@ class EngineTools:
         if normalized_damage_type not in ALLOWED_DAMAGE_TYPES:
             raise ValueError(f"unknown damage type: {damage_type}")
         target = self.state.entity_for_actor(target_id)
+        hp_before = int(getattr(target, "hp_current"))
+        hp_max_before = int(getattr(target, "hp_max"))
+        temp_hp_before = int(getattr(target, "temp_hp", 0))
+        damage_taken_before_hp_cap = self._gm_damage_taken_before_hp_cap(
+            target,
+            amount,
+            normalized_damage_type,
+        )
         applied = apply_damage_rule(target, amount, normalized_damage_type)
         result = {
             "target_id": target_id,
@@ -1026,6 +1039,18 @@ class EngineTools:
             "damage_type": normalized_damage_type,
             "applied": applied,
         }
+        relentless_rage = self._relentless_rage_after_gm_damage(
+            target_id,
+            hp_before=hp_before,
+            hp_max=hp_max_before,
+            temp_hp_before=temp_hp_before,
+            damage_taken=damage_taken_before_hp_cap,
+            applied=applied,
+        )
+        dice_rolls = []
+        if relentless_rage is not None:
+            result["relentless_rage"] = relentless_rage["result"]
+            dice_rolls = relentless_rage["dice_rolls"]
         self.audit_log.append(
             self.state,
             idempotency_key=idempotency_key,
@@ -1037,9 +1062,144 @@ class EngineTools:
                 "source_ref": source_ref,
             },
             tool_result=result,
+            dice_rolls=dice_rolls,
         )
         require_game_state_invariants(self.state)
         return result
+
+    def _relentless_rage_after_gm_damage(
+        self,
+        target_id: str,
+        *,
+        hp_before: int,
+        hp_max: int,
+        temp_hp_before: int,
+        damage_taken: int,
+        applied: int,
+    ) -> dict[str, Any] | None:
+        target = self.state.entity_for_actor(target_id)
+        owner = self._proficiency_source(target_id)
+        if hp_before <= 0 or int(getattr(target, "hp_current")) != 0 or applied <= 0:
+            return None
+        if bool(getattr(target, "dead", False)):
+            return None
+        if not isinstance(owner, Character) or not has_relentless_rage(owner):
+            return None
+        if not has_condition(self._status_effects_for_actor(target_id), "raging"):
+            return None
+        hp_damage_after_temp = max(0, int(damage_taken) - max(0, int(temp_hp_before)))
+        if hp_damage_after_temp >= int(hp_before) + int(hp_max):
+            return None
+
+        dc = relentless_rage_dc(owner)
+        uses_before = max(
+            0,
+            int(owner.resources.get(RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE, 0)),
+        )
+        actor = self._ability_source(target_id)
+        proficiency_source = self._proficiency_source(target_id)
+        proficient, proficiency_sources = self._saving_throw_proficiency(
+            proficiency_source,
+            "con",
+        )
+        d20_penalty, d20_penalty_sources = self._exhaustion_penalty_for(target_id)
+        status_advantage, status_sources = self._saving_throw_status_advantage(
+            target_id,
+            "con",
+            contexts=set(),
+        )
+        passive_bonus, passive_sources = self._saving_throw_passive_bonus(target_id, "con")
+        bonus = (
+            actor_ability_modifier(
+                actor,
+                "con",
+                status_effects=self._status_effects_for_actor(target_id),
+            )
+            + (int(getattr(proficiency_source, "proficiency_bonus", 2)) if proficient else 0)
+            + passive_bonus
+            - d20_penalty
+        )
+        roll = self.roll_service.roll(d20_expression(bonus), advantage=status_advantage)
+        success = roll.total >= dc
+        owner.resources[RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE] = uses_before + 1
+        hp_after = int(getattr(target, "hp_current"))
+        if success:
+            hp_after = relentless_rage_success_hp(owner)
+            self._set_hp_and_clear_death_state(target_id, hp_after)
+        else:
+            self._sync_hp_state_for_target(target)
+        return {
+            "dice_rolls": [roll.to_dict()],
+            "result": {
+                "target_id": target_id,
+                "character_id": owner.id,
+                "source_action_id": RELENTLESS_RAGE_ACTION_ID,
+                "trigger": "gm.apply_damage",
+                "dc": dc,
+                "roll": roll.to_dict(),
+                "bonus": bonus,
+                "proficient": proficient,
+                "proficiency_sources": proficiency_sources,
+                "d20_penalty": d20_penalty,
+                "d20_penalty_sources": d20_penalty_sources,
+                "passive_bonus": passive_bonus,
+                "passive_sources": passive_sources,
+                "status_advantage": status_advantage,
+                "status_sources": status_sources,
+                "total": roll.total,
+                "success": success,
+                "hp_before": hp_before,
+                "hp_after": hp_after,
+                "success_hp": relentless_rage_success_hp(owner),
+                "uses_since_rest_before": uses_before,
+                "uses_since_rest_after": uses_before + 1,
+                "next_dc": dc + 5,
+            },
+        }
+
+    @staticmethod
+    def _gm_damage_taken_before_hp_cap(
+        target: Character | Monster | Combatant,
+        amount: int,
+        damage_type: str,
+    ) -> int:
+        adjusted = int(amount)
+        if damage_type in getattr(target, "immunities", []) or EngineTools._has_damage_immunity(
+            target,
+            damage_type,
+        ):
+            return 0
+        if damage_type in getattr(target, "resistances", []) or EngineTools._has_basic_condition(
+            target,
+            "petrified",
+        ):
+            adjusted //= 2
+        elif damage_type in getattr(target, "vulnerabilities", []):
+            adjusted *= 2
+        return max(0, adjusted)
+
+    @staticmethod
+    def _has_basic_condition(target: Character | Monster | Combatant, condition: str) -> bool:
+        return any(
+            effect.get("condition") == condition
+            for effect in getattr(target, "status_effects", [])
+            if isinstance(effect, dict)
+        )
+
+    @staticmethod
+    def _has_damage_immunity(target: Character | Monster | Combatant, damage_type: str) -> bool:
+        for effect in getattr(target, "status_effects", []):
+            if not isinstance(effect, dict):
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            immunities = modifiers.get("damage_immunities", [])
+            if isinstance(immunities, str):
+                immunities = [immunities]
+            if isinstance(immunities, list) and damage_type in {str(item) for item in immunities}:
+                return True
+        return False
 
     def apply_healing(self, target_id: str, amount: int, source_ref: str) -> dict[str, Any]:
         idempotency_key = f"gm:healing:{self.state.event_counter}"
@@ -1424,6 +1584,32 @@ class EngineTools:
         character.death_save_failures = combatant.death_save_failures
         character.stable = combatant.stable
         character.dead = combatant.dead
+
+    def _set_hp_and_clear_death_state(self, target_id: str, hp_current: int) -> None:
+        target = self.state.entity_for_actor(target_id)
+        if not isinstance(target, (Character, Combatant)):
+            return
+        self._set_death_recovery_state(target, hp_current)
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            character = self.state.characters[target.entity_id]
+            self._set_death_recovery_state(character, hp_current)
+            self._sync_character_to_combatants(character)
+        elif isinstance(target, Character):
+            self._sync_character_to_combatants(target)
+
+    def _sync_hp_state_for_target(self, target: Character | Monster | Combatant) -> None:
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            self._sync_combatant_to_character(target, self.state.characters[target.entity_id])
+        elif isinstance(target, Character):
+            self._sync_character_to_combatants(target)
+
+    @staticmethod
+    def _set_death_recovery_state(entity: Character | Combatant, hp_current: int) -> None:
+        entity.hp_current = int(hp_current)
+        entity.death_save_successes = 0
+        entity.death_save_failures = 0
+        entity.stable = False
+        entity.dead = False
 
     def _danger_sense_advantage(
         self,

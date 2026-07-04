@@ -102,6 +102,28 @@ def test_rest_restores_barbarian_rage_by_srd_rule(make_state) -> None:
     assert character.resources["srd.resource.rage"] == 3
 
 
+def test_rest_resets_barbarian_relentless_rage_dc_counter(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 11}
+    character.resources["srd.resource.relentless_rage_uses_since_rest"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    short = tools.short_rest("pc1", {}, idempotency_key="relentless-rage-short-rest")
+
+    assert short["reset_resources"] == {"srd.resource.relentless_rage_uses_since_rest": 2}
+    assert character.resources["srd.resource.relentless_rage_uses_since_rest"] == 0
+
+    character.resources["srd.resource.relentless_rage_uses_since_rest"] = 3
+    long = tools.long_rest(["pc1"], idempotency_key="relentless-rage-long-rest")
+
+    assert long["results"]["pc1"]["reset_resources"] == {
+        "srd.resource.relentless_rage_uses_since_rest": 3
+    }
+    assert character.resources["srd.resource.relentless_rage_uses_since_rest"] == 0
+
+
 def test_short_rest_restores_monk_focus_points(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
