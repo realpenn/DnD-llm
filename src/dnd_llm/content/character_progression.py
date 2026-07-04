@@ -258,6 +258,7 @@ CLASS_LEVEL_ACTIONS = {
         ],
         6: ["srd.aura_of_protection"],
         10: ["srd.aura_of_courage"],
+        14: ["srd.restoring_touch"],
     },
     "ranger": {
         1: ["srd.favored_enemy_hunters_mark"],

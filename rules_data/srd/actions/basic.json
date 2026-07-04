@@ -3388,6 +3388,59 @@
             "audit_label": "Lay On Hands: Remove Poisoned"
         },
         {
+            "id": "srd.restoring_touch",
+            "name": "Restoring Touch",
+            "localization": {
+                "en": "Restoring Touch",
+                "zh": "恢复之触",
+                "aliases": ["Paladin Restoring Touch", "圣武士恢复之触", "圣疗恢复之触"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 14: Restoring Touch",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "bonus_action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 14},
+            "properties": {
+                "restoring_touch": true,
+                "uses_lay_on_hands_pool": true,
+                "allowed_conditions": [
+                    "blinded",
+                    "charmed",
+                    "deafened",
+                    "frightened",
+                    "paralyzed",
+                    "stunned"
+                ],
+                "point_cost_per_condition": 5
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {"resource_params": {"srd.resource.lay_on_hands": "lay_on_hands_points"}},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "restoring_touch",
+                    "points_param": "lay_on_hands_points",
+                    "conditions_param": "restoring_touch_conditions",
+                    "point_cost_per_condition": 5,
+                    "allowed_conditions": [
+                        "blinded",
+                        "charmed",
+                        "deafened",
+                        "frightened",
+                        "paralyzed",
+                        "stunned"
+                    ]
+                },
+                {
+                    "type": "text_result",
+                    "text": "The paladin expends Lay On Hands points to remove selected conditions; points spent on conditions do not restore Hit Points."
+                }
+            ],
+            "audit_label": "Restoring Touch"
+        },
+        {
             "id": "srd.divine_sense",
             "name": "Divine Sense",
             "localization": {

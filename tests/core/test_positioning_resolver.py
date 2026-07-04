@@ -809,6 +809,78 @@ def test_resolver_checks_dynamic_resource_cost_params(make_state) -> None:
     assert missing.reason == "missing required parameter lay_on_hands_points"
 
 
+def test_resolver_checks_restoring_touch_conditions_and_points(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 14}
+    paladin.actions.append("srd.restoring_touch")
+    paladin.resources["srd.resource.lay_on_hands"] = 10
+    state.encounter.combatants["pc2"].status_effects.append(
+        {"effect_id": "blinded-test", "condition": "blinded"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 5, "restoring_touch_conditions": ["blinded"]},
+        )
+    )
+    too_few_points = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 4, "restoring_touch_conditions": ["blinded"]},
+        )
+    )
+    unsupported_condition = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 5, "restoring_touch_conditions": ["poisoned"]},
+        )
+    )
+    missing_condition_on_target = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 5, "restoring_touch_conditions": ["stunned"]},
+        )
+    )
+    pool_short = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 11, "restoring_touch_conditions": ["blinded"]},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert too_few_points.status == "rejected"
+    assert too_few_points.reason == "Restoring Touch requires 5 Lay On Hands points per condition"
+    assert unsupported_condition.status == "rejected"
+    assert unsupported_condition.reason.startswith("restoring_touch_conditions must contain only:")
+    assert missing_condition_on_target.status == "rejected"
+    assert (
+        missing_condition_on_target.reason == "Restoring Touch target lacks condition(s): stunned"
+    )
+    assert pool_short.status == "rejected"
+    assert pool_short.reason == "insufficient resource srd.resource.lay_on_hands"
+
+
 def test_resolver_enforces_exclude_self_target_policy(make_state) -> None:
     state = make_state()
     state.characters["pc1"].class_levels = {"bard": 1}

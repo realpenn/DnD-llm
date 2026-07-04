@@ -89,6 +89,9 @@ class CompendiumSimulator:
                     params["lands_aid_healing_target_id"] = "pc_ally"
                 if action.id == "srd.sacred_weapon":
                     params["sacred_weapon_action_id"] = "srd.shortsword_attack"
+                if action.id == "srd.restoring_touch":
+                    params["lay_on_hands_points"] = 5
+                    params["restoring_touch_conditions"] = ["blinded"]
                 if action.properties.get("natures_sanctuary") is True:
                     params["natures_sanctuary_position_node_id"] = "node_cover"
                 if action.properties.get("natures_sanctuary_move") is True:
@@ -104,7 +107,7 @@ class CompendiumSimulator:
                 if action.id == "srd.quivering_palm_release":
                     params["same_plane"] = True
                 for param_name in action.cost.resource_params.values():
-                    params[param_name] = 1
+                    params.setdefault(param_name, 1)
                 for node in action.automation:
                     if node.get("type") == "preserve_life_healing":
                         param_name = str(node.get("points_param", "preserve_life_points"))
@@ -152,6 +155,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
     enemy_creature_type = "humanoid"
     enemy_status_effects: list[dict[str, Any]] = []
     enemy_resistances: list[str] = []
+    ally_status_effects: list[dict[str, Any]] = []
     if isinstance(action, ActionDefinition):
         required_item = action.requirements.get("item")
         if isinstance(required_item, str) and required_item:
@@ -162,6 +166,12 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
             resources[resource] = max(1, amount)
         for resource in action.cost.resource_params:
             resources[resource] = max(1, resources.get(resource, 0))
+        if action.id == "srd.restoring_touch":
+            resources["srd.resource.lay_on_hands"] = max(
+                5,
+                resources.get("srd.resource.lay_on_hands", 0),
+            )
+            ally_status_effects = [{"effect_id": "simulation-blinded", "condition": "blinded"}]
         gold = max(gold, int(action.cost.gold))
         if action.cost.spell_slot_level is not None:
             spell_slots[str(action.cost.spell_slot_level)] = max(
@@ -269,6 +279,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
         hp_max=9,
         armor_class=14,
         hit_dice={"d8": 1},
+        status_effects=[dict(effect) for effect in ally_status_effects],
         actions=[],
         zone_id="zone_start",
     )
@@ -308,6 +319,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                 hp_max=9,
                 armor_class=14,
                 speed_ft=30,
+                status_effects=[dict(effect) for effect in ally_status_effects],
                 position_node_id="node_front",
             ),
             "npc_enemy": Combatant(

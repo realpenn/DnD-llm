@@ -2491,6 +2491,38 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.action("srd.lay_on_hands_remove_poisoned").cost.resources == {
         "srd.resource.lay_on_hands": 5
     }
+    restoring_touch = compendium.action("srd.restoring_touch")
+    assert restoring_touch.requirements == {"class": "paladin", "class_level_min": 14}
+    assert restoring_touch.cost.resource_params == {
+        "srd.resource.lay_on_hands": "lay_on_hands_points"
+    }
+    assert restoring_touch.properties == {
+        "restoring_touch": True,
+        "uses_lay_on_hands_pool": True,
+        "allowed_conditions": [
+            "blinded",
+            "charmed",
+            "deafened",
+            "frightened",
+            "paralyzed",
+            "stunned",
+        ],
+        "point_cost_per_condition": 5,
+    }
+    assert restoring_touch.automation[1] == {
+        "type": "restoring_touch",
+        "points_param": "lay_on_hands_points",
+        "conditions_param": "restoring_touch_conditions",
+        "point_cost_per_condition": 5,
+        "allowed_conditions": [
+            "blinded",
+            "charmed",
+            "deafened",
+            "frightened",
+            "paralyzed",
+            "stunned",
+        ],
+    }
     assert compendium.action("srd.divine_smite").cost.spell_slot_level == 1
     assert compendium.action("srd.paladins_smite_divine_smite").cost.resources == {
         "srd.resource.paladins_smite": 1
@@ -3980,6 +4012,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.aura_of_protection" in compendium.classes["paladin"].levels["6"]["actions"]
     assert compendium.classes["paladin"].levels["10"]["features"] == ["Aura of Courage"]
     assert "srd.aura_of_courage" in compendium.classes["paladin"].levels["10"]["actions"]
+    assert compendium.classes["paladin"].levels["14"]["features"] == ["Restoring Touch"]
+    assert "srd.restoring_touch" in compendium.classes["paladin"].levels["14"]["actions"]
     assert {
         "srd.cunning_action_dash",
         "srd.cunning_action_disengage",

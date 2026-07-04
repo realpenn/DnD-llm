@@ -114,6 +114,10 @@ MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
+RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
+    {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}
+)
+RESTORING_TOUCH_CONDITION_POINT_COST = 5
 DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 INDOMITABLE_ACTION_ID = "srd.indomitable"
 DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
@@ -440,6 +444,7 @@ class AutomationExecutor:
         self._validate_allowed_damage_type_param(action, params)
         self._validate_allowed_creature_types_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
+        self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
         self._validate_tactical_shift_preconditions(action, actor_id, params)
@@ -507,6 +512,8 @@ class AutomationExecutor:
             self._node_remove_condition(ctx, node, path)
         elif node_type == "greater_restoration":
             self._node_greater_restoration(ctx, node, path)
+        elif node_type == "restoring_touch":
+            self._node_restoring_touch(ctx, node, path)
         elif node_type == "passive_effect":
             self._node_passive_effect(ctx, node, path)
         elif node_type == "world_effect":
@@ -1682,6 +1689,50 @@ class AutomationExecutor:
             change = self._greater_restoration_change(target_id, choice, path)
             if change is not None:
                 ctx.result.state_changes.append(change)
+
+    def _node_restoring_touch(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        conditions, total_points, condition_cost, healing_points = self._restoring_touch_plan(
+            ctx.action,
+            ctx.actor_id,
+            ctx.targets,
+            ctx.params,
+            node,
+        )
+        for target_id in ctx.targets:
+            removed_conditions, removed_owners = self._remove_conditions_for_target(
+                target_id,
+                conditions,
+            )
+            ctx.result.state_changes.append(
+                {
+                    "type": "remove_condition",
+                    "target_id": target_id,
+                    "removed": removed_conditions,
+                    "removed_markers": {},
+                    "removed_owners": removed_owners,
+                    "path": path,
+                    "source_action_id": ctx.action.id,
+                    "restoring_touch_conditions": conditions,
+                    "restoring_touch_condition_cost": condition_cost,
+                    "lay_on_hands_points_spent": total_points,
+                    "healing_points": healing_points,
+                }
+            )
+            if healing_points <= 0:
+                continue
+            applied = self._apply_healing(target_id, healing_points)
+            ctx.result.state_changes.append(
+                {
+                    "type": "healing",
+                    "target_id": target_id,
+                    "amount": healing_points,
+                    "applied": applied,
+                    "path": path,
+                    "source_action_id": ctx.action.id,
+                    "restoring_touch_condition_cost": condition_cost,
+                    "lay_on_hands_points_spent": total_points,
+                }
+            )
 
     def _greater_restoration_change(
         self,
@@ -8018,6 +8069,111 @@ class AutomationExecutor:
                 raise AutomationError(
                     f"unsupported Greater Restoration choice {choice}; choose {expected}"
                 )
+
+    def _validate_restoring_touch_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        node = self._restoring_touch_node(action)
+        if node is None:
+            return
+        self._restoring_touch_plan(action, actor_id, targets, params, node)
+
+    def _restoring_touch_plan(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+        node: dict[str, Any],
+    ) -> tuple[list[str], int, int, int]:
+        points_param = str(node.get("points_param", "lay_on_hands_points"))
+        conditions_param = str(node.get("conditions_param", "restoring_touch_conditions"))
+        total_points = self._positive_param_int(params, points_param)
+        conditions = self._restoring_touch_conditions(node, params, conditions_param)
+        point_cost = int(node.get("point_cost_per_condition", RESTORING_TOUCH_CONDITION_POINT_COST))
+        condition_cost = point_cost * len(conditions)
+        if total_points < condition_cost:
+            raise AutomationError("Restoring Touch requires 5 Lay On Hands points per condition")
+        if len(targets) != 1:
+            raise AutomationError("Restoring Touch requires exactly one target")
+        target_id = targets[0]
+        try:
+            self._entity(target_id)
+        except KeyError as exc:
+            raise AutomationError(f"unknown target {target_id}") from exc
+        missing = [
+            condition
+            for condition in conditions
+            if not self._target_has_condition(target_id, condition)
+        ]
+        if missing:
+            raise AutomationError(
+                "Restoring Touch target lacks condition(s): " + ", ".join(missing)
+            )
+        params[points_param] = total_points
+        params[conditions_param] = conditions
+        return conditions, total_points, condition_cost, total_points - condition_cost
+
+    def _restoring_touch_conditions(
+        self,
+        node: dict[str, Any],
+        params: dict[str, Any],
+        param_name: str,
+    ) -> list[str]:
+        allowed_raw = node.get("allowed_conditions", sorted(RESTORING_TOUCH_ALLOWED_CONDITIONS))
+        allowed = {
+            str(condition).casefold().strip()
+            for condition in allowed_raw
+            if isinstance(condition, str)
+        } & RESTORING_TOUCH_ALLOWED_CONDITIONS
+        if not allowed:
+            raise AutomationError("Restoring Touch has no supported conditions")
+        raw = params.get(param_name)
+        if raw is None:
+            raise AutomationError(f"missing required parameter {param_name}")
+        if isinstance(raw, str):
+            raw_values: list[Any] = [
+                value.strip() for value in re.split(r"[,\s]+", raw) if value.strip()
+            ]
+        elif isinstance(raw, list):
+            raw_values = raw
+        else:
+            raise AutomationError(f"parameter {param_name} must be a list of conditions")
+        if not raw_values:
+            raise AutomationError(f"parameter {param_name} must include at least one condition")
+        conditions: list[str] = []
+        for value in raw_values:
+            if isinstance(value, (bool, dict, list)):
+                raise AutomationError(f"parameter {param_name} entries must be conditions")
+            condition = str(value).casefold().strip()
+            if condition not in allowed:
+                expected = ", ".join(sorted(allowed))
+                raise AutomationError(f"{param_name} must contain only: {expected}")
+            if condition in conditions:
+                raise AutomationError("Restoring Touch conditions must not repeat")
+            conditions.append(condition)
+        return conditions
+
+    def _target_has_condition(self, target_id: str, condition: str) -> bool:
+        return any(
+            effect.get("condition") == condition
+            for _, _, effects in self._target_effect_lists(target_id)
+            for effect in effects
+        )
+
+    def _restoring_touch_node(self, action: ActionDefinition) -> dict[str, Any] | None:
+        return next(
+            (
+                node
+                for node in self._automation_nodes(action.automation)
+                if node.get("type") == "restoring_touch"
+            ),
+            None,
+        )
 
     def _validate_heightened_focus_preconditions(
         self,

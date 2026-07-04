@@ -405,6 +405,11 @@ class RuleDataValidator:
             for marker in effect_markers:
                 if marker not in ALLOWED_EFFECT_MARKERS:
                     report.errors.append(f"{owner_id}: invalid effect_marker {marker}")
+        if node_type == "restoring_touch":
+            conditions = node.get("allowed_conditions", [])
+            for condition in conditions:
+                if condition not in ALLOWED_CONDITIONS:
+                    report.errors.append(f"{owner_id}: invalid condition {condition}")
         if node_type == "passive_effect":
             condition = node.get("condition")
             if condition is not None and condition not in (

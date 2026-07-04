@@ -4670,6 +4670,142 @@ def test_lay_on_hands_removes_poisoned_for_five_pool_points(make_state) -> None:
     assert any(change["type"] == "remove_condition" for change in result["state_changes"])
 
 
+def test_restoring_touch_removes_selected_conditions_and_heals_remaining_points(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 14}
+    paladin.actions.append("srd.restoring_touch")
+    paladin.resources["srd.resource.lay_on_hands"] = 15
+    state.characters["pc2"].status_effects.append(
+        {"effect_id": "blinded-test", "condition": "blinded"}
+    )
+    state.encounter.combatants["pc2"].status_effects.append(
+        {"effect_id": "stunned-test", "condition": "stunned"}
+    )
+    state.encounter.combatants["pc2"].hp_current = 4
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.restoring_touch",
+        ["pc2"],
+        {"lay_on_hands_points": 12, "restoring_touch_conditions": ["blinded", "stunned"]},
+        idempotency_key="restoring-touch",
+    )
+
+    assert result["success"] is True
+    assert paladin.resources["srd.resource.lay_on_hands"] == 3
+    assert state.characters["pc2"].status_effects == []
+    assert state.encounter.combatants["pc2"].status_effects == []
+    assert state.encounter.combatants["pc2"].hp_current == 6
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    remove_change = next(
+        change for change in result["state_changes"] if change["type"] == "remove_condition"
+    )
+    assert remove_change["removed"] == {"blinded": 1, "stunned": 1}
+    assert remove_change["restoring_touch_condition_cost"] == 10
+    assert remove_change["healing_points"] == 2
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == 2
+    assert healing_change["restoring_touch_condition_cost"] == 10
+
+
+def test_restoring_touch_can_remove_condition_without_restoring_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 14}
+    paladin.actions.append("srd.restoring_touch")
+    paladin.resources["srd.resource.lay_on_hands"] = 5
+    state.encounter.combatants["pc2"].status_effects.append(
+        {"effect_id": "paralyzed-test", "condition": "paralyzed"}
+    )
+    state.encounter.combatants["pc2"].hp_current = 4
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.restoring_touch",
+        ["pc2"],
+        {"lay_on_hands_points": 5, "restoring_touch_conditions": ["paralyzed"]},
+        idempotency_key="restoring-touch-no-healing",
+    )
+
+    assert result["success"] is True
+    assert paladin.resources["srd.resource.lay_on_hands"] == 0
+    assert state.encounter.combatants["pc2"].status_effects == []
+    assert state.encounter.combatants["pc2"].hp_current == 4
+    assert not any(change["type"] == "healing" for change in result["state_changes"])
+
+
+def test_restoring_touch_rejects_insufficient_points_before_cost_or_budget(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 14}
+    paladin.actions.append("srd.restoring_touch")
+    paladin.resources["srd.resource.lay_on_hands"] = 15
+    state.encounter.combatants["pc2"].status_effects.extend(
+        [
+            {"effect_id": "blinded-test", "condition": "blinded"},
+            {"effect_id": "stunned-test", "condition": "stunned"},
+        ]
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="5 Lay On Hands points per condition"):
+        tools.perform_action(
+            "pc1",
+            "srd.restoring_touch",
+            ["pc2"],
+            {"lay_on_hands_points": 9, "restoring_touch_conditions": ["blinded", "stunned"]},
+            idempotency_key="restoring-touch-too-few-points",
+        )
+
+    assert paladin.resources["srd.resource.lay_on_hands"] == 15
+    budget = state.encounter.action_budgets.get("pc1")
+    assert budget is None or budget["bonus_action"] == 1
+
+
+def test_restoring_touch_rejects_conditions_outside_srd_list_before_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 14}
+    paladin.actions.append("srd.restoring_touch")
+    paladin.resources["srd.resource.lay_on_hands"] = 5
+    state.encounter.combatants["pc2"].status_effects.append(
+        {"effect_id": "poisoned-test", "condition": "poisoned"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="restoring_touch_conditions must contain only"):
+        tools.perform_action(
+            "pc1",
+            "srd.restoring_touch",
+            ["pc2"],
+            {"lay_on_hands_points": 5, "restoring_touch_conditions": ["poisoned"]},
+            idempotency_key="restoring-touch-poisoned",
+        )
+
+    assert paladin.resources["srd.resource.lay_on_hands"] == 5
+    budget = state.encounter.action_budgets.get("pc1")
+    assert budget is None or budget["bonus_action"] == 1
+
+
 def test_paladins_smite_casts_divine_smite_without_spell_slot_once_per_long_rest(
     make_state,
 ) -> None:

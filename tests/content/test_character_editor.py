@@ -1664,6 +1664,18 @@ def test_natural_language_character_edit_assigns_paladin_aura_of_courage() -> No
     assert aura_of_courage_applies(result.character) is True
 
 
+def test_natural_language_character_edit_assigns_paladin_restoring_touch() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 圣武士14")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"paladin": 14}
+    assert "srd.restoring_touch" in result.character.actions
+    assert result.character.resources["srd.resource.lay_on_hands"] == 70
+
+
 def test_natural_language_character_edit_removes_faithful_steed_when_level_drops() -> None:
     character = default_fighter("pc1", "Penn")
     paladin_result = apply_natural_language_character_edit(character, "职业 圣武士5")

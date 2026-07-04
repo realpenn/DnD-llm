@@ -57,6 +57,10 @@ RESOLVER_GREATER_RESTORATION_CHOICES = {
     "ability_score_reduction",
     "hp_max_reduction",
 }
+RESOLVER_RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
+    {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}
+)
+RESOLVER_RESTORING_TOUCH_CONDITION_POINT_COST = 5
 RESOLVER_PACT_OF_BLADE_WEAPON_ACTION_ID = "srd.pact_of_the_blade_weapon"
 RESOLVER_PACT_OF_CHAIN_FIND_FAMILIAR_ACTION_ID = "srd.pact_of_the_chain_find_familiar"
 RESOLVER_THIRSTING_BLADE_ACTION_ID = "srd.thirsting_blade"
@@ -211,6 +215,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=greater_restoration_error,
+                action_id=action.id,
+            )
+        restoring_touch_error = self._restoring_touch_error(draft, action)
+        if restoring_touch_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=restoring_touch_error,
                 action_id=action.id,
             )
         oil_vial_check = self._prepare_size_based_oil_vial_cost(draft, action)
@@ -482,6 +493,107 @@ class ActionResolver:
                 expected = ", ".join(sorted(allowed_choices & RESOLVER_GREATER_RESTORATION_CHOICES))
                 return f"unsupported Greater Restoration choice {choice}; choose {expected}"
         return None
+
+    def _restoring_touch_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        node = self._restoring_touch_node(action)
+        if node is None:
+            return None
+        points_param = str(node.get("points_param", "lay_on_hands_points"))
+        conditions_param = str(node.get("conditions_param", "restoring_touch_conditions"))
+        try:
+            total_points = self._positive_param_int(draft.params, points_param)
+            conditions = self._restoring_touch_conditions(
+                node,
+                draft.params,
+                conditions_param,
+            )
+        except ValueError as exc:
+            return str(exc)
+        point_cost = int(
+            node.get(
+                "point_cost_per_condition",
+                RESOLVER_RESTORING_TOUCH_CONDITION_POINT_COST,
+            )
+        )
+        condition_cost = point_cost * len(conditions)
+        if total_points < condition_cost:
+            return "Restoring Touch requires 5 Lay On Hands points per condition"
+        if len(draft.target_ids) != 1:
+            return "Restoring Touch requires exactly one target"
+        target_id = draft.target_ids[0]
+        try:
+            target = self.state.entity_for_actor(target_id)
+        except KeyError:
+            return f"unknown target {target_id}"
+        missing = [
+            condition
+            for condition in conditions
+            if not any(
+                effect.get("condition") == condition for effect in self._status_effects_for(target)
+            )
+        ]
+        if missing:
+            return "Restoring Touch target lacks condition(s): " + ", ".join(missing)
+        draft.params[points_param] = total_points
+        draft.params[conditions_param] = conditions
+        return None
+
+    @staticmethod
+    def _restoring_touch_conditions(
+        node: dict[str, Any],
+        params: dict[str, Any],
+        param_name: str,
+    ) -> list[str]:
+        allowed_raw = node.get(
+            "allowed_conditions",
+            sorted(RESOLVER_RESTORING_TOUCH_ALLOWED_CONDITIONS),
+        )
+        allowed = {
+            str(condition).casefold().strip()
+            for condition in allowed_raw
+            if isinstance(condition, str)
+        } & RESOLVER_RESTORING_TOUCH_ALLOWED_CONDITIONS
+        if not allowed:
+            raise ValueError("Restoring Touch has no supported conditions")
+        raw = params.get(param_name)
+        if raw is None:
+            raise ValueError(f"missing required parameter {param_name}")
+        if isinstance(raw, str):
+            raw_values: list[Any] = [
+                value.strip() for value in re.split(r"[,\s]+", raw) if value.strip()
+            ]
+        elif isinstance(raw, list):
+            raw_values = raw
+        else:
+            raise ValueError(f"parameter {param_name} must be a list of conditions")
+        if not raw_values:
+            raise ValueError(f"parameter {param_name} must include at least one condition")
+        conditions: list[str] = []
+        for value in raw_values:
+            if isinstance(value, (bool, dict, list)):
+                raise ValueError(f"parameter {param_name} entries must be conditions")
+            condition = str(value).casefold().strip()
+            if condition not in allowed:
+                expected = ", ".join(sorted(allowed))
+                raise ValueError(f"{param_name} must contain only: {expected}")
+            if condition in conditions:
+                raise ValueError("Restoring Touch conditions must not repeat")
+            conditions.append(condition)
+        return conditions
+
+    def _restoring_touch_node(self, action: ActionDefinition) -> dict[str, Any] | None:
+        return next(
+            (
+                node
+                for node in self._automation_nodes(action.automation)
+                if node.get("type") == "restoring_touch"
+            ),
+            None,
+        )
 
     def _prepare_size_based_oil_vial_cost(
         self,

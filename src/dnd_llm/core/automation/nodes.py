@@ -15,6 +15,7 @@ NODE_TYPES = {
     "hunter_lore",
     "remove_condition",
     "greater_restoration",
+    "restoring_touch",
     "passive_effect",
     "world_effect",
     "natures_sanctuary",
@@ -45,6 +46,7 @@ STATE_CHANGING_NODE_TYPES = {
     "condition",
     "remove_condition",
     "greater_restoration",
+    "restoring_touch",
     "passive_effect",
     "world_effect",
     "natures_sanctuary",
@@ -292,6 +294,21 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         choice_param = node.get("choice_param", "greater_restoration_choice")
         if not isinstance(choice_param, str) or not choice_param:
             errors.append(f"{path}: greater_restoration choice_param must be a string")
+    if node_type == "restoring_touch":
+        conditions_param = node.get("conditions_param", "restoring_touch_conditions")
+        points_param = node.get("points_param", "lay_on_hands_points")
+        point_cost = node.get("point_cost_per_condition", 5)
+        allowed_conditions = node.get("allowed_conditions")
+        if not isinstance(conditions_param, str) or not conditions_param:
+            errors.append(f"{path}: restoring_touch conditions_param must be a string")
+        if not isinstance(points_param, str) or not points_param:
+            errors.append(f"{path}: restoring_touch points_param must be a string")
+        if not isinstance(point_cost, int) or isinstance(point_cost, bool) or point_cost < 1:
+            errors.append(f"{path}: restoring_touch point_cost_per_condition must be positive")
+        if not isinstance(allowed_conditions, list) or not allowed_conditions:
+            errors.append(f"{path}: restoring_touch requires allowed_conditions")
+        elif not all(isinstance(condition, str) and condition for condition in allowed_conditions):
+            errors.append(f"{path}: restoring_touch allowed_conditions must be strings")
     if node_type == "preserve_life_healing":
         points_param = node.get("points_param", "preserve_life_points")
         if not isinstance(points_param, str) or not points_param:

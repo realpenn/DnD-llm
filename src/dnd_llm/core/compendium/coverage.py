@@ -168,6 +168,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.rage",
     "srd.preserve_life",
     "srd.primal_knowledge",
+    "srd.restoring_touch",
     "srd.reckless_attack",
     "srd.reliable_talent",
     "srd.remarkable_athlete",
