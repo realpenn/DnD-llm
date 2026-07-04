@@ -114,6 +114,45 @@
       "audit_label": "Wear Cloak of Protection"
     },
     {
+      "id": "srd.wear_eyes_of_the_eagle",
+      "name": "Wear Eyes of the Eagle",
+      "localization": {
+        "en": "Wear Eyes of the Eagle",
+        "zh": "佩戴鹰眼镜片",
+        "aliases": ["启用鹰眼镜片"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Eyes of the Eagle",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.eyes_of_the_eagle" },
+      "properties": {
+        "eyes_of_the_eagle": true,
+        "self_only": true,
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_check_advantage_skills": [
+              { "ability": "wis", "skill": "perception", "requires_context": "sight" }
+            ],
+            "clear_visibility_extremely_distant_detail_min_size_ft": 2
+          },
+          "duration": { "until": "while_wearing_eyes_of_the_eagle" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing these lenses, the target has Advantage on Wisdom (Perception) checks that rely on sight and can make out details of extremely distant creatures and objects as small as 2 feet across in clear visibility." }
+      ],
+      "audit_label": "Wear Eyes of the Eagle"
+    },
+    {
       "id": "srd.wear_gauntlets_of_ogre_power",
       "name": "Wear Gauntlets of Ogre Power",
       "localization": {

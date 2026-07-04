@@ -9189,6 +9189,102 @@ def test_cloak_of_protection_adds_ac_and_saving_throw_bonus(make_state) -> None:
     )
 
 
+def test_eyes_of_the_eagle_grant_sight_perception_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.eyes_of_the_eagle"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    eyes = tools.use_item(
+        "pc1",
+        "srd.eyes_of_the_eagle",
+        ["pc1"],
+        action_id="srd.wear_eyes_of_the_eagle",
+        idempotency_key="wear-eyes-of-the-eagle",
+    )
+    sight_perception = tools.roll_check(
+        "pc1",
+        "wis",
+        skill="Perception",
+        difficulty_tier="medium",
+        relies_on_sight=True,
+        idempotency_key="eyes-sight-perception",
+    )
+    hearing_perception = tools.roll_check(
+        "pc1",
+        "wis",
+        skill="Perception",
+        difficulty_tier="medium",
+        idempotency_key="eyes-hearing-perception",
+    )
+    investigation = tools.roll_check(
+        "pc1",
+        "int",
+        skill="Investigation",
+        difficulty_tier="medium",
+        relies_on_sight=True,
+        idempotency_key="eyes-investigation",
+    )
+
+    assert eyes["success"] is True
+    assert character.inventory["srd.eyes_of_the_eagle"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_eyes_of_the_eagle"
+    assert effect["passive_modifiers"] == {
+        "ability_check_advantage_skills": [
+            {"ability": "wis", "skill": "perception", "requires_context": "sight"}
+        ],
+        "clear_visibility_extremely_distant_detail_min_size_ft": 2,
+    }
+    assert effect["duration"] == {"until": "while_wearing_eyes_of_the_eagle"}
+    assert sight_perception["roll"]["advantage"] == "advantage"
+    assert sight_perception["status_sources"][0]["modifier"] == "ability_check_advantage_skills"
+    assert sight_perception["status_sources"][0]["source_action_id"] == (
+        "srd.wear_eyes_of_the_eagle"
+    )
+    assert sight_perception["status_sources"][0]["contexts"] == ["sight"]
+    assert hearing_perception["roll"]["advantage"] is None
+    assert hearing_perception["status_sources"] == []
+    assert investigation["roll"]["advantage"] is None
+    assert investigation["status_sources"] == []
+
+
+def test_eyes_of_the_eagle_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.eyes_of_the_eagle"):
+        tools.use_item(
+            "pc1",
+            "srd.eyes_of_the_eagle",
+            ["pc1"],
+            action_id="srd.wear_eyes_of_the_eagle",
+            idempotency_key="missing-eyes-of-the-eagle",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.eyes_of_the_eagle")
+    result = tools.use_item(
+        "pc1",
+        "srd.eyes_of_the_eagle",
+        ["pc1"],
+        action_id="srd.wear_eyes_of_the_eagle",
+        idempotency_key="equipped-eyes-of-the-eagle",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_eyes_of_the_eagle"
+    )
+
+
 def test_robe_of_eyes_grants_sight_perception_and_special_senses(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

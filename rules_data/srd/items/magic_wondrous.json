@@ -58,6 +58,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.eyes_of_the_eagle",
+      "name": "Eyes of the Eagle",
+      "localization": {
+        "en": "Eyes of the Eagle",
+        "zh": "鹰眼镜片",
+        "aliases": ["Eagle Eyes"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Eyes of the Eagle",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_eyes_of_the_eagle"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.gauntlets_of_ogre_power",
       "name": "Gauntlets of Ogre Power",
       "localization": {
