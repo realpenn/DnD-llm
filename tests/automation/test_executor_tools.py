@@ -3244,6 +3244,126 @@ def test_superior_hunters_prey_requires_marked_original_target(make_state) -> No
         )
 
 
+def test_superior_hunters_defense_resists_triggering_and_same_type_damage_until_turn_end(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 15}
+    hunter.subclasses = {"ranger": "hunter"}
+    hunter.actions.append("srd.superior_hunters_defense")
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["pc1"].hp_current = 30
+    state.encounter.combatants["pc1"].hp_max = 30
+    executor = AutomationExecutor(state, _FixedSingleDieRollService([]), AuditLog())
+
+    first = executor.execute(
+        _damage_action(9, damage_type="piercing"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        params={"use_superior_hunters_defense": True},
+    )
+
+    first_damage = next(change for change in first.state_changes if change["type"] == "damage")
+    assert first_damage["amount"] == 9
+    assert first_damage["applied"] == 4
+    assert first_damage["superior_hunters_defense"]["damage_type"] == "piercing"
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["condition"] == "superior_hunters_defense"
+    assert effect["source_action_id"] == "srd.superior_hunters_defense"
+    assert effect["passive_modifiers"] == {
+        "damage_resistances": ["piercing"],
+        "superior_hunters_defense": True,
+    }
+    assert effect["duration"] == {
+        "until": "end_of_current_turn",
+        "turn_owner_id": "goblin1",
+    }
+    assert state.encounter.action_budgets["pc1"]["reaction"] == 0
+
+    second = executor.execute(
+        _damage_action(8, damage_type="piercing"),
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+    second_damage = next(change for change in second.state_changes if change["type"] == "damage")
+    assert second_damage["applied"] == 4
+
+    fire = executor.execute(
+        _damage_action(8, damage_type="fire"),
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+    fire_damage = next(change for change in fire.state_changes if change["type"] == "damage")
+    assert fire_damage["applied"] == 8
+
+    expired = tick_effects(state, trigger="self_turn_end", actor_id="goblin1")
+    assert expired.expired[0]["condition"] == "superior_hunters_defense"
+
+    after_expiry = executor.execute(
+        _damage_action(8, damage_type="piercing"),
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+    after_expiry_damage = next(
+        change for change in after_expiry.state_changes if change["type"] == "damage"
+    )
+    assert after_expiry_damage["applied"] == 8
+    assert state.encounter.combatants["pc1"].hp_current == 6
+
+
+def test_superior_hunters_defense_can_choose_later_damage_type(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 15}
+    hunter.subclasses = {"ranger": "hunter"}
+    hunter.actions.append("srd.superior_hunters_defense")
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["pc1"].hp_current = 30
+    state.encounter.combatants["pc1"].hp_max = 30
+    mixed_damage = ActionDefinition(
+        id="test.mixed_damage",
+        name="Mixed Damage",
+        localization={"en": "Mixed Damage", "zh": "混合伤害", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 10, "damage_type": "piercing"},
+            {"type": "damage", "amount": 8, "damage_type": "force"},
+        ],
+        audit_label="Mixed Damage",
+    )
+    executor = AutomationExecutor(state, _FixedSingleDieRollService([]), AuditLog())
+
+    result = executor.execute(
+        mixed_damage,
+        actor_id="goblin1",
+        targets=["pc1"],
+        params={
+            "use_superior_hunters_defense": True,
+            "superior_hunters_defense_damage_type": "force",
+        },
+    )
+
+    damage_changes = [change for change in result.state_changes if change["type"] == "damage"]
+    assert damage_changes[0]["damage_type"] == "piercing"
+    assert damage_changes[0]["applied"] == 10
+    assert "superior_hunters_defense" not in damage_changes[0]
+    assert damage_changes[1]["damage_type"] == "force"
+    assert damage_changes[1]["applied"] == 4
+    assert damage_changes[1]["superior_hunters_defense"]["damage_type"] == "force"
+    assert state.encounter.combatants["pc1"].hp_current == 16
+
+
 def test_sneak_attack_adds_damage_on_finesse_attack_with_advantage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

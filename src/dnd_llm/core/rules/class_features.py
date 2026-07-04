@@ -802,6 +802,10 @@ def has_superior_hunters_prey(character: Character) -> bool:
     return has_ranger_hunter_feature(character, level=11)
 
 
+def has_superior_hunters_defense(character: Character) -> bool:
+    return has_ranger_hunter_feature(character, level=15)
+
+
 def has_relentless_hunter(character: Character) -> bool:
     return int(character.class_levels.get("ranger", 0)) >= 13
 

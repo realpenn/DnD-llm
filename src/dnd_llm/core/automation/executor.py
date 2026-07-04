@@ -54,6 +54,7 @@ from ..rules.class_features import (
     has_ranger_hunter_feature,
     has_relentless_hunter,
     has_rogue_thief_feature,
+    has_superior_hunters_defense,
     has_superior_hunters_prey,
     has_warlock_eldritch_mind,
     has_warlock_eldritch_smite,
@@ -178,6 +179,8 @@ HORDE_BREAKER_ACTION_ID = "srd.hunters_prey_horde_breaker"
 HORDE_BREAKER_USED_CONDITION = "horde_breaker_used"
 SUPERIOR_HUNTERS_PREY_ACTION_ID = "srd.superior_hunters_prey"
 SUPERIOR_HUNTERS_PREY_USED_CONDITION = "superior_hunters_prey_used"
+SUPERIOR_HUNTERS_DEFENSE_ACTION_ID = "srd.superior_hunters_defense"
+SUPERIOR_HUNTERS_DEFENSE_CONDITION = "superior_hunters_defense"
 WEAPON_ATTACK_TARGET_THIS_TURN_CONDITION = "weapon_attack_target_this_turn"
 THIRSTING_BLADE_PACT_WEAPON_ATTACK_CONDITION = "thirsting_blade_pact_weapon_attack_this_turn"
 ROD_OF_ABSORPTION_ITEM_ID = "srd.rod_of_absorption"
@@ -349,6 +352,7 @@ class _Context:
     deflect_attacks_reactions_spent: set[str] = field(default_factory=set)
     deflect_attacks_reduction_remaining: dict[str, int] = field(default_factory=dict)
     deflect_attacks_redirect_applied: set[str] = field(default_factory=set)
+    superior_hunters_defense_reactions_spent: set[str] = field(default_factory=set)
     slow_fall_reactions_spent: set[str] = field(default_factory=set)
     elemental_affinity_applied: bool = False
     remarkable_athlete_moved: bool = False
@@ -451,6 +455,7 @@ class AutomationExecutor:
         self._validate_fast_hands_preconditions(action, actor_id)
         self._validate_deflect_attacks_preconditions(action, targets or [], params)
         self._validate_uncanny_dodge_preconditions(action, actor_id, targets or [], params)
+        self._validate_superior_hunters_defense_preconditions(action, targets or [], params)
         self._validate_remarkable_athlete_preconditions(action, actor_id, params)
         self._validate_open_hand_technique_preconditions(action, actor_id, targets or [], params)
         self._validate_hunters_lore_preconditions(action, actor_id, targets or [])
@@ -1323,6 +1328,13 @@ class AutomationExecutor:
                 amount,
                 path,
             )
+            superior_hunters_defense = self._apply_superior_hunters_defense_if_requested(
+                ctx,
+                target_id,
+                amount,
+                damage_type,
+                path,
+            )
             target_before = self._entity(target_id)
             hp_before = int(getattr(target_before, "hp_current"))
             damage_immunity_sources = self._passive_damage_immunity_sources(
@@ -1335,6 +1347,13 @@ class AutomationExecutor:
             extra_damage_taken = 0
             extra_damage_applied = 0
             for extra_result in extra_damage:
+                extra_superior_hunters_defense = self._apply_superior_hunters_defense_if_requested(
+                    ctx,
+                    target_id,
+                    extra_result.amount,
+                    extra_result.damage_type,
+                    f"{path}.extra_damage",
+                )
                 target_for_extra = self._entity(target_id)
                 extra_taken = self._mitigated_damage(
                     target_for_extra,
@@ -1356,6 +1375,10 @@ class AutomationExecutor:
                         "sources": extra_result.sources,
                     }
                 )
+                if extra_superior_hunters_defense is not None:
+                    extra_damage_changes[-1]["superior_hunters_defense"] = (
+                        extra_superior_hunters_defense
+                    )
             hp_after = int(getattr(self._entity(target_id), "hp_current"))
             total_damage_taken = damage_taken + extra_damage_taken
             total_applied = applied + extra_damage_applied
@@ -1371,6 +1394,8 @@ class AutomationExecutor:
             if uncanny_dodge is not None:
                 change["uncanny_dodge"] = uncanny_dodge
                 change["amount_before_uncanny_dodge"] = amount_before_uncanny_dodge
+            if superior_hunters_defense is not None:
+                change["superior_hunters_defense"] = superior_hunters_defense
             if slow_fall is not None:
                 change["slow_fall"] = slow_fall
                 change["amount_before_slow_fall"] = amount_before_slow_fall
@@ -10228,6 +10253,123 @@ class AutomationExecutor:
         if not self._reaction_budget_available(target_id, target):
             raise AutomationError("not enough reaction budget")
 
+    def _validate_superior_hunters_defense_preconditions(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        target_id = self._superior_hunters_defense_target_id(targets, params)
+        if target_id is None:
+            return
+        if target_id not in set(targets):
+            raise AutomationError("Superior Hunter's Defense target must be a target")
+        if not self._action_supports_superior_hunters_defense(action):
+            raise AutomationError("Superior Hunter's Defense requires damage")
+        target = self._entity(target_id)
+        owner = self._resource_owner(target_id)
+        if not isinstance(owner, Character) or not has_superior_hunters_defense(owner):
+            raise AutomationError("Superior Hunter's Defense requires Ranger Hunter level 15")
+        self._superior_hunters_defense_damage_type(params)
+        if not self._reaction_budget_available(target_id, target):
+            raise AutomationError("not enough reaction budget")
+        competing_reactions = {
+            self._deflect_attacks_target_id(targets, params),
+            self._uncanny_dodge_target_id(targets, params),
+            self._slow_fall_target_id(targets, params),
+        }
+        if target_id in competing_reactions:
+            raise AutomationError(
+                "Superior Hunter's Defense cannot be combined with another reaction"
+            )
+
+    def _apply_superior_hunters_defense_if_requested(
+        self,
+        ctx: _Context,
+        target_id: str,
+        amount: int,
+        damage_type: str,
+        path: str,
+    ) -> dict[str, Any] | None:
+        selected_target_id = self._superior_hunters_defense_target_id(
+            ctx.original_targets,
+            ctx.params,
+        )
+        if selected_target_id != target_id:
+            return None
+        if target_id in ctx.superior_hunters_defense_reactions_spent:
+            return None
+        requested_damage_type = self._superior_hunters_defense_damage_type(ctx.params)
+        if requested_damage_type is not None and requested_damage_type != damage_type:
+            return None
+        if amount <= 0:
+            return None
+        target = self._entity(target_id)
+        if self._mitigated_damage(target, amount, damage_type) <= 0:
+            return None
+        owner = self._resource_owner(target_id)
+        if not isinstance(owner, Character) or not has_superior_hunters_defense(owner):
+            return None
+
+        turn_owner_id = ctx.actor_id
+        if self.state.encounter is not None and self.state.encounter.current_combatant_id:
+            turn_owner_id = self.state.encounter.current_combatant_id
+        effect = EffectInstance(
+            effect_id=f"{target_id}:superior_hunters_defense:{damage_type}",
+            source_ref=("SRD 5.2.1 Ranger Subclass: Hunter, Level 15: Superior Hunter's Defense"),
+            source_action_id=SUPERIOR_HUNTERS_DEFENSE_ACTION_ID,
+            target_id=target_id,
+            applied_by=target_id,
+            condition=SUPERIOR_HUNTERS_DEFENSE_CONDITION,
+            passive_modifiers={
+                "damage_resistances": [damage_type],
+                "superior_hunters_defense": True,
+            },
+            duration={"until": "end_of_current_turn", "turn_owner_id": turn_owner_id},
+            tick_on="self_turn_end",
+            stacking_policy="replace_condition",
+            audit={"damage_type": damage_type, "node_path": path},
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != SUPERIOR_HUNTERS_DEFENSE_CONDITION
+        ]
+        effects.append(effect.to_dict())
+
+        before = self.economy.budget_for(target_id, self._effective_speed(target)).to_dict()
+        self.economy.spend(target_id, "reaction", 1)
+        after = self.economy.budget_for(target_id).to_dict()
+        ctx.superior_hunters_defense_reactions_spent.add(target_id)
+        ctx.result.state_changes.append(
+            {
+                "type": "action_economy",
+                "actor_id": target_id,
+                "economy": "reaction",
+                "amount": 1,
+                "before": before,
+                "after": after,
+                "source_action_id": SUPERIOR_HUNTERS_DEFENSE_ACTION_ID,
+                "path": path,
+            }
+        )
+        change = {
+            "feature": "superior_hunters_defense",
+            "source_action_id": SUPERIOR_HUNTERS_DEFENSE_ACTION_ID,
+            "actor_id": target_id,
+            "attacker_id": ctx.actor_id,
+            "damage_type": damage_type,
+            "effect_id": effect.effect_id,
+            "duration": effect.duration,
+            "tick_on": effect.tick_on,
+            "reaction_before": before,
+            "reaction_after": after,
+            "path": path,
+        }
+        ctx.result.state_changes.append({"type": "superior_hunters_defense", **change})
+        return change
+
     def _apply_uncanny_dodge_if_requested(
         self,
         ctx: _Context,
@@ -10274,6 +10416,34 @@ class AutomationExecutor:
             change["reaction_after"] = after
         ctx.result.state_changes.append({"type": "uncanny_dodge", **change})
         return reduced_amount, change
+
+    def _superior_hunters_defense_target_id(
+        self,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> str | None:
+        if params.get("use_superior_hunters_defense") is not True:
+            return None
+        explicit = params.get("superior_hunters_defense_target_id")
+        if explicit is not None:
+            return str(explicit)
+        if len(targets) == 1:
+            return str(targets[0])
+        raise AutomationError("Superior Hunter's Defense requires a target id")
+
+    @staticmethod
+    def _superior_hunters_defense_damage_type(params: dict[str, Any]) -> str | None:
+        selected = params.get("superior_hunters_defense_damage_type")
+        if selected in (None, "", False):
+            return None
+        if isinstance(selected, (dict, list)):
+            raise AutomationError("parameter superior_hunters_defense_damage_type must be a scalar")
+        return str(selected).lower()
+
+    def _action_supports_superior_hunters_defense(self, action: ActionDefinition) -> bool:
+        return any(
+            node.get("type") == "damage" for node in self._automation_nodes(action.automation)
+        )
 
     def _validate_slow_fall_preconditions(
         self,

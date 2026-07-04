@@ -4313,6 +4313,36 @@
             "audit_label": "Superior Hunter's Prey"
         },
         {
+            "id": "srd.superior_hunters_defense",
+            "name": "Superior Hunter's Defense",
+            "localization": {
+                "en": "Superior Hunter's Defense",
+                "zh": "高等猎人防御",
+                "aliases": ["Superior Hunter’s Defense", "高等猎人防御"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 15: Superior Hunter's Defense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "reaction",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 15, "subclass": "hunter"},
+            "properties": {
+                "reaction_when_taking_damage": true,
+                "grants_resistance_to_triggering_damage_type": true,
+                "duration": "until_end_of_current_turn"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "When this Ranger Hunter takes damage, the Ranger can take a Reaction to gain Resistance to that damage and any other damage of the same type until the end of the current turn."
+                }
+            ],
+            "audit_label": "Superior Hunter's Defense"
+        },
+        {
             "id": "srd.dodge",
             "name": "Dodge",
             "localization": {"en": "Dodge", "zh": "闪避", "aliases": ["防御", "专心防守"]},

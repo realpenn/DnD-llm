@@ -1511,12 +1511,14 @@
                         "Hunter's Lore",
                         "Hunter's Prey",
                         "Defensive Tactics",
-                        "Superior Hunter's Prey"
+                        "Superior Hunter's Prey",
+                        "Superior Hunter's Defense"
                     ],
                     "actions": [
                         "srd.hunters_lore",
                         "srd.defensive_tactics",
-                        "srd.superior_hunters_prey"
+                        "srd.superior_hunters_prey",
+                        "srd.superior_hunters_defense"
                     ],
                     "feature_options": {
                         "hunters_prey": [

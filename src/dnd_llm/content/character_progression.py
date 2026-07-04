@@ -374,6 +374,7 @@ SUBCLASS_ACTIONS = {
             3: ["srd.hunters_lore"],
             7: ["srd.defensive_tactics"],
             11: ["srd.superior_hunters_prey"],
+            15: ["srd.superior_hunters_defense"],
         },
     },
     "rogue": {

@@ -133,6 +133,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.hunters_lore",
     "srd.hunters_prey_colossus_slayer",
     "srd.hunters_prey_horde_breaker",
+    "srd.superior_hunters_defense",
     "srd.superior_hunters_prey",
     "srd.improved_cunning_strike",
     "srd.improved_critical",

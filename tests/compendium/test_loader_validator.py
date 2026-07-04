@@ -2696,11 +2696,13 @@ def test_compendium_loads_srd_actions() -> None:
             "Hunter's Prey",
             "Defensive Tactics",
             "Superior Hunter's Prey",
+            "Superior Hunter's Defense",
         ],
         "actions": [
             "srd.hunters_lore",
             "srd.defensive_tactics",
             "srd.superior_hunters_prey",
+            "srd.superior_hunters_defense",
         ],
         "feature_options": {
             "hunters_prey": [
@@ -2769,6 +2771,18 @@ def test_compendium_loads_srd_actions() -> None:
         "secondary_target_within_ft_of_marked_target": 30,
         "secondary_target_must_be_visible": True,
         "copies_hunters_mark_extra_damage": True,
+    }
+    superior_hunters_defense = compendium.action("srd.superior_hunters_defense")
+    assert superior_hunters_defense.action_economy == "reaction"
+    assert superior_hunters_defense.requirements == {
+        "class": "ranger",
+        "class_level_min": 15,
+        "subclass": "hunter",
+    }
+    assert superior_hunters_defense.properties == {
+        "reaction_when_taking_damage": True,
+        "grants_resistance_to_triggering_damage_type": True,
+        "duration": "until_end_of_current_turn",
     }
     assert {
         "srd.cunning_action_dash",

@@ -2244,6 +2244,44 @@ def test_natural_language_character_edit_assigns_hunter_superior_hunters_prey_at
     assert "srd.defensive_tactics" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_hunter_superior_hunters_defense_at_level_15() -> (
+    None
+):
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger15 子职 hunter")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 15}
+    assert result.character.subclasses == {"ranger": "hunter"}
+    assert "srd.superior_hunters_defense" in result.character.actions
+    assert "srd.superior_hunters_prey" in result.character.actions
+
+
+def test_natural_language_character_edit_does_not_grant_hunter_superior_defense_too_early() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger14 子职 hunter")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert "srd.superior_hunters_defense" not in result.character.actions
+
+
+def test_natural_language_character_edit_does_not_grant_hunter_superior_defense_without_hunter() -> (
+    None
+):
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger15")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.subclasses == {}
+    assert "srd.superior_hunters_defense" not in result.character.actions
+
+
 def test_natural_language_character_edit_assigns_ranger_relentless_hunter_at_level_13() -> None:
     character = default_fighter("pc1", "Penn")
 
