@@ -59,6 +59,7 @@ from ..rules.class_features import (
     has_wizard_evocation_feature,
     is_bloodied,
     is_wearing_armor,
+    is_wielding_shield,
     monk_disciplined_survivor_applies,
     monk_forgoing_food_drink_exhaustion_immunity,
     monk_martial_arts_die,
@@ -12760,6 +12761,10 @@ class AutomationExecutor:
                 target
             ):
                 continue
+            if modifiers.get("armor_class_requires_no_shield") is True and self._is_wielding_shield(
+                target
+            ):
+                continue
             source = {
                 "effect_id": effect.get("effect_id"),
                 "source_action_id": effect.get("source_action_id"),
@@ -12818,6 +12823,13 @@ class AutomationExecutor:
             return is_wearing_armor(target)
         if isinstance(target, Combatant) and target.entity_id in self.state.characters:
             return is_wearing_armor(self.state.characters[target.entity_id])
+        return False
+
+    def _is_wielding_shield(self, target: Character | Monster | Combatant) -> bool:
+        if isinstance(target, Character):
+            return is_wielding_shield(target)
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            return is_wielding_shield(self.state.characters[target.entity_id])
         return False
 
     def _draconic_resilience_armor_class(

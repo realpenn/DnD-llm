@@ -6271,7 +6271,7 @@ def test_armor_of_shadows_rejects_mage_armor_while_wearing_armor(make_state) -> 
     character.class_levels = {"warlock": 1}
     character.feature_choices = {"warlock.eldritch_invocation.armor_of_shadows": "selected"}
     character.actions.extend(["srd.armor_of_shadows", "srd.armor_of_shadows_mage_armor"])
-    character.equipment = ["srd.leather_armor"]
+    character.equipment = ["srd.bracers_of_defense", "srd.leather_armor"]
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(state, compendium, AuditLog())
 
@@ -8684,6 +8684,111 @@ def test_boots_of_elvenkind_item_requirement_accepts_equipment_and_rejects_missi
     assert result["success"] is True
     assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
         "srd.wear_boots_of_elvenkind"
+    )
+
+
+def test_bracers_of_defense_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="actor does not have item srd.bracers_of_defense"):
+        tools.use_item(
+            "pc1",
+            "srd.bracers_of_defense",
+            ["pc1"],
+            action_id="srd.wear_bracers_of_defense",
+            idempotency_key="missing-bracers-of-defense",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.bracers_of_defense")
+    result = tools.use_item(
+        "pc1",
+        "srd.bracers_of_defense",
+        ["pc1"],
+        action_id="srd.wear_bracers_of_defense",
+        idempotency_key="equipped-bracers-of-defense",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_bracers_of_defense"
+    )
+
+
+def test_bracers_of_defense_add_ac_only_without_armor_or_shield(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.bracers_of_defense"] = 1
+    character.armor_class = 14
+    state.encounter.combatants["pc1"].armor_class = 14
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.use_item(
+        "pc1",
+        "srd.bracers_of_defense",
+        ["pc1"],
+        action_id="srd.wear_bracers_of_defense",
+        idempotency_key="wear-bracers-of-defense",
+    )
+    unarmored_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([15]),
+        AuditLog(),
+    ).execute(_attack_action(attack_bonus=0), actor_id="goblin1", targets=["pc1"])
+    character.equipment = ["srd.bracers_of_defense", "srd.leather_armor"]
+    armored_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([13]),
+        AuditLog(),
+    ).execute(_attack_action(attack_bonus=0), actor_id="goblin1", targets=["pc1"])
+    character.equipment = ["srd.bracers_of_defense", "srd.shield"]
+    shield_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([13]),
+        AuditLog(),
+    ).execute(_attack_action(attack_bonus=0), actor_id="goblin1", targets=["pc1"])
+
+    assert result["success"] is True
+    assert character.inventory["srd.bracers_of_defense"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_bracers_of_defense"
+    assert effect["duration"] == {"until": "while_wearing_bracers_of_defense"}
+    assert effect["passive_modifiers"] == {
+        "armor_class_bonus": 2,
+        "armor_class_requires_unarmored": True,
+        "armor_class_requires_no_shield": True,
+    }
+
+    unarmored_node = unarmored_attack.node_results["automation[1]"]
+    assert unarmored_node["ac"] == 16
+    assert unarmored_node["hit"] is False
+    assert unarmored_node["armor_class_sources"][0]["modifier"] == "armor_class_bonus"
+    assert unarmored_node["armor_class_sources"][0]["source_action_id"] == (
+        "srd.wear_bracers_of_defense"
+    )
+
+    armored_node = armored_attack.node_results["automation[1]"]
+    assert armored_node["ac"] == 14
+    assert armored_node["hit"] is False
+    assert all(
+        source.get("source_action_id") != "srd.wear_bracers_of_defense"
+        for source in armored_node["armor_class_sources"]
+    )
+
+    shield_node = shield_attack.node_results["automation[1]"]
+    assert shield_node["ac"] == 14
+    assert shield_node["hit"] is False
+    assert all(
+        source.get("source_action_id") != "srd.wear_bracers_of_defense"
+        for source in shield_node["armor_class_sources"]
     )
 
 

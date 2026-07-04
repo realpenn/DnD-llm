@@ -39,6 +39,44 @@
       "audit_label": "Wear Boots of Elvenkind"
     },
     {
+      "id": "srd.wear_bracers_of_defense",
+      "name": "Wear Bracers of Defense",
+      "localization": {
+        "en": "Wear Bracers of Defense",
+        "zh": "穿戴防御护腕",
+        "aliases": ["启用防御护腕"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Bracers of Defense",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.bracers_of_defense" },
+      "properties": {
+        "bracers_of_defense": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "wrists"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "armor_class_bonus": 2,
+            "armor_class_requires_unarmored": true,
+            "armor_class_requires_no_shield": true
+          },
+          "duration": { "until": "while_wearing_bracers_of_defense" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing these bracers, if the target is wearing no armor and using no Shield, the target gains a +2 bonus to Armor Class." }
+      ],
+      "audit_label": "Wear Bracers of Defense"
+    },
+    {
       "id": "srd.wear_cloak_of_protection",
       "name": "Wear Cloak of Protection",
       "localization": {

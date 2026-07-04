@@ -20,6 +20,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.bracers_of_defense",
+      "name": "Bracers of Defense",
+      "localization": {
+        "en": "Bracers of Defense",
+        "zh": "防御护腕",
+        "aliases": ["Defense Bracers"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Bracers of Defense",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_bracers_of_defense"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "wrists"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.cloak_of_protection",
       "name": "Cloak of Protection",
       "localization": {
