@@ -2525,6 +2525,22 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert necklace.status == "accepted"
     assert necklace.action_id == "srd.wear_necklace_of_adaptation"
 
+    state.characters["pc1"].equipment.append("srd.amulet_of_proof_against_detection_and_location")
+    amulet_proof_detection = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.amulet_of_proof_against_detection_and_location",
+        )
+    )
+
+    assert amulet_proof_detection.status == "accepted"
+    assert (
+        amulet_proof_detection.action_id
+        == "srd.wear_amulet_of_proof_against_detection_and_location"
+    )
+
     state.characters["pc1"].equipment.append("srd.periapt_of_proof_against_poison")
     periapt_poison = resolver.resolve(
         PlayerActionDraft(
@@ -2703,6 +2719,28 @@ def test_resolver_rejects_necklace_of_adaptation_non_self_target(make_state) -> 
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_necklace_of_adaptation"
+
+
+def test_resolver_rejects_amulet_of_proof_against_detection_non_self_target(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.amulet_of_proof_against_detection_and_location"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.amulet_of_proof_against_detection_and_location",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_amulet_of_proof_against_detection_and_location"
 
 
 def test_resolver_rejects_periapt_of_proof_against_poison_non_self_target(

@@ -8218,6 +8218,75 @@ def test_potion_of_giant_strength_does_not_lower_equal_or_higher_strength(
     assert strength_check["roll"]["expression"] == "1d20+6"
 
 
+def test_amulet_of_proof_against_detection_item_requirement_accepts_equipment_and_rejects_missing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="actor does not have item srd.amulet_of_proof_against_detection_and_location",
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.amulet_of_proof_against_detection_and_location",
+            ["pc1"],
+            action_id="srd.wear_amulet_of_proof_against_detection_and_location",
+            idempotency_key="missing-amulet-proof-detection-location",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    state.characters["pc1"].equipment.append("srd.amulet_of_proof_against_detection_and_location")
+    result = tools.use_item(
+        "pc1",
+        "srd.amulet_of_proof_against_detection_and_location",
+        ["pc1"],
+        action_id="srd.wear_amulet_of_proof_against_detection_and_location",
+        idempotency_key="equipped-amulet-proof-detection-location",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
+        "srd.wear_amulet_of_proof_against_detection_and_location"
+    )
+
+
+def test_amulet_of_proof_against_detection_blocks_divination_and_scrying_markers(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.inventory["srd.amulet_of_proof_against_detection_and_location"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.use_item(
+        "pc1",
+        "srd.amulet_of_proof_against_detection_and_location",
+        ["pc1"],
+        action_id="srd.wear_amulet_of_proof_against_detection_and_location",
+        idempotency_key="wear-amulet-proof-detection-location",
+    )
+
+    assert result["success"] is True
+    assert character.inventory["srd.amulet_of_proof_against_detection_and_location"] == 1
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_amulet_of_proof_against_detection_and_location"
+    assert effect["duration"] == {
+        "until": "while_wearing_amulet_of_proof_against_detection_and_location"
+    }
+    assert effect["passive_modifiers"] == {
+        "hidden_from_divination": True,
+        "cannot_be_scryed": True,
+        "divination_targeting_allowed_by_wearer": True,
+    }
+
+
 def test_belt_of_giant_strength_item_requirement_accepts_equipment_and_rejects_missing(
     make_state,
 ) -> None:

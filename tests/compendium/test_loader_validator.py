@@ -3117,6 +3117,43 @@ def test_compendium_loads_srd_actions() -> None:
             "concentration": False,
         },
     }
+    amulet_proof_detection = compendium.action(
+        "srd.wear_amulet_of_proof_against_detection_and_location"
+    )
+    assert compendium.items["srd.amulet_of_proof_against_detection_and_location"].actions == [
+        "srd.wear_amulet_of_proof_against_detection_and_location"
+    ]
+    assert compendium.items["srd.amulet_of_proof_against_detection_and_location"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": True,
+        "worn_slot": "neck",
+    }
+    assert amulet_proof_detection.action_economy == "none"
+    assert amulet_proof_detection.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert amulet_proof_detection.requirements == {
+        "item": "srd.amulet_of_proof_against_detection_and_location"
+    }
+    assert amulet_proof_detection.properties == {
+        "amulet_of_proof_against_detection_and_location": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "neck",
+    }
+    assert amulet_proof_detection.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "hidden_from_divination": True,
+            "cannot_be_scryed": True,
+            "divination_targeting_allowed_by_wearer": True,
+        },
+        "duration": {"until": "while_wearing_amulet_of_proof_against_detection_and_location"},
+        "stacking_policy": "replace",
+    }
     belt_of_giant_strength_variants = {
         "hill": (21, "rare"),
         "frost": (23, "very_rare"),
@@ -5008,6 +5045,9 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert compendium.items["srd.potion_of_vitality"].actions == ["srd.use_potion_of_vitality"]
     assert compendium.items["srd.potion_of_resistance"].actions == ["srd.use_potion_of_resistance"]
+    assert compendium.items["srd.amulet_of_proof_against_detection_and_location"].actions == [
+        "srd.wear_amulet_of_proof_against_detection_and_location"
+    ]
     for giant_type in ["hill", "frost", "stone", "fire", "cloud", "storm"]:
         assert compendium.items[f"srd.belt_of_{giant_type}_giant_strength"].actions == [
             f"srd.wear_belt_of_{giant_type}_giant_strength"

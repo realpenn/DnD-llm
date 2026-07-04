@@ -1,6 +1,25 @@
 {
   "items": [
     {
+      "id": "srd.amulet_of_proof_against_detection_and_location",
+      "name": "Amulet of Proof against Detection and Location",
+      "localization": {
+        "en": "Amulet of Proof against Detection and Location",
+        "zh": "防侦测与定位护符",
+        "aliases": ["Proof against Detection and Location Amulet"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Amulet of Proof against Detection and Location",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_amulet_of_proof_against_detection_and_location"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.belt_of_hill_giant_strength",
       "name": "Belt of Giant Strength (hill)",
       "localization": {

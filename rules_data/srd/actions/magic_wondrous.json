@@ -1,6 +1,44 @@
 {
   "items": [
     {
+      "id": "srd.wear_amulet_of_proof_against_detection_and_location",
+      "name": "Wear Amulet of Proof against Detection and Location",
+      "localization": {
+        "en": "Wear Amulet of Proof against Detection and Location",
+        "zh": "佩戴防侦测与定位护符",
+        "aliases": ["启用防侦测与定位护符"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Amulet of Proof against Detection and Location",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.amulet_of_proof_against_detection_and_location" },
+      "properties": {
+        "amulet_of_proof_against_detection_and_location": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "hidden_from_divination": true,
+            "cannot_be_scryed": true,
+            "divination_targeting_allowed_by_wearer": true
+          },
+          "duration": { "until": "while_wearing_amulet_of_proof_against_detection_and_location" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this amulet, the target can't be targeted by Divination spells or perceived through magical scrying sensors unless the target allows it." }
+      ],
+      "audit_label": "Wear Amulet of Proof against Detection and Location"
+    },
+    {
       "id": "srd.wear_belt_of_hill_giant_strength",
       "name": "Wear Belt of Giant Strength (hill)",
       "localization": {
