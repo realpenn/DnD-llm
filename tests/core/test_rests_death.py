@@ -102,6 +102,28 @@ def test_rest_restores_barbarian_rage_by_srd_rule(make_state) -> None:
     assert character.resources["srd.resource.rage"] == 3
 
 
+def test_persistent_rage_initiative_restore_resets_on_long_rest_only(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 15}
+    character.resources["srd.resource.rage"] = 4
+    character.resources["srd.resource.persistent_rage_initiative_restore"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    short = tools.short_rest("pc1", {}, idempotency_key="persistent-rage-short-rest")
+
+    assert short["restored_resources"] == {"srd.resource.rage": 1}
+    assert character.resources["srd.resource.rage"] == 5
+    assert character.resources["srd.resource.persistent_rage_initiative_restore"] == 0
+
+    long = tools.long_rest(["pc1"], idempotency_key="persistent-rage-long-rest")
+
+    restored = long["results"]["pc1"]["restored_resources"]
+    assert restored["srd.resource.persistent_rage_initiative_restore"] == 1
+    assert character.resources["srd.resource.persistent_rage_initiative_restore"] == 1
+
+
 def test_rest_resets_barbarian_relentless_rage_dc_counter(make_state) -> None:
     state = make_state()
     character = state.characters["pc1"]

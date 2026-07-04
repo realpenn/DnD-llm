@@ -539,6 +539,41 @@
             "audit_label": "Improved Brutal Strike"
         },
         {
+            "id": "srd.persistent_rage",
+            "name": "Persistent Rage",
+            "localization": {
+                "en": "Persistent Rage",
+                "zh": "持久狂暴",
+                "aliases": ["Barbarian Persistent Rage", "野蛮人持久狂暴"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 15: Persistent Rage",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 15},
+            "properties": {
+                "trigger": "roll_initiative",
+                "initiative_restore_expended_rage_uses": true,
+                "initiative_restore_resource": "srd.resource.persistent_rage_initiative_restore",
+                "initiative_restore_resets_on": "long_rest",
+                "rage_duration": "duration_10_minutes",
+                "rage_no_round_to_round_extension_required": true,
+                "rage_ends_early_on_conditions": ["unconscious"],
+                "rage_ends_early_on_heavy_armor": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Barbarian 15 regains all expended uses of Rage when rolling Initiative once before a Long Rest, and Rage lasts 10 minutes without round-to-round extension, ending early if the Barbarian has the Unconscious condition or dons Heavy armor."
+                }
+            ],
+            "audit_label": "Persistent Rage"
+        },
+        {
             "id": "srd.frenzy",
             "name": "Frenzy",
             "localization": {

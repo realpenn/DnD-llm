@@ -181,6 +181,41 @@
                         "srd.relentless_rage",
                         "srd.improved_brutal_strike"
                     ]
+                },
+                "14": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike",
+                        "srd.relentless_rage",
+                        "srd.improved_brutal_strike"
+                    ]
+                },
+                "15": {
+                    "features": ["Persistent Rage"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike",
+                        "srd.relentless_rage",
+                        "srd.improved_brutal_strike",
+                        "srd.persistent_rage"
+                    ]
                 }
             },
             "subclasses": {

@@ -15,6 +15,7 @@ from ..rules.class_features import (
     ELUSIVE_ACTION_ID,
     FOCUS_POINTS_RESOURCE,
     INDOMITABLE_RESOURCE,
+    PERSISTENT_RAGE_ACTION_ID,
     PRIMAL_KNOWLEDGE_SKILLS,
     RELENTLESS_RAGE_ACTION_ID,
     RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE,
@@ -74,6 +75,7 @@ from ..rules.class_features import (
     monk_martial_arts_die,
     monk_slow_fall_damage_reduction,
     monk_unarmored_defense_armor_class,
+    persistent_rage_applies,
     preserve_life_healing_pool,
     ranger_hunters_mark_damage_dice,
     relentless_rage_dc,
@@ -2199,6 +2201,15 @@ class AutomationExecutor:
             if self._skip_target_for_save_gate(ctx, node, target_id):
                 continue
             target_modifiers = dict(passive_modifiers)
+            target_duration = dict(duration)
+            persistent_rage_change = self._apply_persistent_rage_if_available(
+                ctx,
+                node,
+                target_id,
+                target_modifiers,
+                target_duration,
+                path,
+            )
             mindless_rage_change = self._apply_mindless_rage_if_available(
                 ctx,
                 node,
@@ -2214,7 +2225,7 @@ class AutomationExecutor:
                 applied_by=ctx.actor_id,
                 condition=node.get("condition"),
                 passive_modifiers=target_modifiers,
-                duration=dict(duration),
+                duration=target_duration,
                 tick_on=node.get("tick_on"),
                 concentration=concentration,
                 stacking_policy=str(node.get("stacking_policy", "replace")),
@@ -2262,6 +2273,8 @@ class AutomationExecutor:
             )
             if mindless_rage_change is not None:
                 ctx.result.state_changes.append(mindless_rage_change)
+            if persistent_rage_change is not None:
+                ctx.result.state_changes.append(persistent_rage_change)
 
     def _node_repeat_use_save_before_long_rest(
         self,
@@ -12167,6 +12180,36 @@ class AutomationExecutor:
             "condition_immunities": list(MINDLESS_RAGE_CONDITION_IMMUNITIES),
             "removed": removed_conditions,
             "removed_owners": removed_owners,
+            "path": path,
+        }
+
+    def _apply_persistent_rage_if_available(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        passive_modifiers: dict[str, Any],
+        duration: dict[str, Any],
+        path: str,
+    ) -> dict[str, Any] | None:
+        if ctx.action.id != RAGE_ACTION_ID or node.get("condition") != "raging":
+            return None
+        if target_id != ctx.actor_id:
+            return None
+        actor = self._resource_owner(ctx.actor_id)
+        if not isinstance(actor, Character) or not persistent_rage_applies(actor):
+            return None
+        duration.clear()
+        duration["until"] = "duration_10_minutes"
+        passive_modifiers["ends_if_condition"] = "unconscious"
+        passive_modifiers["ends_if_heavy_armor"] = True
+        return {
+            "type": "persistent_rage",
+            "target_id": target_id,
+            "source_action_id": PERSISTENT_RAGE_ACTION_ID,
+            "rage_duration": "duration_10_minutes",
+            "ends_if_condition": "unconscious",
+            "ends_if_heavy_armor": True,
             "path": path,
         }
 

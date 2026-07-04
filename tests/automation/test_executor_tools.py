@@ -7463,6 +7463,39 @@ def test_rage_applies_srd_passive_effects_and_blocks_spellcasting(make_state) ->
     assert damage_change["applied"] == 4
 
 
+def test_persistent_rage_extends_rage_duration_and_records_end_conditions(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 15}
+    character.actions.extend(["srd.rage", "srd.persistent_rage"])
+    character.resources["srd.resource.rage"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action("pc1", "srd.rage", [], idempotency_key="persistent-rage")
+
+    assert result["success"] is True
+    rage_effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert rage_effect["condition"] == "raging"
+    assert rage_effect["duration"] == {"until": "duration_10_minutes"}
+    assert rage_effect["tick_on"] == "self_turn_end"
+    assert rage_effect["passive_modifiers"]["damage_resistances"] == [
+        "bludgeoning",
+        "piercing",
+        "slashing",
+    ]
+    assert rage_effect["passive_modifiers"]["ends_if_condition"] == "unconscious"
+    assert rage_effect["passive_modifiers"]["ends_if_heavy_armor"] is True
+    persistent_change = next(
+        change for change in result["state_changes"] if change["type"] == "persistent_rage"
+    )
+    assert persistent_change["source_action_id"] == "srd.persistent_rage"
+    assert persistent_change["rage_duration"] == "duration_10_minutes"
+
+
 def test_rage_instinctive_pounce_moves_half_speed_and_checks_opportunity_attacks(
     make_state,
 ) -> None:

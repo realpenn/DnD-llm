@@ -6,6 +6,8 @@ from ..core.dice import RollService
 from ..core.models import Character, Combatant, Encounter, GameState
 from ..core.persistence import AuditLog
 from ..core.rules.class_features import (
+    PERSISTENT_RAGE_ACTION_ID,
+    PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
     has_barbarian_feature,
     has_fighter_champion_feature,
@@ -13,7 +15,9 @@ from ..core.rules.class_features import (
     has_rogue_thief_feature,
     monk_martial_arts_die,
     monk_perfect_focus_applies,
+    persistent_rage_applies,
 )
+from ..core.rules.rests import RAGE_RESOURCE, resource_maxima
 
 FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
 THIEFS_REFLEXES_ACTION_ID = "srd.thiefs_reflexes"
@@ -27,6 +31,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
     uncanny_metabolism_results: list[dict[str, object]] = []
     uncanny_metabolism_rolls: list[dict[str, object]] = []
     perfect_focus_results: list[dict[str, object]] = []
+    persistent_rage_results: list[dict[str, object]] = []
     for group_key, combatant_ids in _initiative_groups(state).items():
         modifier, modifier_sources = _initiative_modifier(state, combatant_ids)
         advantage, advantage_sources = _initiative_advantage(state, combatant_ids)
@@ -54,6 +59,10 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
                 perfect_focus = _apply_perfect_focus(state, combatant_id)
                 if perfect_focus is not None:
                     perfect_focus_results.append(perfect_focus)
+            persistent_rage = _apply_persistent_rage(state, combatant_id)
+            if persistent_rage is not None:
+                persistent_rage_results.append(persistent_rage)
+            if uncanny_metabolism is None:
                 continue
             uncanny_metabolism_results.append(uncanny_metabolism)
             healing_roll = uncanny_metabolism.get("healing_roll")
@@ -90,6 +99,7 @@ def roll_initiative(state: GameState, audit_log: AuditLog) -> list[str]:
             ],
             "uncanny_metabolism": uncanny_metabolism_results,
             "perfect_focus": perfect_focus_results,
+            "persistent_rage": persistent_rage_results,
             "thiefs_reflexes": thiefs_reflexes_results,
         },
         dice_rolls=[roll for _, _, _, roll in scored] + uncanny_metabolism_rolls,
@@ -169,6 +179,39 @@ def _apply_perfect_focus(state: GameState, combatant_id: str) -> dict[str, objec
         "resource_before": focus_before,
         "resource_after": focus_after,
         "requires_uncanny_metabolism_not_used": True,
+    }
+
+
+def _apply_persistent_rage(state: GameState, combatant_id: str) -> dict[str, object] | None:
+    if state.encounter is None:
+        return None
+    combatant = state.encounter.combatants[combatant_id]
+    character = state.characters.get(combatant.entity_id) or state.characters.get(combatant.id)
+    if character is None or not persistent_rage_applies(character):
+        return None
+    restore_uses_before = int(
+        character.resources.get(PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE, 1)
+    )
+    if restore_uses_before <= 0:
+        return None
+    rage_max = int(resource_maxima(character).get(RAGE_RESOURCE, 0))
+    if rage_max <= 0:
+        return None
+    rage_before = max(0, min(int(character.resources.get(RAGE_RESOURCE, rage_max)), rage_max))
+    if rage_before >= rage_max:
+        return None
+    character.resources[RAGE_RESOURCE] = rage_max
+    character.resources[PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE] = restore_uses_before - 1
+    return {
+        "combatant_id": combatant_id,
+        "character_id": character.id,
+        "source_action_id": PERSISTENT_RAGE_ACTION_ID,
+        "resource": RAGE_RESOURCE,
+        "resource_before": rage_before,
+        "resource_after": rage_max,
+        "restore_resource": PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
+        "restore_resource_before": restore_uses_before,
+        "restore_resource_after": restore_uses_before - 1,
     }
 
 

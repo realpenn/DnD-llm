@@ -4737,6 +4737,23 @@ def test_compendium_loads_srd_actions() -> None:
         "does_not_increase_brutal_strike_damage": True,
         "does_not_allow_two_brutal_strike_effects": True,
     }
+    assert compendium.classes["barbarian"].levels["14"]["features"] == ["Subclass Feature"]
+    assert "srd.persistent_rage" not in compendium.classes["barbarian"].levels["14"]["actions"]
+    assert compendium.classes["barbarian"].levels["15"]["features"] == ["Persistent Rage"]
+    assert "srd.persistent_rage" in compendium.classes["barbarian"].levels["15"]["actions"]
+    persistent_rage = compendium.action("srd.persistent_rage")
+    assert persistent_rage.requirements == {"class": "barbarian", "class_level_min": 15}
+    assert persistent_rage.action_economy == "none"
+    assert persistent_rage.properties == {
+        "trigger": "roll_initiative",
+        "initiative_restore_expended_rage_uses": True,
+        "initiative_restore_resource": "srd.resource.persistent_rage_initiative_restore",
+        "initiative_restore_resets_on": "long_rest",
+        "rage_duration": "duration_10_minutes",
+        "rage_no_round_to_round_extension_required": True,
+        "rage_ends_early_on_conditions": ["unconscious"],
+        "rage_ends_early_on_heavy_armor": True,
+    }
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {
         "name": "College of Lore",

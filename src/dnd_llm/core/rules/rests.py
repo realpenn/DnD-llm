@@ -11,6 +11,7 @@ from .class_features import (
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     NATURES_VEIL_RESOURCE,
+    PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
     RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
@@ -480,6 +481,8 @@ def resource_maxima(character: Character) -> dict[str, int]:
         else:
             rage_uses = 2
         maxima[RAGE_RESOURCE] = rage_uses
+        if barbarian_level >= 15:
+            maxima[PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE] = 1
     paladin_level = int(character.class_levels.get("paladin", 0))
     if paladin_level > 0:
         maxima[LAY_ON_HANDS_RESOURCE] = paladin_level * 5

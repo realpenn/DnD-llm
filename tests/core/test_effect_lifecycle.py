@@ -119,6 +119,47 @@ def test_rage_expires_at_end_of_next_self_turn(make_state) -> None:
     assert lifecycle[0]["expired"][0]["condition"] == "raging"
 
 
+def test_persistent_rage_does_not_expire_at_next_self_turn_end(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    state.characters["pc1"].class_levels = {"barbarian": 15}
+    state.characters["pc1"].actions.extend(["srd.rage", "srd.persistent_rage"])
+    state.characters["pc1"].resources["srd.resource.rage"] = 1
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    action = session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴",
+            candidate_action_id="srd.rage",
+            raw_text="DD 狂暴",
+        ),
+        "persistent-rage-action",
+    )
+
+    assert isinstance(action, SessionResult)
+    assert action.accepted is True
+    rage_effect = state.encounter.combatants["pc1"].status_effects[0]
+    assert rage_effect["condition"] == "raging"
+    assert rage_effect["duration"]["until"] == "duration_10_minutes"
+
+    advanced_to_pc = session.advance_turn("advance-back-to-persistent-rage-pc")
+
+    assert isinstance(advanced_to_pc, SessionResult)
+    assert state.encounter.current_combatant_id == "pc1"
+
+    ticked = session.advance_turn("advance-persistent-rage-tick")
+
+    assert isinstance(ticked, SessionResult)
+    assert state.encounter.combatants["pc1"].status_effects[0]["condition"] == "raging"
+    lifecycle = ticked.payload["effect_lifecycle"]
+    assert lifecycle[0]["trigger"] == "self_turn_end"
+    assert lifecycle[0]["expired"] == []
+    assert lifecycle[0]["ticked"][0]["condition"] == "raging"
+
+
 def test_turn_owner_self_turn_effect_waits_for_owner_turn_start(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -293,6 +334,69 @@ def test_effect_with_ends_if_condition_expires_when_condition_present(make_state
     assert [
         effect["source_action_id"] for effect in state.encounter.combatants["pc1"].status_effects
     ] == ["test.incapacitated"]
+
+
+def test_persistent_rage_expires_when_unconscious_condition_present(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["pc1"].status_effects.extend(
+        [
+            {
+                "effect_id": "persistent-rage-test",
+                "source_ref": "test",
+                "source_action_id": "srd.rage",
+                "target_id": "pc1",
+                "applied_by": "pc1",
+                "condition": "raging",
+                "passive_modifiers": {"ends_if_condition": "unconscious"},
+                "duration": {"until": "duration_10_minutes"},
+                "tick_on": "self_turn_end",
+            },
+            {
+                "effect_id": "unconscious-test",
+                "source_ref": "test",
+                "source_action_id": "test.unconscious",
+                "target_id": "pc1",
+                "applied_by": "goblin1",
+                "condition": "unconscious",
+                "duration": {"until": "duration_1_minute"},
+                "tick_on": "self_turn_start",
+            },
+        ]
+    )
+
+    result = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert result.expired[0]["source_action_id"] == "srd.rage"
+    assert result.expired[0]["ended_by_condition"] == "unconscious"
+    assert [effect["condition"] for effect in state.encounter.combatants["pc1"].status_effects] == [
+        "unconscious"
+    ]
+
+
+def test_persistent_rage_expires_when_character_wears_heavy_armor(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].equipment = ["srd.chain_mail"]
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "persistent-rage-test",
+            "source_ref": "test",
+            "source_action_id": "srd.rage",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "raging",
+            "passive_modifiers": {"ends_if_heavy_armor": True},
+            "duration": {"until": "duration_10_minutes"},
+            "tick_on": "self_turn_end",
+        }
+    )
+
+    result = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert result.expired[0]["source_action_id"] == "srd.rage"
+    assert result.expired[0]["ended_by_condition"] == "heavy_armor"
+    assert state.encounter.combatants["pc1"].status_effects == []
 
 
 def test_multi_day_duration_variants_tick_from_inferred_remaining_ticks(make_state) -> None:

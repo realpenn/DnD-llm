@@ -1620,6 +1620,21 @@ def test_natural_language_character_edit_assigns_barbarian_improved_brutal_strik
     assert "srd.improved_brutal_strike" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_barbarian_persistent_rage() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 barbarian15")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"barbarian": 15}
+    assert "srd.relentless_rage" in result.character.actions
+    assert "srd.improved_brutal_strike" in result.character.actions
+    assert "srd.persistent_rage" in result.character.actions
+    assert result.character.resources["srd.resource.rage"] == 5
+    assert result.character.resources["srd.resource.persistent_rage_initiative_restore"] == 1
+
+
 def test_natural_language_character_edit_assigns_explicit_berserker_subclass() -> None:
     character = default_fighter("pc1", "Penn")
 

@@ -95,6 +95,7 @@ DARK_ONES_OWN_LUCK_RESOURCE = "srd.resource.dark_ones_own_luck"
 INDOMITABLE_RESOURCE = "srd.resource.indomitable"
 STROKE_OF_LUCK_RESOURCE = "srd.resource.stroke_of_luck"
 RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE = "srd.resource.relentless_rage_uses_since_rest"
+PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE = "srd.resource.persistent_rage_initiative_restore"
 HEROIC_INSPIRATION_RESOURCE = "srd.resource.heroic_inspiration"
 NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE = "srd.resource.natural_recovery_spell_slots"
 NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE = "srd.resource.natural_recovery_circle_spell"
@@ -111,6 +112,7 @@ ELUSIVE_ACTION_ID = "srd.elusive"
 STROKE_OF_LUCK_ACTION_ID = "srd.stroke_of_luck"
 STROKE_OF_LUCK_D20 = 20
 RELENTLESS_RAGE_ACTION_ID = "srd.relentless_rage"
+PERSISTENT_RAGE_ACTION_ID = "srd.persistent_rage"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -201,6 +203,10 @@ def has_barbarian_berserker_feature(character: Character, *, level: int) -> bool
 
 def has_relentless_rage(character: Character) -> bool:
     return has_barbarian_feature(character, level=11)
+
+
+def persistent_rage_applies(character: Character) -> bool:
+    return has_barbarian_feature(character, level=15)
 
 
 def relentless_rage_dc(character: Character) -> int:

@@ -25,6 +25,7 @@ from dnd_llm.core.rules.class_features import (
     NATURAL_RECOVERY_CIRCLE_SPELL_RESOURCE,
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     NATURES_VEIL_RESOURCE,
+    PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
@@ -228,6 +229,7 @@ CLASS_LEVEL_ACTIONS = {
         9: ["srd.brutal_strike"],
         11: ["srd.relentless_rage"],
         13: ["srd.improved_brutal_strike"],
+        15: ["srd.persistent_rage"],
     },
     "monk": {
         1: [
@@ -2468,6 +2470,8 @@ def _resources_for_levels(
         else:
             rage_uses = 2
         resources["srd.resource.rage"] = rage_uses
+        if barbarian_level >= 15:
+            resources[PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE] = 1
     paladin_level = int(class_levels.get("paladin", 0))
     if paladin_level > 0:
         resources["srd.resource.lay_on_hands"] = paladin_level * 5

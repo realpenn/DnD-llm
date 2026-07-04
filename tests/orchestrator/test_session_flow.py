@@ -648,3 +648,58 @@ def test_roll_initiative_monk_perfect_focus_does_not_stack_with_uncanny_metaboli
     assert audit.events[-1].tool_result["perfect_focus"] == []
     assert character.resources["srd.resource.focus_points"] == 15
     assert character.resources["srd.resource.uncanny_metabolism"] == 0
+
+
+def test_roll_initiative_applies_barbarian_persistent_rage_once_per_long_rest(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 15}
+    character.actions.extend(["srd.rage", "srd.persistent_rage"])
+    character.resources["srd.resource.rage"] = 2
+    character.resources["srd.resource.persistent_rage_initiative_restore"] = 1
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    result = audit.events[-1].tool_result["persistent_rage"][0]
+    assert result == {
+        "combatant_id": "pc1",
+        "character_id": "pc1",
+        "source_action_id": "srd.persistent_rage",
+        "resource": "srd.resource.rage",
+        "resource_before": 2,
+        "resource_after": 5,
+        "restore_resource": "srd.resource.persistent_rage_initiative_restore",
+        "restore_resource_before": 1,
+        "restore_resource_after": 0,
+    }
+    assert character.resources["srd.resource.rage"] == 5
+    assert character.resources["srd.resource.persistent_rage_initiative_restore"] == 0
+
+    character.resources["srd.resource.rage"] = 1
+    roll_initiative(state, audit)
+
+    assert audit.events[-1].tool_result["persistent_rage"] == []
+    assert character.resources["srd.resource.rage"] == 1
+    assert character.resources["srd.resource.persistent_rage_initiative_restore"] == 0
+
+
+def test_roll_initiative_persistent_rage_does_not_spend_restore_when_rage_full(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 15}
+    character.resources["srd.resource.rage"] = 5
+    character.resources["srd.resource.persistent_rage_initiative_restore"] = 1
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    assert audit.events[-1].tool_result["persistent_rage"] == []
+    assert character.resources["srd.resource.rage"] == 5
+    assert character.resources["srd.resource.persistent_rage_initiative_restore"] == 1

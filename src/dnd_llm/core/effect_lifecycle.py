@@ -6,7 +6,11 @@ from typing import Any
 from .dice import RollService
 from .models import Character, GameState
 from .rules.checks import d20_expression
-from .rules.class_features import monk_self_restoration_applies, saving_throw_proficiency_sources
+from .rules.class_features import (
+    is_wearing_heavy_armor,
+    monk_self_restoration_applies,
+    saving_throw_proficiency_sources,
+)
 from .rules.conditions import exhaustion_d20_penalty, exhaustion_level, remove_condition
 
 SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
@@ -313,14 +317,28 @@ def _ended_by_condition(state: GameState, effect: dict[str, Any], actor_id: str)
     modifiers = effect.get("passive_modifiers", {})
     if not isinstance(modifiers, dict):
         return None
-    condition = modifiers.get("ends_if_condition")
-    if not isinstance(condition, str) or not condition:
-        return None
     target_id = effect.get("target_id")
     checked_actor_id = target_id if isinstance(target_id, str) else actor_id
-    if _actor_has_condition(state, checked_actor_id, condition):
-        return condition
+    conditions = _ending_conditions(modifiers)
+    for condition in conditions:
+        if _actor_has_condition(state, checked_actor_id, condition):
+            return condition
+    if modifiers.get("ends_if_heavy_armor") is True:
+        character = _character_for_actor(state, checked_actor_id)
+        if character is not None and is_wearing_heavy_armor(character):
+            return "heavy_armor"
     return None
+
+
+def _ending_conditions(modifiers: dict[str, Any]) -> list[str]:
+    conditions: list[str] = []
+    condition = modifiers.get("ends_if_condition")
+    if isinstance(condition, str) and condition:
+        conditions.append(condition)
+    plural = modifiers.get("ends_if_conditions")
+    if isinstance(plural, list):
+        conditions.extend(str(item) for item in plural if isinstance(item, str) and item)
+    return conditions
 
 
 def _actor_has_condition(state: GameState, actor_id: str, condition: str) -> bool:
