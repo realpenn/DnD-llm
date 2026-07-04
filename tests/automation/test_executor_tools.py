@@ -2460,6 +2460,92 @@ def test_hunters_mark_adds_force_damage_to_marked_target_hit(make_state) -> None
     assert state.encounter.combatants["goblin1"].hp_current == 13
 
 
+def test_precise_hunter_grants_advantage_against_own_hunters_mark_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 17}
+    character.actions.append("srd.precise_hunter")
+    target = state.encounter.combatants["goblin1"]
+    target.status_effects.append(
+        {
+            "effect_id": "precise-hunter-mark",
+            "source_action_id": "srd.favored_enemy_hunters_mark",
+            "target_id": "goblin1",
+            "applied_by": "pc1",
+            "passive_modifiers": {
+                "hunters_mark": True,
+                "attacker_bonus_damage": "1d6",
+                "damage_type": "force",
+            },
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 2, 4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="precise-hunter-marked-target",
+    )
+
+    attack_roll = result["node_results"]["automation[1]"]
+    assert attack_roll["status_advantage"] == "advantage"
+    assert result["dice_rolls"][0]["advantage"] == "advantage"
+    assert {
+        "kind": "advantage",
+        "source_action_id": "srd.precise_hunter",
+        "modifier": "precise_hunter",
+        "target_id": "goblin1",
+    } in attack_roll["status_sources"]
+
+
+def test_precise_hunter_ignores_hunters_mark_from_another_actor(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"ranger": 17}
+    character.actions.append("srd.precise_hunter")
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "other-hunters-mark",
+            "source_action_id": "srd.favored_enemy_hunters_mark",
+            "target_id": "goblin1",
+            "applied_by": "pc2",
+            "passive_modifiers": {"hunters_mark": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([12, 2]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="precise-hunter-other-mark",
+    )
+
+    attack_roll = result["node_results"]["automation[1]"]
+    assert attack_roll["status_advantage"] is None
+    assert result["dice_rolls"][0]["advantage"] is None
+    assert not any(
+        source.get("modifier") == "precise_hunter" for source in attack_roll["status_sources"]
+    )
+
+
 def test_hunters_lore_reveals_marked_target_defenses(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

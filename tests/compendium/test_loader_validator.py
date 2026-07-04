@@ -2670,6 +2670,13 @@ def test_compendium_loads_srd_actions() -> None:
         "concentration": False,
         "stacking_policy": "replace",
     }
+    precise_hunter = compendium.action("srd.precise_hunter")
+    assert precise_hunter.action_economy == "none"
+    assert precise_hunter.requirements == {"class": "ranger", "class_level_min": 17}
+    assert precise_hunter.properties == {
+        "requires_hunters_mark": True,
+        "attack_roll_advantage_against_current_hunters_mark_target": True,
+    }
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
@@ -5087,6 +5094,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.relentless_hunter" in compendium.classes["ranger"].levels["13"]["actions"]
     assert compendium.classes["ranger"].levels["14"]["features"] == ["Nature's Veil"]
     assert "srd.natures_veil" in compendium.classes["ranger"].levels["14"]["actions"]
+    assert compendium.classes["ranger"].levels["15"]["features"] == ["Subclass Feature"]
+    assert "srd.precise_hunter" not in compendium.classes["ranger"].levels["15"]["actions"]
+    assert compendium.classes["ranger"].levels["16"]["features"] == ["Ability Score Improvement"]
+    assert "srd.precise_hunter" not in compendium.classes["ranger"].levels["16"]["actions"]
+    assert compendium.classes["ranger"].levels["17"]["features"] == ["Precise Hunter"]
+    assert "srd.precise_hunter" in compendium.classes["ranger"].levels["17"]["actions"]
     assert compendium.classes["ranger"].levels["1"]["features"] == [
         "Spellcasting",
         "Favored Enemy",

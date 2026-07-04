@@ -166,6 +166,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.pact_of_the_blade",
     "srd.pact_of_the_blade_weapon",
     "srd.pact_of_the_chain",
+    "srd.precise_hunter",
     "srd.pact_of_the_chain_find_familiar",
     "srd.pact_of_the_tome",
     "srd.patient_defense",

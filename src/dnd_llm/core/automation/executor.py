@@ -50,6 +50,7 @@ from ..rules.class_features import (
     has_monk_open_hand_feature,
     has_multiattack_defense,
     has_paladin_feature,
+    has_precise_hunter,
     has_ranger_hunter_feature,
     has_relentless_hunter,
     has_rogue_thief_feature,
@@ -138,6 +139,7 @@ COUNTERCHARM_CONDITIONS = frozenset({"charmed", "frightened"})
 COUNTERCHARM_RANGE_FT = 30
 STUDIED_ATTACKS_ACTION_ID = "srd.studied_attacks"
 STUDIED_ATTACKS_CONDITION = "studied_attacks"
+PRECISE_HUNTER_ACTION_ID = "srd.precise_hunter"
 DEFLECT_ATTACKS_ACTION_ID = "srd.deflect_attacks"
 EVASION_ACTION_ID = "srd.evasion"
 CUTTING_WORDS_ACTION_ID = "srd.cutting_words"
@@ -695,6 +697,7 @@ class AutomationExecutor:
                 actor,
                 target,
                 distance_ft,
+                actor_id=ctx.actor_id,
                 target_id=target_id,
                 action=ctx.action,
                 ability=ability,
@@ -7992,6 +7995,7 @@ class AutomationExecutor:
         target: Character | Monster | Combatant,
         distance_ft: int | None,
         *,
+        actor_id: str,
         target_id: str,
         action: ActionDefinition,
         ability: str,
@@ -8010,7 +8014,9 @@ class AutomationExecutor:
         advantage_sources.extend(
             self._attack_advantage_by_ability_sources(actor, action, ability=ability)
         )
-        advantage_sources.extend(self._attack_roll_advantage_sources(actor, action, target_id))
+        advantage_sources.extend(
+            self._attack_roll_advantage_sources(actor, action, actor_id, target_id)
+        )
         advantage_sources.extend(self._incoming_attack_advantage_sources(target))
         advantage_blocked_source = self._elusive_attack_advantage_block_source(
             target_id,
@@ -8086,9 +8092,11 @@ class AutomationExecutor:
         self,
         actor: Character | Monster | Combatant,
         action: ActionDefinition,
+        actor_id: str,
         target_id: str,
     ) -> list[dict[str, Any]]:
         sources = self._studied_attacks_advantage_sources(actor, target_id)
+        sources.extend(self._precise_hunter_advantage_sources(actor_id, target_id))
         if action.action_type not in ATTACK_ACTION_TYPES:
             return sources
         for effect in self._status_effects_for(actor):
@@ -8106,6 +8114,24 @@ class AutomationExecutor:
                 }
             )
         return sources
+
+    def _precise_hunter_advantage_sources(
+        self,
+        actor_id: str,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or not has_precise_hunter(actor_owner):
+            return []
+        if not self._target_marked_by_hunters_mark(actor_id, target_id):
+            return []
+        return [
+            {
+                "source_action_id": PRECISE_HUNTER_ACTION_ID,
+                "modifier": "precise_hunter",
+                "target_id": target_id,
+            }
+        ]
 
     def _studied_attacks_advantage_sources(
         self,
@@ -9043,6 +9069,7 @@ class AutomationExecutor:
             actor,
             target,
             distance_ft,
+            actor_id=actor_id,
             target_id=target_id,
             action=action,
             ability=ability,

@@ -1403,6 +1403,52 @@
                         "srd.relentless_hunter",
                         "srd.natures_veil"
                     ]
+                },
+                "15": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless",
+                        "srd.relentless_hunter",
+                        "srd.natures_veil"
+                    ]
+                },
+                "16": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless",
+                        "srd.relentless_hunter",
+                        "srd.natures_veil"
+                    ]
+                },
+                "17": {
+                    "features": ["Precise Hunter"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.favored_enemy_hunters_mark",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.deft_explorer",
+                        "srd.roving",
+                        "srd.ranger_expertise",
+                        "srd.tireless",
+                        "srd.relentless_hunter",
+                        "srd.natures_veil",
+                        "srd.precise_hunter"
+                    ]
                 }
             },
             "subclasses": {

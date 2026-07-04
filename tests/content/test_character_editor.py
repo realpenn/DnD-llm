@@ -2277,6 +2277,29 @@ def test_natural_language_character_edit_does_not_grant_natures_veil_too_early()
     assert "srd.resource.natures_veil" not in result.character.resources
 
 
+def test_natural_language_character_edit_assigns_ranger_precise_hunter_at_level_17() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger17")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 17}
+    assert "srd.precise_hunter" in result.character.actions
+    assert "srd.natures_veil" in result.character.actions
+
+
+def test_natural_language_character_edit_does_not_grant_precise_hunter_too_early() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger16")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert "srd.precise_hunter" not in result.character.actions
+    assert "srd.natures_veil" in result.character.actions
+
+
 def test_natural_language_character_edit_does_not_grant_relentless_hunter_too_early() -> None:
     character = default_fighter("pc1", "Penn")
 

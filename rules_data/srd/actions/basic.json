@@ -4120,6 +4120,35 @@
             "audit_label": "Nature's Veil"
         },
         {
+            "id": "srd.precise_hunter",
+            "name": "Precise Hunter",
+            "localization": {
+                "en": "Precise Hunter",
+                "zh": "精准猎手",
+                "aliases": ["Ranger Precise Hunter", "游侠精准猎手"]
+            },
+            "source": "SRD 5.2.1 Ranger Class Features: Level 17: Precise Hunter",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 17},
+            "properties": {
+                "requires_hunters_mark": true,
+                "attack_roll_advantage_against_current_hunters_mark_target": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "The Ranger has Advantage on attack rolls against the creature currently marked by the Ranger's Hunter's Mark."
+                }
+            ],
+            "audit_label": "Precise Hunter"
+        },
+        {
             "id": "srd.hunters_lore",
             "name": "Hunter's Lore",
             "localization": {

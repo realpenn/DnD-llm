@@ -278,6 +278,7 @@ CLASS_LEVEL_ACTIONS = {
         10: ["srd.tireless"],
         13: ["srd.relentless_hunter"],
         14: ["srd.natures_veil"],
+        17: ["srd.precise_hunter"],
     },
     "rogue": {
         1: ["srd.rogue_expertise", "srd.thieves_cant"],

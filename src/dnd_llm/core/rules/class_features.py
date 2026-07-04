@@ -806,6 +806,10 @@ def has_relentless_hunter(character: Character) -> bool:
     return int(character.class_levels.get("ranger", 0)) >= 13
 
 
+def has_precise_hunter(character: Character) -> bool:
+    return int(character.class_levels.get("ranger", 0)) >= 17
+
+
 def second_story_work_climb_speed(character: Character) -> int | None:
     if not has_rogue_thief_feature(character, level=3):
         return None
