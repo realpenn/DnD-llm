@@ -3631,6 +3631,45 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_headband_of_intellect"},
         "stacking_policy": "replace",
     }
+    helm_languages = compendium.action("srd.helm_of_comprehending_languages_comprehend_languages")
+    assert compendium.items["srd.helm_of_comprehending_languages"].actions == [
+        "srd.helm_of_comprehending_languages_comprehend_languages"
+    ]
+    assert compendium.items["srd.helm_of_comprehending_languages"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": False,
+        "worn_slot": "head",
+    }
+    assert helm_languages.action_economy == "action"
+    assert helm_languages.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert helm_languages.requirements == {
+        "item": "srd.helm_of_comprehending_languages",
+        "spell_level": 1,
+    }
+    assert helm_languages.cost.spell_slot_level is None
+    assert helm_languages.properties == {
+        "spell_definition_id": "srd.spell.comprehend_languages",
+        "spell_level": 1,
+        "helm_of_comprehending_languages": True,
+        "self_only": True,
+        "requires_attunement": False,
+        "worn_slot": "head",
+    }
+    assert helm_languages.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "world_effect",
+            "effect_type": "comprehend_languages",
+            "scope": {"target": "self"},
+            "duration": {"until": "duration_1_hour"},
+            "metadata": {"language_mode": "understand_literal_meaning"},
+        },
+    ]
     necklace_of_adaptation = compendium.action("srd.wear_necklace_of_adaptation")
     assert compendium.items["srd.necklace_of_adaptation"].actions == [
         "srd.wear_necklace_of_adaptation"
@@ -5351,6 +5390,9 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.items["srd.goggles_of_night"].actions == ["srd.wear_goggles_of_night"]
     assert compendium.items["srd.headband_of_intellect"].actions == [
         "srd.wear_headband_of_intellect"
+    ]
+    assert compendium.items["srd.helm_of_comprehending_languages"].actions == [
+        "srd.helm_of_comprehending_languages_comprehend_languages"
     ]
     assert compendium.items["srd.necklace_of_adaptation"].actions == [
         "srd.wear_necklace_of_adaptation"

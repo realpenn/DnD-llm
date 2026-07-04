@@ -647,6 +647,43 @@
       "audit_label": "Wear Headband of Intellect"
     },
     {
+      "id": "srd.helm_of_comprehending_languages_comprehend_languages",
+      "name": "Helm of Comprehending Languages: Comprehend Languages",
+      "localization": {
+        "en": "Helm of Comprehending Languages: Comprehend Languages",
+        "zh": "通晓语言头盔：通晓语言",
+        "aliases": ["Comprehending Languages Helm Comprehend Languages", "通晓语言头盔通晓语言"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Helm of Comprehending Languages; SRD 5.2.1 Comprehend Languages",
+      "rules_version": "srd-5.2.1",
+      "action_type": "spell",
+      "action_economy": "action",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.helm_of_comprehending_languages", "spell_level": 1 },
+      "properties": {
+        "spell_definition_id": "srd.spell.comprehend_languages",
+        "spell_level": 1,
+        "helm_of_comprehending_languages": true,
+        "self_only": true,
+        "requires_attunement": false,
+        "worn_slot": "head"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "world_effect",
+          "effect_type": "comprehend_languages",
+          "scope": { "target": "self" },
+          "duration": { "until": "duration_1_hour" },
+          "metadata": { "language_mode": "understand_literal_meaning" }
+        }
+      ],
+      "audit_label": "Helm of Comprehending Languages: Comprehend Languages"
+    },
+    {
       "id": "srd.wear_necklace_of_adaptation",
       "name": "Wear Necklace of Adaptation",
       "localization": {

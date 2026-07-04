@@ -2565,6 +2565,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert headband.status == "accepted"
     assert headband.action_id == "srd.wear_headband_of_intellect"
 
+    state.characters["pc1"].equipment.append("srd.helm_of_comprehending_languages")
+    helm_languages = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.helm_of_comprehending_languages",
+        )
+    )
+
+    assert helm_languages.status == "accepted"
+    assert helm_languages.action_id == "srd.helm_of_comprehending_languages_comprehend_languages"
+
     state.characters["pc1"].equipment.append("srd.necklace_of_adaptation")
     necklace = resolver.resolve(
         PlayerActionDraft(
@@ -2832,6 +2845,28 @@ def test_resolver_rejects_headband_of_intellect_non_self_target(make_state) -> N
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.wear_headband_of_intellect"
+
+
+def test_resolver_rejects_helm_of_comprehending_languages_non_self_target(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.helm_of_comprehending_languages"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.helm_of_comprehending_languages",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.helm_of_comprehending_languages_comprehend_languages"
 
 
 def test_resolver_rejects_necklace_of_adaptation_non_self_target(make_state) -> None:

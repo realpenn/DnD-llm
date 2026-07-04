@@ -10172,6 +10172,61 @@ def test_headband_of_intellect_does_not_lower_equal_or_higher_intelligence(make_
     assert intelligence_check["roll"]["expression"] == "1d20+5"
 
 
+def test_helm_of_comprehending_languages_casts_spell_without_slot_or_consuming_item(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.spell_slots["1"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError, match="actor does not have item srd.helm_of_comprehending_languages"
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.helm_of_comprehending_languages",
+            ["pc1"],
+            action_id="srd.helm_of_comprehending_languages_comprehend_languages",
+            idempotency_key="missing-helm-of-comprehending-languages",
+        )
+
+    assert state.world.active_effects == []
+
+    character.equipment.append("srd.helm_of_comprehending_languages")
+    with pytest.raises(AutomationError, match="target must be self"):
+        tools.use_item(
+            "pc1",
+            "srd.helm_of_comprehending_languages",
+            ["pc2"],
+            action_id="srd.helm_of_comprehending_languages_comprehend_languages",
+            idempotency_key="helm-of-comprehending-languages-other-target",
+        )
+    assert state.world.active_effects == []
+
+    result = tools.use_item(
+        "pc1",
+        "srd.helm_of_comprehending_languages",
+        ["pc1"],
+        action_id="srd.helm_of_comprehending_languages_comprehend_languages",
+        idempotency_key="helm-of-comprehending-languages-self",
+    )
+
+    assert result["success"] is True
+    assert character.spell_slots["1"] == 1
+    assert not any(change.get("resource") == "spell_slot_1" for change in result["state_changes"])
+    assert "srd.helm_of_comprehending_languages" in character.equipment
+    world_effect = state.world.active_effects[-1]
+    assert world_effect["source_action_id"] == (
+        "srd.helm_of_comprehending_languages_comprehend_languages"
+    )
+    assert world_effect["effect_type"] == "comprehend_languages"
+    assert world_effect["scope"] == {"target": "self"}
+    assert world_effect["duration"] == {"until": "duration_1_hour"}
+    assert world_effect["metadata"] == {"language_mode": "understand_literal_meaning"}
+
+
 def test_necklace_of_adaptation_item_requirement_accepts_equipment_and_rejects_missing(
     make_state,
 ) -> None:
