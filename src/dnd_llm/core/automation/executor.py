@@ -39,6 +39,7 @@ from ..rules.class_features import (
     has_horde_breaker,
     has_monk_feature,
     has_monk_open_hand_feature,
+    has_paladin_feature,
     has_ranger_hunter_feature,
     has_rogue_thief_feature,
     has_warlock_eldritch_mind,
@@ -90,6 +91,7 @@ MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
+AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
 DARK_ONES_OWN_LUCK_ACTION_ID = "srd.dark_ones_own_luck"
 INDOMITABLE_ACTION_ID = "srd.indomitable"
 DISCIPLINED_SURVIVOR_ACTION_ID = "srd.disciplined_survivor"
@@ -7452,9 +7454,18 @@ class AutomationExecutor:
         conditions: set[str],
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
+        suppressed = {
+            condition
+            for condition in conditions
+            if self._condition_immunity_sources(entity, condition)
+        }
         for effect in self._status_effects_for(entity):
             condition = effect.get("condition")
-            if isinstance(condition, str) and condition in conditions:
+            if (
+                isinstance(condition, str)
+                and condition in conditions
+                and condition not in suppressed
+            ):
                 sources.append(
                     {
                         "condition": condition,
@@ -9440,6 +9451,8 @@ class AutomationExecutor:
         condition: str,
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
+        if condition == "frightened":
+            sources.extend(self._aura_of_courage_condition_immunity_sources(target))
         if condition == "poisoned":
             sources.extend(self._condition_sources(target, {"petrified"}))
             owner = target
@@ -9471,6 +9484,56 @@ class AutomationExecutor:
                         "immune_condition": condition,
                     }
                 )
+        return sources
+
+    def _aura_of_courage_condition_immunity_sources(
+        self,
+        target: Character | Monster | Combatant,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        target_combatant = target if isinstance(target, Combatant) else self._combatant_for(target)
+        if self.state.encounter is not None and target_combatant is not None:
+            for paladin in self.state.encounter.combatants.values():
+                if paladin.entity_id not in self.state.characters:
+                    continue
+                if paladin.side != target_combatant.side:
+                    continue
+                owner = self.state.characters[paladin.entity_id]
+                if not has_paladin_feature(owner, level=10):
+                    continue
+                if self._condition_sources(paladin, {"incapacitated"}):
+                    continue
+                distance = (
+                    0
+                    if paladin.id == target_combatant.id
+                    else self._combat_distance(paladin, target_combatant)
+                )
+                if distance is None or distance > 10:
+                    continue
+                sources.append(
+                    {
+                        "source_action_id": AURA_OF_COURAGE_ACTION_ID,
+                        "modifier": "aura_of_courage",
+                        "source_actor_id": paladin.id,
+                        "target_id": target_combatant.id,
+                        "distance_ft": distance,
+                        "immune_condition": "frightened",
+                    }
+                )
+        elif (
+            isinstance(target, Character)
+            and has_paladin_feature(target, level=10)
+            and not has_condition(target.status_effects, "incapacitated")
+        ):
+            sources.append(
+                {
+                    "source_action_id": AURA_OF_COURAGE_ACTION_ID,
+                    "modifier": "aura_of_courage",
+                    "source_actor_id": target.id,
+                    "target_id": target.id,
+                    "immune_condition": "frightened",
+                }
+            )
         return sources
 
     def _apply_mindless_rage_if_available(

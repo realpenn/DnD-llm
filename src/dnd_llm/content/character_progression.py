@@ -255,6 +255,7 @@ CLASS_LEVEL_ACTIONS = {
             "srd.faithful_steed_find_steed",
         ],
         6: ["srd.aura_of_protection"],
+        10: ["srd.aura_of_courage"],
     },
     "ranger": {
         1: ["srd.favored_enemy_hunters_mark"],

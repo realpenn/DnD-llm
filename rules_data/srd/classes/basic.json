@@ -1078,6 +1078,24 @@
                         "srd.faithful_steed_find_steed",
                         "srd.aura_of_protection"
                     ]
+                },
+                "10": {
+                    "features": ["Aura of Courage"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed",
+                        "srd.aura_of_protection",
+                        "srd.aura_of_courage"
+                    ]
                 }
             },
             "subclasses": {

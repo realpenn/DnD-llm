@@ -59,6 +59,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.ascendant_step_levitate",
     "srd.armor_of_shadows",
     "srd.armor_of_shadows_mage_armor",
+    "srd.aura_of_courage",
     "srd.barbarian_unarmored_defense",
     "srd.bard_expertise",
     "srd.bardic_inspiration",

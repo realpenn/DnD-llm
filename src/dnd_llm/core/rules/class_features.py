@@ -745,6 +745,10 @@ def aura_of_protection_saving_throw_bonus(character: Character) -> int:
     return max(1, ability_modifier(charisma))
 
 
+def aura_of_courage_applies(character: Character) -> bool:
+    return has_paladin_feature(character, level=10)
+
+
 def barbarian_unarmored_defense_armor_class(character: Character) -> int | None:
     if not has_barbarian_feature(character, level=1):
         return None

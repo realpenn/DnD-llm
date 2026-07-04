@@ -4536,6 +4536,90 @@ def test_paladin_aura_of_protection_inactive_while_incapacitated(make_state) -> 
     assert save_node["passive_sources"] == []
 
 
+def test_paladin_aura_of_courage_blocks_new_frightened_condition(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 10}
+    paladin.actions.append("srd.aura_of_courage")
+    action = ActionDefinition(
+        id="test.frighten_in_aura",
+        name="Frighten in Aura",
+        localization={"en": "Frighten in Aura", "zh": "灵光内恐惧", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {
+                "type": "condition",
+                "condition": "frightened",
+                "duration": {"until": "duration_1_minute"},
+            },
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+    )
+
+    assert any(
+        change["type"] == "condition_immune"
+        and change["condition"] == "frightened"
+        and change["immunity_sources"][0]["source_action_id"] == "srd.aura_of_courage"
+        and change["immunity_sources"][0]["distance_ft"] == 0
+        for change in result.state_changes
+    )
+    assert all(
+        effect.get("condition") != "frightened"
+        for effect in state.encounter.combatants["pc2"].status_effects
+    )
+
+
+def test_paladin_aura_of_courage_suppresses_existing_frightened_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 10}
+    state.encounter.combatants["pc2"].status_effects.append(
+        {"effect_id": "fright-test", "condition": "frightened", "source_action_id": "test.fear"}
+    )
+    action = ActionDefinition(
+        id="test.frightened_ability_check",
+        name="Frightened Ability Check",
+        localization={"en": "Frightened Ability Check", "zh": "恐惧检定", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"self": True},
+        target_policy={"min": 0, "max": 0, "self": True, "harmful": False},
+        automation=[{"type": "ability_check", "ability": "str", "difficulty_tier": "medium"}],
+    )
+
+    protected = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(action, actor_id="pc2")
+    state.encounter.combatants["pc1"].status_effects.append({"condition": "incapacitated"})
+    unprotected = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 10]),
+        AuditLog(),
+    ).execute(action, actor_id="pc2")
+
+    assert protected.node_results["automation[0]"]["status_advantage"] is None
+    assert protected.dice_rolls[0]["advantage"] is None
+    assert unprotected.node_results["automation[0]"]["status_advantage"] == "disadvantage"
+    assert unprotected.dice_rolls[0]["advantage"] == "disadvantage"
+
+
 def test_dark_ones_own_luck_adds_d10_to_direct_check_and_long_rest_restores(
     make_state,
 ) -> None:
