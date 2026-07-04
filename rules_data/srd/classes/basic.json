@@ -216,6 +216,25 @@
                         "srd.improved_brutal_strike",
                         "srd.persistent_rage"
                     ]
+                },
+                "18": {
+                    "features": ["Indomitable Might"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.rage",
+                        "srd.barbarian_unarmored_defense",
+                        "srd.danger_sense",
+                        "srd.primal_knowledge",
+                        "srd.reckless_attack",
+                        "srd.extra_attack",
+                        "srd.feral_instinct",
+                        "srd.instinctive_pounce",
+                        "srd.brutal_strike",
+                        "srd.relentless_rage",
+                        "srd.improved_brutal_strike",
+                        "srd.persistent_rage",
+                        "srd.indomitable_might"
+                    ]
                 }
             },
             "subclasses": {

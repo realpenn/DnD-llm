@@ -14,6 +14,7 @@ from ..rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
     ELUSIVE_ACTION_ID,
     FOCUS_POINTS_RESOURCE,
+    INDOMITABLE_MIGHT_ACTION_ID,
     INDOMITABLE_RESOURCE,
     PERSISTENT_RAGE_ACTION_ID,
     PRIMAL_KNOWLEDGE_SKILLS,
@@ -67,6 +68,7 @@ from ..rules.class_features import (
     has_warlock_repelling_blast,
     has_warlock_thirsting_blade,
     has_wizard_evocation_feature,
+    indomitable_might_total_floor,
     is_bloodied,
     is_wearing_armor,
     is_wielding_shield,
@@ -1007,6 +1009,14 @@ class AutomationExecutor:
             )
             if dark_ones_own_luck_result is not None:
                 total = int(dark_ones_own_luck_result["total_after"])
+            indomitable_might_result = self._apply_indomitable_might_to_d20_test(
+                self._proficiency_source(target),
+                ability,
+                total,
+                dc,
+            )
+            if indomitable_might_result is not None:
+                total = int(indomitable_might_result["total_after"])
             success = total >= dc
             stroke_of_luck_result = self._apply_stroke_of_luck_to_failed_d20_test(
                 ctx,
@@ -1085,6 +1095,8 @@ class AutomationExecutor:
             }
             if dark_ones_own_luck_result is not None:
                 ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
+            if indomitable_might_result is not None:
+                ctx.result.node_results[path]["indomitable_might"] = indomitable_might_result
             if stroke_of_luck_result is not None:
                 ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
             if indomitable_result is not None:
@@ -1168,6 +1180,14 @@ class AutomationExecutor:
         )
         if dark_ones_own_luck_result is not None:
             total = int(dark_ones_own_luck_result["total_after"])
+        indomitable_might_result = self._apply_indomitable_might_to_d20_test(
+            self._proficiency_source(actor),
+            ability,
+            total,
+            dc,
+        )
+        if indomitable_might_result is not None:
+            total = int(indomitable_might_result["total_after"])
         tactical_mind_result = self._apply_tactical_mind_to_ability_check(
             ctx,
             total,
@@ -1217,6 +1237,8 @@ class AutomationExecutor:
             ctx.result.node_results[path]["reliable_talent"] = reliable_talent_result
         if dark_ones_own_luck_result is not None:
             ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
+        if indomitable_might_result is not None:
+            ctx.result.node_results[path]["indomitable_might"] = indomitable_might_result
         if tactical_mind_result is not None:
             ctx.result.node_results[path]["tactical_mind"] = tactical_mind_result
         if stroke_of_luck_result is not None:
@@ -3373,6 +3395,31 @@ class AutomationExecutor:
             "total_before": total,
             "total_after": after_total,
             "proficiency_sources": list(proficiency_sources),
+            "success": after_total >= dc,
+        }
+
+    def _apply_indomitable_might_to_d20_test(
+        self,
+        actor: Character | Monster | Combatant,
+        ability: str,
+        total: int,
+        dc: int,
+    ) -> dict[str, Any] | None:
+        if not isinstance(actor, Character):
+            return None
+        after_total = indomitable_might_total_floor(
+            actor,
+            ability=ability,
+            total=total,
+        )
+        if after_total is None:
+            return None
+        return {
+            "source_action_id": INDOMITABLE_MIGHT_ACTION_ID,
+            "ability": ability.lower(),
+            "strength_score": after_total,
+            "total_before": total,
+            "total_after": after_total,
             "success": after_total >= dc,
         }
 

@@ -230,6 +230,7 @@ CLASS_LEVEL_ACTIONS = {
         11: ["srd.relentless_rage"],
         13: ["srd.improved_brutal_strike"],
         15: ["srd.persistent_rage"],
+        18: ["srd.indomitable_might"],
     },
     "monk": {
         1: [

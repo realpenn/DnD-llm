@@ -18,6 +18,7 @@ from .rules.checks import actor_ability_modifier, d20_expression, roll_check
 from .rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
     FOCUS_POINTS_RESOURCE,
+    INDOMITABLE_MIGHT_ACTION_ID,
     INDOMITABLE_RESOURCE,
     PRIMAL_KNOWLEDGE_SKILLS,
     RELENTLESS_RAGE_ACTION_ID,
@@ -35,6 +36,7 @@ from .rules.class_features import (
     has_relentless_rage,
     has_rogue_thief_feature,
     has_warlock_fiend_feature,
+    indomitable_might_total_floor,
     monk_disciplined_survivor_applies,
     relentless_rage_dc,
     relentless_rage_success_hp,
@@ -216,6 +218,13 @@ class EngineTools:
         if dark_ones_own_luck is not None:
             payload["dark_ones_own_luck"] = dark_ones_own_luck["result"]
             dice_rolls.append(dark_ones_own_luck["roll"])
+        indomitable_might = _apply_indomitable_might_to_d20_payload(
+            proficiency_source,
+            payload,
+            effective_ability,
+        )
+        if indomitable_might is not None:
+            payload["indomitable_might"] = indomitable_might
         tactical_mind = self._apply_tactical_mind_to_check(
             actor_id,
             payload,
@@ -409,6 +418,13 @@ class EngineTools:
         if dark_ones_own_luck is not None:
             payload["dark_ones_own_luck"] = dark_ones_own_luck["result"]
             dice_rolls.append(dark_ones_own_luck["roll"])
+        indomitable_might = _apply_indomitable_might_to_d20_payload(
+            proficiency_source,
+            payload,
+            ability,
+        )
+        if indomitable_might is not None:
+            payload["indomitable_might"] = indomitable_might
         indomitable = self._apply_indomitable_to_save(
             payload,
             proficiency_source,
@@ -2370,6 +2386,33 @@ def _apply_reliable_talent_to_check_payload(
         "total_before": before_total,
         "total_after": after_total,
         "proficiency_sources": list(proficiency_sources),
+        "success": payload["success"],
+    }
+
+
+def _apply_indomitable_might_to_d20_payload(
+    actor: Character | Monster | Combatant,
+    payload: dict[str, Any],
+    ability: str,
+) -> dict[str, Any] | None:
+    if not isinstance(actor, Character):
+        return None
+    before_total = int(payload["total"])
+    after_total = indomitable_might_total_floor(
+        actor,
+        ability=ability,
+        total=before_total,
+    )
+    if after_total is None:
+        return None
+    payload["total"] = after_total
+    payload["success"] = after_total >= int(payload["dc"])
+    return {
+        "source_action_id": INDOMITABLE_MIGHT_ACTION_ID,
+        "ability": ability.lower(),
+        "strength_score": after_total,
+        "total_before": before_total,
+        "total_after": after_total,
         "success": payload["success"],
     }
 

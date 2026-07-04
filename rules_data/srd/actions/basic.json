@@ -574,6 +574,35 @@
             "audit_label": "Persistent Rage"
         },
         {
+            "id": "srd.indomitable_might",
+            "name": "Indomitable Might",
+            "localization": {
+                "en": "Indomitable Might",
+                "zh": "不屈威能",
+                "aliases": ["Barbarian Indomitable Might", "野蛮人不屈威能"]
+            },
+            "source": "SRD 5.2.1 Barbarian Class Features: Level 18: Indomitable Might",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "barbarian", "class_level_min": 18},
+            "properties": {
+                "affected_tests": ["strength_check", "strength_saving_throw"],
+                "use_strength_score_when_total_below_score": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Barbarian 18 can use their Strength score in place of the total for a Strength check or Strength saving throw if the total is lower than that score."
+                }
+            ],
+            "audit_label": "Indomitable Might"
+        },
+        {
             "id": "srd.frenzy",
             "name": "Frenzy",
             "localization": {

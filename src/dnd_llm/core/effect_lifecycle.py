@@ -7,6 +7,8 @@ from .dice import RollService
 from .models import Character, GameState
 from .rules.checks import d20_expression
 from .rules.class_features import (
+    INDOMITABLE_MIGHT_ACTION_ID,
+    indomitable_might_total_floor,
     is_wearing_heavy_armor,
     monk_self_restoration_applies,
     saving_throw_proficiency_sources,
@@ -406,7 +408,15 @@ def _roll_repeat_save(
     roll = roll_service.roll(d20_expression(bonus), advantage=status_advantage)
     total = roll.total
     dc = int(repeat_save["dc"])
-    return {
+    indomitable_might = _indomitable_might_repeat_save(
+        _proficiency_source(state, target),
+        ability,
+        total,
+        dc,
+    )
+    if indomitable_might is not None:
+        total = int(indomitable_might["total_after"])
+    entry = {
         "ability": ability,
         "dc": dc,
         "dc_source": repeat_save.get("dc_source"),
@@ -421,6 +431,30 @@ def _roll_repeat_save(
         "roll": roll.to_dict(),
         "total": total,
         "success": total >= dc,
+    }
+    if indomitable_might is not None:
+        entry["indomitable_might"] = indomitable_might
+    return entry
+
+
+def _indomitable_might_repeat_save(
+    target: Any,
+    ability: str,
+    total: int,
+    dc: int,
+) -> dict[str, Any] | None:
+    if not isinstance(target, Character):
+        return None
+    after_total = indomitable_might_total_floor(target, ability=ability, total=total)
+    if after_total is None:
+        return None
+    return {
+        "source_action_id": INDOMITABLE_MIGHT_ACTION_ID,
+        "ability": ability.lower(),
+        "strength_score": after_total,
+        "total_before": total,
+        "total_after": after_total,
+        "success": after_total >= dc,
     }
 
 

@@ -138,6 +138,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.improved_brutal_strike",
     "srd.improved_cunning_strike",
     "srd.improved_critical",
+    "srd.indomitable_might",
     "srd.investment_of_the_chain_master",
     "srd.innate_sorcery",
     "srd.instinctive_pounce",

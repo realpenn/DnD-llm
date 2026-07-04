@@ -6384,6 +6384,143 @@ def test_fighter_indomitable_automation_save_must_use_new_roll_even_if_failed(
     )
 
 
+def test_barbarian_indomitable_might_floors_direct_strength_check_and_save(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 18}
+    character.abilities["str"] = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 2, 1, 15]),
+    )
+
+    strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="very_hard",
+        idempotency_key="indomitable-might-direct-check",
+    )
+    strength_save = tools.roll_save(
+        "pc1",
+        "str",
+        difficulty_tier="very_hard",
+        idempotency_key="indomitable-might-direct-save",
+    )
+    dex_check = tools.roll_check(
+        "pc1",
+        "dex",
+        difficulty_tier="easy",
+        idempotency_key="indomitable-might-non-strength-check",
+    )
+    exact_strength_check = tools.roll_check(
+        "pc1",
+        "str",
+        difficulty_tier="easy",
+        idempotency_key="indomitable-might-exact-strength-check",
+    )
+
+    assert strength_check["total"] == 20
+    assert strength_check["success"] is False
+    assert strength_check["indomitable_might"] == {
+        "source_action_id": "srd.indomitable_might",
+        "ability": "str",
+        "strength_score": 20,
+        "total_before": 6,
+        "total_after": 20,
+        "success": False,
+    }
+    assert strength_save["total"] == 20
+    assert strength_save["success"] is False
+    assert strength_save["indomitable_might"] == {
+        "source_action_id": "srd.indomitable_might",
+        "ability": "str",
+        "strength_score": 20,
+        "total_before": 7,
+        "total_after": 20,
+        "success": False,
+    }
+    assert "indomitable_might" not in dex_check
+    assert exact_strength_check["total"] == 20
+    assert "indomitable_might" not in exact_strength_check
+
+
+def test_barbarian_indomitable_might_prevents_failed_save_resource_spend(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 18, "fighter": 9}
+    character.abilities["str"] = 20
+    character.resources["srd.resource.indomitable"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([7]),
+    )
+
+    result = tools.roll_save(
+        "pc1",
+        "str",
+        difficulty_tier="medium",
+        use_indomitable=True,
+        idempotency_key="indomitable-might-before-indomitable",
+    )
+
+    assert result["total"] == 20
+    assert result["success"] is True
+    assert result["indomitable_might"]["total_before"] == 12
+    assert "indomitable" not in result
+    assert character.resources["srd.resource.indomitable"] == 1
+
+
+def test_barbarian_indomitable_might_floors_automation_check_and_save(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 18}
+    character.abilities["str"] = 20
+    action = ActionDefinition(
+        id="test.indomitable_might",
+        name="Indomitable Might Test",
+        localization={"en": "Indomitable Might Test", "zh": "不屈威能测试", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[
+            {"type": "ability_check", "ability": "str", "difficulty_tier": "very_hard"},
+            {"type": "saving_throw", "ability": "str", "difficulty_tier": "medium"},
+        ],
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1, 1]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", targets=["pc1"])
+
+    check_node = result.node_results["automation[0]"]
+    save_node = result.node_results["automation[1]"]
+    assert check_node["total"] == 20
+    assert check_node["success"] is False
+    assert check_node["indomitable_might"]["total_before"] == 6
+    assert check_node["indomitable_might"]["total_after"] == 20
+    assert save_node["total"] == 20
+    assert save_node["success"] is True
+    assert save_node["indomitable_might"]["total_before"] == 6
+    assert save_node["indomitable_might"]["total_after"] == 20
+
+
 def test_monk_disciplined_survivor_grants_all_save_proficiency_and_rerolls_failed_direct_save(
     make_state,
 ) -> None:

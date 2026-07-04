@@ -4754,6 +4754,15 @@ def test_compendium_loads_srd_actions() -> None:
         "rage_ends_early_on_conditions": ["unconscious"],
         "rage_ends_early_on_heavy_armor": True,
     }
+    assert compendium.classes["barbarian"].levels["18"]["features"] == ["Indomitable Might"]
+    assert "srd.indomitable_might" in compendium.classes["barbarian"].levels["18"]["actions"]
+    indomitable_might = compendium.action("srd.indomitable_might")
+    assert indomitable_might.requirements == {"class": "barbarian", "class_level_min": 18}
+    assert indomitable_might.action_economy == "none"
+    assert indomitable_might.properties == {
+        "affected_tests": ["strength_check", "strength_saving_throw"],
+        "use_strength_score_when_total_below_score": True,
+    }
     assert compendium.classes["bard"].levels["3"]["features"] == ["Bard Subclass"]
     assert compendium.classes["bard"].subclasses["lore"] == {
         "name": "College of Lore",

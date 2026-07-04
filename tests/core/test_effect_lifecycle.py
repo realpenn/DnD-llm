@@ -3,11 +3,35 @@ from __future__ import annotations
 from pathlib import Path
 
 from dnd_llm.core.compendium.loader import CompendiumLoader
-from dnd_llm.core.dice import RollService
+from dnd_llm.core.dice import RollDie, RollResult, RollService
 from dnd_llm.core.effect_lifecycle import tick_effects
 from dnd_llm.core.persistence import AuditLog, load_game, save_game
 from dnd_llm.core.resolver import PlayerActionDraft
 from dnd_llm.orchestrator.session import GameSession, SessionResult
+
+
+class _FixedD20RollService:
+    def __init__(self, values: list[int]) -> None:
+        self.values = values
+        self.counter = 0
+
+    def roll(self, expression: str, advantage: str | None = None) -> RollResult:
+        value = self.values.pop(0)
+        modifier = int(expression.split("1d20", 1)[1] or "0")
+        total = value + modifier
+        counter = self.counter
+        self.counter += 1
+        return RollResult(
+            roll_id=f"fixed-{counter}",
+            expression=expression,
+            seed=0,
+            counter=counter,
+            advantage=advantage,
+            dice=[RollDie(sides=20, value=value, kept=True)],
+            modifier_total=modifier,
+            total=total,
+            display=f"{expression}: fixed => {total}",
+        )
 
 
 def test_dodge_expires_on_next_self_turn_start(make_state) -> None:
@@ -475,6 +499,55 @@ def test_repeat_save_effect_ends_on_success_with_roll_service(make_state) -> Non
     assert result.expired[0]["condition"] == "poisoned"
     assert result.expired[0]["repeat_save"]["success"] is True
     assert result.expired[0]["repeat_save"]["roll"]["expression"] == "1d20+10"
+
+
+def test_indomitable_might_floors_repeat_strength_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    barbarian = state.characters["pc1"]
+    barbarian.class_levels = {"barbarian": 18}
+    barbarian.abilities["str"] = 20
+    target = state.encounter.combatants["pc1"]
+    target.status_effects.append(
+        {
+            "effect_id": "repeat-save-test",
+            "source_ref": "test",
+            "source_action_id": "test.repeat_save",
+            "target_id": "pc1",
+            "applied_by": "goblin1",
+            "condition": "restrained",
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "str",
+                    "dc": 15,
+                    "dc_source": "test",
+                    "end_on_success": True,
+                },
+            },
+            "tick_on": "self_turn_end",
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="self_turn_end",
+        actor_id="pc1",
+        roll_service=_FixedD20RollService([1]),
+    )
+
+    repeat_save = result.expired[0]["repeat_save"]
+    assert target.status_effects == []
+    assert repeat_save["total"] == 20
+    assert repeat_save["success"] is True
+    assert repeat_save["indomitable_might"] == {
+        "source_action_id": "srd.indomitable_might",
+        "ability": "str",
+        "strength_score": 20,
+        "total_before": 6,
+        "total_after": 20,
+        "success": True,
+    }
 
 
 def test_disciplined_survivor_grants_proficiency_on_repeat_save(make_state) -> None:
