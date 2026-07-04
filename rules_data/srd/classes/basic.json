@@ -1489,6 +1489,87 @@
                         "srd.radiant_strikes",
                         "srd.restoring_touch"
                     ]
+                },
+                "15": {
+                    "features": ["Subclass feature"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed",
+                        "srd.aura_of_protection",
+                        "srd.aura_of_courage",
+                        "srd.radiant_strikes",
+                        "srd.restoring_touch"
+                    ]
+                },
+                "16": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed",
+                        "srd.aura_of_protection",
+                        "srd.aura_of_courage",
+                        "srd.radiant_strikes",
+                        "srd.restoring_touch"
+                    ]
+                },
+                "17": {
+                    "features": [],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed",
+                        "srd.aura_of_protection",
+                        "srd.aura_of_courage",
+                        "srd.radiant_strikes",
+                        "srd.restoring_touch"
+                    ]
+                },
+                "18": {
+                    "features": ["Aura Expansion"],
+                    "actions": [
+                        "srd.shortsword_attack",
+                        "srd.lay_on_hands",
+                        "srd.lay_on_hands_remove_poisoned",
+                        "srd.extra_attack",
+                        "srd.cure_wounds",
+                        "srd.divine_smite",
+                        "srd.paladins_smite_divine_smite",
+                        "srd.divine_sense",
+                        "srd.faithful_steed",
+                        "srd.find_steed",
+                        "srd.faithful_steed_find_steed",
+                        "srd.aura_of_protection",
+                        "srd.aura_of_courage",
+                        "srd.radiant_strikes",
+                        "srd.restoring_touch",
+                        "srd.aura_expansion"
+                    ]
                 }
             },
             "subclasses": {

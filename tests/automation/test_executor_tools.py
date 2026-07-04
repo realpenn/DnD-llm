@@ -6120,6 +6120,7 @@ def test_paladin_aura_of_protection_adds_cha_to_allied_saving_throw(
             "source_actor_id": "pc1",
             "target_id": "pc2",
             "distance_ft": 0,
+            "radius_ft": 10,
             "amount": 3,
         }
     ]
@@ -6133,6 +6134,78 @@ def test_paladin_aura_of_protection_adds_cha_to_allied_saving_throw(
     ).roll_save("pc2", "dex", difficulty_tier="medium", idempotency_key="aura-direct-save")
     assert direct_save["passive_bonus"] == 3
     assert direct_save["passive_bonus_sources"][0]["modifier"] == "aura_of_protection"
+
+
+def test_paladin_aura_expansion_extends_aura_of_protection_to_thirty_feet(
+    make_state,
+) -> None:
+    action = ActionDefinition(
+        id="test.aura_expansion_save",
+        name="Aura Expansion Save",
+        localization={"en": "Aura Expansion Save", "zh": "灵光扩展豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 5},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "dex", "difficulty_tier": "medium"}],
+    )
+    low_state = make_state()
+    assert low_state.encounter is not None
+    low_state.characters["pc1"].class_levels = {"paladin": 17}
+    low_state.characters["pc1"].abilities["cha"] = 16
+    low_state.encounter.combatants["pc1"].position_node_id = "cover"
+    low_state.encounter.combatants["pc2"].position_node_id = "back"
+
+    low_result = AutomationExecutor(
+        low_state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc2"])
+    low_direct_save = EngineTools(
+        low_state,
+        CompendiumLoader("rules_data").load(),
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    ).roll_save(
+        "pc2",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="aura-expansion-low-save",
+    )
+
+    high_state = make_state()
+    assert high_state.encounter is not None
+    high_state.characters["pc1"].class_levels = {"paladin": 18}
+    high_state.characters["pc1"].abilities["cha"] = 16
+    high_state.encounter.combatants["pc1"].position_node_id = "cover"
+    high_state.encounter.combatants["pc2"].position_node_id = "back"
+
+    high_result = AutomationExecutor(
+        high_state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(action, actor_id="goblin1", targets=["pc2"])
+    direct_save = EngineTools(
+        high_state,
+        CompendiumLoader("rules_data").load(),
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    ).roll_save("pc2", "dex", difficulty_tier="medium", idempotency_key="aura-expansion-save")
+
+    low_node = low_result.node_results["automation[0]"]
+    assert low_node["passive_adjustment"] == 0
+    assert low_node["passive_sources"] == []
+    assert low_direct_save["passive_bonus"] == 0
+    assert low_direct_save["passive_bonus_sources"] == []
+    high_node = high_result.node_results["automation[0]"]
+    assert high_node["passive_adjustment"] == 3
+    assert high_node["passive_sources"][0]["distance_ft"] == 30
+    assert high_node["passive_sources"][0]["radius_ft"] == 30
+    assert direct_save["passive_bonus"] == 3
+    assert direct_save["passive_bonus_sources"][0]["distance_ft"] == 30
+    assert direct_save["passive_bonus_sources"][0]["radius_ft"] == 30
 
 
 def test_paladin_aura_of_protection_inactive_while_incapacitated(make_state) -> None:
@@ -6208,6 +6281,74 @@ def test_paladin_aura_of_courage_blocks_new_frightened_condition(make_state) -> 
     assert all(
         effect.get("condition") != "frightened"
         for effect in state.encounter.combatants["pc2"].status_effects
+    )
+
+
+def test_paladin_aura_expansion_extends_aura_of_courage_to_thirty_feet(
+    make_state,
+) -> None:
+    action = ActionDefinition(
+        id="test.frighten_in_expanded_aura",
+        name="Frighten in Expanded Aura",
+        localization={
+            "en": "Frighten in Expanded Aura",
+            "zh": "扩展灵光内恐惧",
+            "aliases": [],
+        },
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {
+                "type": "condition",
+                "condition": "frightened",
+                "duration": {"until": "duration_1_minute"},
+            },
+        ],
+    )
+    low_state = make_state()
+    assert low_state.encounter is not None
+    low_state.characters["pc1"].class_levels = {"paladin": 17}
+    low_state.encounter.combatants["pc1"].position_node_id = "cover"
+    low_state.encounter.combatants["pc2"].position_node_id = "back"
+
+    low_result = AutomationExecutor(low_state, RollService(low_state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+    )
+
+    high_state = make_state()
+    assert high_state.encounter is not None
+    high_state.characters["pc1"].class_levels = {"paladin": 18}
+    high_state.encounter.combatants["pc1"].position_node_id = "cover"
+    high_state.encounter.combatants["pc2"].position_node_id = "back"
+
+    high_result = AutomationExecutor(high_state, RollService(high_state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+    )
+
+    assert not any(change["type"] == "condition_immune" for change in low_result.state_changes)
+    assert any(
+        effect.get("condition") == "frightened"
+        for effect in low_state.encounter.combatants["pc2"].status_effects
+    )
+    immune_change = next(
+        change for change in high_result.state_changes if change["type"] == "condition_immune"
+    )
+    assert immune_change["condition"] == "frightened"
+    assert immune_change["immunity_sources"][0]["source_action_id"] == "srd.aura_of_courage"
+    assert immune_change["immunity_sources"][0]["distance_ft"] == 30
+    assert immune_change["immunity_sources"][0]["radius_ft"] == 30
+    assert all(
+        effect.get("condition") != "frightened"
+        for effect in high_state.encounter.combatants["pc2"].status_effects
     )
 
 

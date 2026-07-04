@@ -3924,6 +3924,35 @@
             "audit_label": "Aura of Courage"
         },
         {
+            "id": "srd.aura_expansion",
+            "name": "Aura Expansion",
+            "localization": {
+                "en": "Aura Expansion",
+                "zh": "灵光扩展",
+                "aliases": ["Paladin Aura Expansion", "圣武士灵光扩展"]
+            },
+            "source": "SRD 5.2.1 Paladin Class Features: Level 18: Aura Expansion",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true, "shape": "emanation", "radius_ft": 30},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 18},
+            "properties": {
+                "aura_of_protection_radius_ft": 30,
+                "replaces_aura_of_protection_radius_ft": 10
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that Paladin 18 makes Aura of Protection a 30-foot Emanation."
+                }
+            ],
+            "audit_label": "Aura Expansion"
+        },
+        {
             "id": "srd.radiant_strikes",
             "name": "Radiant Strikes",
             "localization": {

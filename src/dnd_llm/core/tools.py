@@ -28,6 +28,7 @@ from .rules.class_features import (
     STROKE_OF_LUCK_ACTION_ID,
     STROKE_OF_LUCK_D20,
     STROKE_OF_LUCK_RESOURCE,
+    aura_of_protection_radius_ft,
     aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
     druid_magician_check_bonus,
@@ -1928,6 +1929,7 @@ class EngineTools:
                 amount = aura_of_protection_saving_throw_bonus(owner)
                 if amount <= 0:
                     continue
+                radius_ft = aura_of_protection_radius_ft(owner)
                 if has_condition(self._status_effects_for_actor(paladin.id), "incapacitated"):
                     continue
                 distance: int | None
@@ -1944,7 +1946,7 @@ class EngineTools:
                         paladin.position_node_id,
                         target_combatant.position_node_id,
                     )
-                if distance is None or distance > 10:
+                if distance is None or distance > radius_ft:
                     continue
                 candidates.append(
                     {
@@ -1953,6 +1955,7 @@ class EngineTools:
                         "source_actor_id": paladin.id,
                         "target_id": target_combatant.id,
                         "distance_ft": distance,
+                        "radius_ft": radius_ft,
                         "amount": amount,
                     }
                 )

@@ -275,6 +275,7 @@ CLASS_LEVEL_ACTIONS = {
         10: ["srd.aura_of_courage"],
         11: ["srd.radiant_strikes"],
         14: ["srd.restoring_touch"],
+        18: ["srd.aura_expansion"],
     },
     "ranger": {
         1: ["srd.favored_enemy_hunters_mark"],

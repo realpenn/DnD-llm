@@ -26,6 +26,7 @@ from ..rules.class_features import (
     STROKE_OF_LUCK_D20,
     STROKE_OF_LUCK_RESOURCE,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
+    aura_of_protection_radius_ft,
     aura_of_protection_saving_throw_bonus,
     barbarian_rage_damage_bonus,
     barbarian_unarmored_defense_armor_class,
@@ -4531,6 +4532,7 @@ class AutomationExecutor:
                 bonus = aura_of_protection_saving_throw_bonus(source)
                 if bonus <= 0:
                     continue
+                radius_ft = aura_of_protection_radius_ft(source)
                 if self._condition_sources(paladin, {"incapacitated"}):
                     continue
                 distance = (
@@ -4538,7 +4540,7 @@ class AutomationExecutor:
                     if paladin.id == target_combatant.id
                     else self._combat_distance(paladin, target_combatant)
                 )
-                if distance is None or distance > 10:
+                if distance is None or distance > radius_ft:
                     continue
                 candidates.append(
                     {
@@ -4547,6 +4549,7 @@ class AutomationExecutor:
                         "source_actor_id": paladin.id,
                         "target_id": target_combatant.id,
                         "distance_ft": distance,
+                        "radius_ft": radius_ft,
                         "amount": bonus,
                     }
                 )
@@ -12212,6 +12215,7 @@ class AutomationExecutor:
                 owner = self.state.characters[paladin.entity_id]
                 if not has_paladin_feature(owner, level=10):
                     continue
+                radius_ft = aura_of_protection_radius_ft(owner)
                 if self._condition_sources(paladin, {"incapacitated"}):
                     continue
                 distance = (
@@ -12219,7 +12223,7 @@ class AutomationExecutor:
                     if paladin.id == target_combatant.id
                     else self._combat_distance(paladin, target_combatant)
                 )
-                if distance is None or distance > 10:
+                if distance is None or distance > radius_ft:
                     continue
                 sources.append(
                     {
@@ -12228,6 +12232,7 @@ class AutomationExecutor:
                         "source_actor_id": paladin.id,
                         "target_id": target_combatant.id,
                         "distance_ft": distance,
+                        "radius_ft": radius_ft,
                         "immune_condition": "frightened",
                     }
                 )

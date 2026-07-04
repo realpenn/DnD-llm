@@ -4,6 +4,7 @@ from dnd_llm.content.character_editor import apply_natural_language_character_ed
 from dnd_llm.content.character_gen import default_fighter
 from dnd_llm.core.rules.class_features import (
     aura_of_courage_applies,
+    aura_of_protection_radius_ft,
     has_warlock_eldritch_smite,
     has_warlock_gaze_of_two_minds,
     has_warlock_investment_of_chain_master,
@@ -1804,6 +1805,28 @@ def test_natural_language_character_edit_assigns_paladin_restoring_touch() -> No
     assert result.character.class_levels == {"paladin": 14}
     assert "srd.restoring_touch" in result.character.actions
     assert result.character.resources["srd.resource.lay_on_hands"] == 70
+
+
+def test_natural_language_character_edit_assigns_paladin_aura_expansion() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    level_17 = apply_natural_language_character_edit(character, "职业 圣武士17")
+    result = apply_natural_language_character_edit(character, "职业 圣武士18")
+
+    assert level_17.accepted is True
+    assert level_17.character is not None
+    assert "srd.aura_expansion" not in level_17.character.actions
+    assert aura_of_protection_radius_ft(level_17.character) == 10
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"paladin": 18}
+    assert "srd.aura_of_protection" in result.character.actions
+    assert "srd.aura_of_courage" in result.character.actions
+    assert "srd.radiant_strikes" in result.character.actions
+    assert "srd.restoring_touch" in result.character.actions
+    assert "srd.aura_expansion" in result.character.actions
+    assert result.character.resources["srd.resource.lay_on_hands"] == 90
+    assert aura_of_protection_radius_ft(result.character) == 30
 
 
 def test_natural_language_character_edit_removes_faithful_steed_when_level_drops() -> None:

@@ -4861,6 +4861,18 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["paladin"].levels["14"]["features"] == ["Restoring Touch"]
     assert "srd.radiant_strikes" in compendium.classes["paladin"].levels["14"]["actions"]
     assert "srd.restoring_touch" in compendium.classes["paladin"].levels["14"]["actions"]
+    assert compendium.classes["paladin"].levels["15"]["features"] == ["Subclass feature"]
+    assert "srd.aura_expansion" not in compendium.classes["paladin"].levels["17"]["actions"]
+    assert compendium.classes["paladin"].levels["18"]["features"] == ["Aura Expansion"]
+    assert "srd.aura_expansion" in compendium.classes["paladin"].levels["18"]["actions"]
+    aura_expansion = compendium.action("srd.aura_expansion")
+    assert aura_expansion.action_economy == "none"
+    assert aura_expansion.requirements == {"class": "paladin", "class_level_min": 18}
+    assert aura_expansion.range == {"self": True, "shape": "emanation", "radius_ft": 30}
+    assert aura_expansion.properties == {
+        "aura_of_protection_radius_ft": 30,
+        "replaces_aura_of_protection_radius_ft": 10,
+    }
     assert {
         "srd.cunning_action_dash",
         "srd.cunning_action_disengage",

@@ -359,6 +359,7 @@ P0 脚手架
   - [x] **P2-1cw** SRD 5.2.1 Barbarian 17 `Improved Brutal Strike` 升级落地：按 SRD 将 Barbarian 17+ 使用 Brutal Strike 时的额外伤害从 `1d10` 提升为 `2d10`，并允许同次 Brutal Strike 选择两个不同的已实现 Brutal Strike effects；低于 17 级的双效果、重复效果和超过两个效果均在扣行动经济前拒绝，13 级 Staggering/Sundering 门槛保持不变；补齐 Barbarian 16/17 职业数据、compendium、resolver、executor 与自然语言建角测试。
   - [x] **P2-1cx** SRD 5.2.1 Barbarian 20 `Primal Champion` 落地：新增 `srd.primal_champion` marker、Barbarian 19/20 职业数据与角色成长授予；按 SRD 使 Strength 与 Constitution scores 增加 4 且最高为 25，并通过统一有效属性读取接入 direct check/save、automation attack/damage/check/save、Indomitable Might 的 Strength floor 与固定 HP 成长/20 级回溯 HP；19 级 Epic Boon 仅在职业表呈现，不默认代选或虚构 boon 效果；覆盖 compendium、coverage、executor 与自然语言建角测试。
   - [x] **P2-1cy** SRD 5.2.1 Monk 20 `Body and Mind` 落地：新增 `srd.body_and_mind` marker、Monk 19/20 职业数据与角色成长授予；按 SRD 使 Dexterity 与 Wisdom scores 增加 4 且最高为 25，并复用统一有效属性读取接入 direct check/save、automation attack/damage/check/save 与 Monk Unarmored Defense AC；19 级 Epic Boon 仅在职业表呈现，不默认代选或虚构 boon 效果；覆盖 compendium、coverage、executor 与自然语言建角测试。
+  - [x] **P2-1cz** SRD 5.2.1 Paladin 18 `Aura Expansion` 落地：新增 `srd.aura_expansion` marker、Paladin 15-18 职业数据与角色成长授予；按 SRD 使 Aura of Protection 从 10-foot Emanation 扩展为 30-foot Emanation，并同步作用于 Aura of Protection saving throw bonus 与 Aura of Courage frightened immunity；17 级仍保持 10 尺，15/16/17 级仅按 SRD 职业表呈现，不虚构未实现效果；覆盖 compendium、coverage、executor/direct save 与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

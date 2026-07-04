@@ -940,6 +940,14 @@ def aura_of_protection_saving_throw_bonus(character: Character) -> int:
     return max(1, ability_modifier(charisma))
 
 
+def aura_of_protection_radius_ft(character: Character) -> int:
+    if not has_paladin_feature(character, level=6):
+        return 0
+    if has_paladin_feature(character, level=18):
+        return 30
+    return 10
+
+
 def aura_of_courage_applies(character: Character) -> bool:
     return has_paladin_feature(character, level=10)
 
