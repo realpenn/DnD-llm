@@ -19,6 +19,7 @@ from dnd_llm.core.rules.class_features import (
 from dnd_llm.core.rules.conditions import (
     can_hover_from_effects,
     can_walk_on_liquid_surface_from_effects,
+    climb_speed_from_effects,
     darkvision_range_from_effects,
     effective_speed,
     fly_speed_from_effects,
@@ -8956,6 +8957,62 @@ def test_boots_of_elvenkind_item_requirement_accepts_equipment_and_rejects_missi
     assert state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"] == (
         "srd.wear_boots_of_elvenkind"
     )
+
+
+def test_slippers_of_spider_climbing_grant_climb_speed_and_surface_markers(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="actor does not have item srd.slippers_of_spider_climbing",
+    ):
+        tools.use_item(
+            "pc1",
+            "srd.slippers_of_spider_climbing",
+            ["pc1"],
+            action_id="srd.wear_slippers_of_spider_climbing",
+            idempotency_key="missing-slippers-of-spider-climbing",
+        )
+
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+    character.equipment.append("srd.slippers_of_spider_climbing")
+    with pytest.raises(AutomationError, match="target must be self"):
+        tools.use_item(
+            "pc1",
+            "srd.slippers_of_spider_climbing",
+            ["pc2"],
+            action_id="srd.wear_slippers_of_spider_climbing",
+            idempotency_key="spider-slippers-other-target",
+        )
+
+    result = tools.use_item(
+        "pc1",
+        "srd.slippers_of_spider_climbing",
+        ["pc1"],
+        action_id="srd.wear_slippers_of_spider_climbing",
+        idempotency_key="wear-slippers-of-spider-climbing",
+    )
+
+    assert result["success"] is True
+    assert "srd.slippers_of_spider_climbing" in character.equipment
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.wear_slippers_of_spider_climbing"
+    assert effect["duration"] == {"until": "while_wearing_slippers_of_spider_climbing"}
+    assert effect["passive_modifiers"] == {
+        "climb_speed_equals_speed": True,
+        "can_move_along_vertical_surfaces": True,
+        "can_move_along_ceilings": True,
+        "hands_free_while_climbing": True,
+        "slippery_surface_blocks_spider_climbing": True,
+    }
+    assert climb_speed_from_effects(30, state.encounter.combatants["pc1"].status_effects) == 30
 
 
 def test_bracers_of_defense_item_requirement_accepts_equipment_and_rejects_missing(

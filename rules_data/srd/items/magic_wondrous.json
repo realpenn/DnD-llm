@@ -439,6 +439,25 @@
       "quantity": 1
     },
     {
+      "id": "srd.slippers_of_spider_climbing",
+      "name": "Slippers of Spider Climbing",
+      "localization": {
+        "en": "Slippers of Spider Climbing",
+        "zh": "蛛行拖鞋",
+        "aliases": ["Spider Climbing Slippers"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Slippers of Spider Climbing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_slippers_of_spider_climbing"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "feet"
+      },
+      "quantity": 1
+    },
+    {
       "id": "srd.stone_of_good_luck",
       "name": "Stone of Good Luck (Luckstone)",
       "localization": {

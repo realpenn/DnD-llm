@@ -3573,6 +3573,41 @@ def test_compendium_loads_srd_actions() -> None:
         "duration": {"until": "while_wearing_periapt_of_proof_against_poison"},
         "stacking_policy": "replace",
     }
+    slippers_spider = compendium.action("srd.wear_slippers_of_spider_climbing")
+    assert compendium.items["srd.slippers_of_spider_climbing"].actions == [
+        "srd.wear_slippers_of_spider_climbing"
+    ]
+    assert compendium.items["srd.slippers_of_spider_climbing"].properties == {
+        "rarity": "uncommon",
+        "requires_attunement": True,
+        "worn_slot": "feet",
+    }
+    assert slippers_spider.action_economy == "none"
+    assert slippers_spider.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert slippers_spider.requirements == {"item": "srd.slippers_of_spider_climbing"}
+    assert slippers_spider.properties == {
+        "slippers_of_spider_climbing": True,
+        "self_only": True,
+        "requires_attunement": True,
+        "worn_slot": "feet",
+    }
+    assert slippers_spider.automation[1] == {
+        "type": "passive_effect",
+        "passive_modifiers": {
+            "climb_speed_equals_speed": True,
+            "can_move_along_vertical_surfaces": True,
+            "can_move_along_ceilings": True,
+            "hands_free_while_climbing": True,
+            "slippery_surface_blocks_spider_climbing": True,
+        },
+        "duration": {"until": "while_wearing_slippers_of_spider_climbing"},
+        "stacking_policy": "replace",
+    }
     stone_of_good_luck = compendium.action("srd.carry_stone_of_good_luck")
     assert compendium.items["srd.stone_of_good_luck"].actions == ["srd.carry_stone_of_good_luck"]
     assert compendium.items["srd.stone_of_good_luck"].properties == {
@@ -5178,6 +5213,9 @@ def test_compendium_loads_srd_actions() -> None:
     ]
     assert compendium.items["srd.periapt_of_proof_against_poison"].actions == [
         "srd.wear_periapt_of_proof_against_poison"
+    ]
+    assert compendium.items["srd.slippers_of_spider_climbing"].actions == [
+        "srd.wear_slippers_of_spider_climbing"
     ]
     assert compendium.items["srd.stone_of_good_luck"].actions == ["srd.carry_stone_of_good_luck"]
     assert compendium.items["srd.ring_of_protection"].actions == ["srd.wear_ring_of_protection"]

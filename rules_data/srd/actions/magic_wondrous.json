@@ -1102,6 +1102,46 @@
       "audit_label": "Robe of Eyes: Daylight Drawback"
     },
     {
+      "id": "srd.wear_slippers_of_spider_climbing",
+      "name": "Wear Slippers of Spider Climbing",
+      "localization": {
+        "en": "Wear Slippers of Spider Climbing",
+        "zh": "穿戴蛛行拖鞋",
+        "aliases": ["启用蛛行拖鞋"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Slippers of Spider Climbing",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.slippers_of_spider_climbing" },
+      "properties": {
+        "slippers_of_spider_climbing": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "feet"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "climb_speed_equals_speed": true,
+            "can_move_along_vertical_surfaces": true,
+            "can_move_along_ceilings": true,
+            "hands_free_while_climbing": true,
+            "slippery_surface_blocks_spider_climbing": true
+          },
+          "duration": { "until": "while_wearing_slippers_of_spider_climbing" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing these slippers, the target has a Climb Speed equal to Speed and can move along vertical surfaces and ceilings hands-free, but not on slippery surfaces such as ice or oil." }
+      ],
+      "audit_label": "Wear Slippers of Spider Climbing"
+    },
+    {
       "id": "srd.carry_stone_of_good_luck",
       "name": "Carry Stone of Good Luck",
       "localization": {

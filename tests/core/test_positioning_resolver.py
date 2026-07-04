@@ -2448,6 +2448,19 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
     assert levitation_boots.status == "accepted"
     assert levitation_boots.action_id == "srd.boots_of_levitation_levitate"
 
+    state.characters["pc1"].equipment.append("srd.slippers_of_spider_climbing")
+    spider_slippers = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.slippers_of_spider_climbing",
+        )
+    )
+
+    assert spider_slippers.status == "accepted"
+    assert spider_slippers.action_id == "srd.wear_slippers_of_spider_climbing"
+
     state.characters["pc1"].equipment.append("srd.bracers_of_defense")
     bracers = resolver.resolve(
         PlayerActionDraft(
@@ -2659,6 +2672,26 @@ def test_resolver_rejects_boots_of_levitation_non_self_target(make_state) -> Non
     assert rejected.status == "rejected"
     assert rejected.reason == "target must be self"
     assert rejected.action_id == "srd.boots_of_levitation_levitate"
+
+
+def test_resolver_rejects_slippers_of_spider_climbing_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.slippers_of_spider_climbing"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.slippers_of_spider_climbing",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_slippers_of_spider_climbing"
 
 
 def test_resolver_rejects_cloak_of_protection_non_self_target(make_state) -> None:

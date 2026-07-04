@@ -86,6 +86,20 @@ def swim_speed_from_effects(speed_ft: int, status_effects: list[dict[str, Any]])
     return max(swim_speeds) if swim_speeds else None
 
 
+def climb_speed_from_effects(speed_ft: int, status_effects: list[dict[str, Any]]) -> int | None:
+    climb_speeds: list[int] = []
+    for effect in status_effects:
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            continue
+        if modifiers.get("climb_speed_equals_speed") is True:
+            climb_speeds.append(effective_speed(speed_ft, status_effects))
+        fixed_speed = modifiers.get("climb_speed_ft")
+        if isinstance(fixed_speed, int) and not isinstance(fixed_speed, bool):
+            climb_speeds.append(fixed_speed)
+    return max(climb_speeds) if climb_speeds else None
+
+
 def can_hover_from_effects(status_effects: list[dict[str, Any]]) -> bool:
     return any(
         isinstance(effect.get("passive_modifiers"), dict)
