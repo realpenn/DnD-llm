@@ -2635,6 +2635,149 @@ def test_horde_breaker_rejects_target_already_attacked_this_turn(make_state) -> 
         )
 
 
+def test_escape_the_horde_disadvantages_opportunity_attack_against_hunter(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 7}
+    hunter.subclasses = {"ranger": "hunter"}
+    hunter.feature_choices = {
+        "ranger.hunter.defensive_tactics": "escape_the_horde",
+    }
+    compendium = CompendiumLoader("rules_data").load()
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(
+        compendium.action("srd.opportunity_attack"),
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    attack_roll = result.dice_rolls[0]
+    attack_node = result.node_results["automation[1]"]
+    assert attack_roll["advantage"] == "disadvantage"
+    assert attack_node["status_advantage"] == "disadvantage"
+    assert attack_node["status_sources"] == [
+        {
+            "kind": "disadvantage",
+            "source_action_id": "srd.escape_the_horde",
+            "modifier": "escape_the_horde_opportunity_attack_disadvantage",
+            "target_id": "pc1",
+        }
+    ]
+
+
+def test_multiattack_defense_marks_attacker_and_expires_on_turn_owner_end(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    hunter = state.characters["pc1"]
+    hunter.class_levels = {"ranger": 7}
+    hunter.subclasses = {"ranger": "hunter"}
+    hunter.feature_choices = {
+        "ranger.hunter.defensive_tactics": "multiattack_defense",
+    }
+    state.encounter.initiative_order = ["goblin1", "goblin2", "pc1", "pc2"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["pc1"].hp_current = 30
+    state.encounter.combatants["pc1"].hp_max = 30
+    state.encounter.combatants["pc2"].hp_current = 30
+    state.encounter.combatants["pc2"].hp_max = 30
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        position_node_id="front",
+    )
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 1, 10, 1, 10, 1, 10, 1, 10, 1]),
+        AuditLog(),
+    )
+    action = _attack_action(attack_bonus=10)
+
+    first = executor.execute(action, actor_id="goblin1", targets=["pc1"])
+
+    assert first.node_results["automation[1]"]["hit"] is True
+    effect = state.encounter.combatants["goblin1"].status_effects[-1]
+    assert effect["condition"] == "multiattack_defense"
+    assert effect["source_action_id"] == "srd.multiattack_defense"
+    assert effect["target_id"] == "goblin1"
+    assert effect["applied_by"] == "pc1"
+    assert effect["passive_modifiers"] == {
+        "attack_roll_disadvantage_against_target": True,
+        "multiattack_defense_target_id": "pc1",
+    }
+    assert effect["duration"] == {
+        "until": "end_of_current_turn",
+        "turn_owner_id": "goblin1",
+    }
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["audit"] == {
+        "node_path": "automation[1]",
+        "protected_target_id": "pc1",
+    }
+    assert any(
+        change["type"] == "passive_effect"
+        and change["source_action_id"] == "srd.multiattack_defense"
+        and change["protected_target_id"] == "pc1"
+        for change in first.state_changes
+    )
+
+    follow_up_same_target = executor.execute(action, actor_id="goblin1", targets=["pc1"])
+    same_target_node = follow_up_same_target.node_results["automation[1]"]
+    assert follow_up_same_target.dice_rolls[0]["advantage"] == "disadvantage"
+    assert same_target_node["status_advantage"] == "disadvantage"
+    assert same_target_node["status_sources"] == [
+        {
+            "kind": "disadvantage",
+            "condition": "multiattack_defense",
+            "effect_id": "goblin1:multiattack_defense:pc1",
+            "source_action_id": "srd.multiattack_defense",
+            "modifier": "multiattack_defense",
+            "target_id": "pc1",
+        }
+    ]
+
+    other_target = executor.execute(action, actor_id="goblin1", targets=["pc2"])
+    assert other_target.dice_rolls[0]["advantage"] is None
+    assert other_target.node_results["automation[1]"]["status_advantage"] is None
+    assert other_target.node_results["automation[1]"]["status_sources"] == []
+
+    other_attacker = executor.execute(
+        _attack_action(attack_bonus=0),
+        actor_id="goblin2",
+        targets=["pc1"],
+    )
+    assert other_attacker.dice_rolls[0]["advantage"] is None
+    assert other_attacker.node_results["automation[1]"]["status_advantage"] is None
+    assert other_attacker.node_results["automation[1]"]["status_sources"] == []
+    assert state.encounter.combatants["goblin2"].status_effects == []
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="goblin1")
+    assert len(lifecycle.expired) == 1
+    assert lifecycle.expired[0]["condition"] == "multiattack_defense"
+    assert not any(
+        effect["condition"] == "multiattack_defense"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+    after_expiry = executor.execute(action, actor_id="goblin1", targets=["pc1"])
+    assert after_expiry.dice_rolls[0]["advantage"] is None
+    assert after_expiry.node_results["automation[1]"]["status_advantage"] is None
+    assert after_expiry.node_results["automation[1]"]["status_sources"] == []
+
+
 def test_sneak_attack_adds_damage_on_finesse_attack_with_advantage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

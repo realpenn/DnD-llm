@@ -3929,6 +3929,93 @@
             "audit_label": "Ranger Expertise"
         },
         {
+            "id": "srd.defensive_tactics",
+            "name": "Defensive Tactics",
+            "localization": {
+                "en": "Defensive Tactics",
+                "zh": "防御战术",
+                "aliases": ["Hunter Defensive Tactics", "猎人防御战术"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 7: Defensive Tactics",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 7, "subclass": "hunter"},
+            "properties": {
+                "feature_choice_key": "ranger.hunter.defensive_tactics",
+                "feature_options": ["escape_the_horde", "multiattack_defense"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Ranger Hunter chooses Escape the Horde or Multiattack Defense for Defensive Tactics, and can replace the chosen option after a Short or Long Rest."
+                }
+            ],
+            "audit_label": "Defensive Tactics"
+        },
+        {
+            "id": "srd.escape_the_horde",
+            "name": "Defensive Tactics: Escape the Horde",
+            "localization": {
+                "en": "Escape the Horde",
+                "zh": "逃脱群敌",
+                "aliases": ["Escape the Horde", "防御战术：逃脱群敌"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 7: Defensive Tactics, Escape the Horde",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 7, "subclass": "hunter"},
+            "properties": {
+                "defensive_tactics_option": "escape_the_horde",
+                "opportunity_attacks_against_self_disadvantage": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "Opportunity Attacks have Disadvantage against this Ranger Hunter."
+                }
+            ],
+            "audit_label": "Defensive Tactics: Escape the Horde"
+        },
+        {
+            "id": "srd.multiattack_defense",
+            "name": "Defensive Tactics: Multiattack Defense",
+            "localization": {
+                "en": "Multiattack Defense",
+                "zh": "多重攻击防御",
+                "aliases": ["Multiattack Defense", "防御战术：多重攻击防御"]
+            },
+            "source": "SRD 5.2.1 Ranger Subclass: Hunter, Level 7: Defensive Tactics, Multiattack Defense",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "ranger", "class_level_min": 7, "subclass": "hunter"},
+            "properties": {
+                "defensive_tactics_option": "multiattack_defense",
+                "same_attacker_follow_up_attacks_disadvantage": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "After a creature hits this Ranger Hunter with an attack roll, that creature has Disadvantage on all other attack rolls against the Ranger this turn."
+                }
+            ],
+            "audit_label": "Defensive Tactics: Multiattack Defense"
+        },
+        {
             "id": "srd.tireless",
             "name": "Tireless",
             "localization": {

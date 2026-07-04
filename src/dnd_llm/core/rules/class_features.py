@@ -12,6 +12,9 @@ SHIELD_ITEM_IDS = frozenset({"srd.shield"})
 HUNTERS_PREY_CHOICE_KEY = "ranger.hunter.hunters_prey"
 HUNTERS_PREY_COLOSSUS_SLAYER = "colossus_slayer"
 HUNTERS_PREY_HORDE_BREAKER = "horde_breaker"
+HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY = "ranger.hunter.defensive_tactics"
+HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE = "escape_the_horde"
+HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE = "multiattack_defense"
 DIVINE_ORDER_CHOICE_KEY = "cleric.divine_order"
 DIVINE_ORDER_PROTECTOR = "protector"
 DIVINE_ORDER_THAUMATURGE = "thaumaturge"
@@ -759,6 +762,32 @@ def has_colossus_slayer(character: Character) -> bool:
 
 def has_horde_breaker(character: Character) -> bool:
     return ranger_hunters_prey_choice(character) == HUNTERS_PREY_HORDE_BREAKER
+
+
+def ranger_hunter_defensive_tactics_choice(character: Character) -> str | None:
+    if not has_ranger_hunter_feature(character, level=7):
+        return None
+    choice = character.feature_choices.get(HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY)
+    if choice in {
+        HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+        HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
+    }:
+        return choice
+    return HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE
+
+
+def has_escape_the_horde(character: Character) -> bool:
+    return (
+        ranger_hunter_defensive_tactics_choice(character)
+        == HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE
+    )
+
+
+def has_multiattack_defense(character: Character) -> bool:
+    return (
+        ranger_hunter_defensive_tactics_choice(character)
+        == HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE
+    )
 
 
 def second_story_work_climb_speed(character: Character) -> int | None:

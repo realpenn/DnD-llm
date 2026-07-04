@@ -42,11 +42,13 @@ from ..rules.class_features import (
     has_colossus_slayer,
     has_condition,
     has_druid_circle_of_the_land_feature,
+    has_escape_the_horde,
     has_fighter_champion_feature,
     has_fighter_feature,
     has_horde_breaker,
     has_monk_feature,
     has_monk_open_hand_feature,
+    has_multiattack_defense,
     has_paladin_feature,
     has_ranger_hunter_feature,
     has_rogue_thief_feature,
@@ -96,6 +98,8 @@ MAX_CUNNING_STRIKE_EFFECTS = 2
 BRUTAL_STRIKE_EFFECTS = {"forceful_blow", "hamstring_blow"}
 IMPROVED_CUNNING_STRIKE_ACTION_ID = "srd.improved_cunning_strike"
 SUPREME_SNEAK_ACTION_ID = "srd.supreme_sneak"
+ESCAPE_THE_HORDE_ACTION_ID = "srd.escape_the_horde"
+MULTIATTACK_DEFENSE_ACTION_ID = "srd.multiattack_defense"
 HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
 SUPREME_SNEAK_COVER_ALIASES = {
     "3_4": "three_quarters",
@@ -802,6 +806,7 @@ class AutomationExecutor:
                 path,
             )
             self._apply_studied_attacks_on_miss(ctx, target_id, path)
+            self._apply_multiattack_defense_on_hit(ctx, target_id, path)
             self._mark_weapon_attack_target_this_turn(ctx, target_id)
             self._mark_thirsting_blade_pact_weapon_attack_this_turn(ctx, target_id)
             self._mark_thirsting_blade_extra_attack_used(ctx, target_id)
@@ -7802,6 +7807,18 @@ class AutomationExecutor:
             {"blinded", "frightened", "poisoned", "prone", "restrained"},
         )
         disadvantage_sources.extend(self._attack_roll_disadvantage_sources(actor, action))
+        disadvantage_sources.extend(
+            self._escape_the_horde_disadvantage_sources(
+                action,
+                target_id,
+            )
+        )
+        disadvantage_sources.extend(
+            self._multiattack_defense_disadvantage_sources(
+                actor,
+                target_id,
+            )
+        )
         disadvantage_sources.extend(self._grappled_non_grappler_sources(actor, target, target_id))
         disadvantage_sources.extend(self._condition_sources(target, {"invisible"}))
         if distance_ft is not None and distance_ft > 5:
@@ -8038,6 +8055,77 @@ class AutomationExecutor:
             target_id,
         )
 
+    def _apply_multiattack_defense_on_hit(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        if ctx.attack_hits.get(target_id) is not True:
+            return
+        protected_owner = self._resource_owner(target_id)
+        if not isinstance(protected_owner, Character) or not has_multiattack_defense(
+            protected_owner
+        ):
+            return
+        attacker = self._entity(ctx.actor_id)
+        turn_owner_id = ctx.actor_id
+        if self.state.encounter is not None and self.state.encounter.current_combatant_id:
+            turn_owner_id = self.state.encounter.current_combatant_id
+        effect = EffectInstance(
+            effect_id=f"{ctx.actor_id}:multiattack_defense:{target_id}",
+            source_ref=(
+                "SRD 5.2.1 Ranger Subclass: Hunter, Level 7: Defensive Tactics, Multiattack Defense"
+            ),
+            source_action_id=MULTIATTACK_DEFENSE_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=target_id,
+            condition="multiattack_defense",
+            passive_modifiers={
+                "attack_roll_disadvantage_against_target": True,
+                "multiattack_defense_target_id": target_id,
+            },
+            duration={"until": "end_of_current_turn", "turn_owner_id": turn_owner_id},
+            tick_on="self_turn_end",
+            audit={"node_path": path, "protected_target_id": target_id},
+        )
+        effects = getattr(attacker, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != "multiattack_defense"
+            or not self._multiattack_defense_effect_targets(existing, target_id)
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "passive_effect",
+                "target_id": ctx.actor_id,
+                "effect_id": effect.effect_id,
+                "condition": effect.condition,
+                "passive_modifiers": effect.passive_modifiers,
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+                "path": path,
+                "source_action_id": MULTIATTACK_DEFENSE_ACTION_ID,
+                "protected_target_id": target_id,
+            }
+        )
+
+    def _multiattack_defense_effect_targets(
+        self,
+        effect: dict[str, Any],
+        target_id: str,
+    ) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            return False
+        protected_target_id = modifiers.get("multiattack_defense_target_id")
+        return protected_target_id is not None and self._entity_ids_match(
+            str(protected_target_id),
+            target_id,
+        )
+
     def _attack_roll_disadvantage_sources(
         self,
         actor: Character | Monster | Combatant,
@@ -8058,6 +8146,55 @@ class AutomationExecutor:
                     "effect_id": effect.get("effect_id"),
                     "source_action_id": effect.get("source_action_id"),
                     "modifier": "attack_roll_disadvantage",
+                }
+            )
+        return sources
+
+    def _escape_the_horde_disadvantage_sources(
+        self,
+        action: ActionDefinition,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        if action.id != "srd.opportunity_attack":
+            return []
+        owner = self._resource_owner(target_id)
+        if not isinstance(owner, Character) or not has_escape_the_horde(owner):
+            return []
+        return [
+            {
+                "source_action_id": ESCAPE_THE_HORDE_ACTION_ID,
+                "modifier": "escape_the_horde_opportunity_attack_disadvantage",
+                "target_id": target_id,
+            }
+        ]
+
+    def _multiattack_defense_disadvantage_sources(
+        self,
+        actor: Character | Monster | Combatant,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(actor):
+            if effect.get("condition") != "multiattack_defense":
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("attack_roll_disadvantage_against_target") is not True:
+                continue
+            protected_target_id = modifiers.get("multiattack_defense_target_id")
+            if protected_target_id is None or not self._entity_ids_match(
+                str(protected_target_id),
+                target_id,
+            ):
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "multiattack_defense",
+                    "target_id": str(protected_target_id),
                 }
             )
         return sources

@@ -16,6 +16,9 @@ from dnd_llm.core.rules.class_features import (
     DRUID_PRIMAL_ORDER_MAGICIAN,
     DRUID_PRIMAL_ORDER_WARDEN,
     GIFT_OF_DEPTHS_RESOURCE,
+    HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY,
+    HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+    HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
     HUNTERS_PREY_CHOICE_KEY,
     HUNTERS_PREY_COLOSSUS_SLAYER,
     HUNTERS_PREY_HORDE_BREAKER,
@@ -361,7 +364,7 @@ SUBCLASS_ACTIONS = {
         "devotion": {3: ["srd.sacred_weapon"]},
     },
     "ranger": {
-        "hunter": {3: ["srd.hunters_lore"]},
+        "hunter": {3: ["srd.hunters_lore"], 7: ["srd.defensive_tactics"]},
     },
     "rogue": {
         "thief": {
@@ -410,6 +413,19 @@ HUNTERS_PREY_ALIASES = {
     "巨像杀手": HUNTERS_PREY_COLOSSUS_SLAYER,
     "hordebreaker": HUNTERS_PREY_HORDE_BREAKER,
     "破群者": HUNTERS_PREY_HORDE_BREAKER,
+}
+HUNTER_DEFENSIVE_TACTICS_CHOICES = {
+    HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+    HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
+}
+HUNTER_DEFENSIVE_TACTICS_ALIASES = {
+    "escapethehorde": HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+    "逃离部落": HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+    "逃脱群敌": HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+    "避开群敌": HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE,
+    "multiattackdefense": HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
+    "多重攻击防御": HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
+    "多攻防御": HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
 }
 DIVINE_ORDER_CHOICES = {DIVINE_ORDER_PROTECTOR, DIVINE_ORDER_THAUMATURGE}
 DIVINE_ORDER_ALIASES = {
@@ -699,6 +715,10 @@ FEATURE_CHOICE_ACTIONS = {
         HUNTERS_PREY_COLOSSUS_SLAYER: ["srd.hunters_prey_colossus_slayer"],
         HUNTERS_PREY_HORDE_BREAKER: ["srd.hunters_prey_horde_breaker"],
     },
+    HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY: {
+        HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE: ["srd.escape_the_horde"],
+        HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE: ["srd.multiattack_defense"],
+    },
     WARLOCK_ELDRITCH_INVOCATION_CHOICE_KEY: {
         WARLOCK_ELDRITCH_MIND: ["srd.eldritch_mind"],
     },
@@ -915,6 +935,10 @@ def normalize_hunters_prey_choice(raw: str) -> str | None:
     return HUNTERS_PREY_ALIASES.get(_choice_key(raw))
 
 
+def normalize_hunter_defensive_tactics_choice(raw: str) -> str | None:
+    return HUNTER_DEFENSIVE_TACTICS_ALIASES.get(_choice_key(raw))
+
+
 def normalize_divine_order_choice(raw: str) -> str | None:
     return DIVINE_ORDER_ALIASES.get(_choice_key(raw))
 
@@ -1106,6 +1130,22 @@ def set_hunters_prey_choice(character: Character, choice: str) -> ProgressionRes
         return ProgressionResult(["Hunter's Prey 选项需要 Ranger/Hunter 3"])
     choices = dict(getattr(character, "feature_choices", {}))
     choices[HUNTERS_PREY_CHOICE_KEY] = normalized
+    character.feature_choices = choices
+    _recalculate_progression_fields(character)
+    return ProgressionResult(errors=[])
+
+
+def set_hunter_defensive_tactics_choice(character: Character, choice: str) -> ProgressionResult:
+    normalized = normalize_hunter_defensive_tactics_choice(choice)
+    if normalized is None:
+        return ProgressionResult([f"Defensive Tactics 不支持的 SRD 选项：{choice}"])
+    if (
+        character.subclasses.get("ranger") != "hunter"
+        or int(character.class_levels.get("ranger", 0)) < 7
+    ):
+        return ProgressionResult(["Defensive Tactics 选项需要 Ranger/Hunter 7"])
+    choices = dict(getattr(character, "feature_choices", {}))
+    choices[HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY] = normalized
     character.feature_choices = choices
     _recalculate_progression_fields(character)
     return ProgressionResult(errors=[])
@@ -1827,6 +1867,14 @@ def _sync_feature_choices(character: Character) -> None:
             choices[HUNTERS_PREY_CHOICE_KEY] = HUNTERS_PREY_COLOSSUS_SLAYER
     else:
         choices.pop(HUNTERS_PREY_CHOICE_KEY, None)
+    if (
+        character.subclasses.get("ranger") == "hunter"
+        and int(character.class_levels.get("ranger", 0)) >= 7
+    ):
+        if choices.get(HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY) not in HUNTER_DEFENSIVE_TACTICS_CHOICES:
+            choices[HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY] = HUNTER_DEFENSIVE_TACTICS_ESCAPE_THE_HORDE
+    else:
+        choices.pop(HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY, None)
     if int(character.class_levels.get("cleric", 0)) >= 1:
         if choices.get(DIVINE_ORDER_CHOICE_KEY) not in DIVINE_ORDER_CHOICES:
             choices.pop(DIVINE_ORDER_CHOICE_KEY, None)
@@ -2352,6 +2400,13 @@ def _actions_for_levels(
                 str(choice),
                 [],
             ):
+                _append_unique(actions, action_id)
+        if subclass_id == "hunter" and class_name == "ranger" and int(level) >= 7:
+            choice = feature_choices.get(HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY)
+            for action_id in FEATURE_CHOICE_ACTIONS.get(
+                HUNTER_DEFENSIVE_TACTICS_CHOICE_KEY,
+                {},
+            ).get(str(choice), []):
                 _append_unique(actions, action_id)
     return actions
 

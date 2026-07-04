@@ -1354,12 +1354,16 @@
                 "hunter": {
                     "name": "Hunter",
                     "level": 3,
-                    "features": ["Hunter's Lore", "Hunter's Prey"],
-                    "actions": ["srd.hunters_lore"],
+                    "features": ["Hunter's Lore", "Hunter's Prey", "Defensive Tactics"],
+                    "actions": ["srd.hunters_lore", "srd.defensive_tactics"],
                     "feature_options": {
                         "hunters_prey": [
                             "srd.hunters_prey_colossus_slayer",
                             "srd.hunters_prey_horde_breaker"
+                        ],
+                        "defensive_tactics": [
+                            "srd.escape_the_horde",
+                            "srd.multiattack_defense"
                         ]
                     }
                 }

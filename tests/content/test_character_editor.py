@@ -2151,6 +2151,84 @@ def test_natural_language_character_edit_assigns_hunter_horde_breaker_choice() -
     assert "srd.hunters_prey_colossus_slayer" not in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_hunter_defensive_tactics_default() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 ranger7 子职 hunter")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"ranger": 7}
+    assert result.character.subclasses == {"ranger": "hunter"}
+    assert result.character.feature_choices == {
+        "ranger.hunter.hunters_prey": "colossus_slayer",
+        "ranger.hunter.defensive_tactics": "escape_the_horde",
+    }
+    assert "srd.defensive_tactics" in result.character.actions
+    assert "srd.escape_the_horde" in result.character.actions
+    assert "srd.multiattack_defense" not in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_hunter_multiattack_defense_choice() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger7 子职 hunter Defensive Tactics Multiattack Defense",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.feature_choices == {
+        "ranger.hunter.hunters_prey": "colossus_slayer",
+        "ranger.hunter.defensive_tactics": "multiattack_defense",
+    }
+    assert "srd.defensive_tactics" in result.character.actions
+    assert "srd.multiattack_defense" in result.character.actions
+    assert "srd.escape_the_horde" not in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_hunter_defensive_tactics_chinese_label() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger7 子职 hunter 防御战术 Escape the Horde",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.feature_choices["ranger.hunter.defensive_tactics"] == "escape_the_horde"
+    assert "srd.escape_the_horde" in result.character.actions
+    assert "srd.multiattack_defense" not in result.character.actions
+
+
+def test_natural_language_character_edit_rejects_hunter_defensive_tactics_too_early() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger6 子职 hunter Defensive Tactics Escape the Horde",
+    )
+
+    assert result.accepted is False
+    assert result.errors is not None
+    assert any("Defensive Tactics 选项需要 Ranger/Hunter 7" in error for error in result.errors)
+
+
+def test_natural_language_character_edit_rejects_hunter_defensive_tactics_without_hunter() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 ranger7 Defensive Tactics Multiattack Defense",
+    )
+
+    assert result.accepted is False
+    assert result.errors is not None
+    assert any("Defensive Tactics 选项需要 Ranger/Hunter 7" in error for error in result.errors)
+
+
 def test_natural_language_character_edit_assigns_rogue_cunning_action() -> None:
     character = default_fighter("pc1", "Penn")
 

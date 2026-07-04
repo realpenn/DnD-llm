@@ -2647,13 +2647,17 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["ranger"].subclasses["hunter"] == {
         "name": "Hunter",
         "level": 3,
-        "features": ["Hunter's Lore", "Hunter's Prey"],
-        "actions": ["srd.hunters_lore"],
+        "features": ["Hunter's Lore", "Hunter's Prey", "Defensive Tactics"],
+        "actions": ["srd.hunters_lore", "srd.defensive_tactics"],
         "feature_options": {
             "hunters_prey": [
                 "srd.hunters_prey_colossus_slayer",
                 "srd.hunters_prey_horde_breaker",
-            ]
+            ],
+            "defensive_tactics": [
+                "srd.escape_the_horde",
+                "srd.multiattack_defense",
+            ],
         },
     }
     hunters_lore = compendium.action("srd.hunters_lore")
@@ -2677,6 +2681,27 @@ def test_compendium_loads_srd_actions() -> None:
         "class": "ranger",
         "class_level_min": 3,
         "subclass": "hunter",
+    }
+    defensive_tactics = compendium.action("srd.defensive_tactics")
+    assert defensive_tactics.action_economy == "none"
+    assert defensive_tactics.requirements == {
+        "class": "ranger",
+        "class_level_min": 7,
+        "subclass": "hunter",
+    }
+    assert defensive_tactics.properties == {
+        "feature_choice_key": "ranger.hunter.defensive_tactics",
+        "feature_options": ["escape_the_horde", "multiattack_defense"],
+    }
+    escape_the_horde = compendium.action("srd.escape_the_horde")
+    assert escape_the_horde.properties == {
+        "defensive_tactics_option": "escape_the_horde",
+        "opportunity_attacks_against_self_disadvantage": True,
+    }
+    multiattack_defense = compendium.action("srd.multiattack_defense")
+    assert multiattack_defense.properties == {
+        "defensive_tactics_option": "multiattack_defense",
+        "same_attacker_follow_up_attacks_disadvantage": True,
     }
     assert {
         "srd.cunning_action_dash",
