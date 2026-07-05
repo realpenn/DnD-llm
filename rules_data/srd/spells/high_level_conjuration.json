@@ -127,6 +127,65 @@
       }
     },
     {
+      "id": "srd.spell.dimension_door",
+      "name": "Dimension Door",
+      "localization": {
+        "en": "Dimension Door",
+        "zh": "任意门",
+        "aliases": ["次元门"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.dimension_door",
+        "name": "Dimension Door",
+        "localization": {
+          "en": "Dimension Door",
+          "zh": "任意门",
+          "aliases": ["次元门"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 500 },
+        "target_policy": { "min": 0, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "optional_companion_must_be_within_ft": 5
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "dimension_door_teleport",
+            "scope": { "target": "explicit", "range_ft": 500 },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "teleports_actor": true,
+              "destination_within_ft": 500,
+              "destination_can_be_seen_visualized_or_described": true,
+              "arrives_at_exact_spot_desired": true,
+              "optional_willing_companion": true,
+              "companion_must_be_within_ft": 5,
+              "companion_arrives_within_ft_of_destination": 5,
+              "occupied_or_filled_destination_causes_force_damage_and_fails": true,
+              "failed_teleport_force_damage": "4d6"
+            }
+          }
+        ],
+        "audit_label": "Dimension Door"
+      }
+    },
+    {
       "id": "srd.spell.insect_plague",
       "name": "Insect Plague",
       "localization": {

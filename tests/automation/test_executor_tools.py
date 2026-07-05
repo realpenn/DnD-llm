@@ -18808,6 +18808,94 @@ def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state
     assert state.world.active_effects == []
 
 
+def test_dimension_door_spends_slot_and_records_self_teleport(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.dimension_door",
+        [],
+        4,
+        idempotency_key="cast-dimension-door-self",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.dimension_door"
+    assert effect["effect_type"] == "dimension_door_teleport"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "explicit", "range_ft": 500, "target_ids": []}
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "teleports_actor": True,
+        "destination_within_ft": 500,
+        "destination_can_be_seen_visualized_or_described": True,
+        "arrives_at_exact_spot_desired": True,
+        "optional_willing_companion": True,
+        "companion_must_be_within_ft": 5,
+        "companion_arrives_within_ft_of_destination": 5,
+        "occupied_or_filled_destination_causes_force_damage_and_fails": True,
+        "failed_teleport_force_damage": "4d6",
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "dimension_door_teleport"
+    assert world_effect_change["concentration"] is False
+
+
+def test_dimension_door_optional_companion_must_be_willing_before_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.dimension_door",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 4},
+            idempotency_key="cast-dimension-door-unwilling",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    result = tools._execute_action(
+        action_id="srd.dimension_door",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 4, "target_willing": True},
+        idempotency_key="cast-dimension-door-companion",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    effect = state.world.active_effects[-1]
+    assert effect["scope"] == {
+        "target": "explicit",
+        "range_ft": 500,
+        "target_ids": ["pc2"],
+        "target_id": "pc2",
+    }
+    assert effect["metadata"]["companion_must_be_within_ft"] == 5
+    assert effect["metadata"]["companion_arrives_within_ft_of_destination"] == 5
+
+
 def test_transport_via_plants_spends_slot_and_records_timed_plant_link(
     make_state,
 ) -> None:

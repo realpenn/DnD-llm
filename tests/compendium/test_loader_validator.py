@@ -60,6 +60,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.forbiddance",
         "srd.cloudkill",
         "srd.teleportation_circle",
+        "srd.dimension_door",
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
@@ -1194,6 +1195,41 @@ def test_compendium_loads_srd_actions() -> None:
                 "initial_known_material_plane_destination_count": 2,
                 "learn_new_sigil_sequence_study_minutes": 1,
                 "permanent_circle_daily_castings_required": 365,
+            },
+        }
+    ]
+    dimension_door = compendium.action("srd.dimension_door")
+    assert dimension_door.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert dimension_door.properties["spell_classes"] == [
+        "bard",
+        "sorcerer",
+        "warlock",
+        "wizard",
+    ]
+    assert dimension_door.properties["requires_willing_target"] is True
+    assert dimension_door.properties["optional_companion_must_be_within_ft"] == 5
+    assert dimension_door.cost.spell_slot_level == 4
+    assert dimension_door.range == {"normal_ft": 500}
+    assert dimension_door.target_policy == {"min": 0, "max": 1, "harmful": False}
+    assert dimension_door.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "dimension_door_teleport",
+            "scope": {"target": "explicit", "range_ft": 500},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "teleports_actor": True,
+                "destination_within_ft": 500,
+                "destination_can_be_seen_visualized_or_described": True,
+                "arrives_at_exact_spot_desired": True,
+                "optional_willing_companion": True,
+                "companion_must_be_within_ft": 5,
+                "companion_arrives_within_ft_of_destination": 5,
+                "occupied_or_filled_destination_causes_force_damage_and_fails": True,
+                "failed_teleport_force_damage": "4d6",
             },
         }
     ]

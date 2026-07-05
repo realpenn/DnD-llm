@@ -85,6 +85,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.deflect_energy",
     "srd.devils_sight",
     "srd.defensive_tactics",
+    "srd.dimension_door",
     "srd.disengage",
     "srd.disciple_of_life",
     "srd.divination",
