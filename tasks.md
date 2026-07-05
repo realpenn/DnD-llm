@@ -370,6 +370,7 @@ P0 脚手架
   - [x] **P2-1dh** SRD 5.2.1 `Freedom of Movement` 落地：新增 4 环 Abjuration spell 与 `srd.freedom_of_movement` action；按 SRD 以 Action/Touch 为 willing creature 施加 1 小时非专注的行动自如被动标记，包含困难地形不影响、魔法减速/麻痹/束缚免疫语义、Swim Speed 等于 Speed、花费 5 尺移动自动脱离非魔法束缚，并支持每高一环额外 1 个目标；复用 Oil of Slipperiness 已有 marker，不虚构完整地形或束缚调度器；覆盖 compendium、coverage、executor、willing 校验、升环与生命周期测试。
   - [x] **P2-1di** SRD 5.2.1 `Arcane Eye` 落地：新增 4 环 Divination spell 与 `srd.arcane_eye` action；按 SRD 以 Action/30 尺/Concentration 1 hour 创建 Invisible、invulnerable、hovering 的 arcane eye world effect，记录施法者可心灵接收视觉信息、全向视觉、30 尺 Darkvision、Bonus Action 移动 30 尺、固体屏障阻挡以及可穿过 1 英寸开口等元数据；不虚构传感器寻路、地图侦察或感知裁定系统；覆盖 compendium、coverage、executor、法术位消耗与生命周期测试。
   - [x] **P2-1dj** SRD 5.2.1 `Stoneskin` 落地：新增 4 环 Transmutation spell 与 `srd.stoneskin` action；按 SRD 以 Action/Touch 消耗 100+ GP diamond dust 材料，为 willing creature 施加 Concentration 1 hour 的 Bludgeoning/Piercing/Slashing damage Resistance；材料消耗复用现有金币成本模型，不虚构 diamond dust 物品库存或额外石化效果；覆盖 compendium、coverage、executor、willing/材料前置校验、抗性结算与生命周期测试。
+  - [x] **P2-1dk** SRD 5.2.1 `Stone Shape` 落地：新增 4 环 Transmutation spell 与 `srd.stone_shape` action；按 SRD 以 Action/Touch/Instantaneous 塑形 Medium 或更小石质物体，或任一维度不超过 5 尺的石材段，记录可塑成任意形状、可形成 5 尺厚墙的小通道、可封住石门或门框、最多两个铰链和一个闩且无法实现更精细机械细节等元数据；不虚构石制武器属性、物品库存、地图切割或寻路系统；覆盖 compendium、coverage 与 executor world effect 测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

@@ -1,6 +1,73 @@
 {
   "items": [
     {
+      "id": "srd.spell.stone_shape",
+      "name": "Stone Shape",
+      "localization": {
+        "en": "Stone Shape",
+        "zh": "塑石术",
+        "aliases": ["石形术", "塑造石头"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "wizard"],
+      "action": {
+        "id": "srd.stone_shape",
+        "name": "Stone Shape",
+        "localization": {
+          "en": "Stone Shape",
+          "zh": "塑石术",
+          "aliases": ["石形术", "塑造石头"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "druid", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "soft clay",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "stone_shape",
+            "scope": { "target": "touched_stone" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "target_material": "stone",
+              "stone_object_max_size": "medium",
+              "stone_section_max_dimension_ft": 5,
+              "forms_into_shape_of_choice": true,
+              "srd_example_outputs": [
+                "weapon",
+                "statue",
+                "coffer",
+                "small_passage_through_wall",
+                "sealed_stone_door_or_frame"
+              ],
+              "small_passage_wall_thickness_ft": 5,
+              "created_object_max_hinges": 2,
+              "created_object_can_have_latch": true,
+              "finer_mechanical_detail_not_possible": true
+            }
+          }
+        ],
+        "audit_label": "Stone Shape"
+      }
+    },
+    {
       "id": "srd.spell.stoneskin",
       "name": "Stoneskin",
       "localization": {

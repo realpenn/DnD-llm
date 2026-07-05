@@ -19268,6 +19268,92 @@ def test_find_the_path_records_concentration_navigation_sense(make_state) -> Non
     )
 
 
+def test_stone_shape_records_instant_touched_stone_reshaping(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.stone_shape",
+        [],
+        4,
+        idempotency_key="cast-stone-shape",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.stone_shape"
+    assert effect["effect_type"] == "stone_shape"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "touched_stone"}
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "target_material": "stone",
+        "stone_object_max_size": "medium",
+        "stone_section_max_dimension_ft": 5,
+        "forms_into_shape_of_choice": True,
+        "srd_example_outputs": [
+            "weapon",
+            "statue",
+            "coffer",
+            "small_passage_through_wall",
+            "sealed_stone_door_or_frame",
+        ],
+        "small_passage_wall_thickness_ft": 5,
+        "created_object_max_hinges": 2,
+        "created_object_can_have_latch": True,
+        "finer_mechanical_detail_not_possible": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "stone_shape"
+    assert world_effect_change["concentration"] is False
+
+
+def test_stone_shape_rejects_invalid_caster_or_missing_slot_before_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"fighter": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of cleric, druid, wizard"):
+        tools.cast_spell(
+            "pc1",
+            "srd.stone_shape",
+            [],
+            4,
+            idempotency_key="cast-stone-shape-invalid-class",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 0
+    with pytest.raises(AutomationError, match="no spell slot level 4 available"):
+        tools.cast_spell(
+            "pc1",
+            "srd.stone_shape",
+            [],
+            4,
+            idempotency_key="cast-stone-shape-no-slot",
+        )
+
+    assert state.world.active_effects == []
+
+
 def test_stoneskin_consumes_material_and_grants_concentration_resistance(
     make_state,
 ) -> None:

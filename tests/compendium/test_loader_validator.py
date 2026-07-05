@@ -70,6 +70,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.move_earth",
         "srd.wind_walk",
         "srd.tree_stride",
+        "srd.stone_shape",
         "srd.stoneskin",
         "srd.wall_of_force",
         "srd.wall_of_stone",
@@ -1530,6 +1531,44 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "self_turn_end",
             "concentration": True,
         },
+    ]
+    stone_shape = compendium.action("srd.stone_shape")
+    assert stone_shape.requirements == {
+        "spell_level": 4,
+        "class_any": ["cleric", "druid", "wizard"],
+    }
+    assert stone_shape.properties["spell_classes"] == ["cleric", "druid", "wizard"]
+    assert stone_shape.properties["material_component"] == {
+        "description": "soft clay",
+        "consumed": False,
+    }
+    assert stone_shape.cost.spell_slot_level == 4
+    assert stone_shape.range == {"touch": True}
+    assert stone_shape.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert stone_shape.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "stone_shape",
+            "scope": {"target": "touched_stone"},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "target_material": "stone",
+                "stone_object_max_size": "medium",
+                "stone_section_max_dimension_ft": 5,
+                "forms_into_shape_of_choice": True,
+                "srd_example_outputs": [
+                    "weapon",
+                    "statue",
+                    "coffer",
+                    "small_passage_through_wall",
+                    "sealed_stone_door_or_frame",
+                ],
+                "small_passage_wall_thickness_ft": 5,
+                "created_object_max_hinges": 2,
+                "created_object_can_have_latch": True,
+                "finer_mechanical_detail_not_possible": True,
+            },
+        }
     ]
     stoneskin = compendium.action("srd.stoneskin")
     assert stoneskin.requirements == {
