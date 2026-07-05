@@ -34,6 +34,23 @@ DRACONIC_ELEMENTAL_AFFINITY_CHOICE_KEY = "sorcerer.draconic.elemental_affinity"
 DRACONIC_ELEMENTAL_AFFINITY_DAMAGE_TYPES = frozenset(
     {"acid", "cold", "fire", "lightning", "poison"}
 )
+SRD_DAMAGE_TYPES = frozenset(
+    {
+        "acid",
+        "bludgeoning",
+        "cold",
+        "fire",
+        "force",
+        "lightning",
+        "necrotic",
+        "piercing",
+        "poison",
+        "psychic",
+        "radiant",
+        "slashing",
+        "thunder",
+    }
+)
 WARLOCK_ELDRITCH_INVOCATION_CHOICE_KEY = "warlock.eldritch_invocation"
 WARLOCK_DEVILS_SIGHT_CHOICE_KEY = "warlock.eldritch_invocation.devils_sight"
 WARLOCK_DEVILS_SIGHT_SELECTED = "selected"
@@ -88,6 +105,10 @@ WARLOCK_THIRSTING_BLADE_SELECTED = "selected"
 WARLOCK_ELDRITCH_SMITE_CHOICE_KEY = "warlock.eldritch_invocation.eldritch_smite"
 WARLOCK_ELDRITCH_SMITE_SELECTED = "selected"
 WARLOCK_ELDRITCH_MIND = "eldritch_mind"
+WARLOCK_FIENDISH_RESILIENCE_CHOICE_KEY = "warlock.fiend.fiendish_resilience.damage_type"
+WARLOCK_FIENDISH_RESILIENCE_DAMAGE_TYPES = frozenset(
+    damage_type for damage_type in SRD_DAMAGE_TYPES if damage_type != "force"
+)
 UNCANNY_METABOLISM_RESOURCE = "srd.resource.uncanny_metabolism"
 WHOLENESS_OF_BODY_RESOURCE = "srd.resource.wholeness_of_body"
 FOCUS_POINTS_RESOURCE = "srd.resource.focus_points"
@@ -537,6 +558,23 @@ def has_warlock_fiend_feature(character: Character, *, level: int) -> bool:
         int(character.class_levels.get("warlock", 0)) >= level
         and character.subclasses.get("warlock") == "fiend"
     )
+
+
+def normalize_warlock_fiendish_resilience_damage_type(damage_type: str) -> str:
+    normalized = damage_type.casefold()
+    if normalized not in WARLOCK_FIENDISH_RESILIENCE_DAMAGE_TYPES:
+        allowed = ", ".join(sorted(WARLOCK_FIENDISH_RESILIENCE_DAMAGE_TYPES))
+        raise ValueError(f"Fiendish Resilience damage type must be one of: {allowed}")
+    return normalized
+
+
+def warlock_fiendish_resilience_damage_type(character: Character) -> str | None:
+    if not has_warlock_fiend_feature(character, level=10):
+        return None
+    choice = character.feature_choices.get(WARLOCK_FIENDISH_RESILIENCE_CHOICE_KEY)
+    if choice in WARLOCK_FIENDISH_RESILIENCE_DAMAGE_TYPES:
+        return choice
+    return None
 
 
 def eldritch_master_applies(character: Character) -> bool:

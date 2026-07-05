@@ -511,6 +511,99 @@ def test_short_and_long_rest_restore_warlock_pact_magic_slots(make_state) -> Non
     assert character.resources["srd.resource.magical_cunning"] == 1
 
 
+def test_warlock_fiendish_resilience_choice_on_short_and_long_rest(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 10}
+    character.subclasses = {"warlock": "fiend"}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    short = tools.short_rest(
+        "pc1",
+        {},
+        fiendish_resilience_damage_type="Cold",
+        idempotency_key="fiendish-resilience-short",
+    )
+
+    assert short["fiendish_resilience"] == {
+        "damage_type": "cold",
+        "changed": True,
+        "source_action_id": "srd.fiendish_resilience",
+    }
+    assert character.feature_choices["warlock.fiend.fiendish_resilience.damage_type"] == "cold"
+
+    with pytest.raises(ValueError, match="Fiendish Resilience damage type"):
+        tools.short_rest(
+            "pc1",
+            {},
+            fiendish_resilience_damage_type="force",
+            idempotency_key="fiendish-resilience-force",
+        )
+    assert character.feature_choices["warlock.fiend.fiendish_resilience.damage_type"] == "cold"
+
+    long = tools.long_rest(
+        ["pc1"],
+        fiendish_resilience_choices={"pc1": "fire"},
+        idempotency_key="fiendish-resilience-long",
+    )
+
+    assert long["results"]["pc1"]["fiendish_resilience"] == {
+        "damage_type": "fire",
+        "changed": True,
+        "source_action_id": "srd.fiendish_resilience",
+        "previous_damage_type": "cold",
+    }
+    assert character.feature_choices["warlock.fiend.fiendish_resilience.damage_type"] == "fire"
+
+
+def test_warlock_fiendish_resilience_requires_fiend_patron_level_10_rest(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 9}
+    character.subclasses = {"warlock": "fiend"}
+    tools = EngineTools(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    with pytest.raises(ValueError, match="Fiend Patron Warlock level 10"):
+        tools.short_rest(
+            "pc1",
+            {},
+            fiendish_resilience_damage_type="cold",
+            idempotency_key="fiendish-resilience-low-level",
+        )
+
+    character.class_levels = {"warlock": 10}
+    character.subclasses = {}
+    with pytest.raises(ValueError, match="Fiend Patron Warlock level 10"):
+        tools.short_rest(
+            "pc1",
+            {},
+            fiendish_resilience_damage_type="cold",
+            idempotency_key="fiendish-resilience-no-fiend",
+        )
+
+
+def test_warlock_fiendish_resilience_reduces_gm_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 10}
+    character.subclasses = {"warlock": "fiend"}
+    character.feature_choices["warlock.fiend.fiendish_resilience.damage_type"] = "fire"
+    state.encounter.combatants["pc1"].hp_current = 20
+    state.encounter.combatants["pc1"].hp_max = 20
+    tools = EngineTools(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    fire = tools.apply_damage("pc1", 9, "fire", "test.fiendish_resilience.fire")
+    force = tools.apply_damage("pc1", 5, "force", "test.fiendish_resilience.force")
+
+    assert fire["applied"] == 4
+    assert force["applied"] == 5
+    assert state.encounter.combatants["pc1"].hp_current == 11
+    assert character.hp_current == 11
+
+
 def test_bardic_inspiration_restoration_uses_font_of_inspiration_rule(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

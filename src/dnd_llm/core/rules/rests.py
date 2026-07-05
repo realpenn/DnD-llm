@@ -16,12 +16,15 @@ from .class_features import (
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
+    WARLOCK_FIENDISH_RESILIENCE_CHOICE_KEY,
     WHOLENESS_OF_BODY_RESOURCE,
     dark_ones_own_luck_uses,
     fighter_indomitable_uses,
     has_druid_circle_of_the_land_feature,
     has_monk_open_hand_feature,
+    has_warlock_fiend_feature,
     has_warlock_gift_of_depths,
+    normalize_warlock_fiendish_resilience_damage_type,
     ranger_natures_veil_uses,
     ranger_tireless_uses,
 )
@@ -71,7 +74,9 @@ def short_rest(
     roll_service: RollService,
     arcane_recovery_slots: dict[str, int] | None = None,
     natural_recovery_slots: dict[str, int] | None = None,
+    fiendish_resilience_damage_type: str | None = None,
 ) -> dict[str, Any]:
+    _validate_warlock_fiendish_resilience_choice(character, fiendish_resilience_damage_type)
     con_modifier = _ability_modifier(character, "con")
     before_hp = character.hp_current
     before_resources = dict(character.resources)
@@ -136,7 +141,7 @@ def short_rest(
         _, exhaustion_after = lower_exhaustion(character.status_effects)
     if character.hp_current > 0:
         _clear_death_save_state(character)
-    return {
+    result = {
         "hp_before": before_hp,
         "hp_after": character.hp_current,
         "healing": character.hp_current - before_hp,
@@ -155,9 +160,20 @@ def short_rest(
         "exhaustion_before": exhaustion_before,
         "exhaustion_after": exhaustion_after,
     }
+    fiendish_resilience = _apply_warlock_fiendish_resilience_choice(
+        character,
+        fiendish_resilience_damage_type,
+    )
+    if fiendish_resilience is not None:
+        result["fiendish_resilience"] = fiendish_resilience
+    return result
 
 
-def long_rest(character: Character) -> dict[str, Any]:
+def long_rest(
+    character: Character,
+    fiendish_resilience_damage_type: str | None = None,
+) -> dict[str, Any]:
+    _validate_warlock_fiendish_resilience_choice(character, fiendish_resilience_damage_type)
     before_hp = character.hp_current
     before_temp_hp = character.temp_hp
     before_slots = dict(character.spell_slots)
@@ -195,7 +211,7 @@ def long_rest(character: Character) -> dict[str, Any]:
     restored_resources = _restore_long_rest_resources(character)
     reset_resources = _reset_rest_resources(character)
 
-    return {
+    result = {
         "hp_before": before_hp,
         "hp_after": character.hp_current,
         "temp_hp_before": before_temp_hp,
@@ -213,6 +229,13 @@ def long_rest(character: Character) -> dict[str, Any]:
         "exhaustion_after": exhaustion_after,
         "removed_long_rest_effects": removed_long_rest_effects,
     }
+    fiendish_resilience = _apply_warlock_fiendish_resilience_choice(
+        character,
+        fiendish_resilience_damage_type,
+    )
+    if fiendish_resilience is not None:
+        result["fiendish_resilience"] = fiendish_resilience
+    return result
 
 
 def _restore_short_rest_resources(character: Character) -> dict[str, int]:
@@ -453,6 +476,38 @@ def _remove_long_rest_effects(character: Character) -> list[dict[str, Any]]:
         retained.append(effect)
     character.status_effects[:] = retained
     return removed
+
+
+def _apply_warlock_fiendish_resilience_choice(
+    character: Character,
+    damage_type: str | None,
+) -> dict[str, Any] | None:
+    if damage_type is None:
+        return None
+    if not has_warlock_fiend_feature(character, level=10):
+        raise ValueError("Fiendish Resilience requires Fiend Patron Warlock level 10")
+    normalized = normalize_warlock_fiendish_resilience_damage_type(damage_type)
+    previous = character.feature_choices.get(WARLOCK_FIENDISH_RESILIENCE_CHOICE_KEY)
+    character.feature_choices[WARLOCK_FIENDISH_RESILIENCE_CHOICE_KEY] = normalized
+    result: dict[str, Any] = {
+        "damage_type": normalized,
+        "changed": previous != normalized,
+        "source_action_id": "srd.fiendish_resilience",
+    }
+    if previous is not None:
+        result["previous_damage_type"] = previous
+    return result
+
+
+def _validate_warlock_fiendish_resilience_choice(
+    character: Character,
+    damage_type: str | None,
+) -> None:
+    if damage_type is None:
+        return
+    if not has_warlock_fiend_feature(character, level=10):
+        raise ValueError("Fiendish Resilience requires Fiend Patron Warlock level 10")
+    normalize_warlock_fiendish_resilience_damage_type(damage_type)
 
 
 def resource_maxima(character: Character) -> dict[str, int]:

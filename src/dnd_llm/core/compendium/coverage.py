@@ -109,6 +109,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.fast_hands_magic_item",
     "srd.fast_hands_sleight_of_hand",
     "srd.fast_hands_utilize",
+    "srd.fiendish_resilience",
     "srd.fiendish_vigor",
     "srd.fiendish_vigor_false_life",
     "srd.fleet_step",

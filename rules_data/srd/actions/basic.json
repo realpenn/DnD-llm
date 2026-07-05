@@ -3467,6 +3467,50 @@
             "audit_label": "Dark One's Own Luck"
         },
         {
+            "id": "srd.fiendish_resilience",
+            "name": "Fiendish Resilience",
+            "localization": {
+                "en": "Fiendish Resilience",
+                "zh": "邪魔韧性",
+                "aliases": ["Fiend Patron Fiendish Resilience", "邪魔宗主邪魔韧性"]
+            },
+            "source": "SRD 5.2.1 Warlock Subclass: Fiend Patron, Level 10: Fiendish Resilience",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 10, "subclass": "fiend"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "properties": {
+                "choice_timing": "finish_short_or_long_rest",
+                "choice_key": "warlock.fiend.fiendish_resilience.damage_type",
+                "allowed_damage_types": [
+                    "acid",
+                    "bludgeoning",
+                    "cold",
+                    "fire",
+                    "lightning",
+                    "necrotic",
+                    "piercing",
+                    "poison",
+                    "psychic",
+                    "radiant",
+                    "slashing",
+                    "thunder"
+                ],
+                "excluded_damage_types": ["force"]
+            },
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Fiend Patron Warlock chooses one non-Force damage type whenever finishing a Short or Long Rest and has Resistance to that damage type until choosing a different one with this feature."
+                }
+            ],
+            "audit_label": "Fiendish Resilience"
+        },
+        {
             "id": "srd.draconic_resilience",
             "name": "Draconic Resilience",
             "localization": {

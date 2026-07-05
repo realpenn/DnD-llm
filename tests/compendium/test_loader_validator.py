@@ -2387,6 +2387,20 @@ def test_compendium_loads_srd_actions() -> None:
         "subclass": "fiend",
     }
     assert compendium.action("srd.dark_ones_own_luck").automation[0]["type"] == "text_result"
+    fiendish_resilience = compendium.action("srd.fiendish_resilience")
+    assert fiendish_resilience.requirements == {
+        "class": "warlock",
+        "class_level_min": 10,
+        "subclass": "fiend",
+    }
+    assert fiendish_resilience.action_economy == "none"
+    assert fiendish_resilience.properties["choice_timing"] == "finish_short_or_long_rest"
+    assert fiendish_resilience.properties["choice_key"] == (
+        "warlock.fiend.fiendish_resilience.damage_type"
+    )
+    assert "force" not in fiendish_resilience.properties["allowed_damage_types"]
+    assert fiendish_resilience.properties["excluded_damage_types"] == ["force"]
+    assert fiendish_resilience.automation[0]["type"] == "text_result"
     assert "srd.divine_spark_heal" in compendium.actions
     assert compendium.action("srd.divine_spark_heal").target_policy["exclude_self"] is True
     assert compendium.action("srd.divine_spark_heal").cost.resources == {
@@ -5589,6 +5603,7 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["warlock"].subclasses["fiend"]["actions"] == [
         "srd.dark_ones_blessing",
         "srd.dark_ones_own_luck",
+        "srd.fiendish_resilience",
     ]
     assert compendium.classes["warlock"].levels["2"]["actions"] == [
         "srd.eldritch_blast",

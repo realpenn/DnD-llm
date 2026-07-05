@@ -2985,6 +2985,20 @@ def test_natural_language_character_edit_assigns_fiend_patron_level_6_luck() -> 
     assert result.character.resources["srd.resource.dark_ones_own_luck"] == 1
 
 
+def test_natural_language_character_edit_assigns_fiend_patron_level_10_resilience() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 warlock10 子职 fiend")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"warlock": 10}
+    assert result.character.subclasses == {"warlock": "fiend"}
+    assert "srd.dark_ones_blessing" in result.character.actions
+    assert "srd.dark_ones_own_luck" in result.character.actions
+    assert "srd.fiendish_resilience" in result.character.actions
+
+
 def test_natural_language_character_edit_does_not_assign_fiend_patron_by_default() -> None:
     character = default_fighter("pc1", "Penn")
 

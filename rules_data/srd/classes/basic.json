@@ -2499,8 +2499,16 @@
                 "fiend": {
                     "name": "Fiend Patron",
                     "level": 3,
-                    "features": ["Dark One's Blessing", "Dark One's Own Luck"],
-                    "actions": ["srd.dark_ones_blessing", "srd.dark_ones_own_luck"]
+                    "features": [
+                        "Dark One's Blessing",
+                        "Dark One's Own Luck",
+                        "Fiendish Resilience"
+                    ],
+                    "actions": [
+                        "srd.dark_ones_blessing",
+                        "srd.dark_ones_own_luck",
+                        "srd.fiendish_resilience"
+                    ]
                 }
             }
         },

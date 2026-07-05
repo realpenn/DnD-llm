@@ -20601,6 +20601,51 @@ def test_draconic_elemental_affinity_grants_chosen_damage_resistance(make_state)
     assert state.encounter.combatants["pc1"].hp_current == 16
 
 
+def test_warlock_fiendish_resilience_grants_chosen_damage_resistance(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 10}
+    character.subclasses = {"warlock": "fiend"}
+    character.actions.append("srd.fiendish_resilience")
+    character.feature_choices["warlock.fiend.fiendish_resilience.damage_type"] = "necrotic"
+    state.encounter.combatants["pc1"].hp_current = 20
+    state.encounter.combatants["pc1"].hp_max = 20
+    action = ActionDefinition(
+        id="test.necrotic_damage",
+        name="Test Necrotic Damage",
+        localization={"en": "Test Necrotic Damage", "zh": "测试黯蚀伤害", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "damage", "amount": 9, "damage_type": "necrotic"},
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    damage_change = next(change for change in result.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert damage_change["damage_resistance_sources"] == [
+        {
+            "source_action_id": "srd.fiendish_resilience",
+            "modifier": "warlock_fiendish_resilience",
+            "damage_type": "necrotic",
+        }
+    ]
+    assert state.encounter.combatants["pc1"].hp_current == 16
+
+
 def test_land_druid_natures_ward_grants_poisoned_immunity(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -31,7 +31,9 @@ from .rules.class_features import (
     aura_of_protection_radius_ft,
     aura_of_protection_saving_throw_bonus,
     cleric_thaumaturge_check_bonus,
+    draconic_elemental_affinity_damage_type,
     druid_magician_check_bonus,
+    druid_natures_ward_resistance_type,
     has_condition,
     has_fighter_feature,
     has_relentless_rage,
@@ -45,8 +47,8 @@ from .rules.class_features import (
     remarkable_athlete_applies_to_check,
     rogue_stroke_of_luck_applies,
     saving_throw_proficiency_sources,
+    warlock_fiendish_resilience_damage_type,
 )
-from .rules.combat import apply_damage as apply_damage_rule
 from .rules.combat import apply_healing as apply_healing_rule
 from .rules.conditions import apply_exhaustion, exhaustion_d20_penalty, exhaustion_level
 from .rules.death import roll_death_save as roll_death_save_rule
@@ -787,6 +789,7 @@ class EngineTools:
         *,
         arcane_recovery_slots: dict[str, int] | None = None,
         natural_recovery_slots: dict[str, int] | None = None,
+        fiendish_resilience_damage_type: str | None = None,
         memorize_spell: dict[str, str] | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
@@ -804,6 +807,7 @@ class EngineTools:
             self.roll_service,
             arcane_recovery_slots,
             natural_recovery_slots,
+            fiendish_resilience_damage_type,
         )
         if memorize_spell_plan is not None:
             result["memorize_spell"] = self._apply_wizard_memorize_spell_plan(
@@ -822,6 +826,7 @@ class EngineTools:
                 "hit_dice_to_spend": hit_dice_to_spend,
                 "arcane_recovery_slots": arcane_recovery_slots or {},
                 "natural_recovery_slots": natural_recovery_slots or {},
+                "fiendish_resilience_damage_type": fiendish_resilience_damage_type,
                 "memorize_spell": memorize_spell or {},
             },
             tool_result=result,
@@ -834,6 +839,7 @@ class EngineTools:
         self,
         actor_ids: list[str],
         *,
+        fiendish_resilience_choices: dict[str, str] | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = (
@@ -845,7 +851,10 @@ class EngineTools:
         results: dict[str, Any] = {}
         for actor_id in actor_ids:
             character = self._character_for_actor(actor_id)
-            rest_result = long_rest_rule(character)
+            rest_result = long_rest_rule(
+                character,
+                (fiendish_resilience_choices or {}).get(actor_id),
+            )
             rest_result["actor_id"] = actor_id
             rest_result["character_id"] = character.id
             results[actor_id] = rest_result
@@ -855,7 +864,10 @@ class EngineTools:
             self.state,
             idempotency_key=idempotency_key,
             tool_name="long_rest",
-            tool_args={"actor_ids": actor_ids},
+            tool_args={
+                "actor_ids": actor_ids,
+                "fiendish_resilience_choices": fiendish_resilience_choices or {},
+            },
             tool_result=result,
         )
         require_game_state_invariants(self.state)
@@ -1045,11 +1057,12 @@ class EngineTools:
         hp_max_before = int(getattr(target, "hp_max"))
         temp_hp_before = int(getattr(target, "temp_hp", 0))
         damage_taken_before_hp_cap = self._gm_damage_taken_before_hp_cap(
+            target_id,
             target,
             amount,
             normalized_damage_type,
         )
-        applied = apply_damage_rule(target, amount, normalized_damage_type)
+        applied = self._apply_gm_damage(target_id, target, amount, normalized_damage_type)
         result = {
             "target_id": target_id,
             "amount": amount,
@@ -1174,8 +1187,27 @@ class EngineTools:
             },
         }
 
-    @staticmethod
+    def _apply_gm_damage(
+        self,
+        target_id: str,
+        target: Character | Monster | Combatant,
+        amount: int,
+        damage_type: str,
+    ) -> int:
+        adjusted = self._gm_damage_taken_before_hp_cap(target_id, target, amount, damage_type)
+        temp_hp = int(getattr(target, "temp_hp", 0))
+        absorbed = min(temp_hp, adjusted)
+        setattr(target, "temp_hp", temp_hp - absorbed)
+        if int(getattr(target, "temp_hp", 0)) == 0:
+            setattr(target, "temp_hp_source_effect_id", None)
+        before = int(getattr(target, "hp_current"))
+        setattr(target, "hp_current", max(0, before - (adjusted - absorbed)))
+        self._sync_hp_state_for_target(target)
+        return before - int(getattr(target, "hp_current"))
+
     def _gm_damage_taken_before_hp_cap(
+        self,
+        target_id: str,
         target: Character | Monster | Combatant,
         amount: int,
         damage_type: str,
@@ -1186,14 +1218,81 @@ class EngineTools:
             damage_type,
         ):
             return 0
-        if damage_type in getattr(target, "resistances", []) or EngineTools._has_basic_condition(
-            target,
-            "petrified",
+        if (
+            damage_type in getattr(target, "resistances", [])
+            or EngineTools._has_basic_condition(target, "petrified")
+            or self._gm_passive_damage_resistance_sources(target_id, target, damage_type)
         ):
             adjusted //= 2
         elif damage_type in getattr(target, "vulnerabilities", []):
             adjusted *= 2
         return max(0, adjusted)
+
+    def _gm_passive_damage_resistance_sources(
+        self,
+        target_id: str,
+        target: Character | Monster | Combatant,
+        damage_type: str,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        owner = self._character_owner_for_target(target_id, target)
+        if owner is not None:
+            if draconic_elemental_affinity_damage_type(owner) == damage_type:
+                sources.append(
+                    {
+                        "source_action_id": "srd.elemental_affinity",
+                        "modifier": "draconic_elemental_affinity_resistance",
+                        "damage_type": damage_type,
+                    }
+                )
+            if druid_natures_ward_resistance_type(owner) == damage_type:
+                sources.append(
+                    {
+                        "source_action_id": "srd.natures_ward",
+                        "modifier": "druid_natures_ward_resistance",
+                        "damage_type": damage_type,
+                    }
+                )
+            if warlock_fiendish_resilience_damage_type(owner) == damage_type:
+                sources.append(
+                    {
+                        "source_action_id": "srd.fiendish_resilience",
+                        "modifier": "warlock_fiendish_resilience",
+                        "damage_type": damage_type,
+                    }
+                )
+        for effect in getattr(target, "status_effects", []):
+            if not isinstance(effect, dict):
+                continue
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            resistances = modifiers.get("damage_resistances", [])
+            if isinstance(resistances, str):
+                resistances = [resistances]
+            if isinstance(resistances, list) and damage_type in {str(item) for item in resistances}:
+                sources.append(
+                    {
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                        "modifier": "damage_resistances",
+                        "damage_type": damage_type,
+                    }
+                )
+        return sources
+
+    def _character_owner_for_target(
+        self,
+        target_id: str,
+        target: Character | Monster | Combatant,
+    ) -> Character | None:
+        if isinstance(target, Character):
+            return target
+        if isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            return self.state.characters[target.entity_id]
+        if target_id in self.state.characters:
+            return self.state.characters[target_id]
+        return None
 
     @staticmethod
     def _has_basic_condition(target: Character | Monster | Combatant, condition: str) -> bool:

@@ -91,6 +91,7 @@ from ..rules.class_features import (
     rogue_stroke_of_luck_applies,
     saving_throw_proficiency_sources,
     warlock_agonizing_blast_bonus,
+    warlock_fiendish_resilience_damage_type,
 )
 from ..rules.conditions import (
     ability_score_set_sources,
@@ -1396,6 +1397,10 @@ class AutomationExecutor:
                 target_before,
                 damage_type,
             )
+            damage_resistance_sources = self._passive_damage_resistance_sources(
+                target_before,
+                damage_type,
+            )
             damage_taken = self._mitigated_damage(target_before, amount, damage_type)
             applied = self._apply_damage(target_id, amount, damage_type)
             extra_damage_changes: list[dict[str, Any]] = []
@@ -1465,6 +1470,8 @@ class AutomationExecutor:
                 change["passive_sources"] = passive_bonus_sources
             if damage_immunity_sources:
                 change["damage_immunity_sources"] = damage_immunity_sources
+            if damage_resistance_sources:
+                change["damage_resistance_sources"] = damage_resistance_sources
             if brutal_strike.amount:
                 change["brutal_strike_bonus"] = brutal_strike.amount
                 change["brutal_strike_sources"] = brutal_strike.sources
@@ -8126,6 +8133,17 @@ class AutomationExecutor:
                 {
                     "source_action_id": "srd.natures_ward",
                     "modifier": "druid_natures_ward_resistance",
+                    "damage_type": damage_type,
+                }
+            )
+        if (
+            isinstance(owner, Character)
+            and warlock_fiendish_resilience_damage_type(owner) == damage_type
+        ):
+            sources.append(
+                {
+                    "source_action_id": "srd.fiendish_resilience",
+                    "modifier": "warlock_fiendish_resilience",
                     "damage_type": damage_type,
                 }
             )

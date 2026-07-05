@@ -406,7 +406,11 @@ SUBCLASS_ACTIONS = {
         "draconic": {3: ["srd.draconic_resilience"]},
     },
     "warlock": {
-        "fiend": {3: ["srd.dark_ones_blessing"], 6: ["srd.dark_ones_own_luck"]},
+        "fiend": {
+            3: ["srd.dark_ones_blessing"],
+            6: ["srd.dark_ones_own_luck"],
+            10: ["srd.fiendish_resilience"],
+        },
     },
     "wizard": {
         "evocation": {3: ["srd.potent_cantrip"]},
