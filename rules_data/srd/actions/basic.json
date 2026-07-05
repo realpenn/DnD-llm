@@ -1985,10 +1985,39 @@
                 {"type": "pact_magic_recovery"},
                 {
                     "type": "text_result",
-                    "text": "The warlock completes a 1-minute rite and regains expended Pact Magic spell slots up to half the maximum."
+                    "text": "The warlock completes a 1-minute rite and regains expended Pact Magic spell slots, normally up to half the maximum; Eldritch Master upgrades this to all expended Pact Magic spell slots."
                 }
             ],
             "audit_label": "Magical Cunning"
+        },
+        {
+            "id": "srd.eldritch_master",
+            "name": "Eldritch Master",
+            "localization": {
+                "en": "Eldritch Master",
+                "zh": "邪术大师",
+                "aliases": ["Warlock Eldritch Master", "邪术师邪术大师"]
+            },
+            "source": "SRD 5.2.1 Warlock Class Features: Level 20: Eldritch Master",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "warlock", "class_level_min": 20},
+            "properties": {
+                "upgrades_action": "srd.magical_cunning",
+                "pact_magic_recovery": "all_expended_slots"
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Warlock 20 uses Magical Cunning, they regain all expended Pact Magic spell slots."
+                }
+            ],
+            "audit_label": "Eldritch Master"
         },
         {
             "id": "srd.bardic_inspiration",

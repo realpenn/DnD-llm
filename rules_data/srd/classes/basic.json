@@ -2345,6 +2345,133 @@
                         "srd.magical_cunning",
                         "srd.dark_ones_own_luck"
                     ]
+                },
+                "7": {
+                    "features": [],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "8": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "9": {
+                    "features": ["Contact Patron"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "10": {
+                    "features": ["Subclass feature"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "11": {
+                    "features": ["Mystic Arcanum (level 6 spell)"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "12": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "13": {
+                    "features": ["Mystic Arcanum (level 7 spell)"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "14": {
+                    "features": ["Subclass feature"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "15": {
+                    "features": ["Mystic Arcanum (level 8 spell)"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "16": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "17": {
+                    "features": ["Mystic Arcanum (level 9 spell)"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "18": {
+                    "features": [],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "19": {
+                    "features": ["Epic Boon"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck"
+                    ]
+                },
+                "20": {
+                    "features": ["Eldritch Master"],
+                    "actions": [
+                        "srd.eldritch_blast",
+                        "srd.eldritch_invocations",
+                        "srd.magical_cunning",
+                        "srd.dark_ones_own_luck",
+                        "srd.eldritch_master"
+                    ]
                 }
             },
             "subclasses": {

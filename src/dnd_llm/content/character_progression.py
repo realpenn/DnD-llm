@@ -316,7 +316,11 @@ CLASS_LEVEL_ACTIONS = {
             "srd.sorcerous_restoration",
         ],
     },
-    "warlock": {1: ["srd.eldritch_invocations"], 2: ["srd.magical_cunning"]},
+    "warlock": {
+        1: ["srd.eldritch_invocations"],
+        2: ["srd.magical_cunning"],
+        20: ["srd.eldritch_master"],
+    },
     "wizard": {1: ["srd.ritual_adept"], 2: ["srd.scholar"], 5: ["srd.memorize_spell"]},
 }
 

@@ -5,6 +5,7 @@ from dnd_llm.content.character_gen import default_fighter
 from dnd_llm.core.rules.class_features import (
     aura_of_courage_applies,
     aura_of_protection_radius_ft,
+    eldritch_master_applies,
     has_warlock_eldritch_smite,
     has_warlock_gaze_of_two_minds,
     has_warlock_investment_of_chain_master,
@@ -207,6 +208,29 @@ def test_natural_language_character_edit_assigns_warlock_cantrip() -> None:
     assert result.character.resources["srd.resource.magical_cunning"] == 1
     assert result.character.spell_slots == {"2": 2}
     assert result.character.spell_slots_max == {"2": 2}
+
+
+def test_natural_language_character_edit_assigns_warlock_eldritch_master() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    level_19 = apply_natural_language_character_edit(character, "职业 warlock19")
+    result = apply_natural_language_character_edit(character, "职业 warlock20")
+
+    assert level_19.accepted is True
+    assert level_19.character is not None
+    assert "srd.eldritch_master" not in level_19.character.actions
+    assert eldritch_master_applies(level_19.character) is False
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"warlock": 20}
+    assert "srd.eldritch_blast" in result.character.actions
+    assert "srd.eldritch_invocations" in result.character.actions
+    assert "srd.magical_cunning" in result.character.actions
+    assert "srd.eldritch_master" in result.character.actions
+    assert result.character.resources["srd.resource.magical_cunning"] == 1
+    assert result.character.spell_slots == {"5": 4}
+    assert result.character.spell_slots_max == {"5": 4}
+    assert eldritch_master_applies(result.character) is True
 
 
 def test_natural_language_character_edit_assigns_explicit_eldritch_mind_invocation() -> None:

@@ -85,6 +85,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.dodge",
     "srd.draconic_resilience",
     "srd.eldritch_invocations",
+    "srd.eldritch_master",
     "srd.eldritch_mind",
     "srd.eldritch_smite",
     "srd.eldritch_spear",

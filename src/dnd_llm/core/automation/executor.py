@@ -41,6 +41,7 @@ from ..rules.class_features import (
     draconic_resilience_armor_class,
     druid_magician_check_bonus,
     druid_natures_ward_resistance_type,
+    eldritch_master_applies,
     evasion_applies,
     has_barbarian_berserker_feature,
     has_barbarian_feature,
@@ -3946,9 +3947,10 @@ class AutomationExecutor:
         recovered: dict[str, int] = {}
         before_slots: dict[str, int] = {}
         after_slots: dict[str, int] = {}
+        recover_all = eldritch_master_applies(actor)
         for slot_level, maximum in sorted(pact_slots.items(), key=lambda item: int(item[0])):
             before = max(0, int(actor.spell_slots.get(slot_level, 0)))
-            recover_limit = (maximum + 1) // 2
+            recover_limit = maximum if recover_all else (maximum + 1) // 2
             missing = max(0, maximum - before)
             amount = min(missing, recover_limit)
             after = before + amount
@@ -3967,6 +3969,8 @@ class AutomationExecutor:
                 "before": before_slots,
                 "after": after_slots,
                 "recovered": recovered,
+                "recover_limit": "all" if recover_all else "half_rounded_up",
+                "source_action_id": "srd.eldritch_master" if recover_all else "srd.magical_cunning",
                 "path": path,
             }
         )

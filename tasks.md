@@ -361,6 +361,7 @@ P0 脚手架
   - [x] **P2-1cy** SRD 5.2.1 Monk 20 `Body and Mind` 落地：新增 `srd.body_and_mind` marker、Monk 19/20 职业数据与角色成长授予；按 SRD 使 Dexterity 与 Wisdom scores 增加 4 且最高为 25，并复用统一有效属性读取接入 direct check/save、automation attack/damage/check/save 与 Monk Unarmored Defense AC；19 级 Epic Boon 仅在职业表呈现，不默认代选或虚构 boon 效果；覆盖 compendium、coverage、executor 与自然语言建角测试。
   - [x] **P2-1cz** SRD 5.2.1 Paladin 18 `Aura Expansion` 落地：新增 `srd.aura_expansion` marker、Paladin 15-18 职业数据与角色成长授予；按 SRD 使 Aura of Protection 从 10-foot Emanation 扩展为 30-foot Emanation，并同步作用于 Aura of Protection saving throw bonus 与 Aura of Courage frightened immunity；17 级仍保持 10 尺，15/16/17 级仅按 SRD 职业表呈现，不虚构未实现效果；覆盖 compendium、coverage、executor/direct save 与自然语言建角测试。
   - [x] **P2-1da** SRD 5.2.1 Bard 18 `Superior Inspiration` 落地：新增 `srd.superior_inspiration` marker、Bard 10-18 职业数据与角色成长授予；按 SRD 在掷 Initiative 时若 Bardic Inspiration 当前少于 2，则恢复已消耗用途直到有 2，且不超过 Bardic Inspiration 上限；17 级不触发，已有 2 次或更多时不触发，不虚构 Magical Secrets 选法、14 级子职效果或 19/20 级特性；覆盖 compendium、coverage、orchestrator initiative 与自然语言建角测试。
+  - [x] **P2-1db** SRD 5.2.1 Warlock 20 `Eldritch Master` 落地：新增 `srd.eldritch_master` marker、Warlock 7-20 职业数据与角色成长授予；按 SRD 在使用 Magical Cunning 时将 Pact Magic spell slots 恢复从半数上限升级为全部已消耗 Pact Magic slots，不新增 Magical Cunning 使用次数、不恢复普通 Spellcasting slots；19 级 Epic Boon 仅在职业表呈现，Contact Patron、Mystic Arcanum 与高等级子职仅按 SRD 表呈现，不虚构效果；覆盖 compendium、coverage、executor 与自然语言建角测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

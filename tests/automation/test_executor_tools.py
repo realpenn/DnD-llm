@@ -9070,8 +9070,44 @@ def test_magical_cunning_recovers_half_of_expended_pact_magic_slots(make_state) 
         change["type"] == "pact_magic_recovery"
         and change["recovered"] == {"2": 1}
         and change["after"] == {"2": 1}
+        and change["recover_limit"] == "half_rounded_up"
+        and change["source_action_id"] == "srd.magical_cunning"
         for change in result["state_changes"]
     )
+
+
+def test_warlock_eldritch_master_makes_magical_cunning_recover_all_pact_slots(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 20}
+    character.actions.extend(["srd.magical_cunning", "srd.eldritch_master"])
+    character.resources["srd.resource.magical_cunning"] = 1
+    character.spell_slots = {"5": 0}
+    character.spell_slots_max = {"5": 4}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.magical_cunning",
+        [],
+        idempotency_key="eldritch-master-magical-cunning",
+    )
+
+    assert result["success"] is True
+    assert character.resources["srd.resource.magical_cunning"] == 0
+    assert character.spell_slots == {"5": 4}
+    recovery = next(
+        change for change in result["state_changes"] if change["type"] == "pact_magic_recovery"
+    )
+    assert recovery["before"] == {"5": 0}
+    assert recovery["after"] == {"5": 4}
+    assert recovery["recovered"] == {"5": 4}
+    assert recovery["recover_limit"] == "all"
+    assert recovery["source_action_id"] == "srd.eldritch_master"
 
 
 def test_font_of_magic_converts_spell_slot_to_capped_sorcery_points(make_state) -> None:

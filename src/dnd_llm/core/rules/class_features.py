@@ -538,6 +538,10 @@ def has_warlock_fiend_feature(character: Character, *, level: int) -> bool:
     )
 
 
+def eldritch_master_applies(character: Character) -> bool:
+    return int(character.class_levels.get("warlock", 0)) >= 20
+
+
 def dark_ones_own_luck_uses(character: Character) -> int:
     if not has_warlock_fiend_feature(character, level=6):
         return 0

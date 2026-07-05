@@ -1840,6 +1840,13 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.resource.magical_cunning": 1
     }
     assert compendium.action("srd.magical_cunning").automation[0] == {"type": "pact_magic_recovery"}
+    eldritch_master = compendium.action("srd.eldritch_master")
+    assert eldritch_master.action_economy == "none"
+    assert eldritch_master.requirements == {"class": "warlock", "class_level_min": 20}
+    assert eldritch_master.properties == {
+        "upgrades_action": "srd.magical_cunning",
+        "pact_magic_recovery": "all_expended_slots",
+    }
     assert compendium.action("srd.eldritch_invocations").requirements == {
         "class": "warlock",
         "class_level_min": 1,
@@ -5560,6 +5567,10 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["warlock"].levels["2"]["features"] == ["Magical Cunning"]
     assert compendium.classes["warlock"].levels["5"]["features"] == []
     assert compendium.classes["warlock"].levels["6"]["features"] == ["Subclass Feature"]
+    assert compendium.classes["warlock"].levels["19"]["features"] == ["Epic Boon"]
+    assert "srd.eldritch_master" not in compendium.classes["warlock"].levels["19"]["actions"]
+    assert compendium.classes["warlock"].levels["20"]["features"] == ["Eldritch Master"]
+    assert "srd.eldritch_master" in compendium.classes["warlock"].levels["20"]["actions"]
     assert compendium.classes["warlock"].subclasses["fiend"]["name"] == "Fiend Patron"
     assert compendium.classes["warlock"].subclasses["fiend"]["actions"] == [
         "srd.dark_ones_blessing",
