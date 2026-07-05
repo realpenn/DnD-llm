@@ -4385,6 +4385,36 @@ def test_compendium_loads_srd_actions() -> None:
     assert "Thaumaturge" in compendium.action("srd.divine_order").automation[0]["text"]
     assert "srd.divine_order" in compendium.classes["cleric"].levels["1"]["actions"]
     assert "srd.divine_order" in compendium.classes["cleric"].levels["5"]["actions"]
+    blessed_strikes = compendium.action("srd.blessed_strikes")
+    assert blessed_strikes.requirements == {
+        "class": "cleric",
+        "class_level_min": 7,
+    }
+    assert blessed_strikes.action_economy == "none"
+    assert blessed_strikes.properties == {
+        "choice_key": "cleric.blessed_strikes",
+        "options": [
+            "srd.blessed_strikes_divine_strike",
+            "srd.blessed_strikes_potent_spellcasting",
+        ],
+    }
+    divine_strike = compendium.action("srd.blessed_strikes_divine_strike")
+    assert divine_strike.properties == {
+        "choice_key": "cleric.blessed_strikes",
+        "choice_value": "divine_strike",
+        "extra_damage": "1d8",
+        "damage_types": ["necrotic", "radiant"],
+        "selection_param": "divine_strike_damage_type",
+        "applies_to": ["weapon_attack_hit"],
+        "once_per_turn": True,
+    }
+    potent_spellcasting = compendium.action("srd.blessed_strikes_potent_spellcasting")
+    assert potent_spellcasting.properties == {
+        "choice_key": "cleric.blessed_strikes",
+        "choice_value": "potent_spellcasting",
+        "damage_bonus": "wisdom_modifier",
+        "applies_to": ["cleric_cantrip_damage"],
+    }
     assert {
         "srd.divine_spark_heal",
         "srd.divine_spark_radiant",
@@ -4395,7 +4425,9 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.preserve_life" not in compendium.classes["cleric"].levels["3"]["actions"]
     assert compendium.classes["cleric"].levels["5"]["features"] == ["Sear Undead"]
     assert compendium.classes["cleric"].levels["6"]["features"] == ["Subclass Feature"]
+    assert "srd.blessed_strikes" not in compendium.classes["cleric"].levels["6"]["actions"]
     assert compendium.classes["cleric"].levels["7"]["features"] == ["Blessed Strikes"]
+    assert "srd.blessed_strikes" in compendium.classes["cleric"].levels["7"]["actions"]
     assert compendium.classes["cleric"].levels["14"]["features"] == [
         "Improved Blessed Strikes"
     ]

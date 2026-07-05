@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 from dnd_llm.core.models import Character
 from dnd_llm.core.rules.class_features import (
+    CLERIC_BLESSED_STRIKES_CHOICE_KEY,
+    CLERIC_BLESSED_STRIKES_DIVINE_STRIKE,
+    CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING,
     DARK_ONES_OWN_LUCK_RESOURCE,
     DIVINE_ORDER_CHOICE_KEY,
     DIVINE_ORDER_PROTECTOR,
@@ -196,6 +199,7 @@ CLASS_LEVEL_ACTIONS = {
             "srd.divine_spark_necrotic",
             "srd.turn_undead",
         ],
+        7: ["srd.blessed_strikes"],
     },
     "druid": {
         1: ["srd.druidic", "srd.primal_order", "srd.speak_with_animals"],
@@ -457,6 +461,18 @@ HUNTER_DEFENSIVE_TACTICS_ALIASES = {
     "multiattackdefense": HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
     "多重攻击防御": HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
     "多攻防御": HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE,
+}
+CLERIC_BLESSED_STRIKES_CHOICES = {
+    CLERIC_BLESSED_STRIKES_DIVINE_STRIKE,
+    CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING,
+}
+CLERIC_BLESSED_STRIKES_ALIASES = {
+    "divinestrike": CLERIC_BLESSED_STRIKES_DIVINE_STRIKE,
+    "神圣打击": CLERIC_BLESSED_STRIKES_DIVINE_STRIKE,
+    "神性打击": CLERIC_BLESSED_STRIKES_DIVINE_STRIKE,
+    "potentspellcasting": CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING,
+    "强效施法": CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING,
+    "强力施法": CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING,
 }
 DIVINE_ORDER_CHOICES = {DIVINE_ORDER_PROTECTOR, DIVINE_ORDER_THAUMATURGE}
 DIVINE_ORDER_ALIASES = {
@@ -742,6 +758,12 @@ WIZARD_SCHOLAR_SKILLS = frozenset(
     {"arcana", "history", "investigation", "medicine", "nature", "religion"}
 )
 FEATURE_CHOICE_ACTIONS = {
+    CLERIC_BLESSED_STRIKES_CHOICE_KEY: {
+        CLERIC_BLESSED_STRIKES_DIVINE_STRIKE: ["srd.blessed_strikes_divine_strike"],
+        CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING: [
+            "srd.blessed_strikes_potent_spellcasting"
+        ],
+    },
     HUNTERS_PREY_CHOICE_KEY: {
         HUNTERS_PREY_COLOSSUS_SLAYER: ["srd.hunters_prey_colossus_slayer"],
         HUNTERS_PREY_HORDE_BREAKER: ["srd.hunters_prey_horde_breaker"],
@@ -974,6 +996,10 @@ def normalize_divine_order_choice(raw: str) -> str | None:
     return DIVINE_ORDER_ALIASES.get(_choice_key(raw))
 
 
+def normalize_cleric_blessed_strikes_choice(raw: str) -> str | None:
+    return CLERIC_BLESSED_STRIKES_ALIASES.get(_choice_key(raw))
+
+
 def normalize_druid_primal_order_choice(raw: str) -> str | None:
     return DRUID_PRIMAL_ORDER_ALIASES.get(_choice_key(raw))
 
@@ -1198,6 +1224,19 @@ def set_divine_order_choice(character: Character, choice: str) -> ProgressionRes
         return ProgressionResult(["Divine Order 选项需要 Cleric 1"])
     choices = dict(getattr(character, "feature_choices", {}))
     choices[DIVINE_ORDER_CHOICE_KEY] = normalized
+    character.feature_choices = choices
+    _recalculate_progression_fields(character)
+    return ProgressionResult(errors=[])
+
+
+def set_cleric_blessed_strikes_choice(character: Character, choice: str) -> ProgressionResult:
+    normalized = normalize_cleric_blessed_strikes_choice(choice)
+    if normalized is None:
+        return ProgressionResult([f"Blessed Strikes 不支持的 SRD 选项：{choice}"])
+    if int(character.class_levels.get("cleric", 0)) < 7:
+        return ProgressionResult(["Blessed Strikes 选项需要 Cleric 7"])
+    choices = dict(getattr(character, "feature_choices", {}))
+    choices[CLERIC_BLESSED_STRIKES_CHOICE_KEY] = normalized
     character.feature_choices = choices
     _recalculate_progression_fields(character)
     return ProgressionResult(errors=[])
@@ -1919,6 +1958,11 @@ def _sync_feature_choices(character: Character) -> None:
             choices.pop(DIVINE_ORDER_CHOICE_KEY, None)
     else:
         choices.pop(DIVINE_ORDER_CHOICE_KEY, None)
+    if int(character.class_levels.get("cleric", 0)) >= 7:
+        if choices.get(CLERIC_BLESSED_STRIKES_CHOICE_KEY) not in CLERIC_BLESSED_STRIKES_CHOICES:
+            choices.pop(CLERIC_BLESSED_STRIKES_CHOICE_KEY, None)
+    else:
+        choices.pop(CLERIC_BLESSED_STRIKES_CHOICE_KEY, None)
     if int(character.class_levels.get("druid", 0)) >= 1:
         if choices.get(DRUID_PRIMAL_ORDER_CHOICE_KEY) not in DRUID_PRIMAL_ORDER_CHOICES:
             choices.pop(DRUID_PRIMAL_ORDER_CHOICE_KEY, None)
@@ -2424,6 +2468,13 @@ def _actions_for_levels(
                         == WARLOCK_LESSONS_OF_FIRST_ONES_SELECTED
                     ):
                         _append_unique(actions, "srd.lessons_of_the_first_ones")
+        if class_name == "cleric" and int(level) >= 7:
+            blessed_strikes = feature_choices.get(CLERIC_BLESSED_STRIKES_CHOICE_KEY)
+            for action_id in FEATURE_CHOICE_ACTIONS.get(
+                CLERIC_BLESSED_STRIKES_CHOICE_KEY,
+                {},
+            ).get(str(blessed_strikes), []):
+                _append_unique(actions, action_id)
         subclass_id = subclasses.get(class_name)
         if subclass_id is None:
             continue

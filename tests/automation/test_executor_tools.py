@@ -6221,6 +6221,212 @@ def test_paladin_radiant_strikes_does_not_apply_to_ranged_weapon_attack(
     assert state.encounter.combatants["goblin1"].hp_current == 27
 
 
+def test_cleric_blessed_strikes_divine_strike_adds_selected_damage_once_per_turn(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 7}
+    character.feature_choices = {"cleric.blessed_strikes": "divine_strike"}
+    character.actions.extend(["srd.blessed_strikes", "srd.blessed_strikes_divine_strike"])
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 2, 5]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        params={
+            "use_blessed_strikes_divine_strike": True,
+            "divine_strike_damage_type": "necrotic",
+        },
+        idempotency_key="cleric-blessed-strikes-divine-strike",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 5
+    assert damage_change["extra_damage"] == [
+        {
+            "amount": 5,
+            "applied": 5,
+            "damage_type": "necrotic",
+            "sources": [
+                {
+                    "feature": "blessed_strikes_divine_strike",
+                    "source_action_id": "srd.blessed_strikes_divine_strike",
+                    "dice": "1d8",
+                    "damage_type": "necrotic",
+                }
+            ],
+        }
+    ]
+    assert damage_change["total_applied"] == 10
+    assert state.encounter.combatants["goblin1"].hp_current == 20
+    marker = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "blessed_strikes_divine_strike_used"
+    )
+    assert marker["damage_type"] == "necrotic"
+    assert any(
+        effect["condition"] == "blessed_strikes_divine_strike_used"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+    with pytest.raises(AutomationError, match="can be used only once per turn"):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_blessed_strikes_divine_strike": True,
+                "divine_strike_damage_type": "radiant",
+            },
+            idempotency_key="cleric-blessed-strikes-divine-strike-repeat",
+        )
+
+
+def test_cleric_blessed_strikes_divine_strike_validates_request(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 7}
+    character.feature_choices = {"cleric.blessed_strikes": "divine_strike"}
+    character.actions.extend(
+        [
+            "srd.blessed_strikes",
+            "srd.blessed_strikes_divine_strike",
+            "srd.sacred_flame",
+        ]
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="divine_strike_damage_type"):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={"use_blessed_strikes_divine_strike": True},
+            idempotency_key="cleric-blessed-strikes-missing-damage-type",
+        )
+
+    with pytest.raises(AutomationError, match="requires a weapon attack"):
+        tools.perform_action(
+            "pc1",
+            "srd.sacred_flame",
+            ["goblin1"],
+            params={
+                "use_blessed_strikes_divine_strike": True,
+                "divine_strike_damage_type": "radiant",
+            },
+            idempotency_key="cleric-blessed-strikes-non-weapon",
+        )
+
+    character.feature_choices = {"cleric.blessed_strikes": "potent_spellcasting"}
+    with pytest.raises(AutomationError, match="Divine Strike option"):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            params={
+                "use_blessed_strikes_divine_strike": True,
+                "divine_strike_damage_type": "radiant",
+            },
+            idempotency_key="cleric-blessed-strikes-wrong-choice",
+        )
+
+
+def test_cleric_blessed_strikes_potent_spellcasting_adds_wisdom_to_cleric_cantrip(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 7}
+    character.abilities["wis"] = 18
+    character.feature_choices = {"cleric.blessed_strikes": "potent_spellcasting"}
+    character.actions.extend(["srd.sacred_flame", "srd.blessed_strikes_potent_spellcasting"])
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.status_effects.append({"effect_id": "paralyzed-test", "condition": "paralyzed"})
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.sacred_flame",
+        ["goblin1"],
+        idempotency_key="cleric-blessed-strikes-potent-spellcasting",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 8
+    assert damage_change["passive_damage_bonus"] == 4
+    assert damage_change["passive_sources"] == [
+        {
+            "source_action_id": "srd.blessed_strikes_potent_spellcasting",
+            "modifier": "cleric_potent_spellcasting",
+            "spell_id": "srd.spell.sacred_flame",
+            "amount": 4,
+        }
+    ]
+    assert target.hp_current == 22
+
+
+def test_cleric_blessed_strikes_potent_spellcasting_does_not_boost_non_cleric_cantrip(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 7}
+    character.abilities["wis"] = 18
+    character.feature_choices = {"cleric.blessed_strikes": "potent_spellcasting"}
+    character.actions.extend(["srd.fire_bolt", "srd.blessed_strikes_potent_spellcasting"])
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 30
+    target.hp_max = 30
+    target.armor_class = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 4]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.fire_bolt",
+        ["goblin1"],
+        idempotency_key="cleric-blessed-strikes-non-cleric-cantrip",
+    )
+
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 4
+    assert "passive_damage_bonus" not in damage_change
+    assert target.hp_current == 26
+
+
 def test_faithful_steed_casts_find_steed_without_spell_slot_once_per_long_rest(
     make_state,
 ) -> None:

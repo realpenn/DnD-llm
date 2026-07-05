@@ -2326,6 +2326,108 @@
             "audit_label": "Divine Order"
         },
         {
+            "id": "srd.blessed_strikes",
+            "name": "Blessed Strikes",
+            "localization": {
+                "en": "Blessed Strikes",
+                "zh": "受祝打击",
+                "aliases": [
+                    "Cleric Blessed Strikes",
+                    "祝福打击",
+                    "Divine Strike",
+                    "Potent Spellcasting"
+                ]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 7: Blessed Strikes",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 7},
+            "properties": {
+                "choice_key": "cleric.blessed_strikes",
+                "options": [
+                    "srd.blessed_strikes_divine_strike",
+                    "srd.blessed_strikes_potent_spellcasting"
+                ]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that a Cleric 7 chooses Divine Strike or Potent Spellcasting for Blessed Strikes."
+                }
+            ],
+            "audit_label": "Blessed Strikes"
+        },
+        {
+            "id": "srd.blessed_strikes_divine_strike",
+            "name": "Blessed Strikes: Divine Strike",
+            "localization": {
+                "en": "Blessed Strikes: Divine Strike",
+                "zh": "受祝打击：神圣打击",
+                "aliases": ["Divine Strike", "Cleric Divine Strike", "神圣打击", "神性打击"]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 7: Blessed Strikes, Divine Strike",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 7},
+            "properties": {
+                "choice_key": "cleric.blessed_strikes",
+                "choice_value": "divine_strike",
+                "extra_damage": "1d8",
+                "damage_types": ["necrotic", "radiant"],
+                "selection_param": "divine_strike_damage_type",
+                "applies_to": ["weapon_attack_hit"],
+                "once_per_turn": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that once on each of the Cleric's turns, when a weapon attack roll hits a creature, the attack can deal an extra 1d8 Necrotic or Radiant damage."
+                }
+            ],
+            "audit_label": "Blessed Strikes: Divine Strike"
+        },
+        {
+            "id": "srd.blessed_strikes_potent_spellcasting",
+            "name": "Blessed Strikes: Potent Spellcasting",
+            "localization": {
+                "en": "Blessed Strikes: Potent Spellcasting",
+                "zh": "受祝打击：强效施法",
+                "aliases": ["Potent Spellcasting", "Cleric Potent Spellcasting", "强效施法"]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 7: Blessed Strikes, Potent Spellcasting",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 7},
+            "properties": {
+                "choice_key": "cleric.blessed_strikes",
+                "choice_value": "potent_spellcasting",
+                "damage_bonus": "wisdom_modifier",
+                "applies_to": ["cleric_cantrip_damage"]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Cleric adds Wisdom modifier to damage dealt with any Cleric cantrip."
+                }
+            ],
+            "audit_label": "Blessed Strikes: Potent Spellcasting"
+        },
+        {
             "id": "srd.divine_spark_heal",
             "name": "Divine Spark: Heal",
             "localization": {

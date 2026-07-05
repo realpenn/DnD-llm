@@ -34,6 +34,7 @@ from ..rules.class_features import (
     blessed_healer_self_healing,
     bloodied_hp_cap,
     class_feature_speed_bonus,
+    cleric_potent_spellcasting_bonus,
     cleric_thaumaturge_check_bonus,
     dark_ones_blessing_temp_hp,
     disciple_of_life_healing_bonus,
@@ -46,6 +47,7 @@ from ..rules.class_features import (
     evasion_applies,
     has_barbarian_berserker_feature,
     has_barbarian_feature,
+    has_cleric_blessed_strikes_divine_strike,
     has_colossus_slayer,
     has_condition,
     has_druid_circle_of_the_land_feature,
@@ -148,6 +150,12 @@ IMPROVED_BRUTAL_STRIKE_ACTION_ID = "srd.improved_brutal_strike"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
+CLERIC_BLESSED_STRIKES_ACTION_ID = "srd.blessed_strikes"
+CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID = "srd.blessed_strikes_divine_strike"
+CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION = "blessed_strikes_divine_strike_used"
+CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING_ACTION_ID = (
+    "srd.blessed_strikes_potent_spellcasting"
+)
 SUPREME_HEALING_ACTION_ID = "srd.supreme_healing"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
@@ -485,6 +493,12 @@ class AutomationExecutor:
         self._validate_open_hand_technique_preconditions(action, actor_id, targets or [], params)
         self._validate_hunters_lore_preconditions(action, actor_id, targets or [])
         self._validate_horde_breaker_preconditions(action, actor_id, targets or [], params)
+        self._validate_blessed_strikes_divine_strike_preconditions(
+            action,
+            actor_id,
+            targets or [],
+            params,
+        )
         self._validate_superior_hunters_prey_preconditions(
             action,
             actor_id,
@@ -1377,6 +1391,9 @@ class AutomationExecutor:
             radiant_strikes = self._radiant_strikes_bonus(ctx, target_id)
             if radiant_strikes.amount:
                 extra_damage.append(radiant_strikes)
+            blessed_strikes = self._blessed_strikes_divine_strike_bonus(ctx, target_id)
+            if blessed_strikes.amount:
+                extra_damage.append(blessed_strikes)
             for extra_result in extra_damage:
                 ctx.result.dice_rolls.extend(roll.to_dict() for roll in extra_result.rolls)
             amount_before_uncanny_dodge = amount
@@ -5003,6 +5020,11 @@ class AutomationExecutor:
                     "amount": agonizing_blast_bonus,
                 }
             )
+        potent_spellcasting_bonus, potent_spellcasting_sources = (
+            self._cleric_potent_spellcasting_damage_bonus(ctx)
+        )
+        total += potent_spellcasting_bonus
+        sources.extend(potent_spellcasting_sources)
         elemental_affinity_bonus, elemental_affinity_sources = (
             self._draconic_elemental_affinity_damage_bonus(ctx, node)
         )
@@ -5601,6 +5623,50 @@ class AutomationExecutor:
             owner,
             spell_id=str(spell_id) if isinstance(spell_id, str) else None,
         )
+
+    def _cleric_potent_spellcasting_damage_bonus(
+        self,
+        ctx: _Context,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        if ctx.action.action_type != "spell":
+            return 0, []
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character):
+            return 0, []
+        bonus = cleric_potent_spellcasting_bonus(
+            owner,
+            spell_level=self._action_spell_level(ctx.action),
+            spell_classes=self._action_spell_classes(ctx.action),
+        )
+        if bonus <= 0:
+            return 0, []
+        return bonus, [
+            {
+                "source_action_id": CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING_ACTION_ID,
+                "modifier": "cleric_potent_spellcasting",
+                "spell_id": ctx.action.properties.get("spell_definition_id"),
+                "amount": bonus,
+            }
+        ]
+
+    @staticmethod
+    def _action_spell_level(action: ActionDefinition) -> int | None:
+        raw = action.properties.get("spell_level", action.requirements.get("spell_level"))
+        if not isinstance(raw, int | str):
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _action_spell_classes(action: ActionDefinition) -> list[str]:
+        raw = action.properties.get("spell_classes", [])
+        if isinstance(raw, str):
+            return [raw.lower()]
+        if isinstance(raw, list):
+            return [str(item).lower() for item in raw if isinstance(item, str)]
+        return []
 
     def _frenzy_bonus(
         self,
@@ -6289,6 +6355,96 @@ class AutomationExecutor:
                     "damage_type": "radiant",
                 }
             ],
+        )
+
+    def _blessed_strikes_divine_strike_bonus(
+        self,
+        ctx: _Context,
+        target_id: str,
+    ) -> _ExtraDamageResult:
+        if not self._blessed_strikes_divine_strike_requested(ctx.params):
+            return _ExtraDamageResult()
+        selected_target_id = self._blessed_strikes_divine_strike_target_id(
+            ctx.original_targets,
+            ctx.params,
+        )
+        if selected_target_id != target_id:
+            return _ExtraDamageResult()
+        if ctx.action.action_type != "weapon_attack":
+            return _ExtraDamageResult()
+        if not ctx.attack_hits.get(target_id, False):
+            return _ExtraDamageResult()
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character) or not has_cleric_blessed_strikes_divine_strike(owner):
+            return _ExtraDamageResult()
+        if self._has_blessed_strikes_divine_strike_used(ctx.actor_id):
+            return _ExtraDamageResult()
+        damage_type = self._blessed_strikes_divine_strike_damage_type(ctx.params)
+        dice = "1d8"
+        roll = self.roll_service.roll(dice)
+        rolls = [roll]
+        amount = roll.total
+        if ctx.attack_critical.get(target_id, False):
+            critical_roll = self.roll_service.roll(dice)
+            rolls.append(critical_roll)
+            amount += critical_roll.total
+        self._mark_blessed_strikes_divine_strike_used(ctx, target_id, damage_type)
+        return _ExtraDamageResult(
+            amount=amount,
+            damage_type=damage_type,
+            rolls=rolls,
+            sources=[
+                {
+                    "feature": "blessed_strikes_divine_strike",
+                    "source_action_id": CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID,
+                    "dice": dice,
+                    "damage_type": damage_type,
+                }
+            ],
+        )
+
+    def _has_blessed_strikes_divine_strike_used(self, actor_id: str) -> bool:
+        actor = self._entity(actor_id)
+        return any(
+            effect.get("condition") == CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION
+            and effect.get("source_action_id") == CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID
+            for effect in self._status_effects_for(actor)
+        )
+
+    def _mark_blessed_strikes_divine_strike_used(
+        self,
+        ctx: _Context,
+        target_id: str,
+        damage_type: str,
+    ) -> None:
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(
+                ctx.actor_id,
+                CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION,
+            ),
+            source_ref=(
+                "SRD 5.2.1 Cleric Class Features: Level 7: Blessed Strikes, Divine Strike"
+            ),
+            source_action_id=CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION,
+            duration={"until": "start_of_next_turn"},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"target_id": target_id, "damage_type": damage_type},
+        )
+        getattr(actor, "status_effects").append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "blessed_strikes_divine_strike_used",
+                "actor_id": ctx.actor_id,
+                "target_id": target_id,
+                "damage_type": damage_type,
+                "effect_id": effect.effect_id,
+                "source_action_id": effect.source_action_id,
+            }
         )
 
     @staticmethod
@@ -12553,6 +12709,75 @@ class AutomationExecutor:
         actor_distance = self._combat_distance(actor, horde_target)
         if actor_distance is None or actor_distance > int(weapon_range):
             raise AutomationError("Horde Breaker target must be within the weapon's range")
+
+    def _validate_blessed_strikes_divine_strike_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if not self._blessed_strikes_divine_strike_requested(params):
+            return
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character) or not has_cleric_blessed_strikes_divine_strike(
+            actor_owner
+        ):
+            raise AutomationError(
+                "Blessed Strikes Divine Strike requires Cleric 7 with the Divine Strike option"
+            )
+        if action.action_type != "weapon_attack":
+            raise AutomationError("Blessed Strikes Divine Strike requires a weapon attack")
+        if self._has_blessed_strikes_divine_strike_used(actor_id):
+            raise AutomationError("Blessed Strikes Divine Strike can be used only once per turn")
+        target_id = self._blessed_strikes_divine_strike_target_id(targets, params)
+        if target_id is None:
+            raise AutomationError("Blessed Strikes Divine Strike requires a single attack target")
+        if target_id not in {str(target) for target in targets}:
+            raise AutomationError("Blessed Strikes Divine Strike target must be an attack target")
+        self._entity(target_id)
+        self._blessed_strikes_divine_strike_damage_type(params)
+
+    @staticmethod
+    def _blessed_strikes_divine_strike_requested(params: dict[str, Any]) -> bool:
+        return (
+            params.get("use_blessed_strikes_divine_strike") is True
+            or params.get("use_divine_strike") is True
+        )
+
+    @staticmethod
+    def _blessed_strikes_divine_strike_target_id(
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> str | None:
+        selected = params.get(
+            "blessed_strikes_target_id",
+            params.get("divine_strike_target_id"),
+        )
+        if selected not in (None, "", False):
+            if isinstance(selected, (dict, list)):
+                raise AutomationError("parameter divine_strike_target_id must be a scalar")
+            return str(selected)
+        if len(targets) == 1:
+            return str(targets[0])
+        return None
+
+    @staticmethod
+    def _blessed_strikes_divine_strike_damage_type(params: dict[str, Any]) -> str:
+        raw = params.get(
+            "divine_strike_damage_type",
+            params.get("blessed_strikes_damage_type"),
+        )
+        if raw in (None, "", False):
+            raise AutomationError(
+                "Blessed Strikes Divine Strike requires divine_strike_damage_type radiant or necrotic"
+            )
+        if isinstance(raw, (dict, list)):
+            raise AutomationError("divine_strike_damage_type must be a scalar")
+        damage_type = str(raw).casefold().strip()
+        if damage_type not in {"necrotic", "radiant"}:
+            raise AutomationError("divine_strike_damage_type must be radiant or necrotic")
+        return damage_type
 
     def _validate_cutting_words_preconditions(
         self,

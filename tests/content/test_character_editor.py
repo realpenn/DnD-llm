@@ -159,6 +159,56 @@ def test_natural_language_character_edit_rejects_cleric_divine_order_without_cle
     assert "Divine Order 选项需要 Cleric 1" in result.errors
 
 
+def test_natural_language_character_edit_assigns_cleric_blessed_strikes_divine_strike() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 牧师7 blessed strikes divine strike",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"cleric": 7}
+    assert result.character.feature_choices == {"cleric.blessed_strikes": "divine_strike"}
+    assert "srd.blessed_strikes" in result.character.actions
+    assert "srd.blessed_strikes_divine_strike" in result.character.actions
+    assert "srd.blessed_strikes_potent_spellcasting" not in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_cleric_blessed_strikes_potent_spellcasting() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 牧师7 受祝打击 强效施法",
+    )
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"cleric": 7}
+    assert result.character.feature_choices == {
+        "cleric.blessed_strikes": "potent_spellcasting"
+    }
+    assert "srd.blessed_strikes" in result.character.actions
+    assert "srd.blessed_strikes_potent_spellcasting" in result.character.actions
+    assert "srd.blessed_strikes_divine_strike" not in result.character.actions
+
+
+def test_natural_language_character_edit_rejects_cleric_blessed_strikes_below_level_seven() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 牧师6 blessed strikes divine strike",
+    )
+
+    assert result.accepted is False
+    assert result.character is None
+    assert result.errors is not None
+    assert "Blessed Strikes 选项需要 Cleric 7" in result.errors
+
+
 def test_natural_language_character_edit_rejects_invalid_numbers_and_class() -> None:
     character = default_fighter("pc1", "Penn")
 

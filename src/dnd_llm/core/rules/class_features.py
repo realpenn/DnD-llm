@@ -19,6 +19,9 @@ HUNTER_DEFENSIVE_TACTICS_MULTIATTACK_DEFENSE = "multiattack_defense"
 DIVINE_ORDER_CHOICE_KEY = "cleric.divine_order"
 DIVINE_ORDER_PROTECTOR = "protector"
 DIVINE_ORDER_THAUMATURGE = "thaumaturge"
+CLERIC_BLESSED_STRIKES_CHOICE_KEY = "cleric.blessed_strikes"
+CLERIC_BLESSED_STRIKES_DIVINE_STRIKE = "divine_strike"
+CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING = "potent_spellcasting"
 DRUID_PRIMAL_ORDER_CHOICE_KEY = "druid.primal_order"
 DRUID_PRIMAL_ORDER_MAGICIAN = "magician"
 DRUID_PRIMAL_ORDER_WARDEN = "warden"
@@ -498,6 +501,43 @@ def cleric_divine_order_choice(character: Character) -> str | None:
 
 def has_cleric_divine_order(character: Character, choice: str) -> bool:
     return cleric_divine_order_choice(character) == choice
+
+
+def cleric_blessed_strikes_choice(character: Character) -> str | None:
+    if int(character.class_levels.get("cleric", 0)) < 7:
+        return None
+    choice = character.feature_choices.get(CLERIC_BLESSED_STRIKES_CHOICE_KEY)
+    if choice in {
+        CLERIC_BLESSED_STRIKES_DIVINE_STRIKE,
+        CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING,
+    }:
+        return choice
+    return None
+
+
+def has_cleric_blessed_strikes_divine_strike(character: Character) -> bool:
+    return cleric_blessed_strikes_choice(character) == CLERIC_BLESSED_STRIKES_DIVINE_STRIKE
+
+
+def has_cleric_blessed_strikes_potent_spellcasting(character: Character) -> bool:
+    return (
+        cleric_blessed_strikes_choice(character)
+        == CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING
+    )
+
+
+def cleric_potent_spellcasting_bonus(
+    character: Character,
+    *,
+    spell_level: int | None,
+    spell_classes: Iterable[str],
+) -> int:
+    if not has_cleric_blessed_strikes_potent_spellcasting(character):
+        return 0
+    if spell_level != 0 or "cleric" not in {spell_class.lower() for spell_class in spell_classes}:
+        return 0
+    wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
+    return max(0, ability_modifier(wisdom))
 
 
 def cleric_thaumaturge_check_bonus(
