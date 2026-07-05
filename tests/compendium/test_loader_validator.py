@@ -65,6 +65,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.word_of_recall",
         "srd.etherealness",
         "srd.find_the_path",
+        "srd.locate_creature",
         "srd.true_seeing",
         "srd.passwall",
         "srd.move_earth",
@@ -1337,6 +1338,45 @@ def test_compendium_loads_srd_actions() -> None:
                 "movement_direction": "any_direction",
                 "solid_barrier_blocks_movement": True,
                 "can_pass_through_opening_min_diameter_in": 1,
+            },
+        }
+    ]
+    locate_creature = compendium.action("srd.locate_creature")
+    assert locate_creature.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"],
+    }
+    assert locate_creature.properties["spell_classes"] == [
+        "bard",
+        "cleric",
+        "druid",
+        "paladin",
+        "ranger",
+        "wizard",
+    ]
+    assert locate_creature.properties["material_component"] == {
+        "description": "fur from a bloodhound",
+        "consumed": False,
+    }
+    assert locate_creature.cost.spell_slot_level == 4
+    assert locate_creature.range == {"self": True}
+    assert locate_creature.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert locate_creature.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "locate_creature",
+            "scope": {"target": "described_or_named_creature", "range_ft": 1000},
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "describe_or_name_creature_familiar_to_you": True,
+                "senses_direction_to_creature_within_ft": 1000,
+                "knows_direction_of_movement_if_moving": True,
+                "can_locate_specific_known_creature": True,
+                "can_locate_nearest_creature_of_kind_seen_within_ft": 30,
+                "fails_if_creature_in_different_form": True,
+                "different_form_examples": ["flesh_to_stone", "polymorph"],
+                "lead_blocks_direct_path": True,
             },
         }
     ]

@@ -65,6 +65,67 @@
       }
     },
     {
+      "id": "srd.spell.locate_creature",
+      "name": "Locate Creature",
+      "localization": {
+        "en": "Locate Creature",
+        "zh": "定位生物",
+        "aliases": ["寻找生物"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "divination",
+      "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"],
+      "action": {
+        "id": "srd.locate_creature",
+        "name": "Locate Creature",
+        "localization": {
+          "en": "Locate Creature",
+          "zh": "定位生物",
+          "aliases": ["寻找生物"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "fur from a bloodhound",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "locate_creature",
+            "scope": { "target": "described_or_named_creature", "range_ft": 1000 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "describe_or_name_creature_familiar_to_you": true,
+              "senses_direction_to_creature_within_ft": 1000,
+              "knows_direction_of_movement_if_moving": true,
+              "can_locate_specific_known_creature": true,
+              "can_locate_nearest_creature_of_kind_seen_within_ft": 30,
+              "fails_if_creature_in_different_form": true,
+              "different_form_examples": ["flesh_to_stone", "polymorph"],
+              "lead_blocks_direct_path": true
+            }
+          }
+        ],
+        "audit_label": "Locate Creature"
+      }
+    },
+    {
       "id": "srd.spell.find_the_path",
       "name": "Find the Path",
       "localization": {

@@ -157,6 +157,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.lay_on_hands_remove_poisoned",
     "srd.lands_aid",
     "srd.lessons_of_the_first_ones",
+    "srd.locate_creature",
     "srd.longsword_attack",
     "srd.magical_cunning",
     "srd.master_of_myriad_forms",
