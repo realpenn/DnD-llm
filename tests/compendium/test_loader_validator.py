@@ -48,6 +48,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.harm",
         "srd.finger_of_death",
         "srd.greater_invisibility",
+        "srd.freedom_of_movement",
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.hold_monster",
@@ -705,6 +706,50 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "concentration_1_minute"},
             "tick_on": "target_turn_start",
             "concentration": True,
+        },
+    ]
+    freedom_of_movement = compendium.action("srd.freedom_of_movement")
+    assert freedom_of_movement.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "cleric", "druid", "ranger"],
+    }
+    assert freedom_of_movement.properties["spell_classes"] == [
+        "bard",
+        "cleric",
+        "druid",
+        "ranger",
+    ]
+    assert freedom_of_movement.properties["requires_willing_target"] is True
+    assert freedom_of_movement.properties["material_component"] == {
+        "description": "a leather strap",
+        "consumed": False,
+    }
+    assert (
+        freedom_of_movement.properties["higher_level_additional_targets_per_slot_above_4"] == 1
+    )
+    assert freedom_of_movement.cost.spell_slot_level == 4
+    assert freedom_of_movement.range == {"touch": True}
+    assert freedom_of_movement.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": False,
+        "base_spell_slot_level": 4,
+        "max_targets_per_slot_above": 1,
+    }
+    assert freedom_of_movement.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "freedom_of_movement": True,
+                "difficult_terrain_unaffected": True,
+                "magical_speed_reduction_immunity": True,
+                "magical_paralyzed_restrained_immunity": True,
+                "swim_speed_equals_speed": True,
+                "nonmagical_restraints_escape_movement_cost_ft": 5,
+            },
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
         },
     ]
     mass_cure_wounds = compendium.action("srd.mass_cure_wounds")

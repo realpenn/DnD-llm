@@ -19011,6 +19011,100 @@ def test_etherealness_requires_self_target_before_spending_slot(make_state) -> N
     assert state.world.active_effects == []
 
 
+def test_freedom_of_movement_requires_willing_target_and_grants_timed_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.freedom_of_movement",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 4},
+            idempotency_key="cast-freedom-of-movement-unwilling",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.encounter.combatants["pc2"].status_effects == []
+
+    result = tools._execute_action(
+        action_id="srd.freedom_of_movement",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 4, "target_willing": True},
+        idempotency_key="cast-freedom-of-movement",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    effect = state.encounter.combatants["pc2"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.freedom_of_movement"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "freedom_of_movement": True,
+        "difficult_terrain_unaffected": True,
+        "magical_speed_reduction_immunity": True,
+        "magical_paralyzed_restrained_immunity": True,
+        "swim_speed_equals_speed": True,
+        "nonmagical_restraints_escape_movement_cost_ft": 5,
+    }
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+    assert swim_speed_from_effects(30, state.encounter.combatants["pc2"].status_effects) == 30
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc2"
+    assert passive_change["passive_modifiers"] == effect["passive_modifiers"]
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
+def test_freedom_of_movement_upcast_adds_one_willing_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.freedom_of_movement",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 5, "target_willing": True},
+        idempotency_key="cast-freedom-of-movement-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    passive_changes = [
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    ]
+    assert [change["target_id"] for change in passive_changes] == ["pc1", "pc2"]
+    assert {
+        state.encounter.combatants["pc1"].status_effects[-1]["source_action_id"],
+        state.encounter.combatants["pc2"].status_effects[-1]["source_action_id"],
+    } == {"srd.freedom_of_movement"}
+
+
 def test_true_seeing_spends_component_and_grants_timed_truesight(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

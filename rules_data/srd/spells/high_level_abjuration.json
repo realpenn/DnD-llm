@@ -1,6 +1,72 @@
 {
   "items": [
     {
+      "id": "srd.spell.freedom_of_movement",
+      "name": "Freedom of Movement",
+      "localization": {
+        "en": "Freedom of Movement",
+        "zh": "行动自如",
+        "aliases": ["自由行动", "行动自由"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid", "ranger"],
+      "action": {
+        "id": "srd.freedom_of_movement",
+        "name": "Freedom of Movement",
+        "localization": {
+          "en": "Freedom of Movement",
+          "zh": "行动自如",
+          "aliases": ["自由行动", "行动自由"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": false,
+          "base_spell_slot_level": 4,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "cleric", "druid", "ranger"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "material_component": {
+            "description": "a leather strap",
+            "consumed": false
+          },
+          "higher_level_additional_targets_per_slot_above_4": 1
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "freedom_of_movement": true,
+              "difficult_terrain_unaffected": true,
+              "magical_speed_reduction_immunity": true,
+              "magical_paralyzed_restrained_immunity": true,
+              "swim_speed_equals_speed": true,
+              "nonmagical_restraints_escape_movement_cost_ft": 5
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Freedom of Movement"
+      }
+    },
+    {
       "id": "srd.spell.mass_cure_wounds",
       "name": "Mass Cure Wounds",
       "localization": {
