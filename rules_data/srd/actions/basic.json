@@ -3390,6 +3390,31 @@
             "audit_label": "Blessed Healer"
         },
         {
+            "id": "srd.supreme_healing",
+            "name": "Supreme Healing",
+            "localization": {
+                "en": "Supreme Healing",
+                "zh": "至上治疗",
+                "aliases": ["Life Domain Supreme Healing", "生命领域至上治疗"]
+            },
+            "source": "SRD 5.2.1 Cleric Subclass: Life Domain, Level 17: Supreme Healing",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 17, "subclass": "life"},
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that when a Life Domain Cleric would roll dice to restore Hit Points with a spell or Channel Divinity, those healing dice use the highest number possible instead."
+                }
+            ],
+            "audit_label": "Supreme Healing"
+        },
+        {
             "id": "srd.preserve_life",
             "name": "Preserve Life",
             "localization": {

@@ -352,7 +352,10 @@ SUBCLASS_ACTIONS = {
         "lore": {3: ["srd.cutting_words"]},
     },
     "cleric": {
-        "life": {3: ["srd.disciple_of_life", "srd.preserve_life"]},
+        "life": {
+            3: ["srd.disciple_of_life", "srd.preserve_life"],
+            17: ["srd.supreme_healing"],
+        },
     },
     "druid": {
         "land": {

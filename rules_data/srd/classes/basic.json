@@ -622,17 +622,156 @@
                         "srd.turn_undead",
                         "srd.blessed_healer"
                     ]
+                },
+                "7": {
+                    "features": ["Blessed Strikes"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "8": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "9": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "10": {
+                    "features": ["Divine Intervention"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "11": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "12": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "13": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "14": {
+                    "features": ["Improved Blessed Strikes"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "15": {
+                    "features": [],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "16": {
+                    "features": ["Ability Score Improvement"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer"
+                    ]
+                },
+                "17": {
+                    "features": ["Subclass Feature"],
+                    "actions": [
+                        "srd.cure_wounds",
+                        "srd.divine_order",
+                        "srd.divine_spark_heal",
+                        "srd.divine_spark_radiant",
+                        "srd.divine_spark_necrotic",
+                        "srd.turn_undead",
+                        "srd.blessed_healer",
+                        "srd.supreme_healing"
+                    ]
                 }
             },
             "subclasses": {
                 "life": {
                     "name": "Life Domain",
                     "level": 3,
-                    "features": ["Disciple of Life", "Preserve Life", "Blessed Healer"],
+                    "features": [
+                        "Disciple of Life",
+                        "Preserve Life",
+                        "Blessed Healer",
+                        "Supreme Healing"
+                    ],
                     "actions": [
                         "srd.disciple_of_life",
                         "srd.preserve_life",
-                        "srd.blessed_healer"
+                        "srd.blessed_healer",
+                        "srd.supreme_healing"
                     ]
                 }
             }

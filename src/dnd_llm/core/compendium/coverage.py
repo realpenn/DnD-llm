@@ -212,6 +212,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.slippery_mind",
     "srd.steady_aim",
     "srd.stroke_of_luck",
+    "srd.supreme_healing",
     "srd.supreme_sneak",
     "srd.stunning_strike",
     "srd.superior_defense",

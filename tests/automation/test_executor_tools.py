@@ -171,6 +171,179 @@ def test_life_domain_blessed_healer_does_not_trigger_on_self_only_healing(
     assert not any(change.get("blessed_healer_source") for change in result["state_changes"])
 
 
+def test_life_domain_supreme_healing_maximizes_spell_healing_dice(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.subclasses = {"cleric": "life"}
+    caster.spell_slots["1"] = 1
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.cure_wounds",
+        ["pc2"],
+        1,
+        idempotency_key="life-supreme-healing-cure-wounds",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    healing_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "healing" and change["target_id"] == "pc2"
+    )
+    assert healing_change["amount"] == 14
+    assert healing_change["applied"] == 14
+    assert healing_change["disciple_of_life_bonus"] == 3
+    assert healing_change["supreme_healing"] == {
+        "source_action_id": "srd.supreme_healing",
+        "dice_expression": "1d8+3",
+        "maximized_dice_total": 11,
+    }
+
+
+def test_life_domain_supreme_healing_maximizes_upcast_mass_cure_wounds(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.subclasses = {"cleric": "life"}
+    caster.abilities["wis"] = 18
+    caster.spell_slots["5"] = 0
+    caster.spell_slots["6"] = 1
+    state.encounter.combatants["pc2"].hp_current = 2
+    state.encounter.combatants["pc2"].hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mass_cure_wounds",
+        ["pc2"],
+        6,
+        idempotency_key="life-supreme-healing-mass-cure-wounds",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == 60
+    assert healing_change["applied"] == 60
+    assert healing_change["disciple_of_life_bonus"] == 8
+    assert healing_change["supreme_healing"] == {
+        "source_action_id": "srd.supreme_healing",
+        "dice_expression": "6d8",
+        "maximized_dice_total": 48,
+    }
+
+
+def test_life_domain_supreme_healing_maximizes_channel_divinity_healing_dice(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.subclasses = {"cleric": "life"}
+    caster.abilities["wis"] = 18
+    caster.resources["srd.resource.channel_divinity"] = 2
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.divine_spark_heal",
+        ["pc2"],
+        idempotency_key="life-supreme-healing-divine-spark",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == 12
+    assert healing_change["applied"] == 12
+    assert healing_change["supreme_healing"] == {
+        "source_action_id": "srd.supreme_healing",
+        "dice_expression": "1d8",
+        "maximized_dice_total": 8,
+    }
+
+
+def test_supreme_healing_does_not_affect_non_life_spells_items_or_fixed_healing(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["1"] = 1
+    caster.spell_slots["6"] = 1
+    caster.inventory["srd.potion_of_healing"] = 1
+    state.encounter.combatants["pc1"].hp_current = 1
+    state.encounter.combatants["pc1"].hp_max = 100
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    cure = tools.cast_spell(
+        "pc1",
+        "srd.cure_wounds",
+        ["pc2"],
+        1,
+        idempotency_key="non-life-cure-wounds-rolls",
+    )
+    potion = tools.use_item(
+        "pc1",
+        "srd.potion_of_healing",
+        ["pc1"],
+        idempotency_key="life-cleric-potion-still-rolls",
+    )
+    heal_state = make_state()
+    assert heal_state.encounter is not None
+    heal_caster = heal_state.characters["pc1"]
+    heal_caster.class_levels = {"cleric": 17}
+    heal_caster.subclasses = {"cleric": "life"}
+    heal_caster.spell_slots["6"] = 1
+    heal_state.encounter.combatants["pc2"].hp_current = 1
+    heal_state.encounter.combatants["pc2"].hp_max = 100
+    heal_tools = EngineTools(heal_state, compendium, AuditLog())
+    heal = heal_tools.cast_spell(
+        "pc1",
+        "srd.heal",
+        ["pc2"],
+        6,
+        idempotency_key="life-cleric-fixed-heal-no-supreme-marker",
+    )
+
+    cure_healing = next(change for change in cure["state_changes"] if change["type"] == "healing")
+    potion_healing = next(
+        change for change in potion["state_changes"] if change["type"] == "healing"
+    )
+    heal_healing = next(change for change in heal["state_changes"] if change["type"] == "healing")
+    assert [roll["expression"] for roll in cure["dice_rolls"]] == ["1d8+3"]
+    assert [roll["expression"] for roll in potion["dice_rolls"]] == ["2d4+2"]
+    assert "supreme_healing" not in cure_healing
+    assert "supreme_healing" not in potion_healing
+    assert "supreme_healing" not in heal_healing
+    assert heal_healing["amount"] == 78
+    assert heal_healing["disciple_of_life_bonus"] == 8
+
+
 def test_non_life_cleric_cure_wounds_does_not_gain_disciple_of_life(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

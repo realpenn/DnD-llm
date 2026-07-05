@@ -483,6 +483,10 @@ def has_cleric_life_domain_feature(character: Character, *, level: int) -> bool:
     )
 
 
+def supreme_healing_applies(character: Character) -> bool:
+    return has_cleric_life_domain_feature(character, level=17)
+
+
 def cleric_divine_order_choice(character: Character) -> str | None:
     if int(character.class_levels.get("cleric", 0)) < 1:
         return None

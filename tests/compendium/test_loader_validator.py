@@ -2368,6 +2368,12 @@ def test_compendium_loads_srd_actions() -> None:
         "class_level_min": 6,
         "subclass": "life",
     }
+    assert compendium.action("srd.supreme_healing").requirements == {
+        "class": "cleric",
+        "class_level_min": 17,
+        "subclass": "life",
+    }
+    assert compendium.action("srd.supreme_healing").automation[0]["type"] == "text_result"
     preserve_life = compendium.action("srd.preserve_life")
     assert preserve_life.cost.resources == {"srd.resource.channel_divinity": 1}
     assert preserve_life.range == {"normal_ft": 30, "line_of_sight": False}
@@ -4389,7 +4395,14 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.preserve_life" not in compendium.classes["cleric"].levels["3"]["actions"]
     assert compendium.classes["cleric"].levels["5"]["features"] == ["Sear Undead"]
     assert compendium.classes["cleric"].levels["6"]["features"] == ["Subclass Feature"]
+    assert compendium.classes["cleric"].levels["7"]["features"] == ["Blessed Strikes"]
+    assert compendium.classes["cleric"].levels["14"]["features"] == [
+        "Improved Blessed Strikes"
+    ]
+    assert compendium.classes["cleric"].levels["17"]["features"] == ["Subclass Feature"]
     assert "srd.blessed_healer" in compendium.classes["cleric"].levels["6"]["actions"]
+    assert "srd.supreme_healing" not in compendium.classes["cleric"].levels["16"]["actions"]
+    assert "srd.supreme_healing" in compendium.classes["cleric"].levels["17"]["actions"]
     assert {
         "srd.druidic",
         "srd.primal_order",
@@ -4845,11 +4858,13 @@ def test_compendium_loads_srd_actions() -> None:
         "Disciple of Life",
         "Preserve Life",
         "Blessed Healer",
+        "Supreme Healing",
     ]
     assert compendium.classes["cleric"].subclasses["life"]["actions"] == [
         "srd.disciple_of_life",
         "srd.preserve_life",
         "srd.blessed_healer",
+        "srd.supreme_healing",
     ]
     assert compendium.classes["paladin"].levels["1"]["features"] == [
         "Lay On Hands",

@@ -90,6 +90,7 @@ from ..rules.class_features import (
     rogue_elusive_applies,
     rogue_stroke_of_luck_applies,
     saving_throw_proficiency_sources,
+    supreme_healing_applies,
     warlock_agonizing_blast_bonus,
     warlock_fiendish_resilience_damage_type,
 )
@@ -136,6 +137,7 @@ SUPREME_SNEAK_COVER_ALIASES = {
 SUPREME_SNEAK_COVERS = frozenset({"three_quarters", "total"})
 OPEN_HAND_TECHNIQUE_EFFECTS = {"addle", "push", "topple"}
 FOCUS_RESOURCE_ID = "srd.resource.focus_points"
+CHANNEL_DIVINITY_RESOURCE_ID = "srd.resource.channel_divinity"
 UNCANNY_DODGE_ACTION_ID = "srd.uncanny_dodge"
 RAGE_ACTION_ID = "srd.rage"
 ACTION_SURGE_ACTION_ID = "srd.action_surge"
@@ -146,6 +148,7 @@ IMPROVED_BRUTAL_STRIKE_ACTION_ID = "srd.improved_brutal_strike"
 MINDLESS_RAGE_ACTION_ID = "srd.mindless_rage"
 MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
+SUPREME_HEALING_ACTION_ID = "srd.supreme_healing"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
 AURA_OF_DEVOTION_ACTION_ID = "srd.aura_of_devotion"
@@ -1571,7 +1574,7 @@ class AutomationExecutor:
     def _node_healing(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         blessed_healer_triggered = False
         for target_id in ctx.targets:
-            amount, rolls = self._roll_amount(ctx, node)
+            amount, rolls, supreme_healing = self._healing_amount(ctx, node)
             ctx.result.dice_rolls.extend(roll.to_dict() for roll in rolls)
             disciple_bonus = self._disciple_of_life_bonus(ctx)
             amount += disciple_bonus
@@ -1588,6 +1591,8 @@ class AutomationExecutor:
             if disciple_bonus:
                 change["disciple_of_life_bonus"] = disciple_bonus
                 change["disciple_of_life_source"] = "srd.disciple_of_life"
+            if supreme_healing is not None:
+                change["supreme_healing"] = supreme_healing
             ctx.result.state_changes.append(change)
         if blessed_healer_triggered:
             blessed_bonus = self._blessed_healer_bonus(ctx)
@@ -4284,6 +4289,66 @@ class AutomationExecutor:
             ), [roll]
         roll = self.roll_service.roll(self._scaled_dice_expression(ctx, node))
         return self._minimum_amount(roll.total + self._amount_bonus(ctx, node), node), [roll]
+
+    def _healing_amount(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> tuple[int, list[RollResult], dict[str, Any] | None]:
+        if not self._supreme_healing_applies(ctx):
+            amount, rolls = self._roll_amount(ctx, node)
+            return amount, rolls, None
+        if "amount" in node or "amount_from" in node:
+            amount, rolls = self._roll_amount(ctx, node)
+            return amount, rolls, None
+        expression = (
+            self._dynamic_dice_expression(ctx, node)
+            if "dice_from" in node
+            else self._scaled_dice_expression(ctx, node)
+        )
+        maximum = self._maximum_dice_expression_total(expression)
+        if maximum is None:
+            amount, rolls = self._roll_amount(ctx, node)
+            return amount, rolls, None
+        amount = self._minimum_amount(maximum + self._amount_bonus(ctx, node), node)
+        return amount, [], {
+            "source_action_id": SUPREME_HEALING_ACTION_ID,
+            "dice_expression": expression,
+            "maximized_dice_total": maximum,
+        }
+
+    def _supreme_healing_applies(self, ctx: _Context) -> bool:
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character) or not supreme_healing_applies(owner):
+            return False
+        if ctx.action.action_type == "spell":
+            return True
+        return int(ctx.action.cost.resources.get(CHANNEL_DIVINITY_RESOURCE_ID, 0)) > 0
+
+    @staticmethod
+    def _maximum_dice_expression_total(expression: str) -> int | None:
+        cleaned = expression.replace(" ", "")
+        if not cleaned:
+            return None
+        position = 0
+        total = 0
+        has_dice = False
+        for match in re.finditer(r"([+-]?)(?:(\d*)d(\d+)|(\d+))", cleaned, re.IGNORECASE):
+            if match.start() != position:
+                raise AutomationError(f"unsupported dice expression for Supreme Healing: {expression}")
+            sign = -1 if match.group(1) == "-" else 1
+            if match.group(3) is not None:
+                count = int(match.group(2) or "1")
+                sides = int(match.group(3))
+                value = count * sides
+                has_dice = True
+            else:
+                value = int(match.group(4))
+            total += sign * value
+            position = match.end()
+        if position != len(cleaned):
+            raise AutomationError(f"unsupported dice expression for Supreme Healing: {expression}")
+        return total if has_dice else None
 
     @staticmethod
     def _minimum_amount(amount: int, node: dict[str, Any]) -> int:

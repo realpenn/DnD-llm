@@ -2946,6 +2946,20 @@ def test_natural_language_character_edit_assigns_explicit_life_domain_subclass()
     assert "srd.preserve_life" in result.character.actions
 
 
+def test_natural_language_character_edit_assigns_life_domain_level_17_supreme_healing() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 牧师17 子职 life")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"cleric": 17}
+    assert result.character.subclasses == {"cleric": "life"}
+    assert "srd.disciple_of_life" in result.character.actions
+    assert "srd.preserve_life" in result.character.actions
+    assert "srd.supreme_healing" in result.character.actions
+
+
 def test_natural_language_character_edit_does_not_assign_life_domain_by_default() -> None:
     character = default_fighter("pc1", "Penn")
 
@@ -2957,6 +2971,7 @@ def test_natural_language_character_edit_does_not_assign_life_domain_by_default(
     assert result.character.subclasses == {}
     assert "srd.disciple_of_life" not in result.character.actions
     assert "srd.preserve_life" not in result.character.actions
+    assert "srd.supreme_healing" not in result.character.actions
 
 
 def test_natural_language_character_edit_assigns_explicit_fiend_patron_subclass() -> None:
