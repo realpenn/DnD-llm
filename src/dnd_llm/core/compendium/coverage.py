@@ -108,6 +108,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.escape_the_horde",
     "srd.extra_attack",
     "srd.fabricate",
+    "srd.faithful_hound",
     "srd.favored_enemy_hunters_mark",
     "srd.feral_senses",
     "srd.feral_instinct",

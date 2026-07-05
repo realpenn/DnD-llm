@@ -62,6 +62,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.cloudkill",
         "srd.teleportation_circle",
         "srd.dimension_door",
+        "srd.faithful_hound",
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
@@ -1289,6 +1290,49 @@ def test_compendium_loads_srd_actions() -> None:
                 "companion_arrives_within_ft_of_destination": 5,
                 "occupied_or_filled_destination_causes_force_damage_and_fails": True,
                 "failed_teleport_force_damage": "4d6",
+            },
+        }
+    ]
+    faithful_hound = compendium.action("srd.faithful_hound")
+    assert faithful_hound.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert faithful_hound.properties["spell_classes"] == ["wizard"]
+    assert faithful_hound.properties["material_component"] == {
+        "description": "a silver whistle",
+        "consumed": False,
+    }
+    assert faithful_hound.cost.spell_slot_level == 4
+    assert faithful_hound.range == {"normal_ft": 30}
+    assert faithful_hound.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert faithful_hound.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "faithful_hound_watchdog",
+            "scope": {"target": "unoccupied_space_you_can_see", "range_ft": 30},
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "phantom_watchdog": True,
+                "ends_if_caster_more_than_ft_from_hound": 300,
+                "visible_only_to_caster": True,
+                "intangible": True,
+                "invulnerable": True,
+                "password_specified_on_cast": True,
+                "barks_when_small_or_larger_creature_without_password_within_ft": 30,
+                "truesight_ft": 30,
+                "start_of_caster_turn_bite_one_enemy_within_ft": 5,
+                "bite": {
+                    "save": {
+                        "ability": "dex",
+                        "dc_from": {"spell_save_dc": "actor"},
+                        "success_avoids_damage": True,
+                    },
+                    "damage": "4d8 force",
+                },
+                "can_move_with_magic_action": True,
+                "move_distance_ft": 30,
             },
         }
     ]

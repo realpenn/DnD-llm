@@ -18962,6 +18962,107 @@ def test_dimension_door_optional_companion_must_be_willing_before_spending_slot(
     assert effect["metadata"]["companion_arrives_within_ft_of_destination"] == 5
 
 
+def test_faithful_hound_spends_slot_and_records_watchdog_world_effect(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.faithful_hound",
+        [],
+        4,
+        idempotency_key="cast-faithful-hound",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.faithful_hound"
+    assert effect["effect_type"] == "faithful_hound_watchdog"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "unoccupied_space_you_can_see", "range_ft": 30}
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "phantom_watchdog": True,
+        "ends_if_caster_more_than_ft_from_hound": 300,
+        "visible_only_to_caster": True,
+        "intangible": True,
+        "invulnerable": True,
+        "password_specified_on_cast": True,
+        "barks_when_small_or_larger_creature_without_password_within_ft": 30,
+        "truesight_ft": 30,
+        "start_of_caster_turn_bite_one_enemy_within_ft": 5,
+        "bite": {
+            "save": {
+                "ability": "dex",
+                "dc_from": {"spell_save_dc": "actor"},
+                "success_avoids_damage": True,
+            },
+            "damage": "4d8 force",
+        },
+        "can_move_with_magic_action": True,
+        "move_distance_ft": 30,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "faithful_hound_watchdog"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "saving_throw", "damage"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 4799
+
+
+def test_faithful_hound_rejects_invalid_caster_or_missing_slot_before_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of wizard"):
+        tools.cast_spell(
+            "pc1",
+            "srd.faithful_hound",
+            [],
+            4,
+            idempotency_key="faithful-hound-cleric",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 0
+    with pytest.raises(AutomationError, match="no spell slot level 4 available"):
+        tools.cast_spell(
+            "pc1",
+            "srd.faithful_hound",
+            [],
+            4,
+            idempotency_key="faithful-hound-no-slot",
+        )
+
+    assert caster.spell_slots["4"] == 0
+    assert state.world.active_effects == []
+
+
 def test_transport_via_plants_spends_slot_and_records_timed_plant_link(
     make_state,
 ) -> None:
