@@ -16596,6 +16596,72 @@ def test_greater_invisibility_applies_concentration_invisible_without_attack_bre
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_hallucinatory_terrain_records_timed_natural_terrain_illusion(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.hallucinatory_terrain",
+        [],
+        4,
+        idempotency_key="cast-hallucinatory-terrain",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.hallucinatory_terrain"
+    assert effect["effect_type"] == "hallucinatory_terrain"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "natural_terrain",
+        "range_ft": 300,
+        "shape": "cube",
+        "size_ft": 150,
+    }
+    assert effect["duration"] == {"until": "duration_24_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "natural_terrain_only": True,
+        "makes_terrain_look_sound_and_smell_like_another_natural_terrain": True,
+        "examples": [
+            "open_field_or_road_to_swamp_hill_crevasse_or_other_difficult_or_impassable_terrain",
+            "pond_to_grassy_meadow",
+            "precipice_to_gentle_slope",
+            "rock_strewn_gully_to_wide_smooth_road",
+        ],
+        "manufactured_structures_equipment_and_creatures_unchanged": True,
+        "tactile_characteristics_unchanged": True,
+        "creatures_entering_likely_notice_by_touch": True,
+        "disbelieve_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc_from": {"spell_save_dc": "actor"},
+        },
+        "disbelieved_illusion_appears_as_vague_image_superimposed_on_real_terrain": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "hallucinatory_terrain"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

@@ -139,6 +139,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.gaze_of_two_minds_touch",
     "srd.gift_of_the_depths",
     "srd.gift_of_the_depths_water_breathing",
+    "srd.hallucinatory_terrain",
     "srd.help",
     "srd.heightened_focus",
     "srd.hide",

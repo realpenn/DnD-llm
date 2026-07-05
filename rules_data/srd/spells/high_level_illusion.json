@@ -40,6 +40,83 @@
         ],
         "audit_label": "Greater Invisibility"
       }
+    },
+    {
+      "id": "srd.spell.hallucinatory_terrain",
+      "name": "Hallucinatory Terrain",
+      "localization": {
+        "en": "Hallucinatory Terrain",
+        "zh": "幻景地形",
+        "aliases": ["幻觉地形", "幻景术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "illusion",
+      "classes": ["bard", "druid", "warlock", "wizard"],
+      "action": {
+        "id": "srd.hallucinatory_terrain",
+        "name": "Hallucinatory Terrain",
+        "localization": {
+          "en": "Hallucinatory Terrain",
+          "zh": "幻景地形",
+          "aliases": ["幻觉地形", "幻景术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 300, "shape": "cube", "size_ft": 150 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "druid", "warlock", "wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "material_component": {
+            "description": "a mushroom",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "hallucinatory_terrain",
+            "scope": {
+              "target": "natural_terrain",
+              "range_ft": 300,
+              "shape": "cube",
+              "size_ft": 150
+            },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "natural_terrain_only": true,
+              "makes_terrain_look_sound_and_smell_like_another_natural_terrain": true,
+              "examples": [
+                "open_field_or_road_to_swamp_hill_crevasse_or_other_difficult_or_impassable_terrain",
+                "pond_to_grassy_meadow",
+                "precipice_to_gentle_slope",
+                "rock_strewn_gully_to_wide_smooth_road"
+              ],
+              "manufactured_structures_equipment_and_creatures_unchanged": true,
+              "tactile_characteristics_unchanged": true,
+              "creatures_entering_likely_notice_by_touch": true,
+              "disbelieve_check": {
+                "action": "study",
+                "ability": "int",
+                "skill": "investigation",
+                "dc_from": { "spell_save_dc": "actor" }
+              },
+              "disbelieved_illusion_appears_as_vague_image_superimposed_on_real_terrain": true
+            }
+          }
+        ],
+        "audit_label": "Hallucinatory Terrain"
+      }
     }
   ]
 }

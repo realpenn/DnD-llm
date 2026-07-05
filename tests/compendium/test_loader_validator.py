@@ -48,6 +48,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.harm",
         "srd.finger_of_death",
         "srd.greater_invisibility",
+        "srd.hallucinatory_terrain",
         "srd.freedom_of_movement",
         "srd.arcane_eye",
         "srd.blight",
@@ -713,6 +714,63 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "target_turn_start",
             "concentration": True,
         },
+    ]
+    hallucinatory_terrain = compendium.action("srd.hallucinatory_terrain")
+    assert hallucinatory_terrain.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "druid", "warlock", "wizard"],
+    }
+    assert hallucinatory_terrain.properties["spell_classes"] == [
+        "bard",
+        "druid",
+        "warlock",
+        "wizard",
+    ]
+    assert hallucinatory_terrain.properties["casting_time"] == {"minutes": 10}
+    assert hallucinatory_terrain.properties["material_component"] == {
+        "description": "a mushroom",
+        "consumed": False,
+    }
+    assert hallucinatory_terrain.cost.spell_slot_level == 4
+    assert hallucinatory_terrain.range == {
+        "normal_ft": 300,
+        "shape": "cube",
+        "size_ft": 150,
+    }
+    assert hallucinatory_terrain.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert hallucinatory_terrain.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "hallucinatory_terrain",
+            "scope": {
+                "target": "natural_terrain",
+                "range_ft": 300,
+                "shape": "cube",
+                "size_ft": 150,
+            },
+            "duration": {"until": "duration_24_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "natural_terrain_only": True,
+                "makes_terrain_look_sound_and_smell_like_another_natural_terrain": True,
+                "examples": [
+                    "open_field_or_road_to_swamp_hill_crevasse_or_other_difficult_or_impassable_terrain",
+                    "pond_to_grassy_meadow",
+                    "precipice_to_gentle_slope",
+                    "rock_strewn_gully_to_wide_smooth_road",
+                ],
+                "manufactured_structures_equipment_and_creatures_unchanged": True,
+                "tactile_characteristics_unchanged": True,
+                "creatures_entering_likely_notice_by_touch": True,
+                "disbelieve_check": {
+                    "action": "study",
+                    "ability": "int",
+                    "skill": "investigation",
+                    "dc_from": {"spell_save_dc": "actor"},
+                },
+                "disbelieved_illusion_appears_as_vague_image_superimposed_on_real_terrain": True,
+            },
+        }
     ]
     freedom_of_movement = compendium.action("srd.freedom_of_movement")
     assert freedom_of_movement.requirements == {
