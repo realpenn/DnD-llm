@@ -26,6 +26,7 @@ from ..rules.class_features import (
     STROKE_OF_LUCK_D20,
     STROKE_OF_LUCK_RESOURCE,
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
+    aura_of_devotion_applies,
     aura_of_protection_radius_ft,
     aura_of_protection_saving_throw_bonus,
     barbarian_rage_damage_bonus,
@@ -146,6 +147,7 @@ MINDLESS_RAGE_CONDITION_IMMUNITIES = ("charmed", "frightened")
 BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
+AURA_OF_DEVOTION_ACTION_ID = "srd.aura_of_devotion"
 RADIANT_STRIKES_ACTION_ID = "srd.radiant_strikes"
 RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
     {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}
@@ -12170,7 +12172,23 @@ class AutomationExecutor:
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
         if condition == "frightened":
-            sources.extend(self._aura_of_courage_condition_immunity_sources(target))
+            sources.extend(
+                self._paladin_aura_condition_immunity_sources(
+                    target,
+                    condition="frightened",
+                    source_action_id=AURA_OF_COURAGE_ACTION_ID,
+                    modifier="aura_of_courage",
+                )
+            )
+        if condition == "charmed":
+            sources.extend(
+                self._paladin_aura_condition_immunity_sources(
+                    target,
+                    condition="charmed",
+                    source_action_id=AURA_OF_DEVOTION_ACTION_ID,
+                    modifier="aura_of_devotion",
+                )
+            )
         if condition == "poisoned":
             sources.extend(self._condition_sources(target, {"petrified"}))
             owner = target
@@ -12204,9 +12222,13 @@ class AutomationExecutor:
                 )
         return sources
 
-    def _aura_of_courage_condition_immunity_sources(
+    def _paladin_aura_condition_immunity_sources(
         self,
         target: Character | Monster | Combatant,
+        *,
+        condition: str,
+        source_action_id: str,
+        modifier: str,
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
         target_combatant = target if isinstance(target, Combatant) else self._combatant_for(target)
@@ -12217,7 +12239,10 @@ class AutomationExecutor:
                 if paladin.side != target_combatant.side:
                     continue
                 owner = self.state.characters[paladin.entity_id]
-                if not has_paladin_feature(owner, level=10):
+                if not self._paladin_aura_immunity_applies(
+                    owner,
+                    source_action_id=source_action_id,
+                ):
                     continue
                 radius_ft = aura_of_protection_radius_ft(owner)
                 if self._condition_sources(paladin, {"incapacitated"}):
@@ -12231,30 +12256,45 @@ class AutomationExecutor:
                     continue
                 sources.append(
                     {
-                        "source_action_id": AURA_OF_COURAGE_ACTION_ID,
-                        "modifier": "aura_of_courage",
+                        "source_action_id": source_action_id,
+                        "modifier": modifier,
                         "source_actor_id": paladin.id,
                         "target_id": target_combatant.id,
                         "distance_ft": distance,
                         "radius_ft": radius_ft,
-                        "immune_condition": "frightened",
+                        "immune_condition": condition,
                     }
                 )
         elif (
             isinstance(target, Character)
-            and has_paladin_feature(target, level=10)
+            and self._paladin_aura_immunity_applies(
+                target,
+                source_action_id=source_action_id,
+            )
             and not has_condition(target.status_effects, "incapacitated")
         ):
             sources.append(
                 {
-                    "source_action_id": AURA_OF_COURAGE_ACTION_ID,
-                    "modifier": "aura_of_courage",
+                    "source_action_id": source_action_id,
+                    "modifier": modifier,
                     "source_actor_id": target.id,
                     "target_id": target.id,
-                    "immune_condition": "frightened",
+                    "immune_condition": condition,
                 }
             )
         return sources
+
+    @staticmethod
+    def _paladin_aura_immunity_applies(
+        owner: Character,
+        *,
+        source_action_id: str,
+    ) -> bool:
+        if source_action_id == AURA_OF_COURAGE_ACTION_ID:
+            return has_paladin_feature(owner, level=10)
+        if source_action_id == AURA_OF_DEVOTION_ACTION_ID:
+            return aura_of_devotion_applies(owner)
+        return False
 
     def _apply_mindless_rage_if_available(
         self,
@@ -13190,6 +13230,8 @@ class AutomationExecutor:
         try:
             actor = self._entity(actor_id)
         except KeyError:
+            return
+        if self._condition_immunity_sources(actor, "charmed"):
             return
         charmer_ids = {
             str(effect.get("applied_by"))

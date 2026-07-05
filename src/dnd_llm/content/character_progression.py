@@ -380,7 +380,7 @@ SUBCLASS_ACTIONS = {
         },
     },
     "paladin": {
-        "devotion": {3: ["srd.sacred_weapon"]},
+        "devotion": {3: ["srd.sacred_weapon"], 7: ["srd.aura_of_devotion"]},
     },
     "ranger": {
         "hunter": {

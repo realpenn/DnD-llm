@@ -6284,6 +6284,52 @@ def test_paladin_aura_of_courage_blocks_new_frightened_condition(make_state) -> 
     )
 
 
+def test_paladin_aura_of_devotion_blocks_new_charmed_condition(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 7}
+    paladin.subclasses = {"paladin": "devotion"}
+    paladin.actions.append("srd.aura_of_devotion")
+    action = ActionDefinition(
+        id="test.charm_in_devotion_aura",
+        name="Charm in Devotion Aura",
+        localization={"en": "Charm in Devotion Aura", "zh": "虔诚灵光内魅惑", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {
+                "type": "condition",
+                "condition": "charmed",
+                "duration": {"until": "duration_1_minute"},
+            },
+        ],
+    )
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        action,
+        actor_id="goblin1",
+        targets=["pc2"],
+    )
+
+    assert any(
+        change["type"] == "condition_immune"
+        and change["condition"] == "charmed"
+        and change["immunity_sources"][0]["source_action_id"] == "srd.aura_of_devotion"
+        and change["immunity_sources"][0]["distance_ft"] == 0
+        for change in result.state_changes
+    )
+    assert all(
+        effect.get("condition") != "charmed"
+        for effect in state.encounter.combatants["pc2"].status_effects
+    )
+
+
 def test_paladin_aura_expansion_extends_aura_of_courage_to_thirty_feet(
     make_state,
 ) -> None:
@@ -6389,6 +6435,37 @@ def test_paladin_aura_of_courage_suppresses_existing_frightened_effect(make_stat
     assert protected.dice_rolls[0]["advantage"] is None
     assert unprotected.node_results["automation[0]"]["status_advantage"] == "disadvantage"
     assert unprotected.dice_rolls[0]["advantage"] == "disadvantage"
+
+
+def test_paladin_aura_of_devotion_suppresses_existing_charmed_target_gate(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 7}
+    paladin.subclasses = {"paladin": "devotion"}
+    paladin.actions.append("srd.aura_of_devotion")
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "charmed-test",
+            "condition": "charmed",
+            "source_action_id": "test.charm",
+            "applied_by": "goblin1",
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="devotion-aura-suppresses-charm",
+    )
+
+    assert result["success"] is True
+    assert result["action_id"] == "srd.shortsword_attack"
 
 
 def test_dark_ones_own_luck_adds_d10_to_direct_check_and_long_rest_restores(

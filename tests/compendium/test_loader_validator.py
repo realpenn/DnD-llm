@@ -2596,6 +2596,18 @@ def test_compendium_loads_srd_actions() -> None:
         "condition_immunity": "frightened",
         "requires_aura_of_protection": True,
     }
+    aura_of_devotion = compendium.action("srd.aura_of_devotion")
+    assert aura_of_devotion.requirements == {
+        "class": "paladin",
+        "class_level_min": 7,
+        "subclass": "devotion",
+    }
+    assert aura_of_devotion.action_economy == "none"
+    assert aura_of_devotion.range == {"self": True, "shape": "emanation", "radius_ft": 10}
+    assert aura_of_devotion.properties == {
+        "condition_immunity": "charmed",
+        "requires_aura_of_protection": True,
+    }
     faithful_steed_cast = compendium.action("srd.faithful_steed_find_steed")
     assert faithful_steed_cast.cost.resources == {"srd.resource.faithful_steed": 1}
     assert faithful_steed_cast.cost.spell_slot_level is None
@@ -4852,8 +4864,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.classes["paladin"].subclasses["devotion"] == {
         "name": "Oath of Devotion",
         "level": 3,
-        "features": ["Oath of Devotion Spells", "Sacred Weapon"],
-        "actions": ["srd.sacred_weapon"],
+        "features": ["Oath of Devotion Spells", "Sacred Weapon", "Aura of Devotion"],
+        "actions": ["srd.sacred_weapon", "srd.aura_of_devotion"],
     }
     assert "srd.sacred_weapon" not in compendium.classes["paladin"].levels["3"]["actions"]
     assert compendium.classes["paladin"].levels["5"]["features"] == [
@@ -4867,6 +4879,8 @@ def test_compendium_loads_srd_actions() -> None:
     } <= set(compendium.classes["paladin"].levels["5"]["actions"])
     assert compendium.classes["paladin"].levels["6"]["features"] == ["Aura of Protection"]
     assert "srd.aura_of_protection" in compendium.classes["paladin"].levels["6"]["actions"]
+    assert compendium.classes["paladin"].levels["7"]["features"] == ["Subclass Feature"]
+    assert "srd.aura_of_devotion" not in compendium.classes["paladin"].levels["7"]["actions"]
     assert compendium.classes["paladin"].levels["10"]["features"] == ["Aura of Courage"]
     assert "srd.aura_of_courage" in compendium.classes["paladin"].levels["10"]["actions"]
     assert compendium.classes["paladin"].levels["11"]["features"] == ["Radiant Strikes"]

@@ -4,6 +4,7 @@ from dnd_llm.content.character_editor import apply_natural_language_character_ed
 from dnd_llm.content.character_gen import default_fighter
 from dnd_llm.core.rules.class_features import (
     aura_of_courage_applies,
+    aura_of_devotion_applies,
     aura_of_protection_radius_ft,
     eldritch_master_applies,
     has_warlock_eldritch_smite,
@@ -1910,18 +1911,34 @@ def test_natural_language_character_edit_assigns_explicit_devotion_subclass() ->
     assert result.character.class_levels == {"paladin": 3}
     assert result.character.subclasses == {"paladin": "devotion"}
     assert "srd.sacred_weapon" in result.character.actions
+    assert "srd.aura_of_devotion" not in result.character.actions
+
+
+def test_natural_language_character_edit_assigns_devotion_aura_at_level_7() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(character, "职业 paladin7 子职 devotion")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"paladin": 7}
+    assert result.character.subclasses == {"paladin": "devotion"}
+    assert "srd.sacred_weapon" in result.character.actions
+    assert "srd.aura_of_devotion" in result.character.actions
+    assert aura_of_devotion_applies(result.character) is True
 
 
 def test_natural_language_character_edit_does_not_assign_devotion_by_default() -> None:
     character = default_fighter("pc1", "Penn")
 
-    result = apply_natural_language_character_edit(character, "职业 paladin3")
+    result = apply_natural_language_character_edit(character, "职业 paladin7")
 
     assert result.accepted is True
     assert result.character is not None
-    assert result.character.class_levels == {"paladin": 3}
+    assert result.character.class_levels == {"paladin": 7}
     assert result.character.subclasses == {}
     assert "srd.sacred_weapon" not in result.character.actions
+    assert "srd.aura_of_devotion" not in result.character.actions
 
 
 def test_natural_language_character_edit_assigns_monk_focus_points() -> None:

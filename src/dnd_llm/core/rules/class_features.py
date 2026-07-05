@@ -117,6 +117,7 @@ PERSISTENT_RAGE_ACTION_ID = "srd.persistent_rage"
 INDOMITABLE_MIGHT_ACTION_ID = "srd.indomitable_might"
 PRIMAL_CHAMPION_ACTION_ID = "srd.primal_champion"
 SUPERIOR_INSPIRATION_ACTION_ID = "srd.superior_inspiration"
+AURA_OF_DEVOTION_ACTION_ID = "srd.aura_of_devotion"
 
 PRIMAL_KNOWLEDGE_SKILLS = frozenset(
     {
@@ -963,6 +964,16 @@ def aura_of_protection_radius_ft(character: Character) -> int:
 
 def aura_of_courage_applies(character: Character) -> bool:
     return has_paladin_feature(character, level=10)
+
+
+def has_paladin_devotion_feature(character: Character, *, level: int) -> bool:
+    return has_paladin_feature(character, level=level) and (
+        character.subclasses.get("paladin") == "devotion"
+    )
+
+
+def aura_of_devotion_applies(character: Character) -> bool:
+    return has_paladin_devotion_feature(character, level=7)
 
 
 def barbarian_unarmored_defense_armor_class(character: Character) -> int | None:

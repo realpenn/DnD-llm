@@ -60,6 +60,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.armor_of_shadows",
     "srd.armor_of_shadows_mage_armor",
     "srd.aura_of_courage",
+    "srd.aura_of_devotion",
     "srd.aura_expansion",
     "srd.barbarian_unarmored_defense",
     "srd.bard_expertise",

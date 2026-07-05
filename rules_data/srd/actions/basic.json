@@ -3983,6 +3983,35 @@
             "audit_label": "Aura of Courage"
         },
         {
+            "id": "srd.aura_of_devotion",
+            "name": "Aura of Devotion",
+            "localization": {
+                "en": "Aura of Devotion",
+                "zh": "虔诚灵光",
+                "aliases": ["Oath of Devotion Aura of Devotion", "圣武士虔诚灵光"]
+            },
+            "source": "SRD 5.2.1 Paladin Subclass: Oath of Devotion, Level 7: Aura of Devotion",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true, "shape": "emanation", "radius_ft": 10},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "paladin", "class_level_min": 7, "subclass": "devotion"},
+            "properties": {
+                "condition_immunity": "charmed",
+                "requires_aura_of_protection": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that the Devotion Paladin and allies have Immunity to the Charmed condition while in the Paladin's Aura of Protection; if a Charmed ally enters the aura, that condition has no effect while there."
+                }
+            ],
+            "audit_label": "Aura of Devotion"
+        },
+        {
             "id": "srd.aura_expansion",
             "name": "Aura Expansion",
             "localization": {
