@@ -19011,6 +19011,57 @@ def test_etherealness_requires_self_target_before_spending_slot(make_state) -> N
     assert state.world.active_effects == []
 
 
+def test_arcane_eye_records_concentration_visual_sensor_world_effect(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.arcane_eye",
+        [],
+        4,
+        idempotency_key="cast-arcane-eye",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.arcane_eye"
+    assert effect["effect_type"] == "arcane_eye_sensor"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "point_within_range", "range_ft": 30}
+    assert effect["duration"] == {"until": "concentration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "invisible": True,
+        "invulnerable": True,
+        "hovers": True,
+        "mentally_receives_visual_information": True,
+        "sees_in_every_direction": True,
+        "darkvision_ft": 30,
+        "movable_as_bonus_action": True,
+        "move_distance_ft": 30,
+        "movement_direction": "any_direction",
+        "solid_barrier_blocks_movement": True,
+        "can_pass_through_opening_min_diameter_in": 1,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "arcane_eye_sensor"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
 def test_freedom_of_movement_requires_willing_target_and_grants_timed_effect(
     make_state,
 ) -> None:

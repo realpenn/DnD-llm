@@ -49,6 +49,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.finger_of_death",
         "srd.greater_invisibility",
         "srd.freedom_of_movement",
+        "srd.arcane_eye",
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.hold_monster",
@@ -1301,6 +1302,41 @@ def test_compendium_loads_srd_actions() -> None:
                 "includes_self": True,
             },
         },
+    ]
+    arcane_eye = compendium.action("srd.arcane_eye")
+    assert arcane_eye.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert arcane_eye.properties["spell_classes"] == ["wizard"]
+    assert arcane_eye.properties["material_component"] == {
+        "description": "a bit of bat fur",
+        "consumed": False,
+    }
+    assert arcane_eye.cost.spell_slot_level == 4
+    assert arcane_eye.range == {"normal_ft": 30}
+    assert arcane_eye.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert arcane_eye.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "arcane_eye_sensor",
+            "scope": {"target": "point_within_range", "range_ft": 30},
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "invisible": True,
+                "invulnerable": True,
+                "hovers": True,
+                "mentally_receives_visual_information": True,
+                "sees_in_every_direction": True,
+                "darkvision_ft": 30,
+                "movable_as_bonus_action": True,
+                "move_distance_ft": 30,
+                "movement_direction": "any_direction",
+                "solid_barrier_blocks_movement": True,
+                "can_pass_through_opening_min_diameter_in": 1,
+            },
+        }
     ]
     find_the_path = compendium.action("srd.find_the_path")
     assert find_the_path.requirements == {
