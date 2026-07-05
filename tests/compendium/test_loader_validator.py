@@ -74,6 +74,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.move_earth",
         "srd.wind_walk",
         "srd.tree_stride",
+        "srd.fabricate",
         "srd.stone_shape",
         "srd.stoneskin",
         "srd.wall_of_force",
@@ -1583,6 +1584,42 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "duration_1_hour"},
             "tick_on": "self_turn_end",
         },
+    ]
+    fabricate = compendium.action("srd.fabricate")
+    assert fabricate.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert fabricate.properties["spell_classes"] == ["wizard"]
+    assert fabricate.properties["casting_time"] == {"minutes": 10}
+    assert fabricate.cost.spell_slot_level == 4
+    assert fabricate.range == {"normal_ft": 120}
+    assert fabricate.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert fabricate.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "fabricated_object",
+            "scope": {"target": "visible_raw_materials", "range_ft": 120},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "converts_raw_materials_into_products_of_same_material": True,
+                "requires_sufficient_quantity_of_material": True,
+                "examples": [
+                    "wooden_bridge_from_clump_of_trees",
+                    "rope_from_patch_of_hemp",
+                    "clothes_from_flax_or_wool",
+                ],
+                "large_or_smaller_object_max_cube_ft": 10,
+                "alternative_eight_connected_5_ft_cubes": True,
+                "metal_stone_or_mineral_object_max_size": "medium",
+                "metal_stone_or_mineral_object_max_cube_ft": 5,
+                "quality_based_on_raw_materials": True,
+                "cannot_create_creatures": True,
+                "cannot_create_magic_items": True,
+                "high_skill_items_require_matching_artisans_tools_proficiency": True,
+                "high_skill_item_examples": ["weapons", "armor"],
+            },
+        }
     ]
     move_earth = compendium.action("srd.move_earth")
     assert move_earth.requirements == {

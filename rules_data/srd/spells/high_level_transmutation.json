@@ -68,6 +68,71 @@
       }
     },
     {
+      "id": "srd.spell.fabricate",
+      "name": "Fabricate",
+      "localization": {
+        "en": "Fabricate",
+        "zh": "造物术",
+        "aliases": ["制造术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.fabricate",
+        "name": "Fabricate",
+        "localization": {
+          "en": "Fabricate",
+          "zh": "造物术",
+          "aliases": ["制造术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "fabricated_object",
+            "scope": { "target": "visible_raw_materials", "range_ft": 120 },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "converts_raw_materials_into_products_of_same_material": true,
+              "requires_sufficient_quantity_of_material": true,
+              "examples": [
+                "wooden_bridge_from_clump_of_trees",
+                "rope_from_patch_of_hemp",
+                "clothes_from_flax_or_wool"
+              ],
+              "large_or_smaller_object_max_cube_ft": 10,
+              "alternative_eight_connected_5_ft_cubes": true,
+              "metal_stone_or_mineral_object_max_size": "medium",
+              "metal_stone_or_mineral_object_max_cube_ft": 5,
+              "quality_based_on_raw_materials": true,
+              "cannot_create_creatures": true,
+              "cannot_create_magic_items": true,
+              "high_skill_items_require_matching_artisans_tools_proficiency": true,
+              "high_skill_item_examples": ["weapons", "armor"]
+            }
+          }
+        ],
+        "audit_label": "Fabricate"
+      }
+    },
+    {
       "id": "srd.spell.stoneskin",
       "name": "Stoneskin",
       "localization": {

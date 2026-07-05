@@ -107,6 +107,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.elusive",
     "srd.escape_the_horde",
     "srd.extra_attack",
+    "srd.fabricate",
     "srd.favored_enemy_hunters_mark",
     "srd.feral_senses",
     "srd.feral_instinct",

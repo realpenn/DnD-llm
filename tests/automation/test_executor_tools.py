@@ -19581,6 +19581,95 @@ def test_find_the_path_records_concentration_navigation_sense(make_state) -> Non
     )
 
 
+def test_fabricate_records_instant_raw_material_conversion(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.fabricate",
+        [],
+        4,
+        idempotency_key="cast-fabricate",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.fabricate"
+    assert effect["effect_type"] == "fabricated_object"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "visible_raw_materials", "range_ft": 120}
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "converts_raw_materials_into_products_of_same_material": True,
+        "requires_sufficient_quantity_of_material": True,
+        "examples": [
+            "wooden_bridge_from_clump_of_trees",
+            "rope_from_patch_of_hemp",
+            "clothes_from_flax_or_wool",
+        ],
+        "large_or_smaller_object_max_cube_ft": 10,
+        "alternative_eight_connected_5_ft_cubes": True,
+        "metal_stone_or_mineral_object_max_size": "medium",
+        "metal_stone_or_mineral_object_max_cube_ft": 5,
+        "quality_based_on_raw_materials": True,
+        "cannot_create_creatures": True,
+        "cannot_create_magic_items": True,
+        "high_skill_items_require_matching_artisans_tools_proficiency": True,
+        "high_skill_item_examples": ["weapons", "armor"],
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "fabricated_object"
+    assert world_effect_change["concentration"] is False
+
+
+def test_fabricate_rejects_invalid_caster_or_missing_slot_before_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of wizard"):
+        tools.cast_spell(
+            "pc1",
+            "srd.fabricate",
+            [],
+            4,
+            idempotency_key="fabricate-cleric",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 0
+    with pytest.raises(AutomationError, match="no spell slot level 4 available"):
+        tools.cast_spell(
+            "pc1",
+            "srd.fabricate",
+            [],
+            4,
+            idempotency_key="fabricate-no-slot",
+        )
+
+    assert caster.spell_slots["4"] == 0
+    assert state.world.active_effects == []
+
+
 def test_stone_shape_records_instant_touched_stone_reshaping(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]
