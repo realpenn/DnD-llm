@@ -70,6 +70,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.move_earth",
         "srd.wind_walk",
         "srd.tree_stride",
+        "srd.stoneskin",
         "srd.wall_of_force",
         "srd.wall_of_stone",
         "srd.wall_of_ice",
@@ -1526,6 +1527,38 @@ def test_compendium_loads_srd_actions() -> None:
                 "must_end_turn_outside_tree": True,
             },
             "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
+    ]
+    stoneskin = compendium.action("srd.stoneskin")
+    assert stoneskin.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "ranger", "sorcerer", "wizard"],
+    }
+    assert stoneskin.properties["spell_classes"] == [
+        "druid",
+        "ranger",
+        "sorcerer",
+        "wizard",
+    ]
+    assert stoneskin.properties["requires_willing_target"] is True
+    assert stoneskin.properties["material_component"] == {
+        "description": "diamond dust worth 100+ GP",
+        "consumed": True,
+    }
+    assert stoneskin.cost.spell_slot_level == 4
+    assert stoneskin.cost.gold == 100
+    assert stoneskin.range == {"touch": True}
+    assert stoneskin.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert stoneskin.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+            },
+            "duration": {"until": "concentration_1_hour"},
             "tick_on": "self_turn_end",
             "concentration": True,
         },

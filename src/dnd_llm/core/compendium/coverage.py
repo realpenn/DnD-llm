@@ -217,6 +217,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.sorcerous_restoration",
     "srd.slippery_mind",
     "srd.steady_aim",
+    "srd.stoneskin",
     "srd.stroke_of_luck",
     "srd.supreme_healing",
     "srd.supreme_sneak",

@@ -19268,6 +19268,90 @@ def test_find_the_path_records_concentration_navigation_sense(make_state) -> Non
     )
 
 
+def test_stoneskin_consumes_material_and_grants_concentration_resistance(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["pc2"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    caster.gold = 100
+    target.hp_current = 20
+    target.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.stoneskin",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 4},
+            idempotency_key="cast-stoneskin-unwilling",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert caster.gold == 100
+    assert target.status_effects == []
+
+    caster.gold = 99
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools._execute_action(
+            action_id="srd.stoneskin",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 4, "target_willing": True},
+            idempotency_key="cast-stoneskin-insufficient-gold",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert caster.gold == 99
+    assert target.status_effects == []
+
+    caster.gold = 100
+    result = tools._execute_action(
+        action_id="srd.stoneskin",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 4, "target_willing": True},
+        idempotency_key="cast-stoneskin",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_4", "gold"]
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.stoneskin"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+    }
+    assert effect["duration"] == {"until": "concentration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="slashing"),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="slashing-damage-after-stoneskin",
+    )
+    damage_change = next(change for change in damage.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert target.hp_current == 16
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
 def test_passwall_spends_slot_and_records_timed_passage(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
