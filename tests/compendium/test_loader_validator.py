@@ -63,6 +63,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
+        "srd.divination",
         "srd.etherealness",
         "srd.find_the_path",
         "srd.locate_creature",
@@ -1377,6 +1378,45 @@ def test_compendium_loads_srd_actions() -> None:
                 "fails_if_creature_in_different_form": True,
                 "different_form_examples": ["flesh_to_stone", "polymorph"],
                 "lead_blocks_direct_path": True,
+            },
+        }
+    ]
+    divination_spell = compendium.spell("srd.spell.divination")
+    assert divination_spell.ritual is True
+    divination = compendium.action("srd.divination")
+    assert divination.requirements == {
+        "spell_level": 4,
+        "class_any": ["cleric", "druid", "wizard"],
+    }
+    assert divination.properties["spell_classes"] == ["cleric", "druid", "wizard"]
+    assert divination.properties["ritual"] is True
+    assert divination.properties["spell_definition_id"] == "srd.spell.divination"
+    assert divination.properties["material_component"] == {
+        "description": "incense worth 25+ GP",
+        "consumed": True,
+    }
+    assert divination.properties["question_scope"] == (
+        "specific_goal_event_or_activity_within_7_days"
+    )
+    assert divination.properties["repeat_casting_failure_chance_increment_percent"] == 25
+    assert divination.cost.spell_slot_level == 4
+    assert divination.cost.gold == 25
+    assert divination.range == {"self": True}
+    assert divination.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert divination.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "divination_answer",
+            "scope": {"target": "self"},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "contacts_god_or_gods_servants": True,
+                "question_about_specific_goal_event_or_activity_within_days": 7,
+                "gm_offers_truthful_reply": True,
+                "reply_may_be_short_phrase_or_cryptic_rhyme": True,
+                "does_not_account_for_changed_circumstances": True,
+                "changed_circumstance_example": "casting_other_spells",
+                "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
             },
         }
     ]

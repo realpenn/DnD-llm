@@ -372,6 +372,7 @@ P0 脚手架
   - [x] **P2-1dj** SRD 5.2.1 `Stoneskin` 落地：新增 4 环 Transmutation spell 与 `srd.stoneskin` action；按 SRD 以 Action/Touch 消耗 100+ GP diamond dust 材料，为 willing creature 施加 Concentration 1 hour 的 Bludgeoning/Piercing/Slashing damage Resistance；材料消耗复用现有金币成本模型，不虚构 diamond dust 物品库存或额外石化效果；覆盖 compendium、coverage、executor、willing/材料前置校验、抗性结算与生命周期测试。
   - [x] **P2-1dk** SRD 5.2.1 `Stone Shape` 落地：新增 4 环 Transmutation spell 与 `srd.stone_shape` action；按 SRD 以 Action/Touch/Instantaneous 塑形 Medium 或更小石质物体，或任一维度不超过 5 尺的石材段，记录可塑成任意形状、可形成 5 尺厚墙的小通道、可封住石门或门框、最多两个铰链和一个闩且无法实现更精细机械细节等元数据；不虚构石制武器属性、物品库存、地图切割或寻路系统；覆盖 compendium、coverage 与 executor world effect 测试。
   - [x] **P2-1dl** SRD 5.2.1 `Locate Creature` 落地：新增 4 环 Divination spell 与 `srd.locate_creature` action；按 SRD 以 Action/Self/Concentration 1 hour 记录对熟悉或曾在 30 尺内近距离见过类别的生物的方向感知，包含 1,000 尺范围、目标移动方向、异形态如 Flesh to Stone/Polymorph 时无法定位以及铅阻挡直接路径等元数据；不虚构寻路、地图定位算法、传感器或自动目标选择；覆盖 compendium、coverage、executor 与生命周期测试。
+  - [x] **P2-1dm** SRD 5.2.1 `Divination` 落地：新增 4 环 Divination ritual spell 与 `srd.divination` action；按 SRD 以 Action 或 Ritual/Self/Instantaneous 消耗 25+ GP incense，记录联系 god 或 god's servants、询问 7 天内 specific goal/event/activity、GM truthful reply 可为 short phrase 或 cryptic rhyme、后续环境变化不纳入答案以及长休前重复施放从第二次起累计 25% 无答案等元数据；不虚构神祇表、GM 自动答案生成器或概率计数器；覆盖 compendium、coverage、普通施法、ritual/no-slot、材料不足 no-effect 与执行器测试。
 - [x] **P2-2** 多职业 + 专长。
 - [x] **P2-3** **完整交互式反应窗口**：超时、提示、插队确认与默认行为（替换 Phase 1 非交互式策略）。↳ spec §4.2
 - [x] **P2-4** 更多魔法物品；状态持续时间与并发的精细化管理。

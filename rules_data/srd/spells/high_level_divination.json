@@ -126,6 +126,68 @@
       }
     },
     {
+      "id": "srd.spell.divination",
+      "name": "Divination",
+      "localization": {
+        "en": "Divination",
+        "zh": "预言术",
+        "aliases": ["占卜术", "预言"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "divination",
+      "classes": ["cleric", "druid", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.divination",
+        "name": "Divination",
+        "localization": {
+          "en": "Divination",
+          "zh": "预言术",
+          "aliases": ["占卜术", "预言"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "druid", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "incense worth 25+ GP",
+            "consumed": true
+          },
+          "question_scope": "specific_goal_event_or_activity_within_7_days",
+          "repeat_casting_failure_chance_increment_percent": 25
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4, "gold": 25 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "divination_answer",
+            "scope": { "target": "self" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "contacts_god_or_gods_servants": true,
+              "question_about_specific_goal_event_or_activity_within_days": 7,
+              "gm_offers_truthful_reply": true,
+              "reply_may_be_short_phrase_or_cryptic_rhyme": true,
+              "does_not_account_for_changed_circumstances": true,
+              "changed_circumstance_example": "casting_other_spells",
+              "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25
+            }
+          }
+        ],
+        "audit_label": "Divination"
+      }
+    },
+    {
       "id": "srd.spell.find_the_path",
       "name": "Find the Path",
       "localization": {

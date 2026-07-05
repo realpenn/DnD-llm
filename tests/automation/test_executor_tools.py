@@ -19110,6 +19110,117 @@ def test_locate_creature_records_concentration_creature_sense(make_state) -> Non
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
 
 
+def test_divination_spends_slot_and_consumed_incense_records_answer_request(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    caster.gold = 25
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.divination",
+        [],
+        4,
+        idempotency_key="cast-divination",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.gold == 0
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_4", "gold"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.divination"
+    assert effect["effect_type"] == "divination_answer"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "self"}
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "contacts_god_or_gods_servants": True,
+        "question_about_specific_goal_event_or_activity_within_days": 7,
+        "gm_offers_truthful_reply": True,
+        "reply_may_be_short_phrase_or_cryptic_rhyme": True,
+        "does_not_account_for_changed_circumstances": True,
+        "changed_circumstance_example": "casting_other_spells",
+        "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "divination_answer"
+    assert world_effect_change["concentration"] is False
+
+
+def test_divination_can_be_cast_as_ritual_without_spending_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.prepared_spells = ["srd.spell.divination"]
+    caster.spell_slots["4"] = 0
+    caster.gold = 25
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.divination",
+        [],
+        4,
+        as_ritual=True,
+        idempotency_key="ritual-divination",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.gold == 0
+    ritual_change = next(
+        change for change in result["state_changes"] if change["type"] == "ritual_casting"
+    )
+    assert ritual_change == {
+        "type": "ritual_casting",
+        "actor_id": "pc1",
+        "spell_id": "srd.spell.divination",
+        "base_spell_slot_level": 4,
+        "spell_slot_expended": False,
+        "casting_time_extra_minutes": 10,
+        "source": "prepared_spell",
+    }
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["gold"]
+    assert state.world.active_effects[-1]["effect_type"] == "divination_answer"
+
+
+def test_divination_requires_consumed_incense_gold_before_spending_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.spell_slots["4"] = 1
+    caster.gold = 24
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools.cast_spell(
+            "pc1",
+            "srd.divination",
+            [],
+            4,
+            idempotency_key="divination-missing-incense",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert caster.gold == 24
+    assert state.world.active_effects == []
+
+
 def test_freedom_of_movement_requires_willing_target_and_grants_timed_effect(
     make_state,
 ) -> None:

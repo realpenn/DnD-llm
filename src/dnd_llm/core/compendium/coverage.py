@@ -87,6 +87,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.defensive_tactics",
     "srd.disengage",
     "srd.disciple_of_life",
+    "srd.divination",
     "srd.dodge",
     "srd.draconic_resilience",
     "srd.eldritch_invocations",
