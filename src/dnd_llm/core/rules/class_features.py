@@ -526,6 +526,12 @@ def has_cleric_blessed_strikes_potent_spellcasting(character: Character) -> bool
     )
 
 
+def has_cleric_improved_blessed_strikes(character: Character) -> bool:
+    return int(character.class_levels.get("cleric", 0)) >= 14 and (
+        cleric_blessed_strikes_choice(character) is not None
+    )
+
+
 def cleric_potent_spellcasting_bonus(
     character: Character,
     *,
@@ -538,6 +544,16 @@ def cleric_potent_spellcasting_bonus(
         return 0
     wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
     return max(0, ability_modifier(wisdom))
+
+
+def cleric_improved_blessed_strikes_temp_hp(character: Character) -> int:
+    if not (
+        has_cleric_improved_blessed_strikes(character)
+        and has_cleric_blessed_strikes_potent_spellcasting(character)
+    ):
+        return 0
+    wisdom = int(character.abilities.get("wis", character.abilities.get("WIS", 10)))
+    return max(0, ability_modifier(wisdom) * 2)
 
 
 def cleric_thaumaturge_check_bonus(

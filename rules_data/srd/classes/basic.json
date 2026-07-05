@@ -724,6 +724,7 @@
                         "srd.divine_spark_necrotic",
                         "srd.turn_undead",
                         "srd.blessed_strikes",
+                        "srd.improved_blessed_strikes",
                         "srd.blessed_healer"
                     ]
                 },
@@ -737,6 +738,7 @@
                         "srd.divine_spark_necrotic",
                         "srd.turn_undead",
                         "srd.blessed_strikes",
+                        "srd.improved_blessed_strikes",
                         "srd.blessed_healer"
                     ]
                 },
@@ -750,6 +752,7 @@
                         "srd.divine_spark_necrotic",
                         "srd.turn_undead",
                         "srd.blessed_strikes",
+                        "srd.improved_blessed_strikes",
                         "srd.blessed_healer"
                     ]
                 },
@@ -763,6 +766,7 @@
                         "srd.divine_spark_necrotic",
                         "srd.turn_undead",
                         "srd.blessed_strikes",
+                        "srd.improved_blessed_strikes",
                         "srd.blessed_healer",
                         "srd.supreme_healing"
                     ]

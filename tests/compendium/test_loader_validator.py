@@ -4415,6 +4415,23 @@ def test_compendium_loads_srd_actions() -> None:
         "damage_bonus": "wisdom_modifier",
         "applies_to": ["cleric_cantrip_damage"],
     }
+    improved_blessed_strikes = compendium.action("srd.improved_blessed_strikes")
+    assert improved_blessed_strikes.requirements == {
+        "class": "cleric",
+        "class_level_min": 14,
+    }
+    assert improved_blessed_strikes.action_economy == "none"
+    assert improved_blessed_strikes.properties == {
+        "choice_key": "cleric.blessed_strikes",
+        "improves": "srd.blessed_strikes",
+        "divine_strike_extra_damage": "2d8",
+        "potent_spellcasting_temp_hp": "2 * wisdom_modifier",
+        "potent_spellcasting_temp_hp_range_ft": 60,
+        "applies_to": [
+            "blessed_strikes_divine_strike",
+            "blessed_strikes_potent_spellcasting",
+        ],
+    }
     assert {
         "srd.divine_spark_heal",
         "srd.divine_spark_radiant",
@@ -4428,8 +4445,14 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.blessed_strikes" not in compendium.classes["cleric"].levels["6"]["actions"]
     assert compendium.classes["cleric"].levels["7"]["features"] == ["Blessed Strikes"]
     assert "srd.blessed_strikes" in compendium.classes["cleric"].levels["7"]["actions"]
+    assert "srd.improved_blessed_strikes" not in compendium.classes["cleric"].levels["13"][
+        "actions"
+    ]
     assert compendium.classes["cleric"].levels["14"]["features"] == [
         "Improved Blessed Strikes"
+    ]
+    assert "srd.improved_blessed_strikes" in compendium.classes["cleric"].levels["14"][
+        "actions"
     ]
     assert compendium.classes["cleric"].levels["17"]["features"] == ["Subclass Feature"]
     assert "srd.blessed_healer" in compendium.classes["cleric"].levels["6"]["actions"]

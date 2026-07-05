@@ -2428,6 +2428,48 @@
             "audit_label": "Blessed Strikes: Potent Spellcasting"
         },
         {
+            "id": "srd.improved_blessed_strikes",
+            "name": "Improved Blessed Strikes",
+            "localization": {
+                "en": "Improved Blessed Strikes",
+                "zh": "精通受祝打击",
+                "aliases": [
+                    "Cleric Improved Blessed Strikes",
+                    "Improved Divine Strike",
+                    "Improved Potent Spellcasting",
+                    "精通祝福打击",
+                    "强化受祝打击"
+                ]
+            },
+            "source": "SRD 5.2.1 Cleric Class Features: Level 14: Improved Blessed Strikes",
+            "rules_version": "srd-5.2.1",
+            "action_type": "class_feature",
+            "action_economy": "none",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {"class": "cleric", "class_level_min": 14},
+            "properties": {
+                "choice_key": "cleric.blessed_strikes",
+                "improves": "srd.blessed_strikes",
+                "divine_strike_extra_damage": "2d8",
+                "potent_spellcasting_temp_hp": "2 * wisdom_modifier",
+                "potent_spellcasting_temp_hp_range_ft": 60,
+                "applies_to": [
+                    "blessed_strikes_divine_strike",
+                    "blessed_strikes_potent_spellcasting"
+                ]
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "text_result",
+                    "text": "This marker records that at Cleric 14, the chosen Blessed Strikes option improves: Divine Strike extra damage becomes 2d8, or Potent Spellcasting can grant Temporary Hit Points equal to twice Wisdom modifier to the Cleric or another creature within 60 feet when a Cleric cantrip deals damage."
+                }
+            ],
+            "audit_label": "Improved Blessed Strikes"
+        },
+        {
             "id": "srd.divine_spark_heal",
             "name": "Divine Spark: Heal",
             "localization": {

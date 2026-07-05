@@ -200,6 +200,7 @@ CLASS_LEVEL_ACTIONS = {
             "srd.turn_undead",
         ],
         7: ["srd.blessed_strikes"],
+        14: ["srd.improved_blessed_strikes"],
     },
     "druid": {
         1: ["srd.druidic", "srd.primal_order", "srd.speak_with_animals"],

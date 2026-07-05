@@ -143,6 +143,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.hunters_prey_horde_breaker",
     "srd.superior_hunters_defense",
     "srd.superior_hunters_prey",
+    "srd.improved_blessed_strikes",
     "srd.improved_brutal_strike",
     "srd.improved_cunning_strike",
     "srd.improved_critical",

@@ -34,6 +34,7 @@ from ..rules.class_features import (
     blessed_healer_self_healing,
     bloodied_hp_cap,
     class_feature_speed_bonus,
+    cleric_improved_blessed_strikes_temp_hp,
     cleric_potent_spellcasting_bonus,
     cleric_thaumaturge_check_bonus,
     dark_ones_blessing_temp_hp,
@@ -48,6 +49,8 @@ from ..rules.class_features import (
     has_barbarian_berserker_feature,
     has_barbarian_feature,
     has_cleric_blessed_strikes_divine_strike,
+    has_cleric_blessed_strikes_potent_spellcasting,
+    has_cleric_improved_blessed_strikes,
     has_colossus_slayer,
     has_condition,
     has_druid_circle_of_the_land_feature,
@@ -156,6 +159,7 @@ CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION = "blessed_strikes_divine_st
 CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING_ACTION_ID = (
     "srd.blessed_strikes_potent_spellcasting"
 )
+CLERIC_IMPROVED_BLESSED_STRIKES_ACTION_ID = "srd.improved_blessed_strikes"
 SUPREME_HEALING_ACTION_ID = "srd.supreme_healing"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
@@ -397,6 +401,7 @@ class _Context:
     horde_breaker_applied: bool = False
     horde_breaker_resolving: bool = False
     superior_hunters_prey_applied: bool = False
+    improved_blessed_strikes_potent_spellcasting_applied: bool = False
     quivering_palm_applied: bool = False
 
 
@@ -497,6 +502,11 @@ class AutomationExecutor:
             action,
             actor_id,
             targets or [],
+            params,
+        )
+        self._validate_improved_blessed_strikes_potent_spellcasting_preconditions(
+            action,
+            actor_id,
             params,
         )
         self._validate_superior_hunters_prey_preconditions(
@@ -1519,6 +1529,12 @@ class AutomationExecutor:
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
+            self._apply_improved_blessed_strikes_potent_spellcasting_temp_hp(
+                ctx,
+                target_id,
+                total_damage_taken,
+                path,
+            )
             relentless_rage = self._relentless_rage_after_drop_to_zero(
                 target_id,
                 hp_before=hp_before,
@@ -5668,6 +5684,11 @@ class AutomationExecutor:
             return [str(item).lower() for item in raw if isinstance(item, str)]
         return []
 
+    def _action_is_cleric_cantrip(self, action: ActionDefinition) -> bool:
+        return self._action_spell_level(action) == 0 and "cleric" in self._action_spell_classes(
+            action
+        )
+
     def _frenzy_bonus(
         self,
         ctx: _Context,
@@ -6380,7 +6401,7 @@ class AutomationExecutor:
         if self._has_blessed_strikes_divine_strike_used(ctx.actor_id):
             return _ExtraDamageResult()
         damage_type = self._blessed_strikes_divine_strike_damage_type(ctx.params)
-        dice = "1d8"
+        dice = "2d8" if has_cleric_improved_blessed_strikes(owner) else "1d8"
         roll = self.roll_service.roll(dice)
         rolls = [roll]
         amount = roll.total
@@ -6388,19 +6409,61 @@ class AutomationExecutor:
             critical_roll = self.roll_service.roll(dice)
             rolls.append(critical_roll)
             amount += critical_roll.total
+        source = {
+            "feature": "blessed_strikes_divine_strike",
+            "source_action_id": CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID,
+            "dice": dice,
+            "damage_type": damage_type,
+        }
+        if dice == "2d8":
+            source["improved_source_action_id"] = CLERIC_IMPROVED_BLESSED_STRIKES_ACTION_ID
         self._mark_blessed_strikes_divine_strike_used(ctx, target_id, damage_type)
         return _ExtraDamageResult(
             amount=amount,
             damage_type=damage_type,
             rolls=rolls,
-            sources=[
-                {
-                    "feature": "blessed_strikes_divine_strike",
-                    "source_action_id": CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID,
-                    "dice": dice,
-                    "damage_type": damage_type,
-                }
-            ],
+            sources=[source],
+        )
+
+    def _apply_improved_blessed_strikes_potent_spellcasting_temp_hp(
+        self,
+        ctx: _Context,
+        damage_target_id: str,
+        damage_taken: int,
+        path: str,
+    ) -> None:
+        if ctx.improved_blessed_strikes_potent_spellcasting_applied or damage_taken <= 0:
+            return
+        beneficiary_id = self._improved_blessed_strikes_temp_hp_target_id(ctx.params)
+        if beneficiary_id is None:
+            return
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character):
+            return
+        amount = cleric_improved_blessed_strikes_temp_hp(owner)
+        if amount <= 0 or not self._action_is_cleric_cantrip(ctx.action):
+            return
+        beneficiary = self._entity(beneficiary_id)
+        before = int(getattr(beneficiary, "temp_hp", 0))
+        after = max(before, amount)
+        setattr(beneficiary, "temp_hp", after)
+        if after > before:
+            self._clear_temp_hp_source(beneficiary_id, beneficiary)
+        self._sync_hp_state_for_target(beneficiary)
+        ctx.improved_blessed_strikes_potent_spellcasting_applied = True
+        ctx.result.state_changes.append(
+            {
+                "type": "temp_hp",
+                "target_id": beneficiary_id,
+                "before": before,
+                "after": after,
+                "amount": amount,
+                "applied": after - before,
+                "path": f"{path}.improved_blessed_strikes",
+                "source_action_id": CLERIC_IMPROVED_BLESSED_STRIKES_ACTION_ID,
+                "source_feature": "improved_blessed_strikes_potent_spellcasting",
+                "damage_target_id": damage_target_id,
+            }
         )
 
     def _has_blessed_strikes_divine_strike_used(self, actor_id: str) -> bool:
@@ -12738,6 +12801,37 @@ class AutomationExecutor:
         self._entity(target_id)
         self._blessed_strikes_divine_strike_damage_type(params)
 
+    def _validate_improved_blessed_strikes_potent_spellcasting_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        target_id = self._improved_blessed_strikes_temp_hp_target_id(params)
+        if target_id is None:
+            return
+        actor_owner = self._resource_owner(actor_id)
+        if not isinstance(actor_owner, Character):
+            raise AutomationError(
+                "Improved Blessed Strikes Potent Spellcasting requires Cleric 14"
+            )
+        if not (
+            has_cleric_improved_blessed_strikes(actor_owner)
+            and has_cleric_blessed_strikes_potent_spellcasting(actor_owner)
+        ):
+            raise AutomationError(
+                "Improved Blessed Strikes Potent Spellcasting requires Cleric 14 with the Potent Spellcasting option"
+            )
+        if action.action_type != "spell" or not self._action_is_cleric_cantrip(action):
+            raise AutomationError(
+                "Improved Blessed Strikes Potent Spellcasting requires a Cleric cantrip"
+            )
+        self._entity(target_id)
+        if not self._improved_blessed_strikes_temp_hp_target_in_range(actor_id, target_id):
+            raise AutomationError(
+                "Improved Blessed Strikes Potent Spellcasting target must be within 60 feet"
+            )
+
     @staticmethod
     def _blessed_strikes_divine_strike_requested(params: dict[str, Any]) -> bool:
         return (
@@ -12778,6 +12872,35 @@ class AutomationExecutor:
         if damage_type not in {"necrotic", "radiant"}:
             raise AutomationError("divine_strike_damage_type must be radiant or necrotic")
         return damage_type
+
+    @staticmethod
+    def _improved_blessed_strikes_temp_hp_target_id(params: dict[str, Any]) -> str | None:
+        raw = params.get(
+            "improved_blessed_strikes_temp_hp_target_id",
+            params.get(
+                "potent_spellcasting_temp_hp_target_id",
+                params.get("blessed_strikes_temp_hp_target_id"),
+            ),
+        )
+        if raw in (None, "", False):
+            return None
+        if isinstance(raw, (dict, list)):
+            raise AutomationError("improved_blessed_strikes_temp_hp_target_id must be a scalar")
+        return str(raw)
+
+    def _improved_blessed_strikes_temp_hp_target_in_range(
+        self,
+        actor_id: str,
+        target_id: str,
+    ) -> bool:
+        if self._entity_ids_match(actor_id, target_id):
+            return True
+        actor = self._combatant_for(self._entity(actor_id))
+        target = self._combatant_for(self._entity(target_id))
+        if actor is None or target is None:
+            return False
+        distance = self._combat_distance(actor, target)
+        return distance is not None and distance <= 60
 
     def _validate_cutting_words_preconditions(
         self,
