@@ -77,6 +77,7 @@ class CompendiumSimulator:
                     )
                     params[creature_types_param] = [str(allowed_creature_types[0])]
                 _add_allowed_list_params(params, action)
+                _add_fire_shield_params(params, action)
                 if action.properties.get("requires_willing_target") is True:
                     params["target_willing"] = True
                 if action.properties.get("pact_of_the_blade_weapon") is True:
@@ -390,6 +391,7 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
         creature_types_param = str(action.properties.get("creature_types_param", "creature_types"))
         params[creature_types_param] = [str(allowed_creature_types[0])]
     _add_allowed_list_params(params, action)
+    _add_fire_shield_params(params, action)
     if action.properties.get("requires_willing_target") is True:
         params["target_willing"] = True
     if action.properties.get("requires_dim_light_or_darkness") is True:
@@ -408,3 +410,11 @@ def _add_allowed_list_params(params: dict[str, Any], action: ActionDefinition) -
     for param_name, allowed_raw in specs.items():
         if isinstance(allowed_raw, list) and allowed_raw:
             params[str(param_name)] = [str(allowed_raw[0])]
+
+
+def _add_fire_shield_params(params: dict[str, Any], action: ActionDefinition) -> None:
+    allowed_types = action.properties.get("allowed_fire_shield_types")
+    if not isinstance(allowed_types, list) or not allowed_types:
+        return
+    param_name = str(action.properties.get("fire_shield_type_param", "fire_shield_type"))
+    params[param_name] = str(allowed_types[0])

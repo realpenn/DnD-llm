@@ -35,6 +35,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.fireball",
         "srd.lightning_bolt",
         "srd.ice_storm",
+        "srd.fire_shield",
         "srd.cone_of_cold",
         "srd.blade_barrier",
         "srd.chain_lightning",
@@ -395,6 +396,46 @@ def test_compendium_loads_srd_actions() -> None:
             "scope": {"shape": "cylinder", "radius_ft": 20, "height_ft": 40},
             "duration": {"until": "end_of_next_turn"},
             "metadata": {"ground_in_cylinder": True, "source": "hailstones"},
+        },
+    ]
+    fire_shield = compendium.action("srd.fire_shield")
+    assert fire_shield.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert fire_shield.properties["spell_classes"] == ["druid", "sorcerer", "wizard"]
+    assert fire_shield.properties["material_component"] == {
+        "description": "a bit of phosphorus or a firefly",
+        "consumed": False,
+    }
+    assert fire_shield.properties["fire_shield_type_param"] == "fire_shield_type"
+    assert fire_shield.properties["allowed_fire_shield_types"] == ["warm", "chill"]
+    assert fire_shield.range == {"self": True}
+    assert fire_shield.target_policy == {
+        "min": 1,
+        "max": 1,
+        "self": True,
+        "harmful": False,
+    }
+    assert fire_shield.cost.spell_slot_level == 4
+    assert fire_shield.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "damage_resistances": {"param": "fire_shield_resistance_type"},
+                "fire_shield": True,
+                "fire_shield_type": {"param": "fire_shield_type"},
+                "bright_light_radius_ft": 10,
+                "dim_light_additional_ft": 10,
+                "melee_hit_retaliation_within_ft": 5,
+                "melee_hit_retaliation_damage": "2d8",
+                "melee_hit_retaliation_damage_type": {
+                    "param": "fire_shield_retaliation_damage_type"
+                },
+            },
+            "duration": {"until": "duration_10_minutes"},
+            "tick_on": "self_turn_end",
         },
     ]
     blight = compendium.action("srd.blight")
@@ -5993,6 +6034,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.hold_person",
         "srd.spell.fireball",
         "srd.spell.ice_storm",
+        "srd.spell.fire_shield",
         "srd.spell.cone_of_cold",
         "srd.spell.chain_lightning",
         "srd.spell.fire_storm",

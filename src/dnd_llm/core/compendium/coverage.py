@@ -120,6 +120,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.fiendish_resilience",
     "srd.fiendish_vigor",
     "srd.fiendish_vigor_false_life",
+    "srd.fire_shield",
     "srd.fleet_step",
     "srd.foe_slayer",
     "srd.flurry_of_blows",

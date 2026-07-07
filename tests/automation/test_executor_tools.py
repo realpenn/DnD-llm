@@ -16662,6 +16662,154 @@ def test_hallucinatory_terrain_records_timed_natural_terrain_illusion(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_fire_shield_warm_grants_cold_resistance_and_records_retaliation(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.spell_slots["4"] = 1
+    protected.hp_current = 20
+    protected.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.fire_shield",
+        actor_id="pc1",
+        targets=["pc1"],
+        params={"slot_level": 4, "fire_shield_type": "Warm"},
+        idempotency_key="cast-warm-fire-shield",
+    )
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="cold"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="cold-damage-after-warm-fire-shield",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+    effect = protected.status_effects[-1]
+    assert effect["source_action_id"] == "srd.fire_shield"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "damage_resistances": "cold",
+        "fire_shield": True,
+        "fire_shield_type": "warm",
+        "bright_light_radius_ft": 10,
+        "dim_light_additional_ft": 10,
+        "melee_hit_retaliation_within_ft": 5,
+        "melee_hit_retaliation_damage": "2d8",
+        "melee_hit_retaliation_damage_type": "fire",
+    }
+    assert effect["duration"] == {"until": "duration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "saving_throw", "damage"})
+    damage_change = next(change for change in damage.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert protected.hp_current == 16
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
+def test_fire_shield_chill_grants_fire_resistance_and_cold_retaliation(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    protected.hp_current = 20
+    protected.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.fire_shield",
+        actor_id="pc1",
+        targets=["pc1"],
+        params={"slot_level": 4, "fire_shield_type": "chill"},
+        idempotency_key="cast-chill-fire-shield",
+    )
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="fire"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="fire-damage-after-chill-fire-shield",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    effect = protected.status_effects[-1]
+    assert effect["source_action_id"] == "srd.fire_shield"
+    assert effect["passive_modifiers"]["damage_resistances"] == "fire"
+    assert effect["passive_modifiers"]["fire_shield_type"] == "chill"
+    assert effect["passive_modifiers"]["melee_hit_retaliation_damage_type"] == "cold"
+    damage_change = next(change for change in damage.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert protected.hp_current == 16
+
+
+def test_fire_shield_requires_warm_or_chill_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="missing required parameter fire_shield_type"):
+        tools._execute_action(
+            action_id="srd.fire_shield",
+            actor_id="pc1",
+            targets=["pc1"],
+            params={"slot_level": 4},
+            idempotency_key="cast-fire-shield-missing-type",
+        )
+    with pytest.raises(AutomationError, match="fire_shield_type must be one of"):
+        tools._execute_action(
+            action_id="srd.fire_shield",
+            actor_id="pc1",
+            targets=["pc1"],
+            params={"slot_level": 4, "fire_shield_type": "lightning"},
+            idempotency_key="cast-fire-shield-invalid-type",
+        )
+    with pytest.raises(AutomationError, match="fire_shield_type must be a scalar"):
+        tools._execute_action(
+            action_id="srd.fire_shield",
+            actor_id="pc1",
+            targets=["pc1"],
+            params={"slot_level": 4, "fire_shield_type": ["warm"]},
+            idempotency_key="cast-fire-shield-list-type",
+        )
+    with pytest.raises(AutomationError, match="fire_shield_type must be a scalar"):
+        tools._execute_action(
+            action_id="srd.fire_shield",
+            actor_id="pc1",
+            targets=["pc1"],
+            params={"slot_level": 4, "fire_shield_type": {"choice": "warm"}},
+            idempotency_key="cast-fire-shield-dict-type",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.encounter.action_budgets == {}
+    assert state.encounter.combatants["pc1"].status_effects == []
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

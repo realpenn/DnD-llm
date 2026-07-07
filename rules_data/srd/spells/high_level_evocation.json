@@ -58,6 +58,60 @@
       }
     },
     {
+      "id": "srd.spell.fire_shield",
+      "name": "Fire Shield",
+      "localization": { "en": "Fire Shield", "zh": "火焰护盾", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.fire_shield",
+        "name": "Fire Shield",
+        "localization": { "en": "Fire Shield", "zh": "火焰护盾", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 4, "class_any": ["druid", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a bit of phosphorus or a firefly",
+            "consumed": false
+          },
+          "fire_shield_type_param": "fire_shield_type",
+          "allowed_fire_shield_types": ["warm", "chill"]
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "damage_resistances": { "param": "fire_shield_resistance_type" },
+              "fire_shield": true,
+              "fire_shield_type": { "param": "fire_shield_type" },
+              "bright_light_radius_ft": 10,
+              "dim_light_additional_ft": 10,
+              "melee_hit_retaliation_within_ft": 5,
+              "melee_hit_retaliation_damage": "2d8",
+              "melee_hit_retaliation_damage_type": {
+                "param": "fire_shield_retaliation_damage_type"
+              }
+            },
+            "duration": { "until": "duration_10_minutes" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Fire Shield"
+      }
+    },
+    {
       "id": "srd.spell.cone_of_cold",
       "name": "Cone of Cold",
       "localization": { "en": "Cone of Cold", "zh": "寒冰锥", "aliases": [] },

@@ -540,6 +540,7 @@ class AutomationExecutor:
         self._validate_allowed_damage_type_param(action, params)
         self._validate_allowed_creature_types_param(action, params)
         self._validate_allowed_list_params(action, params)
+        self._validate_fire_shield_type_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
         self._validate_action_economy(action, actor_id, params)
@@ -10082,6 +10083,41 @@ class AutomationExecutor:
                 if normalized not in normalized_values:
                     normalized_values.append(normalized)
             params[param] = normalized_values
+
+    @staticmethod
+    def _validate_fire_shield_type_param(
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        allowed_raw = action.properties.get("allowed_fire_shield_types")
+        if not isinstance(allowed_raw, list) or not allowed_raw:
+            return
+        allowed = [str(shield_type).casefold().strip() for shield_type in allowed_raw]
+        param_name = str(action.properties.get("fire_shield_type_param", "fire_shield_type"))
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            raise AutomationError(f"missing required parameter {param_name}")
+        if isinstance(raw, (dict, list)):
+            raise AutomationError(f"parameter {param_name} must be a scalar")
+        shield_type = str(raw).casefold().strip()
+        if shield_type not in allowed:
+            raise AutomationError(f"{param_name} must be one of: {', '.join(allowed)}")
+        shield_type_effects = {
+            "warm": {
+                "resistance": "cold",
+                "retaliation_damage_type": "fire",
+            },
+            "chill": {
+                "resistance": "fire",
+                "retaliation_damage_type": "cold",
+            },
+        }
+        resolved = shield_type_effects.get(shield_type)
+        if resolved is None:
+            raise AutomationError(f"unsupported {param_name}: {shield_type}")
+        params[param_name] = shield_type
+        params["fire_shield_resistance_type"] = resolved["resistance"]
+        params["fire_shield_retaliation_damage_type"] = resolved["retaliation_damage_type"]
 
     @staticmethod
     def _validate_greater_restoration_preconditions(
