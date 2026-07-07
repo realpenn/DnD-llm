@@ -54,6 +54,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.private_sanctum",
         "srd.resilient_sphere",
         "srd.banishment",
+        "srd.death_ward",
         "srd.arcane_eye",
         "srd.blight",
         "srd.mass_cure_wounds",
@@ -1033,6 +1034,36 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "concentration_1_minute"},
             "tick_on": "self_turn_end",
             "concentration": True,
+        },
+    ]
+    death_ward = compendium.action("srd.death_ward")
+    assert death_ward.requirements == {
+        "spell_level": 4,
+        "class_any": ["cleric", "paladin"],
+    }
+    assert death_ward.properties == {
+        "spell_classes": ["cleric", "paladin"],
+        "target_type": "creature",
+        "target_must_be_touched": True,
+        "first_drop_to_0_hp_sets_hp_to_1_and_ends": True,
+        "negates_instant_death_without_damage_and_ends": True,
+        "spell_definition_id": "srd.spell.death_ward",
+        "spell_level": 4,
+    }
+    assert death_ward.cost.spell_slot_level == 4
+    assert death_ward.range == {"touch": True}
+    assert death_ward.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert death_ward.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "death_ward": True,
+                "first_drop_to_0_hp_sets_hp_to_1": True,
+                "negates_instant_death_without_damage": True,
+            },
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
         },
     ]
     mass_cure_wounds = compendium.action("srd.mass_cure_wounds")
@@ -6151,6 +6182,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fire_shield",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",
+        "srd.spell.death_ward",
         "srd.spell.cone_of_cold",
         "srd.spell.chain_lightning",
         "srd.spell.fire_storm",

@@ -17305,6 +17305,222 @@ def test_banishment_fiend_does_not_return_after_full_duration(make_state) -> Non
         )
 
 
+def test_death_ward_grants_eight_hour_death_protection(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["pc2"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.death_ward",
+        ["pc2"],
+        4,
+        idempotency_key="cast-death-ward",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.death_ward"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "death_ward": True,
+        "first_drop_to_0_hp_sets_hp_to_1": True,
+        "negates_instant_death_without_damage": True,
+    }
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+
+
+def test_death_ward_sets_target_to_one_hp_and_ends_on_automation_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected_character = state.characters["pc2"]
+    protected = state.encounter.combatants["pc2"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    protected.hp_current = 5
+    protected.hp_max = 20
+    protected.death_save_successes = 2
+    protected.death_save_failures = 1
+    protected.stable = True
+    protected_character.hp_current = 5
+    protected_character.hp_max = 20
+    protected_character.death_save_successes = 2
+    protected_character.death_save_failures = 1
+    protected_character.stable = True
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools.cast_spell(
+        "pc1",
+        "srd.death_ward",
+        ["pc2"],
+        4,
+        idempotency_key="cast-death-ward-before-damage",
+    )
+
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(20),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="death-ward-automation-damage",
+    )
+
+    death_ward_change = next(
+        change for change in damage.state_changes if change["type"] == "death_ward"
+    )
+    damage_change = next(change for change in damage.state_changes if change["type"] == "damage")
+    assert death_ward_change["trigger"] == "drop_to_0_hp"
+    assert death_ward_change["hp_before"] == 5
+    assert death_ward_change["hp_after_without_death_ward"] == 0
+    assert death_ward_change["hp_after"] == 1
+    assert death_ward_change["removed_effects"][0]["source_action_id"] == "srd.death_ward"
+    assert damage_change["applied"] == 4
+    assert protected.hp_current == 1
+    assert protected_character.hp_current == 1
+    assert protected.death_save_successes == 0
+    assert protected.death_save_failures == 0
+    assert protected.stable is False
+    assert protected.status_effects == []
+
+
+def test_death_ward_does_not_trigger_when_target_already_at_zero_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc2"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools.cast_spell(
+        "pc1",
+        "srd.death_ward",
+        ["pc2"],
+        4,
+        idempotency_key="cast-death-ward-at-zero",
+    )
+    protected.hp_current = 0
+    state.characters["pc2"].hp_current = 0
+
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(20),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="death-ward-no-trigger-at-zero",
+    )
+
+    assert not any(change["type"] == "death_ward" for change in damage.state_changes)
+    assert protected.hp_current == 0
+    assert any(
+        effect["passive_modifiers"].get("death_ward") is True
+        for effect in protected.status_effects
+    )
+
+
+def test_death_ward_sets_target_to_one_hp_and_ends_on_gm_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc2"]
+    caster.class_levels = {"paladin": 13}
+    caster.spell_slots["4"] = 1
+    protected.hp_current = 6
+    protected.hp_max = 20
+    state.characters["pc2"].hp_current = 6
+    state.characters["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools.cast_spell(
+        "pc1",
+        "srd.death_ward",
+        ["pc2"],
+        4,
+        idempotency_key="cast-death-ward-before-gm-damage",
+    )
+
+    result = tools.apply_damage("pc2", 12, "force", "test.death_ward_gm_damage")
+
+    assert result["applied"] == 5
+    assert result["death_ward"]["trigger"] == "gm.apply_damage"
+    assert result["death_ward"]["hp_before"] == 6
+    assert result["death_ward"]["hp_after_without_death_ward"] == 0
+    assert result["death_ward"]["hp_after"] == 1
+    assert protected.hp_current == 1
+    assert state.characters["pc2"].hp_current == 1
+    assert protected.status_effects == []
+
+
+def test_death_ward_negates_instant_death_without_damage_and_ends(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc2"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    protected.hp_current = 9
+    protected.hp_max = 20
+    state.characters["pc2"].hp_current = 9
+    state.characters["pc2"].hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(state, compendium, AuditLog()).cast_spell(
+        "pc1",
+        "srd.death_ward",
+        ["pc2"],
+        4,
+        idempotency_key="cast-death-ward-before-instant-death",
+    )
+    action = ActionDefinition(
+        id="test.exhaustion",
+        name="Test Exhaustion",
+        localization={"en": "Test Exhaustion", "zh": "测试力竭", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "condition", "condition": "exhaustion"},
+        ],
+        audit_label="Test Exhaustion",
+    )
+    executor = AutomationExecutor(state, RollService(state), AuditLog())
+
+    result = None
+    for _ in range(6):
+        result = executor.execute(action, actor_id="goblin1", targets=["pc2"])
+
+    assert result is not None
+    death_ward_change = next(
+        change for change in result.state_changes if change["type"] == "death_ward"
+    )
+    assert death_ward_change["trigger"] == "instant_death_without_damage"
+    assert death_ward_change["negated_reason"] == "exhaustion"
+    assert death_ward_change["exhaustion_level"] == 6
+    assert protected.hp_current == 9
+    assert state.characters["pc2"].hp_current == 9
+    assert protected.dead is False
+    assert state.characters["pc2"].dead is False
+    assert protected.status_effects == []
+    assert not any(change["type"] == "death" for change in result.state_changes)
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

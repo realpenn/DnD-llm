@@ -318,6 +318,62 @@
       }
     },
     {
+      "id": "srd.spell.death_ward",
+      "name": "Death Ward",
+      "localization": {
+        "en": "Death Ward",
+        "zh": "防死结界",
+        "aliases": ["死亡结界", "死亡防护"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.death_ward",
+        "name": "Death Ward",
+        "localization": {
+          "en": "Death Ward",
+          "zh": "防死结界",
+          "aliases": ["死亡结界", "死亡防护"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "paladin"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "paladin"],
+          "target_type": "creature",
+          "target_must_be_touched": true,
+          "first_drop_to_0_hp_sets_hp_to_1_and_ends": true,
+          "negates_instant_death_without_damage_and_ends": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "death_ward": true,
+              "first_drop_to_0_hp_sets_hp_to_1": true,
+              "negates_instant_death_without_damage": true
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Death Ward"
+      }
+    },
+    {
       "id": "srd.spell.mass_cure_wounds",
       "name": "Mass Cure Wounds",
       "localization": {

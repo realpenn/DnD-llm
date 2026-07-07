@@ -1063,12 +1063,24 @@ class EngineTools:
             normalized_damage_type,
         )
         applied = self._apply_gm_damage(target_id, target, amount, normalized_damage_type)
+        death_ward = self._death_ward_after_drop_to_zero(
+            target_id,
+            hp_before=hp_before,
+            hp_after_without_death_ward=int(
+                getattr(self.state.entity_for_actor(target_id), "hp_current")
+            ),
+            trigger="gm.apply_damage",
+        )
+        if death_ward is not None:
+            applied = hp_before - int(getattr(self.state.entity_for_actor(target_id), "hp_current"))
         result = {
             "target_id": target_id,
             "amount": amount,
             "damage_type": normalized_damage_type,
             "applied": applied,
         }
+        if death_ward is not None:
+            result["death_ward"] = death_ward
         relentless_rage = self._relentless_rage_after_gm_damage(
             target_id,
             hp_before=hp_before,
@@ -1186,6 +1198,75 @@ class EngineTools:
                 "next_dc": dc + 5,
             },
         }
+
+    @staticmethod
+    def _is_death_ward_effect(effect: dict[str, Any]) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        return isinstance(modifiers, dict) and modifiers.get("death_ward") is True
+
+    def _consume_death_ward(self, target_id: str, *, trigger: str) -> dict[str, Any] | None:
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._actor_effect_lists(target_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if self._is_death_ward_effect(effect):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                    continue
+                retained.append(effect)
+            effects[:] = retained
+        if not removed:
+            return None
+        return {
+            "target_id": target_id,
+            "source_action_id": "srd.death_ward",
+            "trigger": trigger,
+            "removed_effects": removed,
+        }
+
+    def _death_ward_after_drop_to_zero(
+        self,
+        target_id: str,
+        *,
+        hp_before: int,
+        hp_after_without_death_ward: int,
+        trigger: str,
+    ) -> dict[str, Any] | None:
+        if hp_before <= 0 or hp_after_without_death_ward != 0:
+            return None
+        death_ward = self._consume_death_ward(target_id, trigger=trigger)
+        if death_ward is None:
+            return None
+        self._set_hp_and_clear_death_state(target_id, 1)
+        death_ward["hp_before"] = hp_before
+        death_ward["hp_after_without_death_ward"] = hp_after_without_death_ward
+        death_ward["hp_after"] = 1
+        return death_ward
+
+    def _exhaustion_death_result(
+        self,
+        target_id: str,
+        target: Character | Monster | Combatant,
+        owner: Character | Monster | Combatant,
+        level: int,
+    ) -> dict[str, Any] | None:
+        if level < 6:
+            return None
+        death_ward = self._consume_death_ward(
+            target_id,
+            trigger="instant_death_without_damage",
+        )
+        if death_ward is not None:
+            death_ward["negated_reason"] = "exhaustion"
+            death_ward["exhaustion_level"] = level
+            return death_ward
+        return _exhaustion_death_result(target_id, target, owner, level)
 
     def _apply_gm_damage(
         self,
@@ -1401,7 +1482,7 @@ class EngineTools:
                 "level_before": before_level,
                 "level_after": after_level,
             }
-            death_result = _exhaustion_death_result(target_id, target, owner, after_level)
+            death_result = self._exhaustion_death_result(target_id, target, owner, after_level)
             if death_result is not None:
                 result["death"] = death_result
             self.audit_log.append(
@@ -1703,9 +1784,12 @@ class EngineTools:
 
     def _set_hp_and_clear_death_state(self, target_id: str, hp_current: int) -> None:
         target = self.state.entity_for_actor(target_id)
-        if not isinstance(target, (Character, Combatant)):
+        if isinstance(target, (Character, Combatant)):
+            self._set_death_recovery_state(target, hp_current)
+        elif hasattr(target, "hp_current"):
+            setattr(target, "hp_current", int(hp_current))
+        else:
             return
-        self._set_death_recovery_state(target, hp_current)
         if isinstance(target, Combatant) and target.entity_id in self.state.characters:
             character = self.state.characters[target.entity_id]
             self._set_death_recovery_state(character, hp_current)

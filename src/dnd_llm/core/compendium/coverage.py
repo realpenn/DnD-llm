@@ -83,6 +83,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.dash",
     "srd.deft_explorer",
     "srd.deflect_energy",
+    "srd.death_ward",
     "srd.devils_sight",
     "srd.defensive_tactics",
     "srd.dimension_door",

@@ -1458,7 +1458,7 @@ class AutomationExecutor:
                 damage_type,
             )
             damage_taken = self._mitigated_damage(target_before, amount, damage_type)
-            applied = self._apply_damage(target_id, amount, damage_type)
+            applied = self._apply_damage(target_id, amount, damage_type, ctx=ctx, path=path)
             extra_damage_changes: list[dict[str, Any]] = []
             extra_damage_taken = 0
             extra_damage_applied = 0
@@ -1480,6 +1480,8 @@ class AutomationExecutor:
                     target_id,
                     extra_result.amount,
                     extra_result.damage_type,
+                    ctx=ctx,
+                    path=f"{path}.extra_damage",
                 )
                 extra_damage_taken += extra_taken
                 extra_damage_applied += extra_applied
@@ -6048,7 +6050,13 @@ class AutomationExecutor:
         amount = roll.total
         secondary_target = self._entity(secondary_target_id)
         damage_taken = self._mitigated_damage(secondary_target, amount, damage_type)
-        applied = self._apply_damage(secondary_target_id, amount, damage_type)
+        applied = self._apply_damage(
+            secondary_target_id,
+            amount,
+            damage_type,
+            ctx=ctx,
+            path=f"{path}.superior_hunters_prey",
+        )
         ctx.last_damage_taken[secondary_target_id] = damage_taken
         ctx.superior_hunters_prey_applied = True
         self._mark_superior_hunters_prey_used(ctx, secondary_target_id)
@@ -7791,7 +7799,7 @@ class AutomationExecutor:
         target = self._entity(target_id)
         hp_before = int(getattr(target, "hp_current"))
         damage_taken = self._mitigated_damage(target, amount, "force")
-        applied = self._apply_damage(target_id, amount, "force")
+        applied = self._apply_damage(target_id, amount, "force", ctx=ctx, path=path)
         hp_after = int(getattr(self._entity(target_id), "hp_current"))
         ctx.last_damage_taken[target_id] = damage_taken
         ctx.result.node_results[path] = {
@@ -8607,8 +8615,8 @@ class AutomationExecutor:
             }
         ]
 
-    @staticmethod
     def _exhaustion_death_change(
+        self,
         target_id: str,
         target: Character | Monster | Combatant,
         owner: Character | Monster | Combatant,
@@ -8617,6 +8625,15 @@ class AutomationExecutor:
     ) -> dict[str, Any] | None:
         if level < 6:
             return None
+        death_ward = self._consume_death_ward(
+            target_id,
+            trigger="instant_death_without_damage",
+            path=path,
+        )
+        if death_ward is not None:
+            death_ward["negated_reason"] = "exhaustion"
+            death_ward["exhaustion_level"] = level
+            return death_ward
         changed: list[dict[str, Any]] = []
         seen: set[int] = set()
         for entity in (target, owner):
@@ -8649,6 +8666,68 @@ class AutomationExecutor:
             "entities": changed,
             "path": path,
         }
+
+    @staticmethod
+    def _is_death_ward_effect(effect: dict[str, Any]) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        return isinstance(modifiers, dict) and modifiers.get("death_ward") is True
+
+    def _consume_death_ward(
+        self,
+        target_id: str,
+        *,
+        trigger: str,
+        path: str,
+    ) -> dict[str, Any] | None:
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._target_effect_lists(target_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if self._is_death_ward_effect(effect):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                    continue
+                retained.append(effect)
+            effects[:] = retained
+        if not removed:
+            return None
+        return {
+            "type": "death_ward",
+            "target_id": target_id,
+            "source_action_id": "srd.death_ward",
+            "trigger": trigger,
+            "removed_effects": removed,
+            "path": path,
+        }
+
+    def _death_ward_after_drop_to_zero(
+        self,
+        target_id: str,
+        *,
+        hp_before: int,
+        hp_after_without_death_ward: int,
+        path: str,
+    ) -> dict[str, Any] | None:
+        if hp_before <= 0 or hp_after_without_death_ward != 0:
+            return None
+        death_ward = self._consume_death_ward(
+            target_id,
+            trigger="drop_to_0_hp",
+            path=path,
+        )
+        if death_ward is None:
+            return None
+        self._set_hp_and_clear_death_state(target_id, 1)
+        death_ward["hp_before"] = hp_before
+        death_ward["hp_after_without_death_ward"] = hp_after_without_death_ward
+        death_ward["hp_after"] = 1
+        return death_ward
 
     def _attack_status_advantage(
         self,
@@ -10809,7 +10888,13 @@ class AutomationExecutor:
             damage_amount = max(0, first_roll.total + second_roll.total + dex_modifier)
             target_before = self._entity(redirect_target_id)
             hp_before = int(getattr(target_before, "hp_current"))
-            applied = self._apply_damage(redirect_target_id, damage_amount, damage_type)
+            applied = self._apply_damage(
+                redirect_target_id,
+                damage_amount,
+                damage_type,
+                ctx=ctx,
+                path=f"{path}.deflect_attacks.redirect",
+            )
             hp_after = int(getattr(self._entity(redirect_target_id), "hp_current"))
             change.update(
                 {
@@ -12270,9 +12355,12 @@ class AutomationExecutor:
 
     def _set_hp_and_clear_death_state(self, target_id: str, hp_current: int) -> None:
         target = self._entity(target_id)
-        if not isinstance(target, (Character, Combatant)):
+        if isinstance(target, (Character, Combatant)):
+            self._set_death_recovery_state(target, hp_current)
+        elif hasattr(target, "hp_current"):
+            setattr(target, "hp_current", int(hp_current))
+        else:
             return
-        self._set_death_recovery_state(target, hp_current)
         if isinstance(target, Combatant) and target.entity_id in self.state.characters:
             character = self.state.characters[target.entity_id]
             self._set_death_recovery_state(character, hp_current)
@@ -12409,7 +12497,15 @@ class AutomationExecutor:
         )
         return bool(node.get("concentration", metadata_concentration or duration_concentration))
 
-    def _apply_damage(self, target_id: str, amount: int, damage_type: str) -> int:
+    def _apply_damage(
+        self,
+        target_id: str,
+        amount: int,
+        damage_type: str,
+        *,
+        ctx: _Context,
+        path: str,
+    ) -> int:
         target = self._entity(target_id)
         adjusted = self._mitigated_damage(target, amount, damage_type)
         temp_hp = int(getattr(target, "temp_hp", 0))
@@ -12420,6 +12516,14 @@ class AutomationExecutor:
         remaining = adjusted - absorbed
         before = int(getattr(target, "hp_current"))
         setattr(target, "hp_current", max(0, before - remaining))
+        death_ward = self._death_ward_after_drop_to_zero(
+            target_id,
+            hp_before=before,
+            hp_after_without_death_ward=int(getattr(target, "hp_current")),
+            path=path,
+        )
+        if death_ward is not None:
+            ctx.result.state_changes.append(death_ward)
         return before - int(getattr(target, "hp_current"))
 
     def _set_temp_hp_source(
