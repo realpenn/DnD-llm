@@ -411,6 +411,54 @@ def test_resolver_scales_spell_target_cap_with_requested_slot_level(make_state) 
     assert upcast.action_id == "srd.hold_monster"
 
 
+def test_resolver_rejects_resilient_sphere_target_larger_than_large(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.resilient_sphere")
+    character.spell_slots["4"] = 1
+    state.encounter.combatants["goblin1"].size = "huge"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="弹力法球",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.resilient_sphere",
+            params={"slot_level": 4},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "target must be Large or smaller"
+
+
+def test_resolver_allows_resilient_sphere_on_willing_ally_without_pvp(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.resilient_sphere")
+    character.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="弹力法球",
+            target_ids=["pc2"],
+            candidate_action_id="srd.resilient_sphere",
+            params={"slot_level": 4, "target_willing": {"pc2": True}},
+        )
+    )
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.resilient_sphere"
+
+
 def test_resolver_checks_greater_restoration_choice_and_component_cost(
     make_state,
 ) -> None:

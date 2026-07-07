@@ -155,6 +155,84 @@
       }
     },
     {
+      "id": "srd.spell.resilient_sphere",
+      "name": "Resilient Sphere",
+      "localization": {
+        "en": "Resilient Sphere",
+        "zh": "弹力法球",
+        "aliases": ["弹性法球", "坚韧法球"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.resilient_sphere",
+        "name": "Resilient Sphere",
+        "localization": {
+          "en": "Resilient Sphere",
+          "zh": "弹力法球",
+          "aliases": ["弹性法球", "坚韧法球"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a glass sphere",
+            "consumed": false
+          },
+          "target_size_max": "large",
+          "allows_willing_target": true,
+          "can_enclose_large_or_smaller_creature_or_object": true,
+          "object_targets_recorded_as_metadata_only": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "saving_throw",
+            "ability": "dex",
+            "dc_from": { "spell_save_dc": "actor" },
+            "auto_fail_willing_targets": true
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "resilient_sphere": true,
+              "enclosed_in_resilient_sphere": true,
+              "can_enclose_large_or_smaller_creature_or_object": true,
+              "barrier_blocks_physical_objects_energy_and_spell_effects": true,
+              "barrier_blocks_in_or_out": true,
+              "inside_can_breathe": true,
+              "barrier_immune_to_all_damage": true,
+              "outside_origin_attacks_and_effects_cannot_damage_inside": true,
+              "inside_creature_cannot_damage_outside": true,
+              "sphere_weightless": true,
+              "sphere_just_large_enough_for_contents": true,
+              "enclosed_creature_can_action_roll_sphere_up_to_half_speed": true,
+              "globe_can_be_picked_up_and_moved": true,
+              "disintegrate_targeting_globe_destroys_it": true
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Resilient Sphere"
+      }
+    },
+    {
       "id": "srd.spell.mass_cure_wounds",
       "name": "Mass Cure Wounds",
       "localization": {

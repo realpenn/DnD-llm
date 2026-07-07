@@ -16810,6 +16810,161 @@ def test_fire_shield_requires_warm_or_chill_before_cost(make_state) -> None:
     assert state.encounter.combatants["pc1"].status_effects == []
 
 
+def test_resilient_sphere_failed_save_encloses_large_or_smaller_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target.abilities = {"dex": 10}
+    target.size = "large"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.resilient_sphere",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-resilient-sphere-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.resilient_sphere"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "resilient_sphere": True,
+        "enclosed_in_resilient_sphere": True,
+        "can_enclose_large_or_smaller_creature_or_object": True,
+        "barrier_blocks_physical_objects_energy_and_spell_effects": True,
+        "barrier_blocks_in_or_out": True,
+        "inside_can_breathe": True,
+        "barrier_immune_to_all_damage": True,
+        "outside_origin_attacks_and_effects_cannot_damage_inside": True,
+        "inside_creature_cannot_damage_outside": True,
+        "sphere_weightless": True,
+        "sphere_just_large_enough_for_contents": True,
+        "enclosed_creature_can_action_roll_sphere_up_to_half_speed": True,
+        "globe_can_be_picked_up_and_moved": True,
+        "disintegrate_targeting_globe_destroys_it": True,
+    }
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "damage"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
+def test_resilient_sphere_willing_target_is_enclosed_without_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["pc2"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.resilient_sphere",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 4, "target_willing": {"pc2": True}},
+        idempotency_key="cast-resilient-sphere-willing-target",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["auto_failed"] is True
+    assert save_node["status_sources"] == [
+        {"kind": "auto_fail", "modifier": "auto_fail_willing_targets"}
+    ]
+    assert result["dice_rolls"] == []
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.resilient_sphere"
+    assert effect["passive_modifiers"]["enclosed_in_resilient_sphere"] is True
+
+
+def test_resilient_sphere_successful_save_has_no_enclosing_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target.abilities = {"dex": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.resilient_sphere",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-resilient-sphere-successful-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["success"] is True
+    assert target.status_effects == []
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+
+def test_resilient_sphere_rejects_huge_target_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    state.encounter.combatants["goblin1"].size = "huge"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be Large or smaller"):
+        tools.cast_spell(
+            "pc1",
+            "srd.resilient_sphere",
+            ["goblin1"],
+            4,
+            idempotency_key="cast-resilient-sphere-huge",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.encounter.action_budgets == {}
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

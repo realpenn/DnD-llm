@@ -320,6 +320,9 @@ class ActionResolver:
         target_check = self._check_targets(draft, action)
         if target_check is not None:
             return target_check
+        target_size_check = self._check_target_size_max(draft, action)
+        if target_size_check is not None:
+            return target_size_check
         self_only_check = self._check_self_only_targets(draft, action)
         if self_only_check is not None:
             return self_only_check
@@ -2223,6 +2226,11 @@ class ActionResolver:
         for target_id in draft.target_ids:
             target = self.state.encounter.combatants.get(target_id)
             if target is not None and target.side == actor_combatant.side:
+                if (
+                    action.properties.get("allows_willing_target") is True
+                    and self._target_willing(draft.params, target_id)
+                ):
+                    continue
                 allied_targets.append(target_id)
         if harmful and allied_targets:
             has_pc_target = any(target_id.startswith("pc") for target_id in allied_targets)
@@ -2307,6 +2315,44 @@ class ActionResolver:
                 reason="target list must include self",
                 action_id=action.id,
             )
+        return None
+
+    def _check_target_size_max(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> ResolverResult | None:
+        max_size = action.properties.get("target_size_max")
+        if not isinstance(max_size, str):
+            return None
+        normalized_max = max_size.casefold().strip()
+        max_rank = RESOLVER_CREATURE_SIZE_RANKS.get(normalized_max)
+        if max_rank is None:
+            return ResolverResult(
+                status="rejected",
+                reason=f"unsupported target size max: {max_size}",
+                action_id=action.id,
+            )
+        for target_id in draft.target_ids:
+            try:
+                target = self.state.entity_for_actor(target_id)
+            except KeyError:
+                return ResolverResult(
+                    status="rejected",
+                    reason=f"unknown target: {target_id}",
+                    action_id=action.id,
+                )
+            size = str(getattr(target, "size", "medium")).casefold().strip()
+            rank = RESOLVER_CREATURE_SIZE_RANKS.get(
+                size,
+                RESOLVER_CREATURE_SIZE_RANKS["medium"],
+            )
+            if rank > max_rank:
+                return ResolverResult(
+                    status="rejected",
+                    reason=f"target must be {normalized_max.title()} or smaller",
+                    action_id=action.id,
+                )
         return None
 
     def _check_willing_targets(

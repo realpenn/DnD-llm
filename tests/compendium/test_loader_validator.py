@@ -52,6 +52,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.hallucinatory_terrain",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
+        "srd.resilient_sphere",
         "srd.arcane_eye",
         "srd.blight",
         "srd.mass_cure_wounds",
@@ -920,6 +921,55 @@ def test_compendium_loads_srd_actions() -> None:
                 }
             },
         }
+    ]
+    resilient_sphere = compendium.action("srd.resilient_sphere")
+    assert resilient_sphere.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert resilient_sphere.properties["spell_classes"] == ["wizard"]
+    assert resilient_sphere.properties["material_component"] == {
+        "description": "a glass sphere",
+        "consumed": False,
+    }
+    assert resilient_sphere.properties["target_size_max"] == "large"
+    assert resilient_sphere.properties["allows_willing_target"] is True
+    assert resilient_sphere.properties["can_enclose_large_or_smaller_creature_or_object"] is True
+    assert resilient_sphere.properties["object_targets_recorded_as_metadata_only"] is True
+    assert resilient_sphere.cost.spell_slot_level == 4
+    assert resilient_sphere.range == {"normal_ft": 30}
+    assert resilient_sphere.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert resilient_sphere.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "saving_throw",
+            "ability": "dex",
+            "dc_from": {"spell_save_dc": "actor"},
+            "auto_fail_willing_targets": True,
+        },
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "resilient_sphere": True,
+                "enclosed_in_resilient_sphere": True,
+                "can_enclose_large_or_smaller_creature_or_object": True,
+                "barrier_blocks_physical_objects_energy_and_spell_effects": True,
+                "barrier_blocks_in_or_out": True,
+                "inside_can_breathe": True,
+                "barrier_immune_to_all_damage": True,
+                "outside_origin_attacks_and_effects_cannot_damage_inside": True,
+                "inside_creature_cannot_damage_outside": True,
+                "sphere_weightless": True,
+                "sphere_just_large_enough_for_contents": True,
+                "enclosed_creature_can_action_roll_sphere_up_to_half_speed": True,
+                "globe_can_be_picked_up_and_moved": True,
+                "disintegrate_targeting_globe_destroys_it": True,
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
     ]
     mass_cure_wounds = compendium.action("srd.mass_cure_wounds")
     assert mass_cure_wounds.requirements == {
@@ -6035,6 +6085,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fireball",
         "srd.spell.ice_storm",
         "srd.spell.fire_shield",
+        "srd.spell.resilient_sphere",
         "srd.spell.cone_of_cold",
         "srd.spell.chain_lightning",
         "srd.spell.fire_storm",

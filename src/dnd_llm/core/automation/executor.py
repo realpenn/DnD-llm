@@ -478,6 +478,7 @@ class AutomationExecutor:
         self._validate_target_policy(action, actor_id, targets or [], params)
         self._validate_self_only_targets(action, actor_id, targets or [])
         self._validate_requires_self_target(action, actor_id, targets or [])
+        self._validate_target_size_max(action, targets or [])
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
@@ -986,6 +987,27 @@ class AutomationExecutor:
                 > 1
             ):
                 raise AutomationError("choose only one failed saving throw feature")
+            if node.get("auto_fail_willing_targets") is True and self._target_willing(
+                ctx.params,
+                target_id,
+            ):
+                ctx.save_successes[target_id] = False
+                ctx.save_abilities[target_id] = ability.lower()
+                ctx.result.node_results[path] = {
+                    "target_id": target_id,
+                    "ability": ability,
+                    "dc": dc,
+                    "dc_source": dc_source,
+                    "auto_failed": True,
+                    "status_sources": [
+                        {
+                            "kind": "auto_fail",
+                            "modifier": "auto_fail_willing_targets",
+                        }
+                    ],
+                    "success": False,
+                }
+                continue
             auto_fail_sources = self._saving_throw_auto_failure_sources(target, ability, node)
             if auto_fail_sources:
                 if use_indomitable:
@@ -13820,6 +13842,21 @@ class AutomationExecutor:
         actor_aliases = self._entity_aliases(actor_id)
         if not any(actor_aliases & self._entity_aliases(target_id) for target_id in targets):
             raise AutomationError("target list must include self")
+
+    def _validate_target_size_max(self, action: ActionDefinition, targets: list[str]) -> None:
+        max_size = action.properties.get("target_size_max")
+        if not isinstance(max_size, str):
+            return
+        normalized_max = max_size.casefold().strip()
+        max_rank = CREATURE_SIZE_RANKS.get(normalized_max)
+        if max_rank is None:
+            raise AutomationError(f"unsupported target size max: {max_size}")
+        for target_id in targets:
+            target = self._entity(target_id)
+            size = str(getattr(target, "size", "medium")).casefold().strip()
+            rank = CREATURE_SIZE_RANKS.get(size, CREATURE_SIZE_RANKS["medium"])
+            if rank > max_rank:
+                raise AutomationError(f"target must be {normalized_max.title()} or smaller")
 
     def _validate_willing_targets(
         self,
