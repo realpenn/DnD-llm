@@ -258,6 +258,71 @@
       }
     },
     {
+      "id": "srd.spell.secret_chest",
+      "name": "Secret Chest",
+      "localization": {
+        "en": "Secret Chest",
+        "zh": "秘藏箱",
+        "aliases": ["隐秘箱", "秘密箱"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.secret_chest",
+        "name": "Secret Chest",
+        "localization": {
+          "en": "Secret Chest",
+          "zh": "秘藏箱",
+          "aliases": ["隐秘箱", "秘密箱"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a chest, 3 feet by 2 feet by 2 feet, constructed from rare materials worth 5,000+ GP, and a Tiny replica of the chest made from the same materials worth 50+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "secret_chest_ethereal_storage",
+            "scope": { "target": "touched_chest_and_replica" },
+            "duration": { "until": "dispelled" },
+            "metadata": {
+              "hides_chest_on_ethereal_plane": true,
+              "requires_touching_chest_and_tiny_replica": true,
+              "chest_dimensions_ft": { "length": 3, "width": 2, "height": 2 },
+              "max_contents_volume_cubic_ft": 12,
+              "contents_must_be_nonliving_material": true,
+              "recall_requires_magic_action_touch_replica": true,
+              "recalled_chest_appears_on_ground_unoccupied_space_within_ft": 5,
+              "send_back_requires_magic_action_touch_chest_and_replica": true,
+              "cumulative_end_chance_starts_after_days": 60,
+              "daily_cumulative_end_chance_percent": 5,
+              "ends_if_cast_again": true,
+              "ends_if_tiny_replica_destroyed": true,
+              "if_ends_while_chest_on_ethereal_plane_chest_remains_there_to_find": true
+            }
+          }
+        ],
+        "audit_label": "Secret Chest"
+      }
+    },
+    {
       "id": "srd.spell.insect_plague",
       "name": "Insect Plague",
       "localization": {

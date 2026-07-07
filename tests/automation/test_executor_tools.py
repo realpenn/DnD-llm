@@ -19063,6 +19063,95 @@ def test_faithful_hound_rejects_invalid_caster_or_missing_slot_before_effect(
     assert state.world.active_effects == []
 
 
+def test_secret_chest_spends_slot_and_records_ethereal_storage(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    caster.gold = 5050
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.secret_chest",
+        [],
+        4,
+        idempotency_key="cast-secret-chest",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.gold == 5050
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_4"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.secret_chest"
+    assert effect["effect_type"] == "secret_chest_ethereal_storage"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "touched_chest_and_replica"}
+    assert effect["duration"] == {"until": "dispelled"}
+    assert effect["metadata"] == {
+        "hides_chest_on_ethereal_plane": True,
+        "requires_touching_chest_and_tiny_replica": True,
+        "chest_dimensions_ft": {"length": 3, "width": 2, "height": 2},
+        "max_contents_volume_cubic_ft": 12,
+        "contents_must_be_nonliving_material": True,
+        "recall_requires_magic_action_touch_replica": True,
+        "recalled_chest_appears_on_ground_unoccupied_space_within_ft": 5,
+        "send_back_requires_magic_action_touch_chest_and_replica": True,
+        "cumulative_end_chance_starts_after_days": 60,
+        "daily_cumulative_end_chance_percent": 5,
+        "ends_if_cast_again": True,
+        "ends_if_tiny_replica_destroyed": True,
+        "if_ends_while_chest_on_ethereal_plane_chest_remains_there_to_find": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "secret_chest_ethereal_storage"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+
+
+def test_secret_chest_rejects_invalid_caster_or_missing_slot_before_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of wizard"):
+        tools.cast_spell(
+            "pc1",
+            "srd.secret_chest",
+            [],
+            4,
+            idempotency_key="secret-chest-cleric",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 0
+    with pytest.raises(AutomationError, match="no spell slot level 4 available"):
+        tools.cast_spell(
+            "pc1",
+            "srd.secret_chest",
+            [],
+            4,
+            idempotency_key="secret-chest-no-slot",
+        )
+
+    assert caster.spell_slots["4"] == 0
+    assert state.world.active_effects == []
+
+
 def test_transport_via_plants_spends_slot_and_records_timed_plant_link(
     make_state,
 ) -> None:

@@ -63,6 +63,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.teleportation_circle",
         "srd.dimension_door",
         "srd.faithful_hound",
+        "srd.secret_chest",
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
@@ -1333,6 +1334,47 @@ def test_compendium_loads_srd_actions() -> None:
                 },
                 "can_move_with_magic_action": True,
                 "move_distance_ft": 30,
+            },
+        }
+    ]
+    secret_chest = compendium.action("srd.secret_chest")
+    assert secret_chest.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert secret_chest.properties["spell_classes"] == ["wizard"]
+    assert secret_chest.properties["material_component"] == {
+        "description": (
+            "a chest, 3 feet by 2 feet by 2 feet, constructed from rare materials "
+            "worth 5,000+ GP, and a Tiny replica of the chest made from the same "
+            "materials worth 50+ GP"
+        ),
+        "consumed": False,
+    }
+    assert secret_chest.cost.spell_slot_level == 4
+    assert secret_chest.cost.gold == 0
+    assert secret_chest.range == {"touch": True}
+    assert secret_chest.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert secret_chest.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "secret_chest_ethereal_storage",
+            "scope": {"target": "touched_chest_and_replica"},
+            "duration": {"until": "dispelled"},
+            "metadata": {
+                "hides_chest_on_ethereal_plane": True,
+                "requires_touching_chest_and_tiny_replica": True,
+                "chest_dimensions_ft": {"length": 3, "width": 2, "height": 2},
+                "max_contents_volume_cubic_ft": 12,
+                "contents_must_be_nonliving_material": True,
+                "recall_requires_magic_action_touch_replica": True,
+                "recalled_chest_appears_on_ground_unoccupied_space_within_ft": 5,
+                "send_back_requires_magic_action_touch_chest_and_replica": True,
+                "cumulative_end_chance_starts_after_days": 60,
+                "daily_cumulative_end_chance_percent": 5,
+                "ends_if_cast_again": True,
+                "ends_if_tiny_replica_destroyed": True,
+                "if_ends_while_chest_on_ethereal_plane_chest_remains_there_to_find": True,
             },
         }
     ]
