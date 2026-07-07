@@ -36,6 +36,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.lightning_bolt",
         "srd.ice_storm",
         "srd.fire_shield",
+        "srd.wall_of_fire",
         "srd.cone_of_cold",
         "srd.blade_barrier",
         "srd.chain_lightning",
@@ -439,6 +440,67 @@ def test_compendium_loads_srd_actions() -> None:
             },
             "duration": {"until": "duration_10_minutes"},
             "tick_on": "self_turn_end",
+        },
+    ]
+    wall_of_fire = compendium.action("srd.wall_of_fire")
+    assert wall_of_fire.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert wall_of_fire.properties["spell_classes"] == ["druid", "sorcerer", "wizard"]
+    assert wall_of_fire.properties["material_component"] == {
+        "description": "a piece of charcoal",
+        "consumed": False,
+    }
+    assert wall_of_fire.range == {"normal_ft": 120}
+    assert wall_of_fire.target_policy == {"min": 0, "max": 12, "harmful": True}
+    assert wall_of_fire.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "5d8",
+            "damage_type": "fire",
+            "save_half": True,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d8",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "wall_of_fire",
+            "scope": {"target": "solid_surface", "range_ft": 120},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "solid_surface_required": True,
+                "opaque": True,
+                "shape_options": ["wall", "ringed_wall"],
+                "wall_max_length_ft": 60,
+                "wall_max_height_ft": 20,
+                "wall_thickness_ft": 1,
+                "ringed_wall_max_diameter_ft": 20,
+                "ringed_wall_max_height_ft": 20,
+                "ringed_wall_thickness_ft": 1,
+                "initial_save": {
+                    "ability": "dex",
+                    "damage": "5d8 fire",
+                    "save_half": True,
+                    "higher_level_damage_increase": "1d8 per slot above 4",
+                },
+                "damaging_side_selected_on_cast": True,
+                "damaging_side_range_ft": 10,
+                "other_side_deals_no_damage": True,
+                "repeat_damage_triggers": [
+                    "creature_ends_turn_within_10_ft_of_damaging_side",
+                    "creature_enters_wall_first_time_on_turn",
+                    "creature_ends_turn_inside_wall",
+                ],
+                "repeat_damage_once_per_turn": True,
+                "repeat_damage": {
+                    "damage": "5d8 fire",
+                    "higher_level_damage_increase": "1d8 per slot above 4",
+                },
+            },
         },
     ]
     blight = compendium.action("srd.blight")
@@ -6180,6 +6242,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fireball",
         "srd.spell.ice_storm",
         "srd.spell.fire_shield",
+        "srd.spell.wall_of_fire",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",
         "srd.spell.death_ward",
