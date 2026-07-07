@@ -1,6 +1,75 @@
 {
   "items": [
     {
+      "id": "srd.spell.charm_monster",
+      "name": "Charm Monster",
+      "localization": {
+        "en": "Charm Monster",
+        "zh": "怪物魅惑术",
+        "aliases": ["怪物魅惑"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "enchantment",
+      "classes": ["bard", "druid", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.charm_monster",
+        "name": "Charm Monster",
+        "localization": {
+          "en": "Charm Monster",
+          "zh": "怪物魅惑术",
+          "aliases": ["怪物魅惑"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "base_spell_slot_level": 4,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "druid", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "druid", "sorcerer", "warlock", "wizard"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "saving_throw_advantage_if_caster_or_allies_fighting_target": true,
+          "target_friendly_to_applier": true,
+          "target_knows_charmed_when_spell_ends": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "target_friendly_to_applier": true,
+              "target_knows_charmed_when_spell_ends": true
+            },
+            "duration": {
+              "until": "duration_1_hour_or_harmed",
+              "break_on_damage": true,
+              "break_on_damage_by": "applied_by_or_allies"
+            },
+            "tick_on": "duration_or_damage"
+          }
+        ],
+        "audit_label": "Charm Monster"
+      }
+    },
+    {
       "id": "srd.spell.hold_monster",
       "name": "Hold Monster",
       "localization": {

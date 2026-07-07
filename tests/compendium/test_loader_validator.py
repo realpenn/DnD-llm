@@ -59,6 +59,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.arcane_eye",
         "srd.blight",
         "srd.mass_cure_wounds",
+        "srd.charm_monster",
         "srd.hold_monster",
         "srd.irresistible_dance",
         "srd.mass_suggestion",
@@ -1163,6 +1164,53 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_amount_per_slot_above": 10,
         },
         {"type": "remove_condition", "conditions": ["blinded", "deafened", "poisoned"]},
+    ]
+    charm_monster = compendium.action("srd.charm_monster")
+    assert charm_monster.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "druid", "sorcerer", "warlock", "wizard"],
+    }
+    assert charm_monster.properties["spell_classes"] == [
+        "bard",
+        "druid",
+        "sorcerer",
+        "warlock",
+        "wizard",
+    ]
+    assert charm_monster.properties["target_must_be_visible"] is True
+    assert charm_monster.properties["target_type"] == "creature"
+    assert (
+        charm_monster.properties["saving_throw_advantage_if_caster_or_allies_fighting_target"]
+        is True
+    )
+    assert charm_monster.properties["target_friendly_to_applier"] is True
+    assert charm_monster.properties["target_knows_charmed_when_spell_ends"] is True
+    assert charm_monster.range == {"normal_ft": 30}
+    assert charm_monster.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": True,
+        "base_spell_slot_level": 4,
+        "max_targets_per_slot_above": 1,
+    }
+    assert charm_monster.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "target_friendly_to_applier": True,
+                "target_knows_charmed_when_spell_ends": True,
+            },
+            "duration": {
+                "until": "duration_1_hour_or_harmed",
+                "break_on_damage": True,
+                "break_on_damage_by": "applied_by_or_allies",
+            },
+            "tick_on": "duration_or_damage",
+        },
     ]
     hold_monster = compendium.action("srd.hold_monster")
     assert hold_monster.requirements == {
@@ -6256,6 +6304,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.heal",
         "srd.spell.harm",
         "srd.spell.finger_of_death",
+        "srd.spell.charm_monster",
         "srd.spell.etherealness",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9

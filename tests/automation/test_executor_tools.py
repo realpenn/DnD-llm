@@ -19094,6 +19094,202 @@ def test_mass_suggestion_upcast_uses_longer_duration_from_slot(make_state) -> No
     }
 
 
+def test_charm_monster_charms_failed_target_and_ends_on_applier_or_ally_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    target.hp_current = 20
+    target.hp_max = 20
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        abilities={"wis": 10},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.charm_monster",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-charm-monster-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.charm_monster"
+    assert effect["applied_by"] == "pc1"
+    assert effect["condition"] == "charmed"
+    assert effect["duration"] == {
+        "until": "duration_1_hour_or_harmed",
+        "break_on_damage": True,
+        "break_on_damage_by": "applied_by_or_allies",
+    }
+    assert effect["passive_modifiers"] == {
+        "target_friendly_to_applier": True,
+        "target_knows_charmed_when_spell_ends": True,
+    }
+    assert effect["tick_on"] == "duration_or_damage"
+    condition_change = next(
+        change for change in result["state_changes"] if change["type"] == "condition"
+    )
+    assert condition_change["condition"] == "charmed"
+
+    enemy_damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="goblin2",
+        targets=["goblin1"],
+        idempotency_key="enemy-damages-charm-monster-target",
+    )
+
+    assert not [
+        change for change in enemy_damage.state_changes if change.get("type") == "effect_expired"
+    ]
+    assert any(
+        active_effect.get("condition") == "charmed"
+        for active_effect in state.encounter.combatants["goblin1"].status_effects
+    )
+    ally_damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="pc2",
+        targets=["goblin1"],
+        idempotency_key="ally-damages-charm-monster-target",
+    )
+
+    expiry = next(
+        change for change in ally_damage.state_changes if change["type"] == "effect_expired"
+    )
+    assert expiry["trigger"] == "damage"
+    assert expiry["removed"][0]["source_action_id"] == "srd.charm_monster"
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
+def test_charm_monster_successful_save_applies_no_condition(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.charm_monster",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-charm-monster-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["success"] is True
+    assert target.status_effects == []
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+
+
+def test_charm_monster_upcast_adds_target_and_base_slot_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 1
+    caster.spell_slots["5"] = 1
+    state.encounter.combatants["goblin1"].abilities = {"wis": 10}
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        abilities={"wis": 10},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 1]),
+    )
+
+    with pytest.raises(AutomationError, match="too many targets"):
+        tools.cast_spell(
+            "pc1",
+            "srd.charm_monster",
+            ["goblin1", "goblin2"],
+            4,
+            idempotency_key="cast-charm-monster-too-many-targets",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert caster.spell_slots["5"] == 1
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.charm_monster",
+        ["goblin1", "goblin2"],
+        5,
+        idempotency_key="cast-charm-monster-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 1
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    condition_changes = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "condition" and change["condition"] == "charmed"
+    ]
+    assert [change["target_id"] for change in condition_changes] == ["goblin1", "goblin2"]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d20+0"]
+
+
 def test_hold_monster_rejects_extra_target_without_upcast_before_spending_slot(
     make_state,
 ) -> None:

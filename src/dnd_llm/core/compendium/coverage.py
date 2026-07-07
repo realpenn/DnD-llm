@@ -71,6 +71,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.blessed_strikes_potent_spellcasting",
     "srd.body_and_mind",
     "srd.brutal_strike",
+    "srd.charm_monster",
     "srd.countercharm",
     "srd.cure_wounds",
     "srd.cunning_strike",
