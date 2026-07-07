@@ -479,10 +479,12 @@ class AutomationExecutor:
         self._validate_self_only_targets(action, actor_id, targets or [])
         self._validate_requires_self_target(action, actor_id, targets or [])
         self._validate_target_size_max(action, targets or [])
+        self._validate_targets_not_out_of_play(action, targets or [])
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
         self._validate_action_surge_preconditions(action, actor_id)
+        self._validate_actor_not_out_of_play(action, actor_id)
         self._validate_allowed_action_effects(action, actor_id)
         self._validate_spellcasting_allowed(action, actor_id)
         self._validate_attacks_allowed(action, actor_id)
@@ -8529,6 +8531,16 @@ class AutomationExecutor:
             effects.extend(self.state.monsters[entity.entity_id].status_effects)
         return effects
 
+    def _out_of_play_sources(self, entity: Character | Monster | Combatant) -> list[str]:
+        sources: list[str] = []
+        for effect in self._status_effects_for(entity):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict) or modifiers.get("out_of_play") is not True:
+                continue
+            source = effect.get("source_action_id") or effect.get("condition") or "effect"
+            sources.append(str(source))
+        return sources
+
     def _exhaustion_details(self, entity: Character | Monster | Combatant) -> tuple[int, int]:
         effects = self._status_effects_for(entity)
         level = exhaustion_level(effects)
@@ -13842,6 +13854,29 @@ class AutomationExecutor:
         actor_aliases = self._entity_aliases(actor_id)
         if not any(actor_aliases & self._entity_aliases(target_id) for target_id in targets):
             raise AutomationError("target list must include self")
+
+    def _validate_actor_not_out_of_play(self, action: ActionDefinition, actor_id: str) -> None:
+        if action.properties.get("can_be_used_out_of_play") is True:
+            return
+        try:
+            actor = self._entity(actor_id)
+        except KeyError:
+            return
+        sources = self._out_of_play_sources(actor)
+        if sources:
+            raise AutomationError(f"actor is out of play due to {sources[0]}")
+
+    def _validate_targets_not_out_of_play(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+    ) -> None:
+        if action.properties.get("can_target_out_of_play") is True:
+            return
+        for target_id in targets:
+            sources = self._out_of_play_sources(self._entity(target_id))
+            if sources:
+                raise AutomationError(f"target is out of play due to {sources[0]}")
 
     def _validate_target_size_max(self, action: ActionDefinition, targets: list[str]) -> None:
         max_size = action.properties.get("target_size_max")

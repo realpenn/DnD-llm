@@ -16965,6 +16965,346 @@ def test_resilient_sphere_rejects_huge_target_before_cost(make_state) -> None:
     assert state.encounter.combatants["goblin1"].status_effects == []
 
 
+def test_banishment_failed_save_banishes_and_incapacitated_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"cleric": 7}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target.abilities = {"cha": 8}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.banishment",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-banishment-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    banished = next(
+        effect
+        for effect in target.status_effects
+        if effect["passive_modifiers"].get("banished") is True
+    )
+    incapacitated = next(
+        effect for effect in target.status_effects if effect["condition"] == "incapacitated"
+    )
+    assert banished["source_action_id"] == "srd.banishment"
+    assert banished["condition"] is None
+    assert banished["passive_modifiers"] == {
+        "banished": True,
+        "out_of_play": True,
+        "banished_to_harmless_demiplane": True,
+        "returns_when_spell_ends": True,
+        "returns_to_space_left_or_nearest_unoccupied": True,
+        "does_not_return_if_full_duration_creature_types": [
+            "aberration",
+            "celestial",
+            "elemental",
+            "fey",
+            "fiend",
+        ],
+        "full_duration_transport_destination": "random_location_on_gm_chosen_associated_plane",
+    }
+    assert banished["duration"] == {"until": "concentration_1_minute"}
+    assert banished["tick_on"] == "self_turn_end"
+    assert banished["concentration"] is True
+    assert incapacitated["source_action_id"] == "srd.banishment"
+    assert incapacitated["duration"] == {"until": "concentration_1_minute"}
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "damage"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert [entry["remaining_ticks_before"] for entry in lifecycle.ticked] == [10, 10]
+    assert [entry["remaining_ticks_after"] for entry in lifecycle.ticked] == [9, 9]
+
+
+def test_banishment_successful_save_has_no_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target.abilities = {"cha": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.banishment",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-banishment-successful-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["success"] is True
+    assert target.status_effects == []
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+
+def test_banishment_upcast_adds_one_target_per_slot_above_four(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 9}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 1
+    caster.spell_slots["5"] = 1
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        abilities={"cha": 8},
+        position_node_id="cover",
+    )
+    state.encounter.combatants["goblin1"].abilities = {"cha": 8}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 1]),
+    )
+
+    with pytest.raises(AutomationError, match="too many targets"):
+        tools.cast_spell(
+            "pc1",
+            "srd.banishment",
+            ["goblin1", "goblin2"],
+            4,
+            idempotency_key="cast-banishment-too-many-targets",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert caster.spell_slots["5"] == 1
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.banishment",
+        ["goblin1", "goblin2"],
+        5,
+        idempotency_key="cast-banishment-upcast-two-targets",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 1
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    assert all(
+        any(effect["passive_modifiers"].get("banished") is True for effect in combatant.status_effects)
+        for combatant in (
+            state.encounter.combatants["goblin1"],
+            state.encounter.combatants["goblin2"],
+        )
+    )
+
+
+def test_banishment_out_of_play_blocks_actor_and_target_in_executor_and_resolver(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"sorcerer": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target.abilities = {"cha": 8}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    tools.cast_spell(
+        "pc1",
+        "srd.banishment",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-banishment-out-of-play-hooks",
+    )
+
+    executor = AutomationExecutor(state, RollService(state), AuditLog())
+    with pytest.raises(AutomationError, match="actor is out of play due to srd.banishment"):
+        executor.execute(
+            _damage_action(1),
+            actor_id="goblin1",
+            targets=["pc1"],
+            idempotency_key="banished-actor-cannot-act",
+        )
+    with pytest.raises(AutomationError, match="target is out of play due to srd.banishment"):
+        executor.execute(
+            _damage_action(1),
+            actor_id="pc1",
+            targets=["goblin1"],
+            idempotency_key="banished-target-cannot-be-targeted",
+        )
+
+    state.encounter.action_budgets = {}
+    resolver = ActionResolver(state, compendium.actions)
+    actor_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="shortsword",
+            target_ids=["pc1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    target_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="shortsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert actor_result.status == "rejected"
+    assert actor_result.reason == "actor is out of play due to srd.banishment"
+    assert target_result.status == "rejected"
+    assert target_result.reason == "target is out of play due to srd.banishment"
+
+
+def test_banishment_humanoid_returns_after_full_duration(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"paladin": 13}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["4"] = 1
+    target.abilities = {"cha": 8}
+    target.creature_type = "humanoid"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+    tools.cast_spell(
+        "pc1",
+        "srd.banishment",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-banishment-humanoid-returns",
+    )
+
+    lifecycle = None
+    for _ in range(10):
+        lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert lifecycle is not None
+    assert len(lifecycle.expired) == 2
+    assert not any("banishment_completed" in entry for entry in lifecycle.expired)
+    assert target.status_effects == []
+    acted = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(1),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="returned-target-can-act",
+    )
+    assert acted.success is True
+
+
+def test_banishment_fiend_does_not_return_after_full_duration(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target.abilities = {"cha": 8}
+    target.creature_type = "fiend"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+    tools.cast_spell(
+        "pc1",
+        "srd.banishment",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-banishment-fiend-does-not-return",
+    )
+
+    lifecycle = None
+    for _ in range(10):
+        lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert lifecycle is not None
+    completion = next(entry["banishment_completed"] for entry in lifecycle.expired if "banishment_completed" in entry)
+    assert completion == {
+        "target_id": "goblin1",
+        "creature_type": "fiend",
+        "does_not_return": True,
+        "destination": "random_location_on_gm_chosen_associated_plane",
+    }
+    assert target.dead is False
+    assert not any(effect["condition"] == "incapacitated" for effect in target.status_effects)
+    permanent = next(
+        effect
+        for effect in target.status_effects
+        if effect["passive_modifiers"].get("permanent_banishment") is True
+    )
+    assert permanent["source_action_id"] == "srd.banishment"
+    assert permanent["tick_on"] is None
+    assert permanent["concentration"] is False
+
+    with pytest.raises(AutomationError, match="actor is out of play due to srd.banishment"):
+        AutomationExecutor(state, RollService(state), AuditLog()).execute(
+            _damage_action(1),
+            actor_id="goblin1",
+            targets=["pc1"],
+            idempotency_key="permanently-banished-target-cannot-act",
+        )
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

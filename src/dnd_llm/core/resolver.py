@@ -167,6 +167,13 @@ class ActionResolver:
                 reason=requirements_error,
                 action_id=action.id,
             )
+        actor_out_of_play_error = self._actor_out_of_play_error(actor, action)
+        if actor_out_of_play_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=actor_out_of_play_error,
+                action_id=action.id,
+            )
         allowed_action_error = self._allowed_action_error(actor, action)
         if allowed_action_error is not None:
             return ResolverResult(
@@ -320,6 +327,9 @@ class ActionResolver:
         target_check = self._check_targets(draft, action)
         if target_check is not None:
             return target_check
+        target_out_of_play_check = self._check_targets_not_out_of_play(draft, action)
+        if target_out_of_play_check is not None:
+            return target_out_of_play_check
         target_size_check = self._check_target_size_max(draft, action)
         if target_size_check is not None:
             return target_size_check
@@ -1065,6 +1075,18 @@ class ActionResolver:
                 source = effect.get("source_action_id") or effect.get("condition") or "effect"
                 return f"actor cannot cast spells while affected by {source}"
         return None
+
+    def _actor_out_of_play_error(
+        self,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.properties.get("can_be_used_out_of_play") is True:
+            return None
+        sources = self._out_of_play_sources(actor)
+        if not sources:
+            return None
+        return f"actor is out of play due to {sources[0]}"
 
     def _allowed_action_error(
         self,
@@ -2133,6 +2155,16 @@ class ActionResolver:
             effects.extend(self.state.monsters[actor.entity_id].status_effects)
         return effects
 
+    def _out_of_play_sources(self, actor: Character | Monster | Combatant) -> list[str]:
+        sources: list[str] = []
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict) or modifiers.get("out_of_play") is not True:
+                continue
+            source = effect.get("source_action_id") or effect.get("condition") or "effect"
+            sources.append(str(source))
+        return sources
+
     def _action_owner(
         self,
         actor_id: str,
@@ -2351,6 +2383,31 @@ class ActionResolver:
                 return ResolverResult(
                     status="rejected",
                     reason=f"target must be {normalized_max.title()} or smaller",
+                    action_id=action.id,
+                )
+        return None
+
+    def _check_targets_not_out_of_play(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> ResolverResult | None:
+        if action.properties.get("can_target_out_of_play") is True:
+            return None
+        for target_id in draft.target_ids:
+            try:
+                target = self.state.entity_for_actor(target_id)
+            except KeyError:
+                return ResolverResult(
+                    status="rejected",
+                    reason=f"unknown target: {target_id}",
+                    action_id=action.id,
+                )
+            sources = self._out_of_play_sources(target)
+            if sources:
+                return ResolverResult(
+                    status="rejected",
+                    reason=f"target is out of play due to {sources[0]}",
                     action_id=action.id,
                 )
         return None

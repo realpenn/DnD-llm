@@ -53,6 +53,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
+        "srd.banishment",
         "srd.arcane_eye",
         "srd.blight",
         "srd.mass_cure_wounds",
@@ -966,6 +967,69 @@ def test_compendium_loads_srd_actions() -> None:
                 "globe_can_be_picked_up_and_moved": True,
                 "disintegrate_targeting_globe_destroys_it": True,
             },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
+    ]
+    banishment = compendium.action("srd.banishment")
+    assert banishment.requirements == {
+        "spell_level": 4,
+        "class_any": ["cleric", "paladin", "sorcerer", "warlock", "wizard"],
+    }
+    assert banishment.properties["spell_classes"] == [
+        "cleric",
+        "paladin",
+        "sorcerer",
+        "warlock",
+        "wizard",
+    ]
+    assert banishment.properties["material_component"] == {
+        "description": "a pentacle",
+        "consumed": False,
+    }
+    assert banishment.properties["target_must_be_visible"] is True
+    assert banishment.properties["higher_level_additional_targets_per_slot_above_4"] == 1
+    assert banishment.cost.spell_slot_level == 4
+    assert banishment.range == {"normal_ft": 30}
+    assert banishment.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": True,
+        "base_spell_slot_level": 4,
+        "max_targets_per_slot_above": 1,
+    }
+    assert banishment.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "cha", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "banished": True,
+                "out_of_play": True,
+                "banished_to_harmless_demiplane": True,
+                "returns_when_spell_ends": True,
+                "returns_to_space_left_or_nearest_unoccupied": True,
+                "does_not_return_if_full_duration_creature_types": [
+                    "aberration",
+                    "celestial",
+                    "elemental",
+                    "fey",
+                    "fiend",
+                ],
+                "full_duration_transport_destination": (
+                    "random_location_on_gm_chosen_associated_plane"
+                ),
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
+        {
+            "type": "condition",
+            "condition": "incapacitated",
+            "requires_failed_save": True,
             "duration": {"until": "concentration_1_minute"},
             "tick_on": "self_turn_end",
             "concentration": True,
@@ -6086,6 +6150,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.ice_storm",
         "srd.spell.fire_shield",
         "srd.spell.resilient_sphere",
+        "srd.spell.banishment",
         "srd.spell.cone_of_cold",
         "srd.spell.chain_lightning",
         "srd.spell.fire_storm",

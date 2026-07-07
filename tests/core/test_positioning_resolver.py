@@ -411,6 +411,90 @@ def test_resolver_scales_spell_target_cap_with_requested_slot_level(make_state) 
     assert upcast.action_id == "srd.hold_monster"
 
 
+def test_resolver_scales_banishment_target_cap_with_requested_slot_level(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.banishment")
+    character.spell_slots["4"] = 1
+    character.spell_slots["5"] = 1
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    base_slot = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="放逐术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.banishment",
+            params={"slot_level": 4},
+        )
+    )
+    upcast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="放逐术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.banishment",
+            params={"slot_level": 5},
+        )
+    )
+
+    assert base_slot.status == "rejected"
+    assert base_slot.reason == "too many targets"
+    assert upcast.status == "accepted"
+    assert upcast.action_id == "srd.banishment"
+
+
+def test_resolver_rejects_out_of_play_actor_and_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "banished-goblin",
+            "source_action_id": "srd.banishment",
+            "target_id": "goblin1",
+            "condition": None,
+            "passive_modifiers": {"banished": True, "out_of_play": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    actor_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="shortsword",
+            target_ids=["pc1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    target_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="shortsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert actor_result.status == "rejected"
+    assert actor_result.reason == "actor is out of play due to srd.banishment"
+    assert target_result.status == "rejected"
+    assert target_result.reason == "target is out of play due to srd.banishment"
+
+
 def test_resolver_rejects_resilient_sphere_target_larger_than_large(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

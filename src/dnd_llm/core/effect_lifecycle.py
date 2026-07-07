@@ -17,6 +17,7 @@ from .rules.conditions import exhaustion_d20_penalty, exhaustion_level, remove_c
 
 SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
 SELF_RESTORATION_CONDITIONS = ("charmed", "frightened", "poisoned")
+BANISHMENT_DEFAULT_DESTINATION = "random_location_on_gm_chosen_associated_plane"
 
 
 @dataclass
@@ -118,6 +119,15 @@ def tick_effects(
             )
             if remaining_after <= 0:
                 _expire_temporary_hit_points(state, effect, owner_type, owner_id, entry)
+                permanent_banishment = _permanent_banishment_on_full_duration(
+                    state,
+                    effect,
+                    owner_type,
+                    owner_id,
+                )
+                if permanent_banishment is not None:
+                    entry["banishment_completed"] = permanent_banishment["entry"]
+                    retained.append(permanent_banishment["effect"])
                 result.expired.append(entry)
             else:
                 duration["remaining_ticks"] = remaining_after
@@ -276,6 +286,89 @@ def _expire_temporary_hit_points(
             state.characters[entity_id].temp_hp = 0
             state.characters[entity_id].temp_hp_source_effect_id = None
     entry["temp_hp_expired"] = {"before": before, "after": 0}
+
+
+def _permanent_banishment_on_full_duration(
+    state: GameState,
+    effect: dict[str, Any],
+    owner_type: str,
+    owner_id: str,
+) -> dict[str, Any] | None:
+    modifiers = effect.get("passive_modifiers", {})
+    if not isinstance(modifiers, dict):
+        return None
+    if modifiers.get("banished") is not True or modifiers.get("out_of_play") is not True:
+        return None
+    creature_types_raw = modifiers.get("does_not_return_if_full_duration_creature_types")
+    if not isinstance(creature_types_raw, list):
+        return None
+    creature_types = {
+        str(creature_type).lower()
+        for creature_type in creature_types_raw
+        if isinstance(creature_type, str) and creature_type
+    }
+    target_id = _effect_target_id(effect, owner_type, owner_id)
+    if target_id is None:
+        return None
+    creature_type = _creature_type_for_actor(state, target_id).lower()
+    if creature_type not in creature_types:
+        return None
+    destination = str(
+        modifiers.get(
+            "full_duration_transport_destination",
+            BANISHMENT_DEFAULT_DESTINATION,
+        )
+    )
+    entry = {
+        "target_id": target_id,
+        "creature_type": creature_type,
+        "does_not_return": True,
+        "destination": destination,
+    }
+    return {"entry": entry, "effect": _permanent_banishment_effect(effect, entry)}
+
+
+def _effect_target_id(effect: dict[str, Any], owner_type: str, owner_id: str) -> str | None:
+    target_id = effect.get("target_id")
+    if isinstance(target_id, str) and target_id:
+        return target_id
+    if owner_type in {"character", "monster", "combatant"} and owner_id:
+        return owner_id
+    return None
+
+
+def _creature_type_for_actor(state: GameState, actor_id: str) -> str:
+    try:
+        actor = state.entity_for_actor(actor_id)
+    except KeyError:
+        return "humanoid"
+    entity_id = getattr(actor, "entity_id", None)
+    if isinstance(entity_id, str) and entity_id in state.monsters:
+        return str(state.monsters[entity_id].creature_type)
+    return str(getattr(actor, "creature_type", "humanoid"))
+
+
+def _permanent_banishment_effect(
+    effect: dict[str, Any],
+    entry: dict[str, Any],
+) -> dict[str, Any]:
+    permanent_effect = dict(effect)
+    permanent_effect["effect_id"] = f"{effect.get('effect_id', 'effect')}:permanent_banishment"
+    permanent_effect["condition"] = None
+    permanent_effect["passive_modifiers"] = {
+        "banished": True,
+        "out_of_play": True,
+        "permanent_banishment": True,
+        "does_not_return": True,
+        "full_duration_transport_destination": entry["destination"],
+    }
+    permanent_effect["duration"] = {}
+    permanent_effect["tick_on"] = None
+    permanent_effect["concentration"] = False
+    audit = dict(permanent_effect.get("audit", {}))
+    audit["permanent_banishment"] = entry
+    permanent_effect["audit"] = audit
+    return permanent_effect
 
 
 def _effect_owner(state: GameState, owner_type: str, owner_id: str) -> Any:
