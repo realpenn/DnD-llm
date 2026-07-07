@@ -67,6 +67,94 @@
       }
     },
     {
+      "id": "srd.spell.private_sanctum",
+      "name": "Private Sanctum",
+      "localization": {
+        "en": "Private Sanctum",
+        "zh": "秘法密室",
+        "aliases": ["私人圣所", "私密圣所"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.private_sanctum",
+        "name": "Private Sanctum",
+        "localization": {
+          "en": "Private Sanctum",
+          "zh": "秘法密室",
+          "aliases": ["私人圣所", "私密圣所"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "cube", "min_side_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "material_component": {
+            "description": "a thin sheet of lead",
+            "consumed": false
+          },
+          "protections_param": "private_sanctum_protections",
+          "allowed_list_params": {
+            "private_sanctum_protections": [
+              "blocks_sound_through_barrier",
+              "blocks_vision_through_barrier_including_darkvision",
+              "blocks_divination_sensors_entering_or_appearing_inside",
+              "blocks_divination_targeting_creatures_inside",
+              "blocks_teleport_into_or_out_of_area",
+              "blocks_planar_travel_within_area"
+            ]
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "private_sanctum_ward",
+            "scope": {
+              "target": "warded_area",
+              "range_ft": 120,
+              "shape": "cube",
+              "min_side_ft": 5
+            },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "selected_protections": { "param_list": "private_sanctum_protections" },
+              "allowed_protections": [
+                "blocks_sound_through_barrier",
+                "blocks_vision_through_barrier_including_darkvision",
+                "blocks_divination_sensors_entering_or_appearing_inside",
+                "blocks_divination_targeting_creatures_inside",
+                "blocks_teleport_into_or_out_of_area",
+                "blocks_planar_travel_within_area"
+              ],
+              "choose_any_listed_protections_on_cast": true,
+              "permanent_if_cast_daily_same_location_days": 365
+            },
+            "metadata_from_slot": {
+              "max_cube_side_ft": {
+                "base_spell_slot_level": 4,
+                "base_value": 100,
+                "value_per_slot_above": 100
+              }
+            }
+          }
+        ],
+        "audit_label": "Private Sanctum"
+      }
+    },
+    {
       "id": "srd.spell.mass_cure_wounds",
       "name": "Mass Cure Wounds",
       "localization": {

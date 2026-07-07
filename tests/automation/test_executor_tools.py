@@ -18345,6 +18345,143 @@ def test_greater_restoration_requires_choice_before_spending_cost(make_state) ->
     assert caster.gold == 100
 
 
+def test_private_sanctum_records_selected_ward_protections(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    selected = [
+        "blocks_sound_through_barrier",
+        "blocks_teleport_into_or_out_of_area",
+    ]
+    result = tools._execute_action(
+        action_id="srd.private_sanctum",
+        actor_id="pc1",
+        targets=[],
+        params={"slot_level": 4, "private_sanctum_protections": selected},
+        idempotency_key="cast-private-sanctum",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.private_sanctum"
+    assert effect["effect_type"] == "private_sanctum_ward"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "warded_area",
+        "range_ft": 120,
+        "shape": "cube",
+        "min_side_ft": 5,
+    }
+    assert effect["duration"] == {"until": "duration_24_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "selected_protections": selected,
+        "allowed_protections": [
+            "blocks_sound_through_barrier",
+            "blocks_vision_through_barrier_including_darkvision",
+            "blocks_divination_sensors_entering_or_appearing_inside",
+            "blocks_divination_targeting_creatures_inside",
+            "blocks_teleport_into_or_out_of_area",
+            "blocks_planar_travel_within_area",
+        ],
+        "choose_any_listed_protections_on_cast": True,
+        "permanent_if_cast_daily_same_location_days": 365,
+        "max_cube_side_ft": 100,
+    }
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "saving_throw", "damage"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+
+
+def test_private_sanctum_upcast_increases_max_cube_side(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.private_sanctum",
+        actor_id="pc1",
+        targets=[],
+        params={
+            "slot_level": 5,
+            "private_sanctum_protections": [
+                "blocks_planar_travel_within_area",
+            ],
+        },
+        idempotency_key="cast-private-sanctum-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    effect = state.world.active_effects[-1]
+    assert effect["metadata"]["selected_protections"] == [
+        "blocks_planar_travel_within_area",
+    ]
+    assert effect["metadata"]["max_cube_side_ft"] == 200
+
+
+def test_private_sanctum_rejects_missing_or_invalid_protection_before_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="missing required parameter"):
+        tools._execute_action(
+            action_id="srd.private_sanctum",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 4},
+            idempotency_key="cast-private-sanctum-missing-protections",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="private_sanctum_protections must contain only"):
+        tools._execute_action(
+            action_id="srd.private_sanctum",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 4,
+                "private_sanctum_protections": [
+                    "blocks_sound_through_barrier",
+                    "blocks_dragons",
+                ],
+            },
+            idempotency_key="cast-private-sanctum-invalid-protection",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+
 def test_globe_of_invulnerability_records_concentration_spell_barrier(
     make_state,
 ) -> None:

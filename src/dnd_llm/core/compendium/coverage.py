@@ -199,6 +199,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.potent_cantrip",
     "srd.primal_champion",
     "srd.primal_order",
+    "srd.private_sanctum",
     "srd.rage",
     "srd.ranger_expertise",
     "srd.relentless_rage",

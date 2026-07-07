@@ -539,6 +539,7 @@ class AutomationExecutor:
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
         self._validate_allowed_damage_type_param(action, params)
         self._validate_allowed_creature_types_param(action, params)
+        self._validate_allowed_list_params(action, params)
         self._validate_greater_restoration_preconditions(action, params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
         self._validate_action_economy(action, actor_id, params)
@@ -10049,6 +10050,38 @@ class AutomationExecutor:
             if normalized not in normalized_values:
                 normalized_values.append(normalized)
         params[param_name] = normalized_values
+
+    @staticmethod
+    def _validate_allowed_list_params(
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        specs = action.properties.get("allowed_list_params")
+        if not isinstance(specs, dict):
+            return
+        for param_name, allowed_raw in specs.items():
+            param = str(param_name)
+            if not isinstance(allowed_raw, list) or not allowed_raw:
+                continue
+            allowed = [str(value) for value in allowed_raw]
+            raw = params.get(param)
+            if raw is None or raw == "":
+                raise AutomationError(f"missing required parameter {param}")
+            if isinstance(raw, dict):
+                raise AutomationError(f"parameter {param} must be a list")
+            raw_values = raw if isinstance(raw, list) else [raw]
+            if not raw_values:
+                raise AutomationError(f"parameter {param} must not be empty")
+            normalized_values: list[str] = []
+            for value in raw_values:
+                if isinstance(value, (dict, list)):
+                    raise AutomationError(f"parameter {param} entries must be scalars")
+                normalized = str(value).casefold().strip()
+                if normalized not in allowed:
+                    raise AutomationError(f"{param} must contain only: {', '.join(allowed)}")
+                if normalized not in normalized_values:
+                    normalized_values.append(normalized)
+            params[param] = normalized_values
 
     @staticmethod
     def _validate_greater_restoration_preconditions(

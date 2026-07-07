@@ -50,6 +50,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.greater_invisibility",
         "srd.hallucinatory_terrain",
         "srd.freedom_of_movement",
+        "srd.private_sanctum",
         "srd.arcane_eye",
         "srd.blight",
         "srd.mass_cure_wounds",
@@ -818,6 +819,66 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "duration_1_hour"},
             "tick_on": "self_turn_end",
         },
+    ]
+    private_sanctum = compendium.action("srd.private_sanctum")
+    assert private_sanctum.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert private_sanctum.properties["spell_classes"] == ["wizard"]
+    assert private_sanctum.properties["casting_time"] == {"minutes": 10}
+    assert private_sanctum.properties["material_component"] == {
+        "description": "a thin sheet of lead",
+        "consumed": False,
+    }
+    assert private_sanctum.properties["protections_param"] == "private_sanctum_protections"
+    assert private_sanctum.properties["allowed_list_params"] == {
+        "private_sanctum_protections": [
+            "blocks_sound_through_barrier",
+            "blocks_vision_through_barrier_including_darkvision",
+            "blocks_divination_sensors_entering_or_appearing_inside",
+            "blocks_divination_targeting_creatures_inside",
+            "blocks_teleport_into_or_out_of_area",
+            "blocks_planar_travel_within_area",
+        ]
+    }
+    assert private_sanctum.cost.spell_slot_level == 4
+    assert private_sanctum.cost.gold == 0
+    assert private_sanctum.range == {"normal_ft": 120, "shape": "cube", "min_side_ft": 5}
+    assert private_sanctum.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert private_sanctum.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "private_sanctum_ward",
+            "scope": {
+                "target": "warded_area",
+                "range_ft": 120,
+                "shape": "cube",
+                "min_side_ft": 5,
+            },
+            "duration": {"until": "duration_24_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "selected_protections": {"param_list": "private_sanctum_protections"},
+                "allowed_protections": [
+                    "blocks_sound_through_barrier",
+                    "blocks_vision_through_barrier_including_darkvision",
+                    "blocks_divination_sensors_entering_or_appearing_inside",
+                    "blocks_divination_targeting_creatures_inside",
+                    "blocks_teleport_into_or_out_of_area",
+                    "blocks_planar_travel_within_area",
+                ],
+                "choose_any_listed_protections_on_cast": True,
+                "permanent_if_cast_daily_same_location_days": 365,
+            },
+            "metadata_from_slot": {
+                "max_cube_side_ft": {
+                    "base_spell_slot_level": 4,
+                    "base_value": 100,
+                    "value_per_slot_above": 100,
+                }
+            },
+        }
     ]
     mass_cure_wounds = compendium.action("srd.mass_cure_wounds")
     assert mass_cure_wounds.requirements == {
