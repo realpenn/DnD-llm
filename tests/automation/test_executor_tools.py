@@ -20007,6 +20007,114 @@ def test_insect_plague_upcast_spends_requested_slot_and_adds_damage_die(
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "5d10"]
 
 
+def test_guardian_of_faith_spends_slot_and_records_spectral_guardian_world_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.guardian_of_faith",
+        [],
+        4,
+        idempotency_key="cast-guardian-of-faith",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+    assert result["dice_rolls"] == []
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.guardian_of_faith"
+    assert effect["effect_type"] == "guardian_of_faith"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "unoccupied_space_you_can_see",
+        "range_ft": 30,
+        "size": "large",
+    }
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "spectral_guardian": True,
+        "size": "large",
+        "hovers": True,
+        "occupies_space": True,
+        "invulnerable": True,
+        "form_appropriate_for_deity_or_pantheon": True,
+        "trigger_targets": "enemy",
+        "trigger_range_ft": 10,
+        "repeat_save_triggers": [
+            "enemy_moves_within_10_ft_first_time_on_turn",
+            "enemy_starts_turn_within_10_ft",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "dex",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "20 radiant",
+            "save_half": True,
+        },
+        "vanishes_after_total_damage_dealt": 60,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "guardian_of_faith"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"saving_throw", "damage", "condition"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 4799
+
+
+def test_guardian_of_faith_rejects_targets_or_invalid_caster_before_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="too many targets"):
+        tools.cast_spell(
+            "pc1",
+            "srd.guardian_of_faith",
+            ["goblin1"],
+            4,
+            idempotency_key="guardian-of-faith-targeted",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+    caster.class_levels = {"wizard": 7}
+    with pytest.raises(AutomationError, match="requires one of cleric"):
+        tools.cast_spell(
+            "pc1",
+            "srd.guardian_of_faith",
+            [],
+            4,
+            idempotency_key="guardian-of-faith-wizard",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.world.active_effects == []
+
+
 def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

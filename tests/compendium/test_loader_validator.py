@@ -70,6 +70,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.teleportation_circle",
         "srd.dimension_door",
         "srd.faithful_hound",
+        "srd.guardian_of_faith",
         "srd.secret_chest",
         "srd.insect_plague",
         "srd.transport_via_plants",
@@ -1691,6 +1692,52 @@ def test_compendium_loads_srd_actions() -> None:
                 },
                 "can_move_with_magic_action": True,
                 "move_distance_ft": 30,
+            },
+        }
+    ]
+    guardian_of_faith = compendium.action("srd.guardian_of_faith")
+    assert guardian_of_faith.requirements == {
+        "spell_level": 4,
+        "class_any": ["cleric"],
+    }
+    assert guardian_of_faith.properties["spell_classes"] == ["cleric"]
+    assert guardian_of_faith.properties["target_must_be_visible"] is True
+    assert guardian_of_faith.properties["space_must_be_unoccupied"] is True
+    assert guardian_of_faith.cost.spell_slot_level == 4
+    assert guardian_of_faith.range == {"normal_ft": 30}
+    assert guardian_of_faith.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert guardian_of_faith.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "guardian_of_faith",
+            "scope": {
+                "target": "unoccupied_space_you_can_see",
+                "range_ft": 30,
+                "size": "large",
+            },
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "spectral_guardian": True,
+                "size": "large",
+                "hovers": True,
+                "occupies_space": True,
+                "invulnerable": True,
+                "form_appropriate_for_deity_or_pantheon": True,
+                "trigger_targets": "enemy",
+                "trigger_range_ft": 10,
+                "repeat_save_triggers": [
+                    "enemy_moves_within_10_ft_first_time_on_turn",
+                    "enemy_starts_turn_within_10_ft",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "dex",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "20 radiant",
+                    "save_half": True,
+                },
+                "vanishes_after_total_damage_dealt": 60,
             },
         }
     ]
@@ -6305,6 +6352,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.harm",
         "srd.spell.finger_of_death",
         "srd.spell.charm_monster",
+        "srd.spell.guardian_of_faith",
         "srd.spell.etherealness",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9
