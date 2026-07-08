@@ -276,6 +276,13 @@ class ActionResolver:
             action_economy = "none"
         if self._quivering_palm_harmless_release(draft, action):
             action_economy = "none"
+        blocked_economy_error = self._blocked_action_economy_error(actor, action_economy)
+        if blocked_economy_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=blocked_economy_error,
+                action_id=action.id,
+            )
         budget = self._action_budget_for_check(draft.actor_id, actor)
         if not budget.can_spend(action_economy):
             return ResolverResult(
@@ -1113,6 +1120,30 @@ class ActionResolver:
                     f"actor can only take allowed actions ({allowed_text}) "
                     f"while affected by {source}"
                 )
+        return None
+
+    def _blocked_action_economy_error(
+        self,
+        actor: Character | Monster | Combatant,
+        action_economy: str,
+    ) -> str | None:
+        if action_economy in {"none", ""}:
+            return None
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            blocked = modifiers.get("blocked_action_economies")
+            if isinstance(blocked, str):
+                blocked_economies = {blocked}
+            elif isinstance(blocked, list):
+                blocked_economies = {str(item) for item in blocked}
+            else:
+                continue
+            if action_economy not in blocked_economies:
+                continue
+            source = effect.get("source_action_id") or effect.get("condition") or "effect"
+            return f"actor cannot take {action_economy} while affected by {source}"
         return None
 
     def _attack_error(

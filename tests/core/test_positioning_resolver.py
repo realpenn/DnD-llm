@@ -901,6 +901,33 @@ def test_resolver_rejects_spellcasting_blocked_by_passive_effect(make_state) -> 
     assert result.reason == "actor cannot cast spells while affected by srd.rage"
 
 
+def test_resolver_rejects_action_economy_blocked_by_passive_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 3}
+    state.characters["pc1"].actions.append("srd.steady_aim")
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "confusion-test",
+            "source_action_id": "srd.confusion",
+            "passive_modifiers": {"blocked_action_economies": ["bonus_action", "reaction"]},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="稳定瞄准",
+            candidate_action_id="srd.steady_aim",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "actor cannot take bonus_action while affected by srd.confusion"
+
+
 def test_resolver_checks_instinctive_pounce_movement_preconditions(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

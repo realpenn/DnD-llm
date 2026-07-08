@@ -75,6 +75,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.brutal_strike",
     "srd.charm_monster",
     "srd.compulsion",
+    "srd.confusion",
     "srd.dominate_beast",
     "srd.countercharm",
     "srd.cure_wounds",

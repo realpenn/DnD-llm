@@ -63,6 +63,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.charm_monster",
+        "srd.confusion",
         "srd.dominate_beast",
         "srd.compulsion",
         "srd.hold_monster",
@@ -1369,6 +1370,77 @@ def test_compendium_loads_srd_actions() -> None:
                 "break_on_damage_by": "applied_by_or_allies",
             },
             "tick_on": "duration_or_damage",
+        },
+    ]
+    confusion = compendium.action("srd.confusion")
+    confusion_behavior_table = [
+        {
+            "min": 1,
+            "max": 1,
+            "behavior": "no_action_uses_all_movement_random_direction",
+            "direction_roll": "1d4",
+            "directions": {"1": "north", "2": "east", "3": "south", "4": "west"},
+        },
+        {"min": 2, "max": 6, "behavior": "no_movement_or_actions"},
+        {
+            "min": 7,
+            "max": 8,
+            "behavior": "attack_action_one_melee_attack_random_creature_within_reach_or_no_action",
+        },
+        {"min": 9, "max": 10, "behavior": "target_chooses_behavior"},
+    ]
+    assert confusion.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "druid", "sorcerer", "wizard"],
+    }
+    assert confusion.properties == {
+        "spell_classes": ["bard", "druid", "sorcerer", "wizard"],
+        "material_component": {
+            "description": "three nut shells",
+            "consumed": False,
+        },
+        "base_sphere_radius_ft": 10,
+        "sphere_radius_increase_ft_per_slot_above_4": 5,
+        "target_turn_start_behavior_roll": "1d10",
+        "behavior_roll_not_automated": True,
+        "behavior_table": confusion_behavior_table,
+        "spell_definition_id": "srd.spell.confusion",
+        "spell_level": 4,
+    }
+    assert confusion.range == {"normal_ft": 90, "shape": "sphere", "radius_ft": 10}
+    assert confusion.target_policy == {"min": 1, "max": 8, "harmful": True}
+    assert confusion.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "confusion": True,
+                "area_shape": "sphere",
+                "sphere_radius_ft": {
+                    "slot_scaled": {
+                        "base_value": 10,
+                        "base_spell_slot_level": 4,
+                        "value_per_slot_above": 5,
+                    }
+                },
+                "blocked_action_economies": ["bonus_action", "reaction"],
+                "target_turn_start_behavior_roll": "1d10",
+                "behavior_roll_not_automated": True,
+                "behavior_table": confusion_behavior_table,
+            },
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "target_turn_end",
+                },
+            },
+            "tick_on": "target_turn_end",
+            "concentration": True,
         },
     ]
     dominate_beast = compendium.action("srd.dominate_beast")

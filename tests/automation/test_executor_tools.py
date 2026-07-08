@@ -19621,6 +19621,165 @@ def test_charm_monster_upcast_adds_target_and_base_slot_cost(make_state) -> None
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d20+0"]
 
 
+def test_confusion_failed_save_blocks_reactions_and_repeats_save(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    state.encounter.combatants["goblin1"].abilities = {"wis": 10}
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        abilities={"wis": 10},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.confusion",
+        ["goblin1", "goblin2"],
+        4,
+        idempotency_key="cast-confusion",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d20+0"]
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["target_id"] == "goblin2"
+    assert save_node["success"] is True
+    assert state.encounter.combatants["goblin2"].status_effects == []
+    effect = state.encounter.combatants["goblin1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.confusion"
+    assert effect["applied_by"] == "pc1"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"]["confusion"] is True
+    assert effect["passive_modifiers"]["sphere_radius_ft"] == 10
+    assert effect["passive_modifiers"]["blocked_action_economies"] == [
+        "bonus_action",
+        "reaction",
+    ]
+    assert effect["passive_modifiers"]["behavior_roll_not_automated"] is True
+    assert effect["passive_modifiers"]["behavior_table"][0] == {
+        "min": 1,
+        "max": 1,
+        "behavior": "no_action_uses_all_movement_random_direction",
+        "direction_roll": "1d4",
+        "directions": {"1": "north", "2": "east", "3": "south", "4": "west"},
+    }
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 15,
+            "dc_source": "spell_save_dc:bard",
+            "end_on_success": True,
+            "trigger": "target_turn_end",
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is True
+
+    with pytest.raises(
+        AutomationError,
+        match="actor cannot take bonus_action while affected by srd.confusion",
+    ):
+        AutomationExecutor(state, RollService(state), AuditLog()).execute(
+            _economy_action("test.bonus_action", "bonus_action"),
+            actor_id="goblin1",
+            targets=[],
+            idempotency_key="confused-bonus-action",
+        )
+
+    with pytest.raises(
+        AutomationError,
+        match="actor cannot take reaction while affected by srd.confusion",
+    ):
+        AutomationExecutor(state, RollService(state), AuditLog()).execute(
+            _economy_action("test.reaction", "reaction"),
+            actor_id="goblin1",
+            targets=[],
+            idempotency_key="confused-reaction",
+        )
+
+    lifecycle = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert lifecycle.expired[0]["source_action_id"] == "srd.confusion"
+    assert lifecycle.expired[0]["repeat_save"]["dc"] == 15
+    assert lifecycle.expired[0]["repeat_save"]["success"] is True
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
+def test_confusion_upcast_increases_sphere_radius_marker(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 9}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.confusion",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-confusion-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.confusion"
+    assert effect["passive_modifiers"]["sphere_radius_ft"] == 15
+    assert effect["duration"]["repeat_save"] == {
+        "ability": "wis",
+        "dc": 16,
+        "dc_source": "spell_save_dc:sorcerer",
+        "end_on_success": True,
+        "trigger": "target_turn_end",
+    }
+
+
 def test_dominate_beast_charms_beast_and_repeats_save_on_any_damage(
     make_state,
 ) -> None:
@@ -24114,6 +24273,22 @@ def _damage_action(amount: int, *, damage_type: str = "force") -> ActionDefiniti
             {"type": "damage", "amount": amount, "damage_type": damage_type},
         ],
         audit_label="Test Damage",
+    )
+
+
+def _economy_action(action_id: str, action_economy: str) -> ActionDefinition:
+    return ActionDefinition(
+        id=action_id,
+        name="Test Economy Action",
+        localization={"en": "Test Economy Action", "zh": "测试行动经济动作", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="base_action",
+        action_economy=action_economy,
+        range={},
+        target_policy={"min": 0, "max": 0, "harmful": False},
+        automation=[],
+        audit_label="Test Economy Action",
     )
 
 

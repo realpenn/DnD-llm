@@ -3091,6 +3091,17 @@ class AutomationExecutor:
                     raise AutomationError(f"parameter {param_name} must not be empty")
                 return [str(item) for item in selected]
             return [str(selected)]
+        if isinstance(value, dict) and set(value) == {"slot_scaled"}:
+            spec = value["slot_scaled"]
+            if not isinstance(spec, dict):
+                raise AutomationError("slot_scaled passive modifier must be an object")
+            base_value = int(spec["base_value"])
+            base_slot_level = int(
+                spec.get("base_spell_slot_level", ctx.action.cost.spell_slot_level or 0)
+            )
+            value_per_slot = int(spec.get("value_per_slot_above", 1))
+            slot_level = self._spell_slot_level_to_spend(ctx.action, ctx.params)
+            return base_value + max(0, slot_level - base_slot_level) * value_per_slot
         if not isinstance(value, dict) or "class_level_die" not in value:
             return value
         class_name = str(value["class_level_die"])
@@ -14028,6 +14039,7 @@ class AutomationExecutor:
             return
         actor = self._entity(actor_id)
         self._validate_condition_gate(actor, action.action_economy)
+        self._validate_blocked_action_economy(actor, action.action_economy)
         if self._fleet_step_waives_bonus_action(action, actor_id, params):
             return
         if self._quivering_palm_harmless_release_waives_action(action, params):
@@ -14381,6 +14393,31 @@ class AutomationExecutor:
             blocked_by = sorted(conditions & MOVEMENT_BLOCKING_CONDITIONS)
             if blocked_by:
                 raise AutomationError(f"actor cannot move while {blocked_by[0]}")
+
+    def _validate_blocked_action_economy(
+        self,
+        actor: Character | Monster | Combatant,
+        action_economy: str,
+    ) -> None:
+        if action_economy not in {"action", "bonus_action", "reaction", "movement", "free"}:
+            return
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            blocked = modifiers.get("blocked_action_economies")
+            if isinstance(blocked, str):
+                blocked_economies = {blocked}
+            elif isinstance(blocked, list):
+                blocked_economies = {str(item) for item in blocked}
+            else:
+                continue
+            if action_economy not in blocked_economies:
+                continue
+            source = effect.get("source_action_id") or effect.get("condition") or "effect"
+            raise AutomationError(
+                f"actor cannot take {action_economy} while affected by {source}"
+            )
 
     def _entity_aliases(self, entity_id: str) -> set[str]:
         aliases = {entity_id}
