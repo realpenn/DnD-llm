@@ -73,6 +73,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.body_and_mind",
     "srd.brutal_strike",
     "srd.charm_monster",
+    "srd.compulsion",
     "srd.countercharm",
     "srd.cure_wounds",
     "srd.cunning_strike",

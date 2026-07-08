@@ -70,6 +70,80 @@
       }
     },
     {
+      "id": "srd.spell.compulsion",
+      "name": "Compulsion",
+      "localization": {
+        "en": "Compulsion",
+        "zh": "强制术",
+        "aliases": ["强迫术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "enchantment",
+      "classes": ["bard"],
+      "action": {
+        "id": "srd.compulsion",
+        "name": "Compulsion",
+        "localization": {
+          "en": "Compulsion",
+          "zh": "强制术",
+          "aliases": ["强迫术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard"]
+        },
+        "properties": {
+          "spell_classes": ["bard"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "creatures_of_your_choice_in_range": true,
+          "forced_movement_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "compulsion": true,
+              "direction_designated_by_bonus_action": true,
+              "direction_relative_to_caster": "horizontal",
+              "must_use_as_much_movement_as_possible": true,
+              "move_on_next_turn": true,
+              "safest_route_required": true,
+              "forced_movement_not_automated": true,
+              "repeat_save_after_moving": true,
+              "repeat_save_trigger_approximated_as": "target_turn_end"
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end"
+              }
+            },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Compulsion"
+      }
+    },
+    {
       "id": "srd.spell.hold_monster",
       "name": "Hold Monster",
       "localization": {

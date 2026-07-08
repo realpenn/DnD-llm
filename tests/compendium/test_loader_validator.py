@@ -61,6 +61,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.charm_monster",
+        "srd.compulsion",
         "srd.hold_monster",
         "srd.irresistible_dance",
         "srd.mass_suggestion",
@@ -1254,6 +1255,53 @@ def test_compendium_loads_srd_actions() -> None:
                 "break_on_damage_by": "applied_by_or_allies",
             },
             "tick_on": "duration_or_damage",
+        },
+    ]
+    compulsion = compendium.action("srd.compulsion")
+    assert compulsion.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard"],
+    }
+    assert compulsion.properties == {
+        "spell_classes": ["bard"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "creatures_of_your_choice_in_range": True,
+        "forced_movement_not_automated": True,
+        "spell_definition_id": "srd.spell.compulsion",
+        "spell_level": 4,
+    }
+    assert compulsion.range == {"normal_ft": 30}
+    assert compulsion.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert compulsion.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "compulsion": True,
+                "direction_designated_by_bonus_action": True,
+                "direction_relative_to_caster": "horizontal",
+                "must_use_as_much_movement_as_possible": True,
+                "move_on_next_turn": True,
+                "safest_route_required": True,
+                "forced_movement_not_automated": True,
+                "repeat_save_after_moving": True,
+                "repeat_save_trigger_approximated_as": "target_turn_end",
+            },
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "target_turn_end",
+                },
+            },
+            "tick_on": "target_turn_end",
+            "concentration": True,
         },
     ]
     hold_monster = compendium.action("srd.hold_monster")
@@ -6472,6 +6520,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.harm",
         "srd.spell.finger_of_death",
         "srd.spell.charm_monster",
+        "srd.spell.compulsion",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.etherealness",

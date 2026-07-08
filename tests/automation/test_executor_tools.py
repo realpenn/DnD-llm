@@ -19290,6 +19290,120 @@ def test_charm_monster_upcast_adds_target_and_base_slot_cost(make_state) -> None
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d20+0"]
 
 
+def test_compulsion_charms_failed_target_and_records_movement_semantics(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.compulsion",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-compulsion-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["success"] is False
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.compulsion"
+    assert effect["condition"] == "charmed"
+    assert effect["passive_modifiers"] == {
+        "compulsion": True,
+        "direction_designated_by_bonus_action": True,
+        "direction_relative_to_caster": "horizontal",
+        "must_use_as_much_movement_as_possible": True,
+        "move_on_next_turn": True,
+        "safest_route_required": True,
+        "forced_movement_not_automated": True,
+        "repeat_save_after_moving": True,
+        "repeat_save_trigger_approximated_as": "target_turn_end",
+    }
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 15,
+            "dc_source": "spell_save_dc:bard",
+            "end_on_success": True,
+            "trigger": "target_turn_end",
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is True
+    condition_change = next(
+        change for change in result["state_changes"] if change["type"] == "condition"
+    )
+    assert condition_change["passive_modifiers"]["forced_movement_not_automated"] is True
+
+    lifecycle = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert lifecycle.expired[0]["condition"] == "charmed"
+    assert lifecycle.expired[0]["repeat_save"]["dc"] == 15
+    assert lifecycle.expired[0]["repeat_save"]["success"] is True
+    assert target.status_effects == []
+
+
+def test_compulsion_successful_save_applies_no_condition(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.compulsion",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-compulsion-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["success"] is True
+    assert target.status_effects == []
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+
+
 def test_hold_monster_rejects_extra_target_without_upcast_before_spending_slot(
     make_state,
 ) -> None:
