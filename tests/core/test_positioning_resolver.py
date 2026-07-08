@@ -582,6 +582,27 @@ def test_resolver_checks_greater_restoration_choice_and_component_cost(
             params={"slot_level": 5, "greater_restoration_choice": "exhaustion"},
         )
     )
+    contact_other_plane_effect = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={
+                "slot_level": 5,
+                "greater_restoration_choice": "contact_other_plane_incapacitation",
+            },
+        )
+    )
+    invalid_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5, "greater_restoration_choice": "invented_condition"},
+        )
+    )
 
     assert missing_choice.status == "rejected"
     assert missing_choice.reason == "missing required parameter greater_restoration_choice"
@@ -589,6 +610,61 @@ def test_resolver_checks_greater_restoration_choice_and_component_cost(
     assert no_gold.reason == "insufficient gold"
     assert accepted.status == "accepted"
     assert accepted.action_id == "srd.greater_restoration"
+    assert contact_other_plane_effect.status == "accepted"
+    assert contact_other_plane_effect.action_id == "srd.greater_restoration"
+    assert invalid_choice.status == "rejected"
+    assert invalid_choice.reason.startswith(
+        "unsupported Greater Restoration choice invented_condition"
+    )
+
+
+def test_resolver_accepts_contact_other_plane_self_cast_and_class_gate(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.contact_other_plane")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界探知",
+            target_ids=[],
+            candidate_action_id="srd.contact_other_plane",
+            params={"slot_level": 5},
+        )
+    )
+    too_many_targets = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界探知",
+            target_ids=["pc2"],
+            candidate_action_id="srd.contact_other_plane",
+            params={"slot_level": 5},
+        )
+    )
+
+    character.class_levels = {"cleric": 9}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界探知",
+            target_ids=[],
+            candidate_action_id="srd.contact_other_plane",
+            params={"slot_level": 5},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.contact_other_plane"
+    assert too_many_targets.status == "rejected"
+    assert too_many_targets.reason == "too many targets"
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of warlock, wizard"
 
 
 def test_resolver_validates_commune_with_nature_fact_choices(make_state) -> None:

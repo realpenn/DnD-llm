@@ -257,6 +257,7 @@ GREATER_RESTORATION_CHOICES = {
     "curse",
     "ability_score_reduction",
     "hp_max_reduction",
+    "contact_other_plane_incapacitation",
 }
 
 
@@ -1898,7 +1899,12 @@ class AutomationExecutor:
                 if death_change is not None:
                     ctx.result.state_changes.append(death_change)
                 continue
-            effects = getattr(target, "status_effects")
+            condition_owner = (
+                self._persistent_condition_owner(target)
+                if effect.duration.get("until") == "long_rest"
+                else target
+            )
+            effects = getattr(condition_owner, "status_effects")
             if effect.stacking_policy == "replace":
                 effects[:] = [
                     existing
@@ -2113,6 +2119,22 @@ class AutomationExecutor:
                 "removed_markers": removed_markers,
                 "removed_owners": removed_owners,
                 "hp_max_restored": hp_max_restored,
+                "path": path,
+            }
+        if choice == "contact_other_plane_incapacitation":
+            removed_markers, removed_owners = self._remove_effect_markers_for_target(
+                target_id,
+                ["contact_other_plane_incapacitation"],
+            )
+            if not removed_markers:
+                return None
+            return {
+                "type": "greater_restoration",
+                "target_id": target_id,
+                "choice": choice,
+                "removed": {},
+                "removed_markers": removed_markers,
+                "removed_owners": removed_owners,
                 "path": path,
             }
         raise AutomationError(f"unsupported Greater Restoration choice {choice}")

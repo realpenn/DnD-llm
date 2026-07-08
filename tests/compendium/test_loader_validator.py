@@ -66,6 +66,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.charm_monster",
         "srd.commune",
         "srd.commune_with_nature",
+        "srd.contact_other_plane",
         "srd.confusion",
         "srd.conjure_woodland_beings",
         "srd.conjure_woodland_beings_disengage",
@@ -1710,6 +1711,7 @@ def test_compendium_loads_srd_actions() -> None:
         "curse",
         "ability_score_reduction",
         "hp_max_reduction",
+        "contact_other_plane_incapacitation",
     ]
     assert greater_restoration.cost.spell_slot_level == 5
     assert greater_restoration.cost.gold == 100
@@ -1725,6 +1727,7 @@ def test_compendium_loads_srd_actions() -> None:
                 "curse",
                 "ability_score_reduction",
                 "hp_max_reduction",
+                "contact_other_plane_incapacitation",
             ],
         },
     ]
@@ -2567,6 +2570,84 @@ def test_compendium_loads_srd_actions() -> None:
                 "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
             },
         }
+    ]
+    contact_spell = compendium.spell("srd.spell.contact_other_plane")
+    assert contact_spell.ritual is True
+    assert contact_spell.level == 5
+    assert contact_spell.school == "divination"
+    assert contact_spell.classes == ["warlock", "wizard"]
+    contact = compendium.action("srd.contact_other_plane")
+    assert contact.requirements == {
+        "spell_level": 5,
+        "class_any": ["warlock", "wizard"],
+    }
+    assert contact.properties["spell_classes"] == ["warlock", "wizard"]
+    assert contact.properties["ritual"] is True
+    assert contact.properties["spell_definition_id"] == "srd.spell.contact_other_plane"
+    assert contact.properties["casting_time"] == {"minutes": 1}
+    assert contact.properties["components"] == ["V"]
+    assert contact.properties["max_questions"] == 5
+    assert contact.properties["intelligence_save_dc"] == 15
+    assert contact.cost.spell_slot_level == 5
+    assert contact.cost.gold == 0
+    assert contact.range == {"self": True}
+    assert contact.target_policy == {"min": 0, "max": 0, "self": True, "harmful": False}
+    assert contact.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "saving_throw",
+            "ability": "int",
+            "dc_ref": "srd.contact_other_plane.int_save",
+            "dc_table": {"srd.contact_other_plane.int_save": 15},
+        },
+        {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [
+                {
+                    "type": "world_effect",
+                    "effect_type": "contact_other_plane_answer_window",
+                    "scope": {"target": "self"},
+                    "duration": {"until": "duration_1_minute"},
+                    "tick_on": "self_turn_end",
+                    "metadata": {
+                        "mentally_contacts_otherworldly_intelligence": True,
+                        "possible_entities": [
+                            "demigod",
+                            "long_dead_sage_spirit",
+                            "knowledgeable_entity_from_another_plane",
+                        ],
+                        "max_questions": 5,
+                        "questions_must_be_asked_before_spell_ends": True,
+                        "gm_answers_each_question_with_one_word": True,
+                        "example_answers": [
+                            "yes",
+                            "no",
+                            "maybe",
+                            "never",
+                            "irrelevant",
+                            "unclear",
+                        ],
+                        "unclear_if_entity_does_not_know_answer": True,
+                        "gm_may_offer_short_phrase_if_one_word_misleading": True,
+                        "answer_generation_not_automated": True,
+                        "entity_selection_not_automated": True,
+                    },
+                }
+            ],
+            "if_false": [
+                {"type": "damage", "dice": "6d6", "damage_type": "psychic"},
+                {
+                    "type": "condition",
+                    "condition": "incapacitated",
+                    "duration": {"until": "long_rest"},
+                    "passive_modifiers": {
+                        "contact_other_plane_incapacitation": True,
+                        "greater_restoration_ends_effect": True,
+                    },
+                },
+            ],
+        },
     ]
     commune_spell = compendium.spell("srd.spell.commune")
     assert commune_spell.ritual is True
@@ -7070,6 +7151,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.charm_monster",
         "srd.spell.commune",
         "srd.spell.commune_with_nature",
+        "srd.spell.contact_other_plane",
         "srd.spell.telepathic_bond",
         "srd.spell.compulsion",
         "srd.spell.conjure_woodland_beings",

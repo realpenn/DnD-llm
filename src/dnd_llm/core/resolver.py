@@ -64,6 +64,7 @@ RESOLVER_GREATER_RESTORATION_CHOICES = {
     "curse",
     "ability_score_reduction",
     "hp_max_reduction",
+    "contact_other_plane_incapacitation",
 }
 RESOLVER_RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
     {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}

@@ -22258,6 +22258,256 @@ def test_divination_requires_consumed_incense_gold_before_spending_slot(make_sta
     assert state.world.active_effects == []
 
 
+def test_contact_other_plane_success_records_answer_window(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.contact_other_plane",
+        [],
+        5,
+        idempotency_key="cast-contact-other-plane",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["target_id"] == "pc1"
+    assert save_node["ability"] == "int"
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "dc_ref:srd.contact_other_plane.int_save"
+    assert save_node["success"] is True
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.contact_other_plane"
+    assert effect["effect_type"] == "contact_other_plane_answer_window"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "self"}
+    assert effect["duration"] == {"until": "duration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "mentally_contacts_otherworldly_intelligence": True,
+        "possible_entities": [
+            "demigod",
+            "long_dead_sage_spirit",
+            "knowledgeable_entity_from_another_plane",
+        ],
+        "max_questions": 5,
+        "questions_must_be_asked_before_spell_ends": True,
+        "gm_answers_each_question_with_one_word": True,
+        "example_answers": ["yes", "no", "maybe", "never", "irrelevant", "unclear"],
+        "unclear_if_entity_does_not_know_answer": True,
+        "gm_may_offer_short_phrase_if_one_word_misleading": True,
+        "answer_generation_not_automated": True,
+        "entity_selection_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "contact_other_plane_answer_window"
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
+def test_contact_other_plane_can_be_cast_as_ritual_without_spending_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 9}
+    caster.abilities["int"] = 18
+    caster.prepared_spells = ["srd.spell.contact_other_plane"]
+    caster.spell_slots["5"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.contact_other_plane",
+        [],
+        5,
+        as_ritual=True,
+        idempotency_key="ritual-contact-other-plane",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    ritual_change = next(
+        change for change in result["state_changes"] if change["type"] == "ritual_casting"
+    )
+    assert ritual_change == {
+        "type": "ritual_casting",
+        "actor_id": "pc1",
+        "spell_id": "srd.spell.contact_other_plane",
+        "base_spell_slot_level": 5,
+        "spell_slot_expended": False,
+        "casting_time_extra_minutes": 10,
+        "source": "prepared_spell",
+    }
+    assert not any(
+        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
+    )
+    assert state.world.active_effects[-1]["effect_type"] == "contact_other_plane_answer_window"
+
+
+def test_contact_other_plane_failed_save_damages_and_ends_on_long_rest(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 8
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 21]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.contact_other_plane",
+        [],
+        5,
+        idempotency_key="contact-other-plane-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["success"] is False
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20-1", "6d6"]
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["target_id"] == "pc1"
+    assert damage_change["damage_type"] == "psychic"
+    assert damage_change["amount"] == 21
+    assert state.world.active_effects == []
+
+    effect = state.characters["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.contact_other_plane"
+    assert effect["condition"] == "incapacitated"
+    assert effect["duration"] == {"until": "long_rest"}
+    assert effect["passive_modifiers"] == {
+        "contact_other_plane_incapacitation": True,
+        "greater_restoration_ends_effect": True,
+    }
+
+    long_rest = tools.long_rest(["pc1"], idempotency_key="contact-other-plane-long-rest")
+    removed = long_rest["results"]["pc1"]["removed_long_rest_effects"]
+    assert removed == [
+        {
+            "effect_id": effect["effect_id"],
+            "source_action_id": "srd.contact_other_plane",
+            "condition": "incapacitated",
+            "passive_modifiers": {
+                "contact_other_plane_incapacitation": True,
+                "greater_restoration_ends_effect": True,
+            },
+        }
+    ]
+    assert state.characters["pc1"].status_effects == []
+
+
+def test_contact_other_plane_greater_restoration_ends_failed_save_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 8
+    caster.spell_slots["5"] = 1
+    restorer = state.characters["pc2"]
+    restorer.class_levels = {"cleric": 9}
+    restorer.spell_slots["5"] = 1
+    restorer.gold = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 21]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.contact_other_plane",
+        [],
+        5,
+        idempotency_key="contact-other-plane-restoration-target",
+    )
+
+    assert result["success"] is True
+    assert state.characters["pc1"].status_effects[-1]["passive_modifiers"] == {
+        "contact_other_plane_incapacitation": True,
+        "greater_restoration_ends_effect": True,
+    }
+
+    tools.economy.set("pc2", "action", 1)
+    restored = tools.perform_action(
+        "pc2",
+        "srd.greater_restoration",
+        ["pc1"],
+        {
+            "slot_level": 5,
+            "greater_restoration_choice": "contact_other_plane_incapacitation",
+        },
+        idempotency_key="greater-restoration-contact-other-plane",
+    )
+
+    assert restored["success"] is True
+    greater_restore = next(
+        change for change in restored["state_changes"] if change["type"] == "greater_restoration"
+    )
+    assert greater_restore["choice"] == "contact_other_plane_incapacitation"
+    assert greater_restore["removed_markers"] == {"contact_other_plane_incapacitation": 1}
+    assert not state.characters["pc1"].status_effects
+
+
+def test_contact_other_plane_rejects_non_warlock_or_wizard_before_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of warlock"):
+        tools.cast_spell(
+            "pc1",
+            "srd.contact_other_plane",
+            [],
+            5,
+            idempotency_key="contact-other-plane-cleric",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
 def test_commune_records_one_minute_divine_answer_window(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]

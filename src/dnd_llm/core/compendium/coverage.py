@@ -77,6 +77,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.charm_monster",
     "srd.commune",
     "srd.commune_with_nature",
+    "srd.contact_other_plane",
     "srd.telepathic_bond",
     "srd.compulsion",
     "srd.confusion",

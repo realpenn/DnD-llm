@@ -528,7 +528,8 @@
             "charmed_or_petrified",
             "curse",
             "ability_score_reduction",
-            "hp_max_reduction"
+            "hp_max_reduction",
+            "contact_other_plane_incapacitation"
           ]
         },
         "friendly_fire_policy": "raw",
@@ -543,7 +544,8 @@
               "charmed_or_petrified",
               "curse",
               "ability_score_reduction",
-              "hp_max_reduction"
+              "hp_max_reduction",
+              "contact_other_plane_incapacitation"
             ]
           }
         ],

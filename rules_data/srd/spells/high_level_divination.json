@@ -188,6 +188,107 @@
       }
     },
     {
+      "id": "srd.spell.contact_other_plane",
+      "name": "Contact Other Plane",
+      "localization": {
+        "en": "Contact Other Plane",
+        "zh": "异界探知",
+        "aliases": ["联系异界", "异界联络"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["warlock", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.contact_other_plane",
+        "name": "Contact Other Plane",
+        "localization": {
+          "en": "Contact Other Plane",
+          "zh": "异界探知",
+          "aliases": ["联系异界", "异界联络"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["warlock", "wizard"]
+        },
+        "properties": {
+          "ritual": true,
+          "casting_time": { "minutes": 1 },
+          "components": ["V"],
+          "max_questions": 5,
+          "intelligence_save_dc": 15
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "saving_throw",
+            "ability": "int",
+            "dc_ref": "srd.contact_other_plane.int_save",
+            "dc_table": { "srd.contact_other_plane.int_save": 15 }
+          },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [
+              {
+                "type": "world_effect",
+                "effect_type": "contact_other_plane_answer_window",
+                "scope": { "target": "self" },
+                "duration": { "until": "duration_1_minute" },
+                "tick_on": "self_turn_end",
+                "metadata": {
+                  "mentally_contacts_otherworldly_intelligence": true,
+                  "possible_entities": [
+                    "demigod",
+                    "long_dead_sage_spirit",
+                    "knowledgeable_entity_from_another_plane"
+                  ],
+                  "max_questions": 5,
+                  "questions_must_be_asked_before_spell_ends": true,
+                  "gm_answers_each_question_with_one_word": true,
+                  "example_answers": [
+                    "yes",
+                    "no",
+                    "maybe",
+                    "never",
+                    "irrelevant",
+                    "unclear"
+                  ],
+                  "unclear_if_entity_does_not_know_answer": true,
+                  "gm_may_offer_short_phrase_if_one_word_misleading": true,
+                  "answer_generation_not_automated": true,
+                  "entity_selection_not_automated": true
+                }
+              }
+            ],
+            "if_false": [
+              { "type": "damage", "dice": "6d6", "damage_type": "psychic" },
+              {
+                "type": "condition",
+                "condition": "incapacitated",
+                "duration": { "until": "long_rest" },
+                "passive_modifiers": {
+                  "contact_other_plane_incapacitation": true,
+                  "greater_restoration_ends_effect": true
+                }
+              }
+            ]
+          }
+        ],
+        "audit_label": "Contact Other Plane"
+      }
+    },
+    {
       "id": "srd.spell.find_the_path",
       "name": "Find the Path",
       "localization": {
