@@ -43,6 +43,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.chain_lightning",
         "srd.fire_storm",
         "srd.forcecage",
+        "srd.sunburst",
         "srd.meteor_swarm",
         "srd.flame_strike",
         "srd.circle_of_death",
@@ -726,6 +727,62 @@ def test_compendium_loads_srd_actions() -> None:
         {"type": "target", "mode": "explicit"},
         {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
         {"type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": True},
+    ]
+    sunburst_spell = compendium.spell("srd.spell.sunburst")
+    assert sunburst_spell.level == 8
+    assert sunburst_spell.school == "evocation"
+    assert sunburst_spell.classes == ["cleric", "druid", "sorcerer", "wizard"]
+    sunburst = compendium.action("srd.sunburst")
+    assert sunburst.requirements == {
+        "spell_level": 8,
+        "class_any": ["cleric", "druid", "sorcerer", "wizard"],
+    }
+    assert sunburst.properties == {
+        "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a piece of sunstone",
+            "consumed": False,
+        },
+        "sunlight_sphere_radius_ft": 60,
+        "dispels_spell_created_darkness_in_area": True,
+        "spell_definition_id": "srd.spell.sunburst",
+        "spell_level": 8,
+    }
+    assert sunburst.cost.spell_slot_level == 8
+    assert sunburst.range == {"normal_ft": 150, "shape": "sphere", "radius_ft": 60}
+    assert sunburst.target_policy == {"min": 1, "max": 32, "harmful": True}
+    assert sunburst.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "12d6",
+            "damage_type": "radiant",
+            "save_half": True,
+        },
+        {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": True,
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "con",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "target_turn_end",
+                },
+            },
+            "tick_on": "target_turn_end",
+        },
+        {
+            "type": "text_result",
+            "text": (
+                "Brilliant sunlight fills a 60-foot-radius Sphere and dispels "
+                "Darkness in the area that was created by any spell."
+            ),
+        },
     ]
     disintegrate = compendium.action("srd.disintegrate")
     assert disintegrate.requirements == {
@@ -7363,6 +7420,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.chain_lightning",
         "srd.spell.fire_storm",
         "srd.spell.forcecage",
+        "srd.spell.sunburst",
         "srd.spell.meteor_swarm",
         "srd.spell.flame_strike",
         "srd.spell.disintegrate",

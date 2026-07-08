@@ -18848,6 +18848,158 @@ def test_fire_storm_uses_actor_spell_dc_and_records_srd_area_metadata(
     ]
 
 
+def test_sunburst_failed_save_deals_radiant_damage_and_blinds_until_repeat_save(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 100
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 42]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.sunburst",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-sunburst-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "radiant"
+    assert damage_change["amount"] == 42
+    assert damage_change["applied"] == 42
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "12d6"]
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.sunburst"
+    assert effect["condition"] == "blinded"
+    assert effect["duration"] == {
+        "until": "duration_1_minute",
+        "repeat_save": {
+            "ability": "con",
+            "dc": 18,
+            "dc_source": "spell_save_dc:cleric",
+            "end_on_success": True,
+            "trigger": "target_turn_end",
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert result["messages"] == [
+        "Brilliant sunlight fills a 60-foot-radius Sphere and dispels "
+        "Darkness in the area that was created by any spell."
+    ]
+    assert target.hp_current == 58
+
+    ending = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert ending.expired[0]["source_action_id"] == "srd.sunburst"
+    assert ending.expired[0]["repeat_save"]["success"] is True
+    assert target.status_effects == []
+
+
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("cleric", "wis", "spell_save_dc:cleric"),
+        ("druid", "wis", "spell_save_dc:druid"),
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_sunburst_successful_save_halves_damage_and_does_not_blind(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 15}
+    caster.abilities[ability] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 100
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 42]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.sunburst",
+        ["goblin1"],
+        8,
+        idempotency_key=f"cast-sunburst-success-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "radiant"
+    assert damage_change["amount"] == 21
+    assert damage_change["applied"] == 21
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+    assert target.status_effects == []
+    assert target.hp_current == 79
+
+
+def test_sunburst_rejects_invalid_caster_before_spending_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 15}
+    caster.spell_slots["8"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of cleric"):
+        tools.cast_spell(
+            "pc1",
+            "srd.sunburst",
+            ["goblin1"],
+            8,
+            idempotency_key="cast-sunburst-bard",
+        )
+
+    assert caster.spell_slots["8"] == 1
+    assert state.encounter is not None
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
 @pytest.mark.parametrize(
     ("class_name", "ability", "dc_source"),
     [

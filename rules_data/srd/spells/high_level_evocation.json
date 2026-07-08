@@ -795,6 +795,76 @@
       }
     },
     {
+      "id": "srd.spell.sunburst",
+      "name": "Sunburst",
+      "localization": {
+        "en": "Sunburst",
+        "zh": "阳炎爆",
+        "aliases": ["阳炎术", "日爆术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.sunburst",
+        "name": "Sunburst",
+        "localization": {
+          "en": "Sunburst",
+          "zh": "阳炎爆",
+          "aliases": ["阳炎术", "日爆术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 1, "max": 32, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a piece of sunstone",
+            "consumed": false
+          },
+          "sunlight_sphere_radius_ft": 60,
+          "dispels_spell_created_darkness_in_area": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "12d6", "damage_type": "radiant", "save_half": true },
+          {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": true,
+            "duration": {
+              "until": "duration_1_minute",
+              "repeat_save": {
+                "ability": "con",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end"
+              }
+            },
+            "tick_on": "target_turn_end"
+          },
+          {
+            "type": "text_result",
+            "text": "Brilliant sunlight fills a 60-foot-radius Sphere and dispels Darkness in the area that was created by any spell."
+          }
+        ],
+        "audit_label": "Sunburst"
+      }
+    },
+    {
       "id": "srd.spell.meteor_swarm",
       "name": "Meteor Swarm",
       "localization": { "en": "Meteor Swarm", "zh": "流星爆", "aliases": [] },
