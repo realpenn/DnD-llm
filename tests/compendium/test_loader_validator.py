@@ -64,6 +64,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.charm_monster",
+        "srd.commune_with_nature",
         "srd.confusion",
         "srd.conjure_woodland_beings",
         "srd.conjure_woodland_beings_disengage",
@@ -2562,6 +2563,60 @@ def test_compendium_loads_srd_actions() -> None:
                 "does_not_account_for_changed_circumstances": True,
                 "changed_circumstance_example": "casting_other_spells",
                 "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+            },
+        }
+    ]
+    commune_facts = [
+        "settlements",
+        "portals_to_other_planes",
+        "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+        "prevalent_plant_mineral_or_beast",
+        "bodies_of_water",
+    ]
+    commune_spell = compendium.spell("srd.spell.commune_with_nature")
+    assert commune_spell.ritual is True
+    assert commune_spell.level == 5
+    assert commune_spell.school == "divination"
+    assert commune_spell.classes == ["druid", "ranger"]
+    commune = compendium.action("srd.commune_with_nature")
+    assert commune.requirements == {
+        "spell_level": 5,
+        "class_any": ["druid", "ranger"],
+    }
+    assert commune.properties["spell_classes"] == ["druid", "ranger"]
+    assert commune.properties["ritual"] is True
+    assert commune.properties["spell_definition_id"] == "srd.spell.commune_with_nature"
+    assert commune.properties["casting_time"] == {"minutes": 1}
+    assert commune.properties["components"] == ["V", "S"]
+    assert commune.properties["facts_param"] == "commune_with_nature_facts"
+    assert commune.properties["allowed_list_params"] == {
+        "commune_with_nature_facts": commune_facts
+    }
+    assert commune.properties["required_list_param_counts"] == {
+        "commune_with_nature_facts": 3
+    }
+    assert commune.properties["max_facts"] == 3
+    assert commune.cost.spell_slot_level == 5
+    assert commune.range == {"self": True}
+    assert commune.target_policy == {"min": 0, "max": 0, "self": True, "harmful": False}
+    assert commune.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "commune_with_nature_knowledge",
+            "scope": {"target": "self"},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "communes_with_nature_spirits": True,
+                "outdoors_radius_miles": 3,
+                "natural_underground_radius_ft": 300,
+                "does_not_function_where_nature_replaced_by_construction": True,
+                "construction_examples": ["castles", "settlements"],
+                "facts_chosen": {"param_list": "commune_with_nature_facts"},
+                "max_facts": 3,
+                "available_facts": commune_facts,
+                "prevalent_fact_requires_choice_of_plant_mineral_or_beast": True,
+                "cr_10_plus_creature_is_gm_choice": True,
+                "map_query_not_automated": True,
             },
         }
     ]
@@ -6916,6 +6971,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.harm",
         "srd.spell.finger_of_death",
         "srd.spell.charm_monster",
+        "srd.spell.commune_with_nature",
         "srd.spell.compulsion",
         "srd.spell.conjure_woodland_beings",
         "srd.spell.guardian_of_faith",

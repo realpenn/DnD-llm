@@ -10257,6 +10257,9 @@ class AutomationExecutor:
         specs = action.properties.get("allowed_list_params")
         if not isinstance(specs, dict):
             return
+        required_counts = action.properties.get("required_list_param_counts")
+        if not isinstance(required_counts, dict):
+            required_counts = {}
         for param_name, allowed_raw in specs.items():
             param = str(param_name)
             if not isinstance(allowed_raw, list) or not allowed_raw:
@@ -10279,6 +10282,9 @@ class AutomationExecutor:
                     raise AutomationError(f"{param} must contain only: {', '.join(allowed)}")
                 if normalized not in normalized_values:
                     normalized_values.append(normalized)
+            expected_count = required_counts.get(param)
+            if expected_count is not None and len(normalized_values) != int(expected_count):
+                raise AutomationError(f"{param} must contain exactly {int(expected_count)} choices")
             params[param] = normalized_values
 
     @staticmethod

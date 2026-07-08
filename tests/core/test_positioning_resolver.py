@@ -591,6 +591,81 @@ def test_resolver_checks_greater_restoration_choice_and_component_cost(
     assert accepted.action_id == "srd.greater_restoration"
 
 
+def test_resolver_validates_commune_with_nature_fact_choices(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 9}
+    character.actions.append("srd.commune_with_nature")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="问道自然",
+            candidate_action_id="srd.commune_with_nature",
+            params={"slot_level": 5},
+        )
+    )
+    assert missing.status == "rejected"
+    assert missing.reason == "missing required parameter commune_with_nature_facts"
+
+    too_few = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="问道自然",
+            candidate_action_id="srd.commune_with_nature",
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": ["settlements", "bodies_of_water"],
+            },
+        )
+    )
+    assert too_few.status == "rejected"
+    assert too_few.reason == "commune_with_nature_facts must contain exactly 3 choices"
+
+    invalid = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="问道自然",
+            candidate_action_id="srd.commune_with_nature",
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": [
+                    "settlements",
+                    "weather",
+                    "bodies_of_water",
+                ],
+            },
+        )
+    )
+    assert invalid.status == "rejected"
+    assert invalid.reason.startswith("commune_with_nature_facts must contain only:")
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="问道自然",
+        candidate_action_id="srd.commune_with_nature",
+        params={
+            "slot_level": 5,
+            "commune_with_nature_facts": [
+                "SETTLEMENTS",
+                "portals_to_other_planes",
+                "bodies_of_water",
+            ],
+        },
+    )
+    accepted = resolver.resolve(draft)
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.commune_with_nature"
+    assert draft.params["commune_with_nature_facts"] == [
+        "settlements",
+        "portals_to_other_planes",
+        "bodies_of_water",
+    ]
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:

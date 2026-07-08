@@ -424,9 +424,15 @@ def _add_allowed_list_params(params: dict[str, Any], action: ActionDefinition) -
     specs = action.properties.get("allowed_list_params")
     if not isinstance(specs, dict):
         return
+    required_counts = action.properties.get("required_list_param_counts")
+    if not isinstance(required_counts, dict):
+        required_counts = {}
     for param_name, allowed_raw in specs.items():
         if isinstance(allowed_raw, list) and allowed_raw:
-            params[str(param_name)] = [str(allowed_raw[0])]
+            param = str(param_name)
+            count = int(required_counts.get(param, 1))
+            count = max(1, count)
+            params[param] = [str(item) for item in allowed_raw[:count]]
 
 
 def _add_fire_shield_params(params: dict[str, Any], action: ActionDefinition) -> None:

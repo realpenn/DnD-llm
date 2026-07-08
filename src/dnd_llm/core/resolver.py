@@ -234,6 +234,13 @@ class ActionResolver:
                 reason=damage_type_error,
                 action_id=action.id,
             )
+        allowed_list_error = self._allowed_list_params_error(draft, action)
+        if allowed_list_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=allowed_list_error,
+                action_id=action.id,
+            )
         greater_restoration_error = self._greater_restoration_choice_error(draft, action)
         if greater_restoration_error is not None:
             return ResolverResult(
@@ -524,6 +531,45 @@ class ActionResolver:
         if normalized not in allowed:
             return f"damage_type must be one of: {', '.join(allowed)}"
         draft.params["damage_type"] = normalized
+        return None
+
+    @staticmethod
+    def _allowed_list_params_error(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        specs = action.properties.get("allowed_list_params")
+        if not isinstance(specs, dict):
+            return None
+        required_counts = action.properties.get("required_list_param_counts")
+        if not isinstance(required_counts, dict):
+            required_counts = {}
+        for param_name, allowed_raw in specs.items():
+            param = str(param_name)
+            if not isinstance(allowed_raw, list) or not allowed_raw:
+                continue
+            allowed = [str(value) for value in allowed_raw]
+            raw = draft.params.get(param)
+            if raw is None or raw == "":
+                return f"missing required parameter {param}"
+            if isinstance(raw, dict):
+                return f"parameter {param} must be a list"
+            raw_values = raw if isinstance(raw, list) else [raw]
+            if not raw_values:
+                return f"parameter {param} must not be empty"
+            normalized_values: list[str] = []
+            for value in raw_values:
+                if isinstance(value, (dict, list)):
+                    return f"parameter {param} entries must be scalars"
+                normalized = str(value).casefold().strip()
+                if normalized not in allowed:
+                    return f"{param} must contain only: {', '.join(allowed)}"
+                if normalized not in normalized_values:
+                    normalized_values.append(normalized)
+            expected_count = required_counts.get(param)
+            if expected_count is not None and len(normalized_values) != int(expected_count):
+                return f"{param} must contain exactly {int(expected_count)} choices"
+            draft.params[param] = normalized_values
         return None
 
     @staticmethod

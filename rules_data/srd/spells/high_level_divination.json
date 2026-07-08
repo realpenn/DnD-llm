@@ -251,6 +251,89 @@
       }
     },
     {
+      "id": "srd.spell.commune_with_nature",
+      "name": "Commune with Nature",
+      "localization": {
+        "en": "Commune with Nature",
+        "zh": "问道自然",
+        "aliases": ["与自然交谈", "自然沟通"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["druid", "ranger"],
+      "ritual": true,
+      "action": {
+        "id": "srd.commune_with_nature",
+        "name": "Commune with Nature",
+        "localization": {
+          "en": "Commune with Nature",
+          "zh": "问道自然",
+          "aliases": ["与自然交谈", "自然沟通"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["druid", "ranger"]
+        },
+        "properties": {
+          "ritual": true,
+          "casting_time": { "minutes": 1 },
+          "components": ["V", "S"],
+          "facts_param": "commune_with_nature_facts",
+          "allowed_list_params": {
+            "commune_with_nature_facts": [
+              "settlements",
+              "portals_to_other_planes",
+              "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+              "prevalent_plant_mineral_or_beast",
+              "bodies_of_water"
+            ]
+          },
+          "required_list_param_counts": {
+            "commune_with_nature_facts": 3
+          },
+          "max_facts": 3
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "commune_with_nature_knowledge",
+            "scope": { "target": "self" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "communes_with_nature_spirits": true,
+              "outdoors_radius_miles": 3,
+              "natural_underground_radius_ft": 300,
+              "does_not_function_where_nature_replaced_by_construction": true,
+              "construction_examples": ["castles", "settlements"],
+              "facts_chosen": { "param_list": "commune_with_nature_facts" },
+              "max_facts": 3,
+              "available_facts": [
+                "settlements",
+                "portals_to_other_planes",
+                "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+                "prevalent_plant_mineral_or_beast",
+                "bodies_of_water"
+              ],
+              "prevalent_fact_requires_choice_of_plant_mineral_or_beast": true,
+              "cr_10_plus_creature_is_gm_choice": true,
+              "map_query_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Commune with Nature"
+      }
+    },
+    {
       "id": "srd.spell.true_seeing",
       "name": "True Seeing",
       "localization": {

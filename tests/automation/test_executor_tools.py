@@ -20413,6 +20413,184 @@ def test_antilife_shell_rejects_non_druid_before_spending_slot(make_state) -> No
     assert state.world.active_effects == []
 
 
+def test_commune_with_nature_records_instant_nature_knowledge(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    facts = [
+        "settlements",
+        "portals_to_other_planes",
+        "bodies_of_water",
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.commune_with_nature",
+        actor_id="pc1",
+        targets=[],
+        params={"slot_level": 5, "commune_with_nature_facts": facts},
+        idempotency_key="cast-commune-with-nature",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.commune_with_nature"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "commune_with_nature_knowledge"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "self"}
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "communes_with_nature_spirits": True,
+        "outdoors_radius_miles": 3,
+        "natural_underground_radius_ft": 300,
+        "does_not_function_where_nature_replaced_by_construction": True,
+        "construction_examples": ["castles", "settlements"],
+        "facts_chosen": facts,
+        "max_facts": 3,
+        "available_facts": [
+            "settlements",
+            "portals_to_other_planes",
+            "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+            "prevalent_plant_mineral_or_beast",
+            "bodies_of_water",
+        ],
+        "prevalent_fact_requires_choice_of_plant_mineral_or_beast": True,
+        "cr_10_plus_creature_is_gm_choice": True,
+        "map_query_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "commune_with_nature_knowledge"
+    assert world_effect_change["concentration"] is False
+
+
+def test_commune_with_nature_can_be_cast_as_ritual_without_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"ranger": 9}
+    caster.prepared_spells = ["srd.spell.commune_with_nature"]
+    caster.spell_slots["5"] = 0
+    facts = [
+        "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+        "prevalent_plant_mineral_or_beast",
+        "bodies_of_water",
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.commune_with_nature",
+        actor_id="pc1",
+        targets=[],
+        params={
+            "slot_level": 5,
+            "as_ritual": True,
+            "commune_with_nature_facts": facts,
+        },
+        idempotency_key="ritual-commune-with-nature",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    ritual_change = next(
+        change for change in result["state_changes"] if change["type"] == "ritual_casting"
+    )
+    assert ritual_change == {
+        "type": "ritual_casting",
+        "actor_id": "pc1",
+        "spell_id": "srd.spell.commune_with_nature",
+        "base_spell_slot_level": 5,
+        "spell_slot_expended": False,
+        "casting_time_extra_minutes": 10,
+        "source": "prepared_spell",
+    }
+    assert not any(
+        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
+    )
+    assert state.world.active_effects[-1]["metadata"]["facts_chosen"] == facts
+
+
+def test_commune_with_nature_rejects_invalid_or_wrong_fact_count_before_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="commune_with_nature_facts must contain exactly 3 choices",
+    ):
+        tools._execute_action(
+            action_id="srd.commune_with_nature",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": ["settlements", "bodies_of_water"],
+            },
+            idempotency_key="commune-with-nature-too-few-facts",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(
+        AutomationError,
+        match="commune_with_nature_facts must contain exactly 3 choices",
+    ):
+        tools._execute_action(
+            action_id="srd.commune_with_nature",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": [
+                    "settlements",
+                    "portals_to_other_planes",
+                    "prevalent_plant_mineral_or_beast",
+                    "bodies_of_water",
+                ],
+            },
+            idempotency_key="commune-with-nature-too-many-facts",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="commune_with_nature_facts must contain only"):
+        tools._execute_action(
+            action_id="srd.commune_with_nature",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": [
+                    "settlements",
+                    "weather",
+                    "bodies_of_water",
+                ],
+            },
+            idempotency_key="commune-with-nature-invalid-fact",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
 def test_globe_of_invulnerability_records_concentration_spell_barrier(
     make_state,
 ) -> None:
