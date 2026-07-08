@@ -20115,6 +20115,150 @@ def test_guardian_of_faith_rejects_targets_or_invalid_caster_before_effect(
     assert state.world.active_effects == []
 
 
+def test_black_tentacles_failed_save_damages_restrains_and_records_area(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"str": 10}
+    target.hp_current = 40
+    target.hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.black_tentacles",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-black-tentacles-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "bludgeoning"
+    assert damage_change["amount"] == 6
+    assert damage_change["applied"] == 6
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "3d6"]
+
+    restrained = target.status_effects[-1]
+    assert restrained["source_action_id"] == "srd.black_tentacles"
+    assert restrained["condition"] == "restrained"
+    assert restrained["concentration"] is True
+    assert restrained["duration"] == {"until": "concentration_1_minute"}
+    assert restrained["tick_on"] == "self_turn_end"
+    assert restrained["passive_modifiers"] == {
+        "black_tentacles": True,
+        "area_escape_check": {
+            "action": "action",
+            "ability": "str",
+            "skill": "athletics",
+            "dc_from": {"spell_save_dc": "actor"},
+            "ends_condition": "restrained",
+        },
+    }
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.black_tentacles"
+    assert effect["effect_type"] == "black_tentacles_area"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "ground_area",
+        "range_ft": 90,
+        "shape": "square",
+        "size_ft": 20,
+    }
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "ground_you_can_see": True,
+        "difficult_terrain": True,
+        "repeat_save_triggers": [
+            "creature_enters_area",
+            "creature_ends_turn_in_area",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "str",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "3d6 bludgeoning",
+            "failed_condition": "restrained",
+        },
+        "restrained_escape_check": {
+            "action": "action",
+            "ability": "str",
+            "skill": "athletics",
+            "dc_from": {"spell_save_dc": "actor"},
+            "ends_condition": "restrained",
+        },
+    }
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert {entry["source_action_id"] for entry in lifecycle.ticked} == {"srd.black_tentacles"}
+    assert [entry["remaining_ticks_before"] for entry in lifecycle.ticked] == [10, 10]
+    assert [entry["remaining_ticks_after"] for entry in lifecycle.ticked] == [9, 9]
+    assert target.status_effects[-1]["duration"]["remaining_ticks"] == 9
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 9
+
+
+def test_black_tentacles_successful_save_creates_area_without_damage_or_restrained(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"str": 10}
+    target.hp_current = 40
+    target.hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.black_tentacles",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-black-tentacles-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["success"] is True
+    assert target.hp_current == 40
+    assert target.status_effects == []
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+    assert state.world.active_effects[-1]["effect_type"] == "black_tentacles_area"
+
+
 def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

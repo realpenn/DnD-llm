@@ -71,6 +71,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.dimension_door",
         "srd.faithful_hound",
         "srd.guardian_of_faith",
+        "srd.black_tentacles",
         "srd.secret_chest",
         "srd.insect_plague",
         "srd.transport_via_plants",
@@ -1740,6 +1741,82 @@ def test_compendium_loads_srd_actions() -> None:
                 "vanishes_after_total_damage_dealt": 60,
             },
         }
+    ]
+    black_tentacles = compendium.action("srd.black_tentacles")
+    assert black_tentacles.requirements == {
+        "spell_level": 4,
+        "class_any": ["wizard"],
+    }
+    assert black_tentacles.properties["spell_classes"] == ["wizard"]
+    assert black_tentacles.properties["material_component"] == {
+        "description": "a tentacle",
+        "consumed": False,
+    }
+    assert black_tentacles.properties["ground_you_can_see"] is True
+    assert black_tentacles.cost.spell_slot_level == 4
+    assert black_tentacles.range == {"normal_ft": 90, "shape": "square", "size_ft": 20}
+    assert black_tentacles.target_policy == {"min": 0, "max": 16, "harmful": True}
+    assert black_tentacles.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "str", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "3d6",
+            "damage_type": "bludgeoning",
+            "requires_failed_save": True,
+        },
+        {
+            "type": "condition",
+            "condition": "restrained",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "black_tentacles": True,
+                "area_escape_check": {
+                    "action": "action",
+                    "ability": "str",
+                    "skill": "athletics",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "ends_condition": "restrained",
+                },
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "black_tentacles_area",
+            "scope": {
+                "target": "ground_area",
+                "range_ft": 90,
+                "shape": "square",
+                "size_ft": 20,
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "ground_you_can_see": True,
+                "difficult_terrain": True,
+                "repeat_save_triggers": [
+                    "creature_enters_area",
+                    "creature_ends_turn_in_area",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "str",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "3d6 bludgeoning",
+                    "failed_condition": "restrained",
+                },
+                "restrained_escape_check": {
+                    "action": "action",
+                    "ability": "str",
+                    "skill": "athletics",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "ends_condition": "restrained",
+                },
+            },
+        },
     ]
     secret_chest = compendium.action("srd.secret_chest")
     assert secret_chest.requirements == {
@@ -6353,6 +6430,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.finger_of_death",
         "srd.spell.charm_monster",
         "srd.spell.guardian_of_faith",
+        "srd.spell.black_tentacles",
         "srd.spell.etherealness",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9

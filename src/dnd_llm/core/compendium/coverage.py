@@ -69,6 +69,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.blessed_strikes",
     "srd.blessed_strikes_divine_strike",
     "srd.blessed_strikes_potent_spellcasting",
+    "srd.black_tentacles",
     "srd.body_and_mind",
     "srd.brutal_strike",
     "srd.charm_monster",
