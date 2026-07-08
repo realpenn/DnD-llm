@@ -277,6 +277,100 @@
       }
     },
     {
+      "id": "srd.spell.dominate_person",
+      "name": "Dominate Person",
+      "localization": {
+        "en": "Dominate Person",
+        "zh": "支配人类",
+        "aliases": ["支配人类术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.dominate_person",
+        "name": "Dominate Person",
+        "localization": {
+          "en": "Dominate Person",
+          "zh": "支配人类",
+          "aliases": ["支配人类术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "creature_types": ["humanoid"]
+        },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_type": "humanoid",
+          "saving_throw_advantage_if_caster_or_allies_fighting_target": true,
+          "telepathic_link_same_plane": true,
+          "commands_no_action_on_caster_turn": true,
+          "target_obeys_commands_best_ability": true,
+          "target_self_protects_without_new_direction": true,
+          "can_command_target_reaction_by_spending_caster_reaction": true,
+          "command_ai_not_automated": true,
+          "reaction_command_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "dominate_person": true,
+              "telepathic_link_same_plane": true,
+              "commands_no_action_on_caster_turn": true,
+              "target_obeys_commands_best_ability": true,
+              "target_self_protects_without_new_direction": true,
+              "can_command_target_reaction_by_spending_caster_reaction": true,
+              "command_ai_not_automated": true,
+              "reaction_command_not_automated": true
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "damage"
+              },
+              "duration_from_slot": {
+                "base_spell_slot_level": 5,
+                "by_slot_level": {
+                  "6": "concentration_10_minutes",
+                  "7": "concentration_1_hour",
+                  "8": "concentration_8_hours",
+                  "9": "concentration_8_hours"
+                }
+              }
+            },
+            "tick_on": "damage",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Dominate Person"
+      }
+    },
+    {
       "id": "srd.spell.compulsion",
       "name": "Compulsion",
       "localization": {

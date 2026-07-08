@@ -74,6 +74,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.conjure_woodland_beings_disengage",
         "srd.creation",
         "srd.dominate_beast",
+        "srd.dominate_person",
         "srd.compulsion",
         "srd.hold_monster",
         "srd.irresistible_dance",
@@ -1654,6 +1655,73 @@ def test_compendium_loads_srd_actions() -> None:
                         "5": "concentration_10_minutes",
                         "6": "concentration_1_hour",
                         "7": "concentration_8_hours",
+                        "8": "concentration_8_hours",
+                        "9": "concentration_8_hours",
+                    },
+                },
+            },
+            "tick_on": "damage",
+            "concentration": True,
+        },
+    ]
+    dominate_person = compendium.action("srd.dominate_person")
+    assert dominate_person.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "sorcerer", "wizard"],
+    }
+    assert dominate_person.properties == {
+        "spell_classes": ["bard", "sorcerer", "wizard"],
+        "components": ["V", "S"],
+        "target_must_be_visible": True,
+        "target_type": "humanoid",
+        "saving_throw_advantage_if_caster_or_allies_fighting_target": True,
+        "telepathic_link_same_plane": True,
+        "commands_no_action_on_caster_turn": True,
+        "target_obeys_commands_best_ability": True,
+        "target_self_protects_without_new_direction": True,
+        "can_command_target_reaction_by_spending_caster_reaction": True,
+        "command_ai_not_automated": True,
+        "reaction_command_not_automated": True,
+        "spell_definition_id": "srd.spell.dominate_person",
+        "spell_level": 5,
+    }
+    assert dominate_person.range == {"normal_ft": 60}
+    assert dominate_person.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": True,
+        "creature_types": ["humanoid"],
+    }
+    assert dominate_person.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "dominate_person": True,
+                "telepathic_link_same_plane": True,
+                "commands_no_action_on_caster_turn": True,
+                "target_obeys_commands_best_ability": True,
+                "target_self_protects_without_new_direction": True,
+                "can_command_target_reaction_by_spending_caster_reaction": True,
+                "command_ai_not_automated": True,
+                "reaction_command_not_automated": True,
+            },
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "damage",
+                },
+                "duration_from_slot": {
+                    "base_spell_slot_level": 5,
+                    "by_slot_level": {
+                        "6": "concentration_10_minutes",
+                        "7": "concentration_1_hour",
                         "8": "concentration_8_hours",
                         "9": "concentration_8_hours",
                     },

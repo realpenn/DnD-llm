@@ -2720,6 +2720,49 @@ def test_resolver_checks_turn_undead_creature_type_policy(make_state) -> None:
     assert accepted.status == "accepted"
 
 
+def test_resolver_checks_dominate_person_humanoid_policy(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.dominate_person")
+    character.spell_slots["5"] = 1
+    state.encounter.combatants["wolf1"] = Combatant(
+        id="wolf1",
+        entity_id="wolf1",
+        name="Wolf One",
+        side="monsters",
+        hp_current=30,
+        hp_max=30,
+        armor_class=13,
+        creature_type="beast",
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="支配人类",
+            target_ids=["wolf1"],
+            candidate_action_id="srd.dominate_person",
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="支配人类",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dominate_person",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be humanoid"
+    assert accepted.status == "accepted"
+
+
 def test_resolver_accepts_countercharm_for_turn_undead_target_in_range(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
