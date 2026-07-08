@@ -57,6 +57,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.private_sanctum",
         "srd.resilient_sphere",
         "srd.banishment",
+        "srd.antilife_shell",
         "srd.aura_of_life",
         "srd.death_ward",
         "srd.arcane_eye",
@@ -1722,6 +1723,50 @@ def test_compendium_loads_srd_actions() -> None:
                 "ability_score_reduction",
                 "hp_max_reduction",
             ],
+        },
+    ]
+    antilife_shell = compendium.action("srd.antilife_shell")
+    assert antilife_shell.requirements == {
+        "spell_level": 5,
+        "class_any": ["druid"],
+    }
+    assert antilife_shell.properties == {
+        "components": ["V", "S"],
+        "self_centered_emanation_radius_ft": 10,
+        "spell_classes": ["druid"],
+        "spell_definition_id": "srd.spell.antilife_shell",
+        "spell_level": 5,
+    }
+    assert antilife_shell.cost.spell_slot_level == 5
+    assert antilife_shell.range == {
+        "self": True,
+        "shape": "emanation",
+        "radius_ft": 10,
+    }
+    assert antilife_shell.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert antilife_shell.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "world_effect",
+            "effect_type": "antilife_shell",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 10},
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "self_centered_emanation": True,
+                "blocks_creatures_other_than_constructs_and_undead": True,
+                "prevents_passing_or_reaching_through": True,
+                "constructs_and_undead_unaffected": True,
+                "affected_creatures_can_cast_spells_through_barrier": True,
+                "affected_creatures_can_attack_with_ranged_or_reach_weapons_through_barrier": True,
+                "ends_if_caster_moves_and_forces_affected_creature_through_barrier": True,
+                "barrier_collision_not_automated": True,
+            },
         },
     ]
     globe_of_invulnerability = compendium.action("srd.globe_of_invulnerability")
@@ -6857,6 +6902,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.phantasmal_killer",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",
+        "srd.spell.antilife_shell",
         "srd.spell.aura_of_life",
         "srd.spell.death_ward",
         "srd.spell.cone_of_cold",

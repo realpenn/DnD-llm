@@ -551,6 +551,66 @@
       }
     },
     {
+      "id": "srd.spell.antilife_shell",
+      "name": "Antilife Shell",
+      "localization": {
+        "en": "Antilife Shell",
+        "zh": "反生命法罩",
+        "aliases": ["反生命护罩", "反生命壳"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.antilife_shell",
+        "name": "Antilife Shell",
+        "localization": {
+          "en": "Antilife Shell",
+          "zh": "反生命法罩",
+          "aliases": ["反生命护罩", "反生命壳"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "components": ["V", "S"],
+          "self_centered_emanation_radius_ft": 10
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "world_effect",
+            "effect_type": "antilife_shell",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 10 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "self_centered_emanation": true,
+              "blocks_creatures_other_than_constructs_and_undead": true,
+              "prevents_passing_or_reaching_through": true,
+              "constructs_and_undead_unaffected": true,
+              "affected_creatures_can_cast_spells_through_barrier": true,
+              "affected_creatures_can_attack_with_ranged_or_reach_weapons_through_barrier": true,
+              "ends_if_caster_moves_and_forces_affected_creature_through_barrier": true,
+              "barrier_collision_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Antilife Shell"
+      }
+    },
+    {
       "id": "srd.spell.globe_of_invulnerability",
       "name": "Globe of Invulnerability",
       "localization": {

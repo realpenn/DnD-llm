@@ -20338,6 +20338,81 @@ def test_private_sanctum_rejects_missing_or_invalid_protection_before_cost(
     assert state.world.active_effects == []
 
 
+def test_antilife_shell_records_concentration_creature_barrier(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.antilife_shell",
+        [],
+        5,
+        idempotency_key="cast-antilife-shell",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.antilife_shell"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "antilife_shell"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"target": "self_centered_emanation", "radius_ft": 10}
+    assert effect["duration"] == {"until": "concentration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "self_centered_emanation": True,
+        "blocks_creatures_other_than_constructs_and_undead": True,
+        "prevents_passing_or_reaching_through": True,
+        "constructs_and_undead_unaffected": True,
+        "affected_creatures_can_cast_spells_through_barrier": True,
+        "affected_creatures_can_attack_with_ranged_or_reach_weapons_through_barrier": True,
+        "ends_if_caster_moves_and_forces_affected_creature_through_barrier": True,
+        "barrier_collision_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "antilife_shell"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["source_action_id"] == "srd.antilife_shell"
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 599
+
+
+def test_antilife_shell_rejects_non_druid_before_spending_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of druid"):
+        tools.cast_spell(
+            "pc1",
+            "srd.antilife_shell",
+            [],
+            5,
+            idempotency_key="cast-antilife-shell-cleric",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
 def test_globe_of_invulnerability_records_concentration_spell_barrier(
     make_state,
 ) -> None:
