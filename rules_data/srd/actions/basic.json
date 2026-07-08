@@ -4898,6 +4898,43 @@
             "audit_label": "Disengage"
         },
         {
+            "id": "srd.conjure_woodland_beings_disengage",
+            "name": "Conjure Woodland Beings: Disengage",
+            "localization": {
+                "en": "Conjure Woodland Beings: Disengage",
+                "zh": "召唤林地生物：撤离",
+                "aliases": ["召唤林地生物撤离", "林地生物奖励动作撤离"]
+            },
+            "source": "SRD 5.2.1 Chapter 7: Spells: Conjure Woodland Beings",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "bonus_action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "properties": {
+                "requires_active_effect_source_action_id": "srd.conjure_woodland_beings",
+                "spell_definition_id": "srd.spell.conjure_woodland_beings",
+                "spell_level": 4
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "condition",
+                    "condition": "disengaged",
+                    "duration": {"until": "end_of_current_turn"},
+                    "tick_on": "self_turn_end"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The caster takes the Disengage action as a Bonus Action while Conjure Woodland Beings lasts."
+                }
+            ],
+            "audit_label": "Conjure Woodland Beings: Disengage"
+        },
+        {
             "id": "srd.dash",
             "name": "Dash",
             "localization": {"en": "Dash", "zh": "疾走", "aliases": ["冲刺", "快跑"]},

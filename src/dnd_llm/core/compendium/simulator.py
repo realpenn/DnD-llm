@@ -367,6 +367,23 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                 "audit": {"simulation": True},
             }
         )
+    if isinstance(action, ActionDefinition):
+        source_action_id = action.properties.get("requires_active_effect_source_action_id")
+        if isinstance(source_action_id, str) and source_action_id:
+            state.world.active_effects.append(
+                {
+                    "effect_id": f"simulation-active-effect-{source_action_id}",
+                    "source_ref": "simulation",
+                    "source_action_id": source_action_id,
+                    "applied_by": "pc_actor",
+                    "effect_type": "simulation_active_effect",
+                    "concentration": False,
+                    "scope": {"target": "self"},
+                    "duration": {"until": "simulation"},
+                    "metadata": {"simulation": True},
+                    "audit": {"simulation": True},
+                }
+            )
     return state
 
 

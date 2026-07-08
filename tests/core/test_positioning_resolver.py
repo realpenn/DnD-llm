@@ -928,6 +928,50 @@ def test_resolver_rejects_action_economy_blocked_by_passive_effect(make_state) -
     assert result.reason == "actor cannot take bonus_action while affected by srd.confusion"
 
 
+def test_resolver_gates_conjure_woodland_beings_bonus_disengage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤林地生物：撤离",
+            candidate_action_id="srd.conjure_woodland_beings_disengage",
+        )
+    )
+
+    assert missing.status == "rejected"
+    assert missing.reason == (
+        "srd.conjure_woodland_beings_disengage requires active effect from "
+        "srd.conjure_woodland_beings"
+    )
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "conjure-woodland-beings-test",
+            "source_action_id": "srd.conjure_woodland_beings",
+            "applied_by": "pc1",
+            "effect_type": "conjure_woodland_beings_emanation",
+            "concentration": True,
+            "scope": {"target": "self_centered_emanation", "radius_ft": 10},
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤林地生物：撤离",
+            candidate_action_id="srd.conjure_woodland_beings_disengage",
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.conjure_woodland_beings_disengage"
+
+
 def test_resolver_checks_instinctive_pounce_movement_preconditions(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

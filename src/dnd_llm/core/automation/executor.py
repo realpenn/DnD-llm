@@ -483,6 +483,7 @@ class AutomationExecutor:
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
+        self._validate_active_effect_requirement(action, actor_id)
         self._validate_action_surge_preconditions(action, actor_id)
         self._validate_actor_not_out_of_play(action, actor_id)
         self._validate_allowed_action_effects(action, actor_id)
@@ -14239,6 +14240,37 @@ class AutomationExecutor:
                 raise AutomationError("Mage Armor target must not be wearing armor")
             if isinstance(target, Character) and is_wearing_armor(target):
                 raise AutomationError("Mage Armor target must not be wearing armor")
+
+    def _validate_active_effect_requirement(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+    ) -> None:
+        source_action_id = action.properties.get("requires_active_effect_source_action_id")
+        if not isinstance(source_action_id, str) or not source_action_id:
+            return
+        if self._actor_has_active_effect_from_action(actor_id, source_action_id):
+            return
+        raise AutomationError(f"{action.id} requires active effect from {source_action_id}")
+
+    def _actor_has_active_effect_from_action(
+        self,
+        actor_id: str,
+        source_action_id: str,
+    ) -> bool:
+        def matches(effect: dict[str, Any]) -> bool:
+            applied_by = effect.get("applied_by")
+            return (
+                effect.get("source_action_id") == source_action_id
+                and isinstance(applied_by, str)
+                and self._entity_ids_match(applied_by, actor_id)
+            )
+
+        return any(
+            matches(effect)
+            for _, _, effects in self._actor_effect_lists(actor_id)
+            for effect in effects
+        ) or any(matches(effect) for effect in self.state.world.active_effects)
 
     @staticmethod
     def _validate_one_with_shadows_lighting(

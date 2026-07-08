@@ -76,6 +76,8 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.charm_monster",
     "srd.compulsion",
     "srd.confusion",
+    "srd.conjure_woodland_beings",
+    "srd.conjure_woodland_beings_disengage",
     "srd.dominate_beast",
     "srd.countercharm",
     "srd.cure_wounds",

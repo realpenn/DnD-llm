@@ -167,6 +167,13 @@ class ActionResolver:
                 reason=requirements_error,
                 action_id=action.id,
             )
+        active_effect_error = self._active_effect_requirement_error(draft.actor_id, action)
+        if active_effect_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=active_effect_error,
+                action_id=action.id,
+            )
         actor_out_of_play_error = self._actor_out_of_play_error(actor, action)
         if actor_out_of_play_error is not None:
             return ResolverResult(
@@ -2195,6 +2202,38 @@ class ActionResolver:
             source = effect.get("source_action_id") or effect.get("condition") or "effect"
             sources.append(str(source))
         return sources
+
+    def _active_effect_requirement_error(
+        self,
+        actor_id: str,
+        action: ActionDefinition,
+    ) -> str | None:
+        source_action_id = action.properties.get("requires_active_effect_source_action_id")
+        if not isinstance(source_action_id, str) or not source_action_id:
+            return None
+        if self._actor_has_active_effect_from_action(actor_id, source_action_id):
+            return None
+        return f"{action.id} requires active effect from {source_action_id}"
+
+    def _actor_has_active_effect_from_action(
+        self,
+        actor_id: str,
+        source_action_id: str,
+    ) -> bool:
+        actor = self.state.entity_for_actor(actor_id)
+        actor_aliases = self._entity_aliases(actor_id)
+
+        def matches(effect: dict[str, Any]) -> bool:
+            applied_by = effect.get("applied_by")
+            return (
+                effect.get("source_action_id") == source_action_id
+                and isinstance(applied_by, str)
+                and bool(actor_aliases & self._entity_aliases(applied_by))
+            )
+
+        return any(matches(effect) for effect in self._status_effects_for(actor)) or any(
+            matches(effect) for effect in self.state.world.active_effects
+        )
 
     def _action_owner(
         self,

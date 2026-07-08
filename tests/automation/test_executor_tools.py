@@ -21060,6 +21060,201 @@ def test_black_tentacles_successful_save_creates_area_without_damage_or_restrain
     assert state.world.active_effects[-1]["effect_type"] == "black_tentacles_area"
 
 
+def test_conjure_woodland_beings_damages_and_records_emanation(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    target.hp_current = 50
+    target.hp_max = 50
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=50,
+        hp_max=50,
+        armor_class=12,
+        abilities={"wis": 10},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 20, 40, 20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.conjure_woodland_beings",
+        ["goblin1", "goblin2"],
+        4,
+        idempotency_key="cast-conjure-woodland-beings",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "1d20+0",
+        "5d8",
+        "5d8",
+    ]
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:druid"
+    assert save_node["target_id"] == "goblin2"
+    assert save_node["success"] is True
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [
+        (change["target_id"], change["amount"], change["applied"], change["damage_type"])
+        for change in damage_changes
+    ] == [
+        ("goblin1", 40, 40, "force"),
+        ("goblin2", 10, 10, "force"),
+    ]
+    assert state.encounter.combatants["goblin1"].hp_current == 10
+    assert state.encounter.combatants["goblin2"].hp_current == 40
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.conjure_woodland_beings"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "conjure_woodland_beings_emanation"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "self_centered_emanation",
+        "radius_ft": 10,
+    }
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "nature_spirits": True,
+        "self_centered_emanation": True,
+        "wisdom_save": True,
+        "damage": "5d8 force",
+        "save_half": True,
+        "higher_level_damage_increase": "1d8 per slot above 4",
+        "repeat_save_triggers": [
+            "emanation_enters_visible_creature_space",
+            "visible_creature_enters_emanation",
+            "visible_creature_ends_turn_in_emanation",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "wis",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "5d8 force",
+            "save_half": True,
+            "higher_level_damage_increase": "1d8 per slot above 4",
+        },
+        "bonus_action_disengage_action_id": "srd.conjure_woodland_beings_disengage",
+        "emanation_trigger_not_automated": True,
+        "nature_spirits_no_stat_block": True,
+    }
+
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "rage-test",
+            "source_action_id": "srd.rage",
+            "condition": "raging",
+            "passive_modifiers": {"blocks_spellcasting": True},
+        }
+    )
+    disengage = tools.perform_action(
+        "pc1",
+        "srd.conjure_woodland_beings_disengage",
+        [],
+        idempotency_key="conjure-woodland-beings-disengage",
+    )
+
+    assert disengage["success"] is True
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    assert any(
+        effect.get("condition") == "disengaged"
+        and effect.get("source_action_id") == "srd.conjure_woodland_beings_disengage"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
+def test_conjure_woodland_beings_upcast_adds_force_damage_die(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"ranger": 9}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    target.hp_current = 50
+    target.hp_max = 50
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 12]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.conjure_woodland_beings",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-conjure-woodland-beings-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 12
+    assert damage_change["applied"] == 12
+    assert damage_change["damage_type"] == "force"
+
+
+def test_conjure_woodland_beings_disengage_requires_active_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match=(
+            "srd.conjure_woodland_beings_disengage requires active effect from "
+            "srd.conjure_woodland_beings"
+        ),
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.conjure_woodland_beings_disengage",
+            [],
+            idempotency_key="conjure-woodland-beings-disengage-without-effect",
+        )
+
+    assert state.encounter.action_budgets.get("pc1", {}).get("bonus_action", 1) == 1
+    assert not any(
+        effect.get("source_action_id") == "srd.conjure_woodland_beings_disengage"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
 def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

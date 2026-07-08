@@ -64,6 +64,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mass_cure_wounds",
         "srd.charm_monster",
         "srd.confusion",
+        "srd.conjure_woodland_beings",
+        "srd.conjure_woodland_beings_disengage",
         "srd.dominate_beast",
         "srd.compulsion",
         "srd.hold_monster",
@@ -2160,6 +2162,98 @@ def test_compendium_loads_srd_actions() -> None:
                     "ends_condition": "restrained",
                 },
             },
+        },
+    ]
+    conjure_woodland = compendium.action("srd.conjure_woodland_beings")
+    assert conjure_woodland.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "ranger"],
+    }
+    assert conjure_woodland.properties == {
+        "spell_classes": ["druid", "ranger"],
+        "components": ["V", "S"],
+        "self_centered_emanation_radius_ft": 10,
+        "bonus_action_disengage_action_id": "srd.conjure_woodland_beings_disengage",
+        "emanation_trigger_not_automated": True,
+        "nature_spirits_no_stat_block": True,
+        "spell_definition_id": "srd.spell.conjure_woodland_beings",
+        "spell_level": 4,
+    }
+    assert conjure_woodland.cost.spell_slot_level == 4
+    assert conjure_woodland.range == {
+        "self": True,
+        "shape": "emanation",
+        "radius_ft": 10,
+    }
+    assert conjure_woodland.target_policy == {"min": 0, "max": 12, "harmful": True}
+    assert conjure_woodland.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "5d8",
+            "damage_type": "force",
+            "save_half": True,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d8",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "conjure_woodland_beings_emanation",
+            "scope": {
+                "target": "self_centered_emanation",
+                "radius_ft": 10,
+            },
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "nature_spirits": True,
+                "self_centered_emanation": True,
+                "wisdom_save": True,
+                "damage": "5d8 force",
+                "save_half": True,
+                "higher_level_damage_increase": "1d8 per slot above 4",
+                "repeat_save_triggers": [
+                    "emanation_enters_visible_creature_space",
+                    "visible_creature_enters_emanation",
+                    "visible_creature_ends_turn_in_emanation",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "5d8 force",
+                    "save_half": True,
+                    "higher_level_damage_increase": "1d8 per slot above 4",
+                },
+                "bonus_action_disengage_action_id": "srd.conjure_woodland_beings_disengage",
+                "emanation_trigger_not_automated": True,
+                "nature_spirits_no_stat_block": True,
+            },
+        },
+    ]
+    conjure_disengage = compendium.action("srd.conjure_woodland_beings_disengage")
+    assert conjure_disengage.action_type == "base_action"
+    assert conjure_disengage.action_economy == "bonus_action"
+    assert conjure_disengage.properties == {
+        "requires_active_effect_source_action_id": "srd.conjure_woodland_beings",
+        "spell_definition_id": "srd.spell.conjure_woodland_beings",
+        "spell_level": 4,
+    }
+    assert conjure_disengage.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "condition",
+            "condition": "disengaged",
+            "duration": {"until": "end_of_current_turn"},
+            "tick_on": "self_turn_end",
+        },
+        {
+            "type": "text_result",
+            "text": (
+                "The caster takes the Disengage action as a Bonus Action while "
+                "Conjure Woodland Beings lasts."
+            ),
         },
     ]
     secret_chest = compendium.action("srd.secret_chest")
@@ -6777,6 +6871,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.finger_of_death",
         "srd.spell.charm_monster",
         "srd.spell.compulsion",
+        "srd.spell.conjure_woodland_beings",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.etherealness",
