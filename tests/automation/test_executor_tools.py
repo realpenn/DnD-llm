@@ -23888,6 +23888,126 @@ def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_glibness_floors_charisma_checks_and_records_truth_marker(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 15}
+    caster.spell_slots["8"] = 1
+    caster.abilities["cha"] = 14
+    caster.abilities["dex"] = 14
+    state.encounter.combatants["pc1"].abilities["cha"] = 14
+    state.encounter.combatants["pc1"].abilities["dex"] = 14
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([7, 7]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.glibness",
+        ["pc1"],
+        8,
+        idempotency_key="cast-glibness",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.glibness"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "glibness": True,
+        "charisma_check_minimum_d20": 15,
+        "magic_truth_detection_indicates_truthful": True,
+        "truth_detection_resolution_not_automated": True,
+    }
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+
+    charisma_check = tools.roll_check(
+        "pc1",
+        "cha",
+        difficulty_tier="medium",
+        idempotency_key="glibness-cha-check",
+    )
+    dexterity_check = tools.roll_check(
+        "pc1",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="glibness-dex-check",
+    )
+
+    assert charisma_check["roll"]["total"] == 9
+    assert charisma_check["total"] == 17
+    assert charisma_check["success"] is True
+    assert charisma_check["glibness"] == {
+        "source_action_id": "srd.glibness",
+        "effect_id": effect["effect_id"],
+        "modifier": "charisma_check_minimum_d20",
+        "ability": "cha",
+        "original_d20": 7,
+        "d20_before": 7,
+        "d20_after": 15,
+        "adjustment": 8,
+        "total_before": 9,
+        "total_after": 17,
+        "success": True,
+    }
+    assert dexterity_check["roll"]["total"] == 9
+    assert dexterity_check["total"] == 9
+    assert dexterity_check["success"] is False
+    assert "glibness" not in dexterity_check
+
+    check_action = ActionDefinition(
+        id="test.glibness.charisma_check",
+        name="Glibness Charisma Check",
+        localization={"en": "Glibness Charisma Check", "zh": "巧言魅力检定", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"self": True},
+        target_policy={"min": 0, "max": 0, "self": True, "harmful": False},
+        automation=[{"type": "ability_check", "ability": "cha", "difficulty_tier": "medium"}],
+    )
+    automation = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([7]),
+        AuditLog(),
+    ).execute(check_action, actor_id="pc1", targets=[])
+    check_node = automation.node_results["automation[0]"]
+
+    assert automation.dice_rolls[0]["total"] == 9
+    assert check_node["total"] == 17
+    assert check_node["success"] is True
+    assert check_node["glibness"] == {
+        "source_action_id": "srd.glibness",
+        "effect_id": effect["effect_id"],
+        "modifier": "charisma_check_minimum_d20",
+        "ability": "cha",
+        "original_d20": 7,
+        "d20_before": 7,
+        "d20_after": 15,
+        "adjustment": 8,
+        "total_before": 9,
+        "total_after": 17,
+        "success": True,
+    }
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
 def test_find_the_path_records_concentration_navigation_sense(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

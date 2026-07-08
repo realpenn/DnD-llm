@@ -837,6 +837,41 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "self_turn_end",
         },
     ]
+    glibness_spell = compendium.spell("srd.spell.glibness")
+    assert glibness_spell.level == 8
+    assert glibness_spell.school == "enchantment"
+    assert glibness_spell.classes == ["bard", "warlock"]
+    glibness = compendium.action("srd.glibness")
+    assert glibness.requirements == {
+        "spell_level": 8,
+        "class_any": ["bard", "warlock"],
+    }
+    assert glibness.properties == {
+        "spell_classes": ["bard", "warlock"],
+        "components": ["V"],
+        "charisma_check_minimum_d20": 15,
+        "magic_truth_detection_indicates_truthful": True,
+        "truth_detection_resolution_not_automated": True,
+        "spell_definition_id": "srd.spell.glibness",
+        "spell_level": 8,
+    }
+    assert glibness.cost.spell_slot_level == 8
+    assert glibness.range == {"self": True}
+    assert glibness.target_policy == {"min": 1, "max": 1, "self": True, "harmful": False}
+    assert glibness.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "glibness": True,
+                "charisma_check_minimum_d20": 15,
+                "magic_truth_detection_indicates_truthful": True,
+                "truth_detection_resolution_not_automated": True,
+            },
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
+        },
+    ]
     disintegrate = compendium.action("srd.disintegrate")
     assert disintegrate.requirements == {
         "spell_level": 6,

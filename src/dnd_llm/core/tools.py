@@ -14,7 +14,12 @@ from .invariants import require_game_state_invariants
 from .models import Character, Combatant, GameState, Monster
 from .persistence import AuditLog
 from .positioning import TacticalGraph
-from .rules.checks import actor_ability_modifier, d20_expression, roll_check
+from .rules.checks import (
+    actor_ability_modifier,
+    charisma_check_minimum_d20_adjustment,
+    d20_expression,
+    roll_check,
+)
 from .rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
     FOCUS_POINTS_RESOURCE,
@@ -178,6 +183,7 @@ class EngineTools:
             _merge_advantage(advantage, status_advantage),
             proficiency_advantage,
         )
+        status_effects = self._status_effects_for_actor(actor_id)
         result = roll_check(
             actor_id=actor_id,
             actor=actor,
@@ -193,7 +199,7 @@ class EngineTools:
             extra_bonus=extra_bonus,
             d20_penalty=d20_penalty,
             d20_penalty_sources=d20_penalty_sources,
-            status_effects=self._status_effects_for_actor(actor_id),
+            status_effects=status_effects,
         )
         payload: dict[str, Any] = result.to_dict()
         payload["original_ability"] = original_ability
@@ -211,6 +217,13 @@ class EngineTools:
         )
         if reliable_talent is not None:
             payload["reliable_talent"] = reliable_talent
+        glibness = _apply_charisma_check_minimum_d20_to_check_payload(
+            payload,
+            result.roll,
+            status_effects,
+        )
+        if glibness is not None:
+            payload["glibness"] = glibness
         dice_rolls = [result.roll.to_dict()]
         dark_ones_own_luck = self._apply_dark_ones_own_luck_to_roll(
             actor_id,
@@ -2572,6 +2585,38 @@ def _apply_reliable_talent_to_check_payload(
         "total_before": before_total,
         "total_after": after_total,
         "proficiency_sources": list(proficiency_sources),
+        "success": payload["success"],
+    }
+
+
+def _apply_charisma_check_minimum_d20_to_check_payload(
+    payload: dict[str, Any],
+    roll: RollResult,
+    status_effects: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    natural_d20 = _kept_d20(roll)
+    current_d20 = natural_d20
+    reliable_talent = payload.get("reliable_talent")
+    if isinstance(reliable_talent, dict):
+        d20_after = reliable_talent.get("d20_after")
+        if isinstance(d20_after, int) and not isinstance(d20_after, bool):
+            current_d20 = max(current_d20, d20_after)
+    adjustment = charisma_check_minimum_d20_adjustment(
+        status_effects=status_effects,
+        ability=str(payload["ability"]),
+        natural_d20=natural_d20,
+        current_d20=current_d20,
+    )
+    if adjustment is None:
+        return None
+    before_total = int(payload["total"])
+    after_total = before_total + int(adjustment["adjustment"])
+    payload["total"] = after_total
+    payload["success"] = after_total >= int(payload["dc"])
+    return {
+        **adjustment,
+        "total_before": before_total,
+        "total_after": after_total,
         "success": payload["success"],
     }
 

@@ -9,7 +9,7 @@ from ..economy import EconomyTracker
 from ..models import Character, Combatant, GameState, Monster
 from ..persistence import AuditLog
 from ..positioning import TacticalGraph
-from ..rules.checks import d20_expression
+from ..rules.checks import charisma_check_minimum_d20_adjustment, d20_expression
 from ..rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
     ELUSIVE_ACTION_ID,
@@ -1243,6 +1243,16 @@ class AutomationExecutor:
         )
         if reliable_talent_result is not None:
             total = int(reliable_talent_result["total_after"])
+        glibness_result = self._apply_charisma_check_minimum_d20_to_ability_check(
+            actor,
+            ability,
+            roll,
+            total,
+            dc,
+            reliable_talent_result,
+        )
+        if glibness_result is not None:
+            total = int(glibness_result["total_after"])
         dark_ones_own_luck_result = self._apply_dark_ones_own_luck_to_roll(
             ctx,
             actor,
@@ -1307,6 +1317,8 @@ class AutomationExecutor:
             ctx.result.node_results[path]["primal_knowledge"] = primal_knowledge
         if reliable_talent_result is not None:
             ctx.result.node_results[path]["reliable_talent"] = reliable_talent_result
+        if glibness_result is not None:
+            ctx.result.node_results[path]["glibness"] = glibness_result
         if dark_ones_own_luck_result is not None:
             ctx.result.node_results[path]["dark_ones_own_luck"] = dark_ones_own_luck_result
         if indomitable_might_result is not None:
@@ -3615,6 +3627,37 @@ class AutomationExecutor:
             "total_before": total,
             "total_after": after_total,
             "proficiency_sources": list(proficiency_sources),
+            "success": after_total >= dc,
+        }
+
+    def _apply_charisma_check_minimum_d20_to_ability_check(
+        self,
+        actor: Character | Monster | Combatant,
+        ability: str,
+        roll: RollResult,
+        total: int,
+        dc: int,
+        reliable_talent_result: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        natural_d20 = self._kept_d20(roll)
+        current_d20 = natural_d20
+        if reliable_talent_result is not None:
+            d20_after = reliable_talent_result.get("d20_after")
+            if isinstance(d20_after, int) and not isinstance(d20_after, bool):
+                current_d20 = max(current_d20, d20_after)
+        adjustment = charisma_check_minimum_d20_adjustment(
+            status_effects=self._status_effects_for(actor),
+            ability=ability,
+            natural_d20=natural_d20,
+            current_d20=current_d20,
+        )
+        if adjustment is None:
+            return None
+        after_total = total + int(adjustment["adjustment"])
+        return {
+            **adjustment,
+            "total_before": total,
+            "total_after": after_total,
             "success": after_total >= dc,
         }
 

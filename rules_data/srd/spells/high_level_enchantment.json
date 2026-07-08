@@ -655,6 +655,63 @@
         ],
         "audit_label": "Mass Suggestion"
       }
+    },
+    {
+      "id": "srd.spell.glibness",
+      "name": "Glibness",
+      "localization": {
+        "en": "Glibness",
+        "zh": "花言巧语",
+        "aliases": ["巧言术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "enchantment",
+      "classes": ["bard", "warlock"],
+      "action": {
+        "id": "srd.glibness",
+        "name": "Glibness",
+        "localization": {
+          "en": "Glibness",
+          "zh": "花言巧语",
+          "aliases": ["巧言术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["bard", "warlock"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "warlock"],
+          "components": ["V"],
+          "charisma_check_minimum_d20": 15,
+          "magic_truth_detection_indicates_truthful": true,
+          "truth_detection_resolution_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "glibness": true,
+              "charisma_check_minimum_d20": 15,
+              "magic_truth_detection_indicates_truthful": true,
+              "truth_detection_resolution_not_automated": true
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Glibness"
+      }
     }
   ]
 }

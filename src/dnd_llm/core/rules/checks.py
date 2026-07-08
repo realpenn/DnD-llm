@@ -8,6 +8,9 @@ from ..models import Character, Combatant, Monster
 from .conditions import effective_ability_modifier
 from .difficulty import resolve_dc
 
+CHARISMA_CHECK_MINIMUM_D20_MODIFIER = "charisma_check_minimum_d20"
+GLIBNESS_ACTION_ID = "srd.glibness"
+
 
 def ability_modifier(score: int) -> int:
     return (score - 10) // 2
@@ -110,3 +113,40 @@ def d20_expression(bonus: int) -> str:
     if bonus < 0:
         return f"1d20{bonus}"
     return f"1d20+{bonus}"
+
+
+def charisma_check_minimum_d20_adjustment(
+    *,
+    status_effects: list[dict[str, Any]],
+    ability: str,
+    natural_d20: int,
+    current_d20: int | None = None,
+) -> dict[str, Any] | None:
+    if ability.lower() != "cha":
+        return None
+    effective_d20 = natural_d20 if current_d20 is None else current_d20
+    best_floor = effective_d20
+    best_effect: dict[str, Any] | None = None
+    for effect in status_effects:
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            continue
+        floor = modifiers.get(CHARISMA_CHECK_MINIMUM_D20_MODIFIER)
+        if not isinstance(floor, int) or isinstance(floor, bool):
+            continue
+        if floor <= best_floor:
+            continue
+        best_floor = floor
+        best_effect = effect
+    if best_effect is None:
+        return None
+    return {
+        "source_action_id": best_effect.get("source_action_id") or GLIBNESS_ACTION_ID,
+        "effect_id": best_effect.get("effect_id"),
+        "modifier": CHARISMA_CHECK_MINIMUM_D20_MODIFIER,
+        "ability": "cha",
+        "original_d20": natural_d20,
+        "d20_before": effective_d20,
+        "d20_after": best_floor,
+        "adjustment": best_floor - effective_d20,
+    }
