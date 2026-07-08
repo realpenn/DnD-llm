@@ -19621,6 +19621,203 @@ def test_charm_monster_upcast_adds_target_and_base_slot_cost(make_state) -> None
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d20+0"]
 
 
+def test_dominate_beast_charms_beast_and_repeats_save_on_any_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 7}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    state.encounter.combatants["wolf1"] = Combatant(
+        id="wolf1",
+        entity_id="wolf1",
+        name="Wolf One",
+        side="monsters",
+        hp_current=30,
+        hp_max=30,
+        armor_class=13,
+        creature_type="beast",
+        abilities={"wis": 10},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.dominate_beast",
+        ["wolf1"],
+        4,
+        idempotency_key="cast-dominate-beast-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:druid"
+    assert save_node["success"] is False
+    effect = state.encounter.combatants["wolf1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.dominate_beast"
+    assert effect["applied_by"] == "pc1"
+    assert effect["condition"] == "charmed"
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 15,
+            "dc_source": "spell_save_dc:druid",
+            "end_on_success": True,
+            "trigger": "damage",
+        },
+    }
+    assert effect["passive_modifiers"] == {
+        "dominate_beast": True,
+        "telepathic_link_same_plane": True,
+        "commands_no_action_on_caster_turn": True,
+        "target_obeys_commands_best_ability": True,
+        "target_self_protects_without_new_direction": True,
+        "can_command_target_reaction_by_spending_caster_reaction": True,
+        "command_ai_not_automated": True,
+        "reaction_command_not_automated": True,
+    }
+    assert effect["tick_on"] == "damage"
+    assert effect["concentration"] is True
+
+    failed_repeat = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1]),
+        AuditLog(),
+    ).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="goblin1",
+        targets=["wolf1"],
+        idempotency_key="enemy-damages-dominated-beast-repeat-fails",
+    )
+
+    repeat_save = next(
+        change for change in failed_repeat.state_changes if change["type"] == "effect_repeat_save"
+    )
+    assert repeat_save["trigger"] == "damage"
+    assert repeat_save["repeat_save"]["dc"] == 15
+    assert repeat_save["repeat_save"]["success"] is False
+    assert any(
+        active_effect.get("source_action_id") == "srd.dominate_beast"
+        for active_effect in state.encounter.combatants["wolf1"].status_effects
+    )
+
+    successful_repeat = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20]),
+        AuditLog(),
+    ).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="pc2",
+        targets=["wolf1"],
+        idempotency_key="ally-damages-dominated-beast-repeat-succeeds",
+    )
+
+    expiry = next(
+        change
+        for change in successful_repeat.state_changes
+        if change["type"] == "effect_expired"
+        and change.get("reason") == "repeat_save_success"
+    )
+    assert expiry["trigger"] == "damage"
+    assert expiry["removed"][0]["source_action_id"] == "srd.dominate_beast"
+    assert expiry["removed"][0]["repeat_save"]["success"] is True
+    assert state.encounter.combatants["wolf1"].status_effects == []
+
+
+def test_dominate_beast_rejects_non_beast_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"ranger": 13}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be beast"):
+        tools.cast_spell(
+            "pc1",
+            "srd.dominate_beast",
+            ["goblin1"],
+            4,
+            idempotency_key="dominate-beast-non-beast",
+        )
+
+    assert caster.spell_slots["4"] == 1
+    assert state.encounter.action_budgets == {}
+
+
+def test_dominate_beast_upcast_extends_concentration_duration(make_state) -> None:
+    expected_duration_by_slot = {
+        5: "concentration_10_minutes",
+        6: "concentration_1_hour",
+        7: "concentration_8_hours",
+        8: "concentration_8_hours",
+        9: "concentration_8_hours",
+    }
+    for slot_level, expected_duration in expected_duration_by_slot.items():
+        state = make_state()
+        assert state.encounter is not None
+        caster = state.characters["pc1"]
+        caster.class_levels = {"sorcerer": 15}
+        caster.abilities["cha"] = 18
+        caster.proficiency_bonus = 5
+        caster.spell_slots["4"] = 0
+        caster.spell_slots[str(slot_level)] = 1
+        state.encounter.combatants["wolf1"] = Combatant(
+            id="wolf1",
+            entity_id="wolf1",
+            name="Wolf One",
+            side="monsters",
+            hp_current=30,
+            hp_max=30,
+            armor_class=13,
+            creature_type="beast",
+            abilities={"wis": 10},
+            position_node_id="cover",
+        )
+        compendium = CompendiumLoader("rules_data").load()
+        tools = EngineTools(
+            state,
+            compendium,
+            AuditLog(),
+            roll_service=_FixedSingleDieRollService([1]),
+        )
+
+        result = tools.cast_spell(
+            "pc1",
+            "srd.dominate_beast",
+            ["wolf1"],
+            slot_level,
+            idempotency_key=f"cast-dominate-beast-upcast-{slot_level}",
+        )
+
+        assert result["success"] is True
+        effect = state.encounter.combatants["wolf1"].status_effects[-1]
+        assert effect["duration"]["until"] == expected_duration
+        assert effect["duration"]["repeat_save"] == {
+            "ability": "wis",
+            "dc": 17,
+            "dc_source": "spell_save_dc:sorcerer",
+            "end_on_success": True,
+            "trigger": "damage",
+        }
+
+
 def test_compulsion_charms_failed_target_and_records_movement_semantics(
     make_state,
 ) -> None:

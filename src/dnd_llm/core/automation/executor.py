@@ -1616,6 +1616,7 @@ class AutomationExecutor:
             if total_damage_taken > 0 and node.get("breaks_on_damage", True) is not False:
                 ctx.result.state_changes.extend(
                     self._expire_target_effects_on_damage(
+                        ctx,
                         target_id,
                         path,
                         damage_source_actor_id=ctx.actor_id,
@@ -6146,6 +6147,7 @@ class AutomationExecutor:
         if damage_taken > 0:
             ctx.result.state_changes.extend(
                 self._expire_target_effects_on_damage(
+                    ctx,
                     secondary_target_id,
                     f"{path}.superior_hunters_prey",
                     damage_source_actor_id=ctx.actor_id,
@@ -7894,6 +7896,7 @@ class AutomationExecutor:
         if damage_taken > 0:
             ctx.result.state_changes.extend(
                 self._expire_target_effects_on_damage(
+                    ctx,
                     target_id,
                     path,
                     damage_source_actor_id=ctx.actor_id,
@@ -12132,15 +12135,56 @@ class AutomationExecutor:
 
     def _expire_target_effects_on_damage(
         self,
+        ctx: _Context,
         target_id: str,
         path: str,
         *,
         damage_source_actor_id: str,
     ) -> list[dict[str, Any]]:
+        changes: list[dict[str, Any]] = []
         removed: list[dict[str, Any]] = []
+        repeat_save_removed: list[dict[str, Any]] = []
+        consumed_next_save = False
         for owner_type, owner_id, effects in self._target_effect_lists(target_id):
             retained: list[dict[str, Any]] = []
             for effect in effects:
+                repeat_save = self._effect_damage_repeat_save(effect)
+                if repeat_save is not None:
+                    repeat_save_entry, repeat_save_roll = self._roll_effect_repeat_save(
+                        target_id,
+                        effect,
+                        repeat_save,
+                    )
+                    ctx.result.dice_rolls.append(repeat_save_roll.to_dict())
+                    consumed_next_save = True
+                    changes.append(
+                        {
+                            "type": "effect_repeat_save",
+                            "target_id": target_id,
+                            "trigger": "damage",
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "condition": effect.get("condition"),
+                            "source_action_id": effect.get("source_action_id"),
+                            "repeat_save": repeat_save_entry,
+                            "path": path,
+                        }
+                    )
+                    if repeat_save_entry["success"] and bool(
+                        repeat_save.get("end_on_success", True)
+                    ):
+                        repeat_save_removed.append(
+                            {
+                                "owner_type": owner_type,
+                                "owner_id": owner_id,
+                                "effect_id": effect.get("effect_id"),
+                                "condition": effect.get("condition"),
+                                "source_action_id": effect.get("source_action_id"),
+                                "repeat_save": repeat_save_entry,
+                            }
+                        )
+                        continue
                 if self._effect_breaks_on_damage(
                     effect,
                     damage_source_actor_id=damage_source_actor_id,
@@ -12157,17 +12201,32 @@ class AutomationExecutor:
                 else:
                     retained.append(effect)
             effects[:] = retained
-        if not removed:
-            return []
-        return [
-            {
-                "type": "effect_expired",
-                "target_id": target_id,
-                "trigger": "damage",
-                "removed": removed,
-                "path": path,
-            }
-        ]
+        if repeat_save_removed:
+            changes.append(
+                {
+                    "type": "effect_expired",
+                    "target_id": target_id,
+                    "trigger": "damage",
+                    "reason": "repeat_save_success",
+                    "removed": repeat_save_removed,
+                    "path": path,
+                }
+            )
+        if removed:
+            changes.append(
+                {
+                    "type": "effect_expired",
+                    "target_id": target_id,
+                    "trigger": "damage",
+                    "removed": removed,
+                    "path": path,
+                }
+            )
+        if consumed_next_save:
+            next_save_expiry = self._expire_next_saving_throw_disadvantage(target_id, path)
+            if next_save_expiry is not None:
+                changes.append(next_save_expiry)
+        return changes
 
     def _expire_target_effects_on_incoming_attack(
         self,
@@ -12266,6 +12325,66 @@ class AutomationExecutor:
         if not isinstance(applied_by, str):
             return False
         return self._same_side_or_same_actor(damage_source_actor_id, applied_by)
+
+    @staticmethod
+    def _effect_damage_repeat_save(effect: dict[str, Any]) -> dict[str, Any] | None:
+        duration = effect.get("duration", {})
+        if not isinstance(duration, dict):
+            return None
+        repeat_save = duration.get("repeat_save")
+        if not isinstance(repeat_save, dict):
+            return None
+        if repeat_save.get("trigger", effect.get("tick_on")) != "damage":
+            return None
+        return repeat_save
+
+    def _roll_effect_repeat_save(
+        self,
+        target_id: str,
+        effect: dict[str, Any],
+        repeat_save: dict[str, Any],
+    ) -> tuple[dict[str, Any], RollResult]:
+        save_target_id = str(effect.get("target_id") or target_id)
+        target = self._entity(save_target_id)
+        ability = str(repeat_save["ability"]).lower()
+        base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(target, ability)
+        target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
+        bonus = base_bonus - exhaustion_penalty
+        status_advantage, status_sources = self._saving_throw_status_advantage(
+            target,
+            ability,
+            contexts=set(),
+        )
+        roll = self.roll_service.roll(d20_expression(bonus), advantage=status_advantage)
+        total = roll.total
+        dc = int(repeat_save["dc"])
+        indomitable_might = self._apply_indomitable_might_to_d20_test(
+            self._proficiency_source(target),
+            ability,
+            total,
+            dc,
+        )
+        if indomitable_might is not None:
+            total = int(indomitable_might["total_after"])
+        entry: dict[str, Any] = {
+            "ability": ability,
+            "dc": dc,
+            "dc_source": repeat_save.get("dc_source"),
+            "base_bonus": base_bonus,
+            "bonus": bonus,
+            "proficient": proficient,
+            "proficiency_sources": proficiency_sources,
+            "exhaustion_level": target_exhaustion_level,
+            "d20_penalty": exhaustion_penalty,
+            "status_advantage": status_advantage,
+            "status_sources": status_sources,
+            "roll": roll.to_dict(),
+            "total": total,
+            "success": total >= dc,
+        }
+        if indomitable_might is not None:
+            entry["indomitable_might"] = indomitable_might
+        return entry, roll
 
     def _same_side_or_same_actor(self, actor_id: str, other_actor_id: str) -> bool:
         if self._entity_aliases(actor_id) & self._entity_aliases(other_actor_id):

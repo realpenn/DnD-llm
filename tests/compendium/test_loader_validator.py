@@ -63,6 +63,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.charm_monster",
+        "srd.dominate_beast",
         "srd.compulsion",
         "srd.hold_monster",
         "srd.irresistible_dance",
@@ -1368,6 +1369,74 @@ def test_compendium_loads_srd_actions() -> None:
                 "break_on_damage_by": "applied_by_or_allies",
             },
             "tick_on": "duration_or_damage",
+        },
+    ]
+    dominate_beast = compendium.action("srd.dominate_beast")
+    assert dominate_beast.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "ranger", "sorcerer"],
+    }
+    assert dominate_beast.properties == {
+        "spell_classes": ["druid", "ranger", "sorcerer"],
+        "components": ["V", "S"],
+        "target_must_be_visible": True,
+        "target_type": "beast",
+        "saving_throw_advantage_if_caster_or_allies_fighting_target": True,
+        "telepathic_link_same_plane": True,
+        "commands_no_action_on_caster_turn": True,
+        "target_obeys_commands_best_ability": True,
+        "target_self_protects_without_new_direction": True,
+        "can_command_target_reaction_by_spending_caster_reaction": True,
+        "command_ai_not_automated": True,
+        "reaction_command_not_automated": True,
+        "spell_definition_id": "srd.spell.dominate_beast",
+        "spell_level": 4,
+    }
+    assert dominate_beast.range == {"normal_ft": 60}
+    assert dominate_beast.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": True,
+        "creature_types": ["beast"],
+    }
+    assert dominate_beast.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "dominate_beast": True,
+                "telepathic_link_same_plane": True,
+                "commands_no_action_on_caster_turn": True,
+                "target_obeys_commands_best_ability": True,
+                "target_self_protects_without_new_direction": True,
+                "can_command_target_reaction_by_spending_caster_reaction": True,
+                "command_ai_not_automated": True,
+                "reaction_command_not_automated": True,
+            },
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "damage",
+                },
+                "duration_from_slot": {
+                    "base_spell_slot_level": 4,
+                    "by_slot_level": {
+                        "5": "concentration_10_minutes",
+                        "6": "concentration_1_hour",
+                        "7": "concentration_8_hours",
+                        "8": "concentration_8_hours",
+                        "9": "concentration_8_hours",
+                    },
+                },
+            },
+            "tick_on": "damage",
+            "concentration": True,
         },
     ]
     compulsion = compendium.action("srd.compulsion")
