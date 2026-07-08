@@ -36,6 +36,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.lightning_bolt",
         "srd.ice_storm",
         "srd.fire_shield",
+        "srd.vitriolic_sphere",
         "srd.wall_of_fire",
         "srd.cone_of_cold",
         "srd.blade_barrier",
@@ -443,6 +444,47 @@ def test_compendium_loads_srd_actions() -> None:
             },
             "duration": {"until": "duration_10_minutes"},
             "tick_on": "self_turn_end",
+        },
+    ]
+    vitriolic_sphere = compendium.action("srd.vitriolic_sphere")
+    assert vitriolic_sphere.requirements == {
+        "spell_level": 4,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert vitriolic_sphere.properties["spell_classes"] == ["sorcerer", "wizard"]
+    assert vitriolic_sphere.properties["material_component"] == {
+        "description": "a drop of bile",
+        "consumed": False,
+    }
+    assert vitriolic_sphere.properties["delayed_failed_save_damage_not_automated"] is True
+    assert vitriolic_sphere.range == {
+        "normal_ft": 150,
+        "shape": "sphere",
+        "radius_ft": 20,
+    }
+    assert vitriolic_sphere.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert vitriolic_sphere.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "10d4",
+            "damage_type": "acid",
+            "save_half": True,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "2d4",
+        },
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "vitriolic_sphere_delayed_acid_damage": "5d4",
+                "vitriolic_sphere_delayed_acid_damage_type": "acid",
+                "delayed_damage_trigger": "target_turn_end",
+                "delayed_damage_not_automated": True,
+            },
+            "duration": {"until": "end_of_next_turn"},
+            "tick_on": "target_turn_end",
         },
     ]
     wall_of_fire = compendium.action("srd.wall_of_fire")
@@ -6414,6 +6456,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fireball",
         "srd.spell.ice_storm",
         "srd.spell.fire_shield",
+        "srd.spell.vitriolic_sphere",
         "srd.spell.wall_of_fire",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",

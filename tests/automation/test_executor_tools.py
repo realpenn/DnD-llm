@@ -21980,6 +21980,158 @@ def test_wall_of_stone_spends_slot_and_records_supported_stone_wall(make_state) 
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
 
 
+def test_vitriolic_sphere_failed_save_deals_acid_and_records_delayed_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 24]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.vitriolic_sphere",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-vitriolic-sphere-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "acid"
+    assert damage_change["amount"] == 24
+    assert damage_change["applied"] == 24
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d4"]
+
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.vitriolic_sphere"
+    assert effect["condition"] is None
+    assert effect["duration"] == {"until": "end_of_next_turn"}
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["passive_modifiers"] == {
+        "vitriolic_sphere_delayed_acid_damage": "5d4",
+        "vitriolic_sphere_delayed_acid_damage_type": "acid",
+        "delayed_damage_trigger": "target_turn_end",
+        "delayed_damage_not_automated": True,
+    }
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["passive_modifiers"] == effect["passive_modifiers"]
+
+    lifecycle = tick_effects(state, trigger="target_turn_end", actor_id="goblin1")
+    assert lifecycle.expired[0]["source_action_id"] == "srd.vitriolic_sphere"
+    assert lifecycle.expired[0]["remaining_ticks_before"] == 1
+    assert lifecycle.expired[0]["remaining_ticks_after"] == 0
+    assert target.status_effects == []
+
+
+def test_vitriolic_sphere_successful_save_has_half_initial_damage_only(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 24]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.vitriolic_sphere",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-vitriolic-sphere-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:sorcerer"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "acid"
+    assert damage_change["amount"] == 12
+    assert damage_change["applied"] == 12
+    assert target.status_effects == []
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+
+
+def test_vitriolic_sphere_upcast_adds_only_initial_damage_dice(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 30]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.vitriolic_sphere",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-vitriolic-sphere-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "12d4"]
+    effect = target.status_effects[-1]
+    assert effect["passive_modifiers"]["vitriolic_sphere_delayed_acid_damage"] == "5d4"
+
+
 def test_wall_of_fire_deals_initial_fire_and_records_concentration_wall(
     make_state,
 ) -> None:

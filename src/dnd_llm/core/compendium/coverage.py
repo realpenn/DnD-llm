@@ -249,6 +249,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.turn_undead",
     "srd.uncanny_metabolism",
     "srd.uncanny_dodge",
+    "srd.vitriolic_sphere",
     "srd.wild_companion_spell_slot",
     "srd.wild_companion_wild_shape",
     "srd.wild_resurgence_create_spell_slot",
