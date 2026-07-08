@@ -64,6 +64,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.blight",
         "srd.mass_cure_wounds",
         "srd.charm_monster",
+        "srd.commune",
         "srd.commune_with_nature",
         "srd.confusion",
         "srd.conjure_woodland_beings",
@@ -2563,6 +2564,55 @@ def test_compendium_loads_srd_actions() -> None:
                 "does_not_account_for_changed_circumstances": True,
                 "changed_circumstance_example": "casting_other_spells",
                 "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+            },
+        }
+    ]
+    commune_spell = compendium.spell("srd.spell.commune")
+    assert commune_spell.ritual is True
+    assert commune_spell.level == 5
+    assert commune_spell.school == "divination"
+    assert commune_spell.classes == ["cleric"]
+    commune = compendium.action("srd.commune")
+    assert commune.requirements == {
+        "spell_level": 5,
+        "class_any": ["cleric"],
+    }
+    assert commune.properties["spell_classes"] == ["cleric"]
+    assert commune.properties["ritual"] is True
+    assert commune.properties["spell_definition_id"] == "srd.spell.commune"
+    assert commune.properties["casting_time"] == {"minutes": 1}
+    assert commune.properties["components"] == ["V", "S", "M"]
+    assert commune.properties["material_component"] == {
+        "description": "incense",
+        "consumed": False,
+    }
+    assert commune.properties["max_yes_or_no_questions"] == 3
+    assert commune.properties["repeat_casting_failure_chance_increment_percent"] == 25
+    assert commune.cost.spell_slot_level == 5
+    assert commune.cost.gold == 0
+    assert commune.range == {"self": True}
+    assert commune.target_policy == {"min": 0, "max": 0, "self": True, "harmful": False}
+    assert commune.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "commune_answer_window",
+            "scope": {"target": "self"},
+            "duration": {"until": "duration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "contacts_deity_or_divine_proxy": True,
+                "max_yes_or_no_questions": 3,
+                "questions_must_be_asked_before_spell_ends": True,
+                "receives_correct_answer_for_each_question": True,
+                "divine_beings_not_necessarily_omniscient": True,
+                "unclear_answer_if_beyond_deity_knowledge": True,
+                (
+                    "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_"
+                    "to_deity_interests"
+                ): True,
+                "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+                "answer_generation_not_automated": True,
+                "repeat_casting_chance_not_automated": True,
             },
         }
     ]
@@ -6971,6 +7021,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.harm",
         "srd.spell.finger_of_death",
         "srd.spell.charm_monster",
+        "srd.spell.commune",
         "srd.spell.commune_with_nature",
         "srd.spell.compulsion",
         "srd.spell.conjure_woodland_beings",

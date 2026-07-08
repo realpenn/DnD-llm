@@ -22258,6 +22258,121 @@ def test_divination_requires_consumed_incense_gold_before_spending_slot(make_sta
     assert state.world.active_effects == []
 
 
+def test_commune_records_one_minute_divine_answer_window(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.commune",
+        [],
+        5,
+        idempotency_key="cast-commune",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.commune"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "commune_answer_window"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "self"}
+    assert effect["duration"] == {"until": "duration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "contacts_deity_or_divine_proxy": True,
+        "max_yes_or_no_questions": 3,
+        "questions_must_be_asked_before_spell_ends": True,
+        "receives_correct_answer_for_each_question": True,
+        "divine_beings_not_necessarily_omniscient": True,
+        "unclear_answer_if_beyond_deity_knowledge": True,
+        (
+            "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_"
+            "to_deity_interests"
+        ): True,
+        "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+        "answer_generation_not_automated": True,
+        "repeat_casting_chance_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "commune_answer_window"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 9
+
+
+def test_commune_can_be_cast_as_ritual_without_spending_spell_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.prepared_spells = ["srd.spell.commune"]
+    caster.spell_slots["5"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.commune",
+        [],
+        5,
+        as_ritual=True,
+        idempotency_key="ritual-commune",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    ritual_change = next(
+        change for change in result["state_changes"] if change["type"] == "ritual_casting"
+    )
+    assert ritual_change == {
+        "type": "ritual_casting",
+        "actor_id": "pc1",
+        "spell_id": "srd.spell.commune",
+        "base_spell_slot_level": 5,
+        "spell_slot_expended": False,
+        "casting_time_extra_minutes": 10,
+        "source": "prepared_spell",
+    }
+    assert not any(
+        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
+    )
+    assert state.world.active_effects[-1]["effect_type"] == "commune_answer_window"
+
+
+def test_commune_rejects_non_cleric_before_spending_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of cleric"):
+        tools.cast_spell(
+            "pc1",
+            "srd.commune",
+            [],
+            5,
+            idempotency_key="cast-commune-druid",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
 def test_freedom_of_movement_requires_willing_target_and_grants_timed_effect(
     make_state,
 ) -> None:

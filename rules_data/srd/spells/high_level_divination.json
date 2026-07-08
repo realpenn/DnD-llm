@@ -251,6 +251,74 @@
       }
     },
     {
+      "id": "srd.spell.commune",
+      "name": "Commune",
+      "localization": {
+        "en": "Commune",
+        "zh": "通神术",
+        "aliases": ["神灵沟通", "询问神谕"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["cleric"],
+      "ritual": true,
+      "action": {
+        "id": "srd.commune",
+        "name": "Commune",
+        "localization": {
+          "en": "Commune",
+          "zh": "通神术",
+          "aliases": ["神灵沟通", "询问神谕"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "incense",
+            "consumed": false
+          },
+          "max_yes_or_no_questions": 3,
+          "repeat_casting_failure_chance_increment_percent": 25
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "commune_answer_window",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "contacts_deity_or_divine_proxy": true,
+              "max_yes_or_no_questions": 3,
+              "questions_must_be_asked_before_spell_ends": true,
+              "receives_correct_answer_for_each_question": true,
+              "divine_beings_not_necessarily_omniscient": true,
+              "unclear_answer_if_beyond_deity_knowledge": true,
+              "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_to_deity_interests": true,
+              "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+              "answer_generation_not_automated": true,
+              "repeat_casting_chance_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Commune"
+      }
+    },
+    {
       "id": "srd.spell.commune_with_nature",
       "name": "Commune with Nature",
       "localization": {

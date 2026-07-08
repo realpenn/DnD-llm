@@ -75,6 +75,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.body_and_mind",
     "srd.brutal_strike",
     "srd.charm_monster",
+    "srd.commune",
     "srd.commune_with_nature",
     "srd.compulsion",
     "srd.confusion",
