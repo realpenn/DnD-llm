@@ -165,6 +165,11 @@ AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
 AURA_OF_COURAGE_ACTION_ID = "srd.aura_of_courage"
 AURA_OF_DEVOTION_ACTION_ID = "srd.aura_of_devotion"
 RADIANT_STRIKES_ACTION_ID = "srd.radiant_strikes"
+CONJURE_MINOR_ELEMENTALS_ACTION_ID = "srd.conjure_minor_elementals"
+CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE = "conjure_minor_elementals_emanation"
+CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_type"
+CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "lightning"})
+CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
     {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}
 )
@@ -542,6 +547,12 @@ class AutomationExecutor:
         self._validate_investment_of_chain_master_preconditions(action, actor_id, params)
         self._validate_thirsting_blade_preconditions(action, actor_id, params)
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
+        self._validate_conjure_minor_elementals_damage_type(
+            action,
+            actor_id,
+            targets or [],
+            params,
+        )
         self._validate_allowed_damage_type_param(action, params)
         self._validate_allowed_creature_types_param(action, params)
         self._validate_allowed_list_params(action, params)
@@ -1432,6 +1443,9 @@ class AutomationExecutor:
             blessed_strikes = self._blessed_strikes_divine_strike_bonus(ctx, target_id)
             if blessed_strikes.amount:
                 extra_damage.append(blessed_strikes)
+            conjure_minor_elementals = self._conjure_minor_elementals_bonus(ctx, target_id)
+            if conjure_minor_elementals.amount:
+                extra_damage.append(conjure_minor_elementals)
             for extra_result in extra_damage:
                 ctx.result.dice_rolls.extend(roll.to_dict() for roll in extra_result.rolls)
             amount_before_uncanny_dodge = amount
@@ -6545,6 +6559,47 @@ class AutomationExecutor:
             sources=[source],
         )
 
+    def _conjure_minor_elementals_bonus(
+        self,
+        ctx: _Context,
+        target_id: str,
+    ) -> _ExtraDamageResult:
+        effect = self._active_conjure_minor_elementals_effect(ctx.actor_id)
+        if effect is None:
+            return _ExtraDamageResult()
+        if not ctx.attack_hits.get(target_id, False):
+            return _ExtraDamageResult()
+        if not self._conjure_minor_elementals_target_in_emanation(ctx.actor_id, target_id, effect):
+            return _ExtraDamageResult()
+        damage_type = self._conjure_minor_elementals_damage_type(ctx.params, required=True)
+        metadata = effect.get("metadata", {})
+        dice_count = 2
+        if isinstance(metadata, dict):
+            dice_count = max(1, int(metadata.get("extra_damage_dice_count", dice_count)))
+        dice = f"{dice_count}d8"
+        roll = self.roll_service.roll(dice)
+        rolls = [roll]
+        amount = roll.total
+        if ctx.attack_critical.get(target_id, False):
+            critical_roll = self.roll_service.roll(dice)
+            rolls.append(critical_roll)
+            amount += critical_roll.total
+        return _ExtraDamageResult(
+            amount=amount,
+            damage_type=damage_type or "untyped",
+            rolls=rolls,
+            sources=[
+                {
+                    "spell": "conjure_minor_elementals",
+                    "source_action_id": CONJURE_MINOR_ELEMENTALS_ACTION_ID,
+                    "effect_type": CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE,
+                    "dice": dice,
+                    "damage_type": damage_type,
+                    "target_within_emanation_ft": CONJURE_MINOR_ELEMENTALS_RADIUS_FT,
+                }
+            ],
+        )
+
     def _apply_improved_blessed_strikes_potent_spellcasting_temp_hp(
         self,
         ctx: _Context,
@@ -9858,6 +9913,33 @@ class AutomationExecutor:
         graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
         return graph.shortest_distance(actor.position_node_id, target.position_node_id)
 
+    def _active_conjure_minor_elementals_effect(self, actor_id: str) -> dict[str, Any] | None:
+        for effect in reversed(self.state.world.active_effects):
+            applied_by = effect.get("applied_by")
+            if (
+                effect.get("source_action_id") == CONJURE_MINOR_ELEMENTALS_ACTION_ID
+                and effect.get("effect_type") == CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE
+                and isinstance(applied_by, str)
+                and self._entity_ids_match(applied_by, actor_id)
+            ):
+                return effect
+        return None
+
+    def _conjure_minor_elementals_target_in_emanation(
+        self,
+        actor_id: str,
+        target_id: str,
+        effect: dict[str, Any],
+    ) -> bool:
+        distance = self._combat_distance(self._entity(actor_id), self._entity(target_id))
+        if distance is None:
+            return False
+        radius = CONJURE_MINOR_ELEMENTALS_RADIUS_FT
+        scope = effect.get("scope", {})
+        if isinstance(scope, dict):
+            radius = int(scope.get("radius_ft", radius))
+        return distance <= radius
+
     def _clear_existing_concentration_if_needed(
         self, ctx: _Context, concentration: bool, path: str
     ) -> None:
@@ -10241,6 +10323,51 @@ class AutomationExecutor:
         if normalized not in allowed:
             raise AutomationError(f"{param_name} must be one of: {', '.join(allowed)}")
         params[param_name] = normalized
+
+    def _validate_conjure_minor_elementals_damage_type(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if self._first_attack_roll_node(action) is None:
+            return
+        effect = self._active_conjure_minor_elementals_effect(actor_id)
+        if effect is None:
+            self._conjure_minor_elementals_damage_type(params, required=False)
+            return
+        requires_choice = any(
+            self._conjure_minor_elementals_target_in_emanation(actor_id, target_id, effect)
+            for target_id in targets
+        )
+        self._conjure_minor_elementals_damage_type(params, required=requires_choice)
+
+    @staticmethod
+    def _conjure_minor_elementals_damage_type(
+        params: dict[str, Any],
+        *,
+        required: bool,
+    ) -> str | None:
+        raw = params.get(CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM)
+        if raw in (None, ""):
+            if required:
+                raise AutomationError(
+                    f"missing required parameter {CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM}"
+                )
+            return None
+        if isinstance(raw, (dict, list)):
+            raise AutomationError(
+                f"parameter {CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} must be a scalar"
+            )
+        normalized = str(raw).casefold().strip()
+        if normalized not in CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES:
+            expected = ", ".join(sorted(CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES))
+            raise AutomationError(
+                f"{CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} must be one of: {expected}"
+            )
+        params[CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM] = normalized
+        return normalized
 
     @staticmethod
     def _validate_allowed_creature_types_param(

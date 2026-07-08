@@ -800,6 +800,98 @@ def test_resolver_validates_telepathic_bond_willing_targets_and_cap(
     assert accepted.action_id == "srd.telepathic_bond"
 
 
+def test_resolver_accepts_conjure_minor_elementals_and_attack_damage_choice(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.conjure_minor_elementals")
+    character.spell_slots["4"] = 1
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    state.encounter.combatants["goblin1"].position_node_id = "cover"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    cast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤次级元素",
+            target_ids=[],
+            candidate_action_id="srd.conjure_minor_elementals",
+            params={"slot_level": 4},
+        )
+    )
+    assert cast.status == "accepted"
+    assert cast.action_id == "srd.conjure_minor_elementals"
+
+    character.class_levels = {"cleric": 7}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤次级元素",
+            target_ids=[],
+            candidate_action_id="srd.conjure_minor_elementals",
+            params={"slot_level": 4},
+        )
+    )
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of druid, wizard"
+    character.class_levels = {"wizard": 7}
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "cme-test",
+            "source_action_id": "srd.conjure_minor_elementals",
+            "applied_by": "pc1",
+            "effect_type": "conjure_minor_elementals_emanation",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 15},
+            "duration": {"until": "concentration_10_minutes"},
+            "metadata": {"extra_damage_dice_count": 2},
+        }
+    )
+
+    missing_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    invalid_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"conjure_minor_elementals_damage_type": "thunder"},
+        )
+    )
+    accepted_attack = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"conjure_minor_elementals_damage_type": "FIRE"},
+        )
+    )
+
+    assert missing_choice.status == "rejected"
+    assert (
+        missing_choice.reason
+        == "missing required parameter conjure_minor_elementals_damage_type"
+    )
+    assert invalid_choice.status == "rejected"
+    assert invalid_choice.reason == (
+        "conjure_minor_elementals_damage_type must be one of: acid, cold, fire, lightning"
+    )
+    assert accepted_attack.status == "accepted"
+    assert accepted_attack.action_id == "srd.shortsword_attack"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:

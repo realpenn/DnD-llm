@@ -21313,6 +21313,241 @@ def test_black_tentacles_successful_save_creates_area_without_damage_or_restrain
     assert state.world.active_effects[-1]["effect_type"] == "black_tentacles_area"
 
 
+def test_conjure_minor_elementals_records_emanation_and_adds_chosen_attack_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    target = state.encounter.combatants["goblin1"]
+    target.position_node_id = "cover"
+    target.hp_current = 30
+    target.hp_max = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([15, 2, 7]),
+    )
+
+    cast = tools.cast_spell(
+        "pc1",
+        "srd.conjure_minor_elementals",
+        [],
+        4,
+        idempotency_key="cast-conjure-minor-elementals",
+    )
+
+    assert cast["success"] is True
+    assert caster.spell_slots["4"] == 0
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.conjure_minor_elementals"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "conjure_minor_elementals_emanation"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "self_centered_emanation",
+        "radius_ft": 15,
+    }
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "elemental_spirits_from_elemental_planes": True,
+        "self_centered_emanation": True,
+        "emanation_radius_ft": 15,
+        "extra_damage_die": "d8",
+        "base_extra_damage": "2d8",
+        "higher_level_damage_increase": "1d8 per slot above 4",
+        "extra_damage_triggers": ["caster_attack_hits_creature_in_emanation"],
+        "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+        "damage_type_chosen_when_attack_is_made": True,
+        "damage_type_param": "conjure_minor_elementals_damage_type",
+        "ground_in_emanation_is_difficult_terrain_for_enemies": True,
+        "spirit_stat_blocks_not_created": True,
+        "area_damage_not_automated": True,
+        "extra_damage_dice_count": 2,
+    }
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+    tools.economy.set("pc1", "action", 1)
+    attack = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        {"conjure_minor_elementals_damage_type": "fire"},
+        idempotency_key="conjure-minor-elementals-fire-hit",
+    )
+
+    assert attack["success"] is True
+    assert [roll["expression"] for roll in attack["dice_rolls"]] == [
+        "1d20+5",
+        "1d6+3",
+        "2d8",
+    ]
+    damage_change = next(
+        change for change in attack["state_changes"] if change["type"] == "damage"
+    )
+    assert damage_change["extra_damage"] == [
+        {
+            "amount": 7,
+            "applied": 7,
+            "damage_type": "fire",
+            "sources": [
+                {
+                    "spell": "conjure_minor_elementals",
+                    "source_action_id": "srd.conjure_minor_elementals",
+                    "effect_type": "conjure_minor_elementals_emanation",
+                    "dice": "2d8",
+                    "damage_type": "fire",
+                    "target_within_emanation_ft": 15,
+                }
+            ],
+        }
+    ]
+    assert damage_change["total_applied"] == 12
+    assert target.hp_current == 18
+
+
+def test_conjure_minor_elementals_upcast_increases_attack_damage_dice(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    target = state.encounter.combatants["goblin1"]
+    target.position_node_id = "cover"
+    target.hp_current = 40
+    target.hp_max = 40
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([15, 2, 9]),
+    )
+
+    cast = tools.cast_spell(
+        "pc1",
+        "srd.conjure_minor_elementals",
+        [],
+        5,
+        idempotency_key="cast-conjure-minor-elementals-upcast",
+    )
+
+    assert cast["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert state.world.active_effects[-1]["metadata"]["extra_damage_dice_count"] == 3
+
+    tools.economy.set("pc1", "action", 1)
+    attack = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        {"conjure_minor_elementals_damage_type": "lightning"},
+        idempotency_key="conjure-minor-elementals-lightning-upcast",
+    )
+
+    assert [roll["expression"] for roll in attack["dice_rolls"]] == [
+        "1d20+5",
+        "1d6+3",
+        "3d8",
+    ]
+    damage_change = next(
+        change for change in attack["state_changes"] if change["type"] == "damage"
+    )
+    assert damage_change["extra_damage"][0]["amount"] == 9
+    assert damage_change["extra_damage"][0]["damage_type"] == "lightning"
+    assert damage_change["extra_damage"][0]["sources"][0]["dice"] == "3d8"
+
+
+def test_conjure_minor_elementals_requires_damage_type_for_in_emanation_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    state.encounter.combatants["goblin1"].position_node_id = "cover"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.cast_spell(
+        "pc1",
+        "srd.conjure_minor_elementals",
+        [],
+        4,
+        idempotency_key="cast-conjure-minor-elementals-for-validation",
+    )
+    tools.economy.set("pc1", "action", 1)
+
+    with pytest.raises(
+        AutomationError,
+        match="missing required parameter conjure_minor_elementals_damage_type",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.shortsword_attack",
+            ["goblin1"],
+            idempotency_key="conjure-minor-elementals-missing-damage-type",
+        )
+
+    assert state.encounter.action_budgets["pc1"]["action"] == 1
+
+
+def test_conjure_minor_elementals_does_not_trigger_against_distant_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.spell_slots["4"] = 1
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    target = state.encounter.combatants["goblin1"]
+    target.position_node_id = "back"
+    target.hp_current = 30
+    target.hp_max = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([15, 2]),
+    )
+
+    tools.cast_spell(
+        "pc1",
+        "srd.conjure_minor_elementals",
+        [],
+        4,
+        idempotency_key="cast-conjure-minor-elementals-distant",
+    )
+    tools.economy.set("pc1", "action", 1)
+    attack = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        idempotency_key="conjure-minor-elementals-distant-hit",
+    )
+
+    damage_change = next(
+        change for change in attack["state_changes"] if change["type"] == "damage"
+    )
+    assert "extra_damage" not in damage_change
+    assert target.hp_current == 25
+
+
 def test_conjure_woodland_beings_damages_and_records_emanation(
     make_state,
 ) -> None:

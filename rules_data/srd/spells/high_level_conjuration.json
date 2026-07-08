@@ -673,6 +673,93 @@
       }
     },
     {
+      "id": "srd.spell.conjure_minor_elementals",
+      "name": "Conjure Minor Elementals",
+      "localization": {
+        "en": "Conjure Minor Elementals",
+        "zh": "召唤次级元素",
+        "aliases": ["召唤小元素", "召唤次级元素术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["druid", "wizard"],
+      "action": {
+        "id": "srd.conjure_minor_elementals",
+        "name": "Conjure Minor Elementals",
+        "localization": {
+          "en": "Conjure Minor Elementals",
+          "zh": "召唤次级元素",
+          "aliases": ["召唤小元素", "召唤次级元素术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 15 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "wizard"],
+          "components": ["V", "S"],
+          "self_centered_emanation_radius_ft": 15,
+          "extra_damage_base": "2d8",
+          "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+          "extra_damage_type_param": "conjure_minor_elementals_damage_type",
+          "extra_damage_requires_attack_hit": true,
+          "extra_damage_requires_target_in_emanation": true,
+          "extra_damage_target_range_ft": 15,
+          "difficult_terrain_for_enemies": true,
+          "elemental_spirits_no_stat_block": true,
+          "spell_definition_id": "srd.spell.conjure_minor_elementals",
+          "spell_level": 4
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "conjure_minor_elementals_emanation",
+            "scope": {
+              "target": "self_centered_emanation",
+              "radius_ft": 15
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata_from_slot": {
+              "extra_damage_dice_count": {
+                "base_spell_slot_level": 4,
+                "base_value": 2,
+                "value_per_slot_above": 1
+              }
+            },
+            "metadata": {
+              "elemental_spirits_from_elemental_planes": true,
+              "self_centered_emanation": true,
+              "emanation_radius_ft": 15,
+              "extra_damage_die": "d8",
+              "base_extra_damage": "2d8",
+              "higher_level_damage_increase": "1d8 per slot above 4",
+              "extra_damage_triggers": [
+                "caster_attack_hits_creature_in_emanation"
+              ],
+              "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+              "damage_type_chosen_when_attack_is_made": true,
+              "damage_type_param": "conjure_minor_elementals_damage_type",
+              "ground_in_emanation_is_difficult_terrain_for_enemies": true,
+              "spirit_stat_blocks_not_created": true,
+              "area_damage_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Conjure Minor Elementals"
+      }
+    },
+    {
       "id": "srd.spell.transport_via_plants",
       "name": "Transport via Plants",
       "localization": {

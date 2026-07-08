@@ -79,6 +79,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.commune_with_nature",
     "srd.contact_other_plane",
     "srd.telepathic_bond",
+    "srd.conjure_minor_elementals",
     "srd.compulsion",
     "srd.confusion",
     "srd.conjure_woodland_beings",

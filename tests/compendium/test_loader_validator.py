@@ -68,6 +68,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.commune_with_nature",
         "srd.contact_other_plane",
         "srd.confusion",
+        "srd.conjure_minor_elementals",
         "srd.conjure_woodland_beings",
         "srd.conjure_woodland_beings_disengage",
         "srd.dominate_beast",
@@ -2214,6 +2215,78 @@ def test_compendium_loads_srd_actions() -> None:
                 },
             },
         },
+    ]
+    conjure_minor_spell = compendium.spell("srd.spell.conjure_minor_elementals")
+    assert conjure_minor_spell.level == 4
+    assert conjure_minor_spell.school == "conjuration"
+    assert conjure_minor_spell.classes == ["druid", "wizard"]
+    conjure_minor = compendium.action("srd.conjure_minor_elementals")
+    assert conjure_minor.requirements == {
+        "spell_level": 4,
+        "class_any": ["druid", "wizard"],
+    }
+    assert conjure_minor.properties == {
+        "spell_classes": ["druid", "wizard"],
+        "components": ["V", "S"],
+        "self_centered_emanation_radius_ft": 15,
+        "extra_damage_base": "2d8",
+        "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+        "extra_damage_type_param": "conjure_minor_elementals_damage_type",
+        "extra_damage_requires_attack_hit": True,
+        "extra_damage_requires_target_in_emanation": True,
+        "extra_damage_target_range_ft": 15,
+        "difficult_terrain_for_enemies": True,
+        "elemental_spirits_no_stat_block": True,
+        "spell_definition_id": "srd.spell.conjure_minor_elementals",
+        "spell_level": 4,
+    }
+    assert conjure_minor.cost.spell_slot_level == 4
+    assert conjure_minor.range == {
+        "self": True,
+        "shape": "emanation",
+        "radius_ft": 15,
+    }
+    assert conjure_minor.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert conjure_minor.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "conjure_minor_elementals_emanation",
+            "scope": {
+                "target": "self_centered_emanation",
+                "radius_ft": 15,
+            },
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata_from_slot": {
+                "extra_damage_dice_count": {
+                    "base_spell_slot_level": 4,
+                    "base_value": 2,
+                    "value_per_slot_above": 1,
+                }
+            },
+            "metadata": {
+                "elemental_spirits_from_elemental_planes": True,
+                "self_centered_emanation": True,
+                "emanation_radius_ft": 15,
+                "extra_damage_die": "d8",
+                "base_extra_damage": "2d8",
+                "higher_level_damage_increase": "1d8 per slot above 4",
+                "extra_damage_triggers": [
+                    "caster_attack_hits_creature_in_emanation",
+                ],
+                "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+                "damage_type_chosen_when_attack_is_made": True,
+                "damage_type_param": "conjure_minor_elementals_damage_type",
+                "ground_in_emanation_is_difficult_terrain_for_enemies": True,
+                "spirit_stat_blocks_not_created": True,
+                "area_damage_not_automated": True,
+            },
+        }
     ]
     conjure_woodland = compendium.action("srd.conjure_woodland_beings")
     assert conjure_woodland.requirements == {
@@ -7154,6 +7227,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.contact_other_plane",
         "srd.spell.telepathic_bond",
         "srd.spell.compulsion",
+        "srd.spell.conjure_minor_elementals",
         "srd.spell.conjure_woodland_beings",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",

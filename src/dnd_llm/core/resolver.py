@@ -40,6 +40,13 @@ RESOLVER_BRUTAL_STRIKE_EFFECTS = {
 RESOLVER_IMPROVED_BRUTAL_STRIKE_EFFECTS = {"staggering_blow", "sundering_blow"}
 RESOLVER_POISONERS_KIT_ITEM_ID = "srd.poisoners_kit"
 RESOLVER_ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
+RESOLVER_CONJURE_MINOR_ELEMENTALS_ACTION_ID = "srd.conjure_minor_elementals"
+RESOLVER_CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE = "conjure_minor_elementals_emanation"
+RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_type"
+RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
+    {"acid", "cold", "fire", "lightning"}
+)
+RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 RESOLVER_HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
 RESOLVER_SUPREME_SNEAK_COVER_ALIASES = {
     "3_4": "three_quarters",
@@ -233,6 +240,16 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=damage_type_error,
+                action_id=action.id,
+            )
+        conjure_minor_elementals_error = self._conjure_minor_elementals_damage_type_error(
+            draft,
+            action,
+        )
+        if conjure_minor_elementals_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=conjure_minor_elementals_error,
                 action_id=action.id,
             )
         allowed_list_error = self._allowed_list_params_error(draft, action)
@@ -532,6 +549,54 @@ class ActionResolver:
         if normalized not in allowed:
             return f"damage_type must be one of: {', '.join(allowed)}"
         draft.params["damage_type"] = normalized
+        return None
+
+    def _conjure_minor_elementals_damage_type_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if self._first_attack_roll_node(action) is None:
+            return None
+        effect = self._active_conjure_minor_elementals_effect(draft.actor_id)
+        if effect is None:
+            return self._normalize_conjure_minor_elementals_damage_type(draft, required=False)
+        requires_choice = any(
+            self._conjure_minor_elementals_target_in_emanation(draft.actor_id, target_id, effect)
+            for target_id in draft.target_ids
+        )
+        return self._normalize_conjure_minor_elementals_damage_type(
+            draft,
+            required=requires_choice,
+        )
+
+    @staticmethod
+    def _normalize_conjure_minor_elementals_damage_type(
+        draft: PlayerActionDraft,
+        *,
+        required: bool,
+    ) -> str | None:
+        raw = draft.params.get(RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM)
+        if raw is None or raw == "":
+            if required:
+                return (
+                    "missing required parameter "
+                    f"{RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM}"
+                )
+            return None
+        if isinstance(raw, (dict, list)):
+            return (
+                f"parameter {RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} "
+                "must be a scalar"
+            )
+        normalized = str(raw).casefold().strip()
+        if normalized not in RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES:
+            expected = ", ".join(sorted(RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES))
+            return (
+                f"{RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} must be one of: "
+                f"{expected}"
+            )
+        draft.params[RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM] = normalized
         return None
 
     @staticmethod
@@ -2281,6 +2346,46 @@ class ActionResolver:
         return any(matches(effect) for effect in self._status_effects_for(actor)) or any(
             matches(effect) for effect in self.state.world.active_effects
         )
+
+    def _active_conjure_minor_elementals_effect(self, actor_id: str) -> dict[str, Any] | None:
+        actor_aliases = self._entity_aliases(actor_id)
+        for effect in reversed(self.state.world.active_effects):
+            applied_by = effect.get("applied_by")
+            if (
+                effect.get("source_action_id") == RESOLVER_CONJURE_MINOR_ELEMENTALS_ACTION_ID
+                and effect.get("effect_type") == RESOLVER_CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE
+                and isinstance(applied_by, str)
+                and bool(actor_aliases & self._entity_aliases(applied_by))
+            ):
+                return effect
+        return None
+
+    def _conjure_minor_elementals_target_in_emanation(
+        self,
+        actor_id: str,
+        target_id: str,
+        effect: dict[str, Any],
+    ) -> bool:
+        distance = self._combat_distance(actor_id, target_id)
+        if distance is None:
+            return False
+        radius = RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT
+        scope = effect.get("scope", {})
+        if isinstance(scope, dict):
+            radius = int(scope.get("radius_ft", radius))
+        return distance <= radius
+
+    def _combat_distance(self, actor_id: str, target_id: str) -> int | None:
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return None
+        actor = self.state.encounter.combatants.get(actor_id)
+        target = self.state.encounter.combatants.get(target_id)
+        if actor is None or target is None:
+            return None
+        if actor.position_node_id is None or target.position_node_id is None:
+            return None
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        return graph.shortest_distance(actor.position_node_id, target.position_node_id)
 
     def _action_owner(
         self,
