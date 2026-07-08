@@ -44,6 +44,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.fire_storm",
         "srd.forcecage",
         "srd.sunburst",
+        "srd.mind_blank",
         "srd.meteor_swarm",
         "srd.flame_strike",
         "srd.circle_of_death",
@@ -783,6 +784,57 @@ def test_compendium_loads_srd_actions() -> None:
                 "Brilliant sunlight fills a 60-foot-radius Sphere and dispels "
                 "Darkness in the area that was created by any spell."
             ),
+        },
+    ]
+    mind_blank_spell = compendium.spell("srd.spell.mind_blank")
+    assert mind_blank_spell.level == 8
+    assert mind_blank_spell.school == "abjuration"
+    assert mind_blank_spell.classes == ["bard", "wizard"]
+    mind_blank = compendium.action("srd.mind_blank")
+    assert mind_blank.requirements == {
+        "spell_level": 8,
+        "class_any": ["bard", "wizard"],
+    }
+    assert mind_blank.properties == {
+        "spell_classes": ["bard", "wizard"],
+        "components": ["V", "S"],
+        "target_type": "creature",
+        "target_must_be_touched": True,
+        "requires_willing_target": True,
+        "unaffected_by_emotion_sensing": True,
+        "unaffected_by_alignment_sensing": True,
+        "unaffected_by_read_thoughts": True,
+        "unaffected_by_magical_location_detection": True,
+        "no_spell_can_gather_information_about_target": True,
+        "no_spell_can_observe_target_remotely": True,
+        "no_spell_can_control_targets_mind": True,
+        "wish_is_not_exception": True,
+        "spell_definition_id": "srd.spell.mind_blank",
+        "spell_level": 8,
+    }
+    assert mind_blank.cost.spell_slot_level == 8
+    assert mind_blank.range == {"touch": True}
+    assert mind_blank.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert mind_blank.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "mind_blank": True,
+                "damage_immunities": ["psychic"],
+                "condition_immunities": ["charmed"],
+                "unaffected_by_emotion_sensing": True,
+                "unaffected_by_alignment_sensing": True,
+                "unaffected_by_read_thoughts": True,
+                "unaffected_by_magical_location_detection": True,
+                "spell_information_gathering_blocked": True,
+                "remote_observation_blocked": True,
+                "mind_control_blocked": True,
+                "wish_is_not_exception": True,
+                "information_observation_and_mind_control_resolution_not_automated": True,
+            },
+            "duration": {"until": "duration_24_hours"},
+            "tick_on": "self_turn_end",
         },
     ]
     disintegrate = compendium.action("srd.disintegrate")
@@ -7489,6 +7541,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fire_storm",
         "srd.spell.forcecage",
         "srd.spell.sunburst",
+        "srd.spell.mind_blank",
         "srd.spell.meteor_swarm",
         "srd.spell.flame_strike",
         "srd.spell.disintegrate",

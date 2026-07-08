@@ -189,6 +189,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.magical_cunning",
     "srd.master_of_myriad_forms",
     "srd.master_of_myriad_forms_alter_self",
+    "srd.mind_blank",
     "srd.mask_of_many_faces",
     "srd.mask_of_many_faces_disguise_self",
     "srd.memorize_spell",

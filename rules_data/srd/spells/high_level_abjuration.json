@@ -771,6 +771,79 @@
         ],
         "audit_label": "Forbiddance"
       }
+    },
+    {
+      "id": "srd.spell.mind_blank",
+      "name": "Mind Blank",
+      "localization": {
+        "en": "Mind Blank",
+        "zh": "心灵屏障",
+        "aliases": ["心灵空白"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "abjuration",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.mind_blank",
+        "name": "Mind Blank",
+        "localization": {
+          "en": "Mind Blank",
+          "zh": "心灵屏障",
+          "aliases": ["心灵空白"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "components": ["V", "S"],
+          "target_type": "creature",
+          "target_must_be_touched": true,
+          "requires_willing_target": true,
+          "unaffected_by_emotion_sensing": true,
+          "unaffected_by_alignment_sensing": true,
+          "unaffected_by_read_thoughts": true,
+          "unaffected_by_magical_location_detection": true,
+          "no_spell_can_gather_information_about_target": true,
+          "no_spell_can_observe_target_remotely": true,
+          "no_spell_can_control_targets_mind": true,
+          "wish_is_not_exception": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "mind_blank": true,
+              "damage_immunities": ["psychic"],
+              "condition_immunities": ["charmed"],
+              "unaffected_by_emotion_sensing": true,
+              "unaffected_by_alignment_sensing": true,
+              "unaffected_by_read_thoughts": true,
+              "unaffected_by_magical_location_detection": true,
+              "spell_information_gathering_blocked": true,
+              "remote_observation_blocked": true,
+              "mind_control_blocked": true,
+              "wish_is_not_exception": true,
+              "information_observation_and_mind_control_resolution_not_automated": true
+            },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Mind Blank"
+      }
     }
   ]
 }

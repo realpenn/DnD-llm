@@ -23743,6 +23743,151 @@ def test_true_seeing_spends_component_and_grants_timed_truesight(make_state) -> 
     )
 
 
+def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 20
+    target.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.mind_blank",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 8},
+            idempotency_key="cast-mind-blank-unwilling",
+        )
+    assert caster.spell_slots["8"] == 1
+    assert state.encounter.action_budgets == {}
+
+    result = tools._execute_action(
+        action_id="srd.mind_blank",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 8, "target_willing": True},
+        idempotency_key="cast-mind-blank",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+
+    effect = state.encounter.combatants["pc2"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.mind_blank"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "mind_blank": True,
+        "damage_immunities": ["psychic"],
+        "condition_immunities": ["charmed"],
+        "unaffected_by_emotion_sensing": True,
+        "unaffected_by_alignment_sensing": True,
+        "unaffected_by_read_thoughts": True,
+        "unaffected_by_magical_location_detection": True,
+        "spell_information_gathering_blocked": True,
+        "remote_observation_blocked": True,
+        "mind_control_blocked": True,
+        "wish_is_not_exception": True,
+        "information_observation_and_mind_control_resolution_not_automated": True,
+    }
+    assert effect["duration"] == {"until": "duration_24_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+
+    psychic = AutomationExecutor(
+        state,
+        RollService(state),
+        AuditLog(),
+    ).execute(
+        _damage_action(7, damage_type="psychic"),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="mind-blank-psychic-damage",
+    )
+    force = AutomationExecutor(
+        state,
+        RollService(state),
+        AuditLog(),
+    ).execute(
+        _damage_action(3, damage_type="force"),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="mind-blank-force-damage",
+    )
+    charm_action = ActionDefinition(
+        id="test.mind_blank.charm",
+        name="Mind Blank Charm",
+        localization={"en": "Mind Blank Charm", "zh": "心灵屏障魅惑", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "condition", "condition": "charmed"},
+        ],
+    )
+    charmed = AutomationExecutor(
+        state,
+        RollService(state),
+        AuditLog(),
+    ).execute(
+        charm_action,
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="mind-blank-charmed",
+    )
+
+    psychic_damage = next(change for change in psychic.state_changes if change["type"] == "damage")
+    assert psychic_damage["amount"] == 7
+    assert psychic_damage["applied"] == 0
+    assert psychic_damage["damage_immunity_sources"] == [
+        {
+            "effect_id": effect["effect_id"],
+            "source_action_id": "srd.mind_blank",
+            "modifier": "damage_immunities",
+            "damage_type": "psychic",
+        }
+    ]
+    force_damage = next(change for change in force.state_changes if change["type"] == "damage")
+    assert force_damage["amount"] == 3
+    assert force_damage["applied"] == 3
+    assert "damage_immunity_sources" not in force_damage
+    assert state.encounter.combatants["pc2"].hp_current == 17
+
+    immune_change = next(
+        change for change in charmed.state_changes if change["type"] == "condition_immune"
+    )
+    assert immune_change["condition"] == "charmed"
+    assert immune_change["immunity_sources"] == [
+        {
+            "condition": None,
+            "effect_id": effect["effect_id"],
+            "source_action_id": "srd.mind_blank",
+            "modifier": "condition_immunities",
+            "immune_condition": "charmed",
+        }
+    ]
+    assert not any(
+        active.get("condition") == "charmed"
+        for active in state.encounter.combatants["pc2"].status_effects
+    )
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+
+
 def test_find_the_path_records_concentration_navigation_sense(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
