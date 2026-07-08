@@ -666,6 +666,64 @@ def test_resolver_validates_commune_with_nature_fact_choices(make_state) -> None
     ]
 
 
+def test_resolver_validates_telepathic_bond_willing_targets_and_cap(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.telepathic_bond")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    unwilling = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="心灵联结",
+            target_ids=["pc2"],
+            candidate_action_id="srd.telepathic_bond",
+            params={"slot_level": 5},
+        )
+    )
+    assert unwilling.status == "rejected"
+    assert unwilling.reason == "target must be willing"
+
+    too_many = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="心灵联结",
+            target_ids=[
+                "pc1",
+                "pc2",
+                "target3",
+                "target4",
+                "target5",
+                "target6",
+                "target7",
+                "target8",
+                "target9",
+            ],
+            candidate_action_id="srd.telepathic_bond",
+            params={"slot_level": 5, "target_willing": True},
+        )
+    )
+    assert too_many.status == "rejected"
+    assert too_many.reason == "too many targets"
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="心灵联结",
+            target_ids=["pc1", "pc2"],
+            candidate_action_id="srd.telepathic_bond",
+            params={"slot_level": 5, "target_willing": True},
+        )
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.telepathic_bond"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:

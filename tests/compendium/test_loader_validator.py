@@ -91,6 +91,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.etherealness",
         "srd.find_the_path",
         "srd.locate_creature",
+        "srd.telepathic_bond",
         "srd.true_seeing",
         "srd.passwall",
         "srd.move_earth",
@@ -2669,6 +2670,52 @@ def test_compendium_loads_srd_actions() -> None:
                 "map_query_not_automated": True,
             },
         }
+    ]
+    telepathic_bond_spell = compendium.spell("srd.spell.telepathic_bond")
+    assert telepathic_bond_spell.ritual is True
+    assert telepathic_bond_spell.level == 5
+    assert telepathic_bond_spell.school == "divination"
+    assert telepathic_bond_spell.classes == ["bard", "wizard"]
+    telepathic_bond = compendium.action("srd.telepathic_bond")
+    assert telepathic_bond.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "wizard"],
+    }
+    assert telepathic_bond.properties["spell_classes"] == ["bard", "wizard"]
+    assert telepathic_bond.properties["ritual"] is True
+    assert telepathic_bond.properties["spell_definition_id"] == "srd.spell.telepathic_bond"
+    assert telepathic_bond.properties["components"] == ["V", "S", "M"]
+    assert telepathic_bond.properties["material_component"] == {
+        "description": "two eggs",
+        "consumed": False,
+    }
+    assert telepathic_bond.properties["requires_willing_target"] is True
+    assert telepathic_bond.properties["max_willing_creatures"] == 8
+    assert telepathic_bond.cost.spell_slot_level == 5
+    assert telepathic_bond.cost.gold == 0
+    assert telepathic_bond.range == {"normal_ft": 30}
+    assert telepathic_bond.target_policy == {"min": 1, "max": 8, "harmful": False}
+    assert telepathic_bond.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "world_effect",
+            "effect_type": "telepathic_bond",
+            "scope": {"target": "explicit", "range_ft": 30},
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "psychically_links_targets_to_each_other": True,
+                "max_willing_creatures": 8,
+                "targets_must_be_within_ft": 30,
+                "creatures_unable_to_communicate_in_any_languages_unaffected": True,
+                "targets_can_communicate_telepathically_through_bond": True,
+                "shared_language_not_required": True,
+                "communication_any_distance": True,
+                "communication_cannot_extend_to_other_planes": True,
+                "language_capability_not_automated": True,
+                "telepathic_message_routing_not_automated": True,
+            },
+        },
     ]
     find_the_path = compendium.action("srd.find_the_path")
     assert find_the_path.requirements == {
@@ -7023,6 +7070,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.charm_monster",
         "srd.spell.commune",
         "srd.spell.commune_with_nature",
+        "srd.spell.telepathic_bond",
         "srd.spell.compulsion",
         "srd.spell.conjure_woodland_beings",
         "srd.spell.guardian_of_faith",

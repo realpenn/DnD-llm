@@ -22373,6 +22373,169 @@ def test_commune_rejects_non_cleric_before_spending_slot(make_state) -> None:
     assert state.world.active_effects == []
 
 
+def test_telepathic_bond_records_one_hour_willing_creature_link(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.telepathic_bond",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 5, "target_willing": True},
+        idempotency_key="cast-telepathic-bond",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.telepathic_bond"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "telepathic_bond"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "explicit",
+        "range_ft": 30,
+        "target_ids": ["pc1", "pc2"],
+    }
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "psychically_links_targets_to_each_other": True,
+        "max_willing_creatures": 8,
+        "targets_must_be_within_ft": 30,
+        "creatures_unable_to_communicate_in_any_languages_unaffected": True,
+        "targets_can_communicate_telepathically_through_bond": True,
+        "shared_language_not_required": True,
+        "communication_any_distance": True,
+        "communication_cannot_extend_to_other_planes": True,
+        "language_capability_not_automated": True,
+        "telepathic_message_routing_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "telepathic_bond"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 599
+
+
+def test_telepathic_bond_can_be_cast_as_ritual_without_spending_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 9}
+    caster.prepared_spells = ["srd.spell.telepathic_bond"]
+    caster.spell_slots["5"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.telepathic_bond",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 5, "as_ritual": True, "target_willing": True},
+        idempotency_key="ritual-telepathic-bond",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    ritual_change = next(
+        change for change in result["state_changes"] if change["type"] == "ritual_casting"
+    )
+    assert ritual_change == {
+        "type": "ritual_casting",
+        "actor_id": "pc1",
+        "spell_id": "srd.spell.telepathic_bond",
+        "base_spell_slot_level": 5,
+        "spell_slot_expended": False,
+        "casting_time_extra_minutes": 10,
+        "source": "prepared_spell",
+    }
+    assert not any(
+        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
+    )
+    assert state.world.active_effects[-1]["effect_type"] == "telepathic_bond"
+
+
+def test_telepathic_bond_rejects_invalid_targets_before_spending_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.telepathic_bond",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 5},
+            idempotency_key="telepathic-bond-unwilling",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="too many targets"):
+        tools._execute_action(
+            action_id="srd.telepathic_bond",
+            actor_id="pc1",
+            targets=[
+                "pc1",
+                "pc2",
+                "target3",
+                "target4",
+                "target5",
+                "target6",
+                "target7",
+                "target8",
+                "target9",
+            ],
+            params={"slot_level": 5, "target_willing": True},
+            idempotency_key="telepathic-bond-too-many-targets",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
+def test_telepathic_bond_rejects_non_bard_or_wizard_before_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of bard"):
+        tools._execute_action(
+            action_id="srd.telepathic_bond",
+            actor_id="pc1",
+            targets=["pc1", "pc2"],
+            params={"slot_level": 5, "target_willing": True},
+            idempotency_key="telepathic-bond-cleric",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
 def test_freedom_of_movement_requires_willing_target_and_grants_timed_effect(
     make_state,
 ) -> None:
