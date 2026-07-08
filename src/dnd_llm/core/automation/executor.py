@@ -3017,6 +3017,7 @@ class AutomationExecutor:
     def _resolved_effect_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
         duration = self._resolved_duration_from_slot(ctx, duration)
+        duration = self._resolved_duration_from_param(ctx, duration)
         duration = self._resolved_duration_repeat_save(ctx, duration)
         duration_roll = node.get("duration_roll")
         if not isinstance(duration_roll, dict):
@@ -3039,6 +3040,7 @@ class AutomationExecutor:
     def _resolved_condition_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
         duration = self._resolved_duration_from_slot(ctx, duration)
+        duration = self._resolved_duration_from_param(ctx, duration)
         duration = self._resolved_duration_repeat_save(ctx, duration)
         return duration
 
@@ -3095,6 +3097,41 @@ class AutomationExecutor:
         scaled_until = by_slot.get(str(slot_level))
         if scaled_until is not None:
             duration["until"] = str(scaled_until)
+        return duration
+
+    def _resolved_duration_from_param(
+        self,
+        ctx: _Context,
+        duration: dict[str, Any],
+    ) -> dict[str, Any]:
+        spec = duration.pop("duration_from_param", None)
+        if spec is None:
+            return duration
+        if not isinstance(spec, dict):
+            raise AutomationError("duration_from_param must be an object")
+        param_name = str(spec.get("param", ""))
+        if not param_name:
+            raise AutomationError("duration_from_param.param must be a string")
+        by_value = spec.get("by_value", {})
+        if not isinstance(by_value, dict):
+            raise AutomationError("duration_from_param.by_value must be an object")
+        selected = ctx.params.get(param_name)
+        if selected is None:
+            raise AutomationError(f"missing required parameter {param_name}")
+        if isinstance(selected, dict):
+            raise AutomationError(f"parameter {param_name} must be a scalar or one-item list")
+        if isinstance(selected, list):
+            if len(selected) != 1:
+                raise AutomationError(f"parameter {param_name} must contain exactly one choice")
+            selected = selected[0]
+        if isinstance(selected, (dict, list)):
+            raise AutomationError(f"parameter {param_name} must be a scalar")
+        normalized = str(selected).casefold().strip()
+        resolved_until = by_value.get(normalized)
+        if resolved_until is None:
+            expected = ", ".join(sorted(str(key) for key in by_value))
+            raise AutomationError(f"{param_name} must map to one of: {expected}")
+        duration["until"] = str(resolved_until)
         return duration
 
     def _resolved_passive_modifiers(
@@ -3222,7 +3259,7 @@ class AutomationExecutor:
             "effect_type": str(node["effect_type"]),
             "concentration": concentration,
             "scope": scope,
-            "duration": dict(node.get("duration", {})),
+            "duration": self._resolved_effect_duration(ctx, node),
             "metadata": metadata,
             "audit": {"node_path": path},
         }

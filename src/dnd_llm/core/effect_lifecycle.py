@@ -478,6 +478,8 @@ def _initial_ticks(until: str) -> int | None:
         return 1200
     if timed_until in {"duration_8_hours", "concentration_8_hours"}:
         return 4800
+    if timed_until in {"duration_12_hours", "concentration_12_hours"}:
+        return 7200
     if timed_until in {"duration_1_day", "concentration_1_day"}:
         return 14400
     if timed_until in {"duration_24_hours", "concentration_24_hours"}:

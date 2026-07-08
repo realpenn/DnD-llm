@@ -71,6 +71,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.conjure_minor_elementals",
         "srd.conjure_woodland_beings",
         "srd.conjure_woodland_beings_disengage",
+        "srd.creation",
         "srd.dominate_beast",
         "srd.compulsion",
         "srd.hold_monster",
@@ -1000,6 +1001,91 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "target_turn_end",
             "concentration": True,
         },
+    ]
+    creation_spell = compendium.spell("srd.spell.creation")
+    assert creation_spell.level == 5
+    assert creation_spell.school == "illusion"
+    assert creation_spell.classes == ["sorcerer", "wizard"]
+    creation = compendium.action("srd.creation")
+    assert creation.requirements == {
+        "spell_level": 5,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert creation.properties == {
+        "spell_classes": ["sorcerer", "wizard"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"minutes": 1},
+        "material_component": {
+            "description": "a paintbrush",
+            "consumed": False,
+        },
+        "creation_material_param": "creation_material",
+        "allowed_list_params": {
+            "creation_material": [
+                "vegetable_matter",
+                "stone_or_crystal",
+                "precious_metals",
+                "gems",
+                "adamantine_or_mithral",
+            ]
+        },
+        "required_list_param_counts": {
+            "creation_material": 1,
+        },
+        "spell_definition_id": "srd.spell.creation",
+        "spell_level": 5,
+    }
+    assert creation.cost.spell_slot_level == 5
+    assert creation.cost.gold == 0
+    assert creation.range == {"normal_ft": 30}
+    assert creation.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert creation.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "created_object",
+            "scope": {
+                "target": "object_within_range",
+                "range_ft": 30,
+            },
+            "duration": {
+                "duration_from_param": {
+                    "param": "creation_material",
+                    "by_value": {
+                        "vegetable_matter": "duration_24_hours",
+                        "stone_or_crystal": "duration_12_hours",
+                        "precious_metals": "duration_1_hour",
+                        "gems": "duration_10_minutes",
+                        "adamantine_or_mithral": "duration_1_minute",
+                    },
+                }
+            },
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "created_from_shadowfell_shadow_material": True,
+                "selected_material": {"param_list": "creation_material"},
+                "object_must_be_vegetable_or_mineral_matter": True,
+                "vegetable_matter_examples": ["soft_goods", "rope", "wood"],
+                "mineral_matter_examples": ["stone", "crystal", "metal"],
+                "object_must_be_form_and_material_caster_has_seen": True,
+                "multiple_materials_use_shortest_duration": True,
+                "selected_material_must_be_shortest_duration_if_multiple_materials": True,
+                "duration_by_material": {
+                    "vegetable_matter": "duration_24_hours",
+                    "stone_or_crystal": "duration_12_hours",
+                    "precious_metals": "duration_1_hour",
+                    "gems": "duration_10_minutes",
+                    "adamantine_or_mithral": "duration_1_minute",
+                },
+                "using_created_object_as_material_component_causes_other_spell_to_fail": True,
+            },
+            "metadata_from_slot": {
+                "max_cube_side_ft": {
+                    "base_spell_slot_level": 5,
+                    "base_value": 5,
+                    "value_per_slot_above": 5,
+                }
+            },
+        }
     ]
     freedom_of_movement = compendium.action("srd.freedom_of_movement")
     assert freedom_of_movement.requirements == {
@@ -7229,6 +7315,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.compulsion",
         "srd.spell.conjure_minor_elementals",
         "srd.spell.conjure_woodland_beings",
+        "srd.spell.creation",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.etherealness",

@@ -892,6 +892,80 @@ def test_resolver_accepts_conjure_minor_elementals_and_attack_damage_choice(
     assert accepted_attack.action_id == "srd.shortsword_attack"
 
 
+def test_resolver_validates_creation_material_and_class(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.creation")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_material = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={"slot_level": 5},
+        )
+    )
+    assert missing_material.status == "rejected"
+    assert missing_material.reason == "missing required parameter creation_material"
+
+    invalid_material = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={"slot_level": 5, "creation_material": "worked_steel"},
+        )
+    )
+    assert invalid_material.status == "rejected"
+    assert invalid_material.reason.startswith("creation_material must contain only:")
+
+    too_many_materials = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={
+                "slot_level": 5,
+                "creation_material": ["gems", "precious_metals"],
+            },
+        )
+    )
+    assert too_many_materials.status == "rejected"
+    assert too_many_materials.reason == "creation_material must contain exactly 1 choices"
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="创造术",
+        target_ids=[],
+        candidate_action_id="srd.creation",
+        params={"slot_level": 5, "creation_material": "GEMS"},
+    )
+    accepted = resolver.resolve(draft)
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.creation"
+    assert draft.params["creation_material"] == ["gems"]
+
+    character.class_levels = {"cleric": 9}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={"slot_level": 5, "creation_material": "gems"},
+        )
+    )
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of sorcerer, wizard"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:

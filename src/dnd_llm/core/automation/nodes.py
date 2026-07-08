@@ -109,6 +109,35 @@ def _validate_duration_from_slot(duration: dict[str, Any], path: str) -> list[st
     return errors
 
 
+def _validate_duration_from_param(duration: dict[str, Any], path: str) -> list[str]:
+    errors: list[str] = []
+    spec = duration.get("duration_from_param")
+    if spec is None:
+        return errors
+    if not isinstance(spec, dict):
+        errors.append(f"{path}: duration.duration_from_param must be an object")
+        return errors
+    param = spec.get("param")
+    if not isinstance(param, str) or not param:
+        errors.append(f"{path}: duration.duration_from_param.param must be a string")
+    by_value = spec.get("by_value")
+    if not isinstance(by_value, dict) or not by_value:
+        errors.append(
+            f"{path}: duration.duration_from_param.by_value must be a non-empty object"
+        )
+        return errors
+    for value_key, until in by_value.items():
+        if not isinstance(value_key, str) or not value_key:
+            errors.append(
+                f"{path}: duration.duration_from_param.by_value keys must be strings"
+            )
+        if not isinstance(until, str) or not until:
+            errors.append(
+                f"{path}: duration.duration_from_param.by_value values must be strings"
+            )
+    return errors
+
+
 def _validate_repeat_save(duration: dict[str, Any], path: str) -> list[str]:
     errors: list[str] = []
     repeat_save = duration.get("repeat_save")
@@ -286,6 +315,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         duration = node.get("duration")
         if isinstance(duration, dict):
             errors.extend(_validate_duration_from_slot(duration, path))
+            errors.extend(_validate_duration_from_param(duration, path))
             errors.extend(_validate_repeat_save(duration, path))
     if (
         node_type in {"damage", "condition", "passive_effect"}
@@ -366,6 +396,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         duration = node.get("duration")
         if isinstance(duration, dict):
             errors.extend(_validate_duration_from_slot(duration, path))
+            errors.extend(_validate_duration_from_param(duration, path))
             errors.extend(_validate_repeat_save(duration, path))
         duration_roll = node.get("duration_roll")
         if duration_roll is not None:
@@ -387,6 +418,11 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
                     errors.append(f"{path}: duration_roll.ticks_per_unit must be positive")
     if node_type == "world_effect" and not node.get("effect_type"):
         errors.append(f"{path}: world_effect requires effect_type")
+    if node_type == "world_effect":
+        duration = node.get("duration")
+        if isinstance(duration, dict):
+            errors.extend(_validate_duration_from_slot(duration, path))
+            errors.extend(_validate_duration_from_param(duration, path))
     if node_type == "world_effect" and "metadata_from_slot" in node:
         metadata_from_slot = node["metadata_from_slot"]
         if not isinstance(metadata_from_slot, dict):

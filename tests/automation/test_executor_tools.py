@@ -20338,6 +20338,134 @@ def test_private_sanctum_rejects_missing_or_invalid_protection_before_cost(
     assert state.world.active_effects == []
 
 
+def test_creation_records_material_duration_and_upcast_cube(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 11}
+    caster.spell_slots["6"] = 1
+    inventory_before = dict(caster.inventory)
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.creation",
+        actor_id="pc1",
+        targets=[],
+        params={"slot_level": 6, "creation_material": "Stone_Or_Crystal"},
+        idempotency_key="cast-creation-stone-crystal",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.inventory == inventory_before
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_6"
+    assert cost_change["base_spell_slot_level"] == 5
+    assert cost_change["spell_slot_level"] == 6
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.creation"
+    assert effect["effect_type"] == "created_object"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "object_within_range",
+        "range_ft": 30,
+    }
+    assert effect["duration"] == {"until": "duration_12_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "created_from_shadowfell_shadow_material": True,
+        "selected_material": ["stone_or_crystal"],
+        "object_must_be_vegetable_or_mineral_matter": True,
+        "vegetable_matter_examples": ["soft_goods", "rope", "wood"],
+        "mineral_matter_examples": ["stone", "crystal", "metal"],
+        "object_must_be_form_and_material_caster_has_seen": True,
+        "multiple_materials_use_shortest_duration": True,
+        "selected_material_must_be_shortest_duration_if_multiple_materials": True,
+        "duration_by_material": {
+            "vegetable_matter": "duration_24_hours",
+            "stone_or_crystal": "duration_12_hours",
+            "precious_metals": "duration_1_hour",
+            "gems": "duration_10_minutes",
+            "adamantine_or_mithral": "duration_1_minute",
+        },
+        "using_created_object_as_material_component_causes_other_spell_to_fail": True,
+        "max_cube_side_ft": 10,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "created_object"
+    assert world_effect_change["concentration"] is False
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "saving_throw", "damage", "condition"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 7200
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 7199
+
+
+def test_creation_rejects_invalid_material_or_caster_before_cost(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="missing required parameter creation_material"):
+        tools._execute_action(
+            action_id="srd.creation",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 5},
+            idempotency_key="cast-creation-missing-material",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="creation_material must contain only"):
+        tools._execute_action(
+            action_id="srd.creation",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 5, "creation_material": "worked_steel"},
+            idempotency_key="cast-creation-invalid-material",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="creation_material must contain exactly 1 choices"):
+        tools._execute_action(
+            action_id="srd.creation",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "creation_material": ["gems", "precious_metals"],
+            },
+            idempotency_key="cast-creation-too-many-materials",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+    caster.class_levels = {"cleric": 9}
+    with pytest.raises(AutomationError, match="requires one of sorcerer, wizard"):
+        tools._execute_action(
+            action_id="srd.creation",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 5, "creation_material": "gems"},
+            idempotency_key="cast-creation-cleric",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert state.world.active_effects == []
+
+
 def test_antilife_shell_records_concentration_creature_barrier(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
