@@ -22621,6 +22621,107 @@ def test_divination_requires_consumed_incense_gold_before_spending_slot(make_sta
     assert state.world.active_effects == []
 
 
+def test_legend_lore_spends_consumed_incense_and_records_gm_lore_request(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 250
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.legend_lore",
+        [],
+        5,
+        idempotency_key="cast-legend-lore",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.gold == 0
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_5", "gold"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.legend_lore"
+    assert effect["effect_type"] == "legend_lore_summary"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "self"}
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "name_or_describe_famous_person_place_or_object": True,
+        "gm_provides_brief_summary_of_significant_lore": True,
+        "lore_may_include_important_details_amusing_revelations_or_secret_lore": True,
+        "more_existing_knowledge_makes_result_more_precise_and_detailed": True,
+        "information_is_accurate": True,
+        "gm_may_couch_information_in_figurative_language_or_poetry": True,
+        "fails_if_chosen_thing_is_not_actually_famous": True,
+        "sad_trombone_on_non_famous_failure": True,
+        "lore_generation_not_automated": True,
+        "fame_determination_not_automated": True,
+        "non_consumed_material_components": [
+            "four ivory strips worth 50+ GP each",
+        ],
+        "consumed_material_component": "incense worth 250+ GP",
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "legend_lore_summary"
+    assert world_effect_change["concentration"] is False
+    assert not any(change["type"] in {"damage", "saving_throw", "condition"} for change in result["state_changes"])
+
+
+def test_legend_lore_requires_consumed_incense_before_spending_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 249
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools.cast_spell(
+            "pc1",
+            "srd.legend_lore",
+            [],
+            5,
+            idempotency_key="legend-lore-missing-incense",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 249
+    assert state.world.active_effects == []
+
+
+def test_legend_lore_rejects_non_bard_cleric_or_wizard_before_cost(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 250
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires one of bard"):
+        tools.cast_spell(
+            "pc1",
+            "srd.legend_lore",
+            [],
+            5,
+            idempotency_key="legend-lore-druid",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 250
+    assert state.world.active_effects == []
+
+
 def test_contact_other_plane_success_records_answer_window(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]

@@ -289,6 +289,79 @@
       }
     },
     {
+      "id": "srd.spell.legend_lore",
+      "name": "Legend Lore",
+      "localization": {
+        "en": "Legend Lore",
+        "zh": "通晓传奇",
+        "aliases": ["传奇知识", "传奇学识"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["bard", "cleric", "wizard"],
+      "action": {
+        "id": "srd.legend_lore",
+        "name": "Legend Lore",
+        "localization": {
+          "en": "Legend Lore",
+          "zh": "通晓传奇",
+          "aliases": ["传奇知识", "传奇学识"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "cleric", "wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "incense worth 250+ GP, consumed, and four ivory strips worth 50+ GP each",
+            "consumed": true,
+            "consumed_gold": 250,
+            "non_consumed_components": [
+              "four ivory strips worth 50+ GP each"
+            ]
+          },
+          "lore_target": "famous_person_place_or_object"
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5, "gold": 250 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "legend_lore_summary",
+            "scope": { "target": "self" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "name_or_describe_famous_person_place_or_object": true,
+              "gm_provides_brief_summary_of_significant_lore": true,
+              "lore_may_include_important_details_amusing_revelations_or_secret_lore": true,
+              "more_existing_knowledge_makes_result_more_precise_and_detailed": true,
+              "information_is_accurate": true,
+              "gm_may_couch_information_in_figurative_language_or_poetry": true,
+              "fails_if_chosen_thing_is_not_actually_famous": true,
+              "sad_trombone_on_non_famous_failure": true,
+              "lore_generation_not_automated": true,
+              "fame_determination_not_automated": true,
+              "non_consumed_material_components": [
+                "four ivory strips worth 50+ GP each"
+              ],
+              "consumed_material_component": "incense worth 250+ GP"
+            }
+          }
+        ],
+        "audit_label": "Legend Lore"
+      }
+    },
+    {
       "id": "srd.spell.find_the_path",
       "name": "Find the Path",
       "localization": {

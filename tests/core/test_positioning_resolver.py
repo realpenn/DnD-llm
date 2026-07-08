@@ -667,6 +667,56 @@ def test_resolver_accepts_contact_other_plane_self_cast_and_class_gate(
     assert rejected_class.reason == "requires one of warlock, wizard"
 
 
+def test_resolver_accepts_legend_lore_self_cast_and_cost_gate(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 9}
+    character.actions.append("srd.legend_lore")
+    character.spell_slots["5"] = 1
+    character.gold = 250
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="通晓传奇",
+            target_ids=[],
+            candidate_action_id="srd.legend_lore",
+            params={"slot_level": 5},
+        )
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.legend_lore"
+
+    character.gold = 249
+    insufficient_gold = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="通晓传奇",
+            target_ids=[],
+            candidate_action_id="srd.legend_lore",
+            params={"slot_level": 5},
+        )
+    )
+    assert insufficient_gold.status == "rejected"
+    assert insufficient_gold.reason == "insufficient gold"
+
+    character.gold = 250
+    character.class_levels = {"druid": 9}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="通晓传奇",
+            target_ids=[],
+            candidate_action_id="srd.legend_lore",
+            params={"slot_level": 5},
+        )
+    )
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of bard, cleric, wizard"
+
+
 def test_resolver_validates_commune_with_nature_fact_choices(make_state) -> None:
     state = make_state()
     character = state.characters["pc1"]

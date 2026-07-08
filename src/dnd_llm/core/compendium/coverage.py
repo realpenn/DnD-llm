@@ -181,6 +181,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.lay_on_hands",
     "srd.lay_on_hands_remove_poisoned",
     "srd.lands_aid",
+    "srd.legend_lore",
     "srd.lessons_of_the_first_ones",
     "srd.locate_creature",
     "srd.longsword_attack",

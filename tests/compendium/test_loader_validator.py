@@ -90,6 +90,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.insect_plague",
         "srd.transport_via_plants",
         "srd.word_of_recall",
+        "srd.legend_lore",
         "srd.divination",
         "srd.etherealness",
         "srd.find_the_path",
@@ -2807,6 +2808,67 @@ def test_compendium_loads_srd_actions() -> None:
                 },
             ],
         },
+    ]
+    legend_lore_spell = compendium.spell("srd.spell.legend_lore")
+    assert legend_lore_spell.level == 5
+    assert legend_lore_spell.school == "divination"
+    assert legend_lore_spell.classes == ["bard", "cleric", "wizard"]
+    legend_lore = compendium.action("srd.legend_lore")
+    assert legend_lore.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "cleric", "wizard"],
+    }
+    assert legend_lore.properties == {
+        "spell_classes": ["bard", "cleric", "wizard"],
+        "spell_definition_id": "srd.spell.legend_lore",
+        "spell_level": 5,
+        "casting_time": {"minutes": 10},
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": (
+                "incense worth 250+ GP, consumed, and four ivory strips "
+                "worth 50+ GP each"
+            ),
+            "consumed": True,
+            "consumed_gold": 250,
+            "non_consumed_components": [
+                "four ivory strips worth 50+ GP each",
+            ],
+        },
+        "lore_target": "famous_person_place_or_object",
+    }
+    assert legend_lore.cost.spell_slot_level == 5
+    assert legend_lore.cost.gold == 250
+    assert legend_lore.range == {"self": True}
+    assert legend_lore.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert legend_lore.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "legend_lore_summary",
+            "scope": {"target": "self"},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "name_or_describe_famous_person_place_or_object": True,
+                "gm_provides_brief_summary_of_significant_lore": True,
+                "lore_may_include_important_details_amusing_revelations_or_secret_lore": True,
+                "more_existing_knowledge_makes_result_more_precise_and_detailed": True,
+                "information_is_accurate": True,
+                "gm_may_couch_information_in_figurative_language_or_poetry": True,
+                "fails_if_chosen_thing_is_not_actually_famous": True,
+                "sad_trombone_on_non_famous_failure": True,
+                "lore_generation_not_automated": True,
+                "fame_determination_not_automated": True,
+                "non_consumed_material_components": [
+                    "four ivory strips worth 50+ GP each",
+                ],
+                "consumed_material_component": "incense worth 250+ GP",
+            },
+        }
     ]
     commune_spell = compendium.spell("srd.spell.commune")
     assert commune_spell.ritual is True
@@ -7311,6 +7373,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.commune",
         "srd.spell.commune_with_nature",
         "srd.spell.contact_other_plane",
+        "srd.spell.legend_lore",
         "srd.spell.telepathic_bond",
         "srd.spell.compulsion",
         "srd.spell.conjure_minor_elementals",
