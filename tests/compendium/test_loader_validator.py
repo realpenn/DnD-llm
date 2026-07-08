@@ -56,6 +56,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.private_sanctum",
         "srd.resilient_sphere",
         "srd.banishment",
+        "srd.aura_of_life",
         "srd.death_ward",
         "srd.arcane_eye",
         "srd.blight",
@@ -1140,6 +1141,56 @@ def test_compendium_loads_srd_actions() -> None:
             "condition": "incapacitated",
             "requires_failed_save": True,
             "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
+    ]
+    aura_of_life = compendium.action("srd.aura_of_life")
+    assert aura_of_life.requirements == {
+        "spell_level": 4,
+        "class_any": ["cleric", "paladin"],
+    }
+    assert aura_of_life.properties == {
+        "spell_classes": ["cleric", "paladin"],
+        "components": ["V"],
+        "self_centered_emanation_radius_ft": 30,
+        "spell_definition_id": "srd.spell.aura_of_life",
+        "spell_level": 4,
+    }
+    assert aura_of_life.cost.spell_slot_level == 4
+    assert aura_of_life.range == {"self": True, "shape": "emanation", "radius_ft": 30}
+    assert aura_of_life.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert aura_of_life.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "world_effect",
+            "effect_type": "aura_of_life",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 30},
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "self_centered_emanation": True,
+                "caster_and_allies_in_aura_gain_necrotic_resistance": True,
+                "caster_and_allies_in_aura_hp_max_cannot_be_reduced": True,
+                "ally_at_0_hp_starts_turn_in_aura_regains_hp": 1,
+                "dynamic_aura_membership_not_automated": True,
+                "turn_start_healing_not_automated": True,
+            },
+            "concentration": True,
+        },
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "aura_of_life": True,
+                "damage_resistances": ["necrotic"],
+                "prevents_hp_max_reduction": True,
+            },
+            "duration": {"until": "concentration_10_minutes"},
             "tick_on": "self_turn_end",
             "concentration": True,
         },
@@ -6508,6 +6559,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.wall_of_fire",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",
+        "srd.spell.aura_of_life",
         "srd.spell.death_ward",
         "srd.spell.cone_of_cold",
         "srd.spell.chain_lightning",

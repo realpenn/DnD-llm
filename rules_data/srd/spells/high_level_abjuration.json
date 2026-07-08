@@ -318,6 +318,77 @@
       }
     },
     {
+      "id": "srd.spell.aura_of_life",
+      "name": "Aura of Life",
+      "localization": {
+        "en": "Aura of Life",
+        "zh": "生命灵光",
+        "aliases": ["生命光环"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.aura_of_life",
+        "name": "Aura of Life",
+        "localization": {
+          "en": "Aura of Life",
+          "zh": "生命灵光",
+          "aliases": ["生命光环"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "paladin"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "paladin"],
+          "components": ["V"],
+          "self_centered_emanation_radius_ft": 30
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "world_effect",
+            "effect_type": "aura_of_life",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 30 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "self_centered_emanation": true,
+              "caster_and_allies_in_aura_gain_necrotic_resistance": true,
+              "caster_and_allies_in_aura_hp_max_cannot_be_reduced": true,
+              "ally_at_0_hp_starts_turn_in_aura_regains_hp": 1,
+              "dynamic_aura_membership_not_automated": true,
+              "turn_start_healing_not_automated": true
+            },
+            "concentration": true
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "aura_of_life": true,
+              "damage_resistances": ["necrotic"],
+              "prevents_hp_max_reduction": true
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Aura of Life"
+      }
+    },
+    {
       "id": "srd.spell.death_ward",
       "name": "Death Ward",
       "localization": {

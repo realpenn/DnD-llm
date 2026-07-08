@@ -16810,6 +16810,115 @@ def test_fire_shield_requires_warm_or_chill_before_cost(make_state) -> None:
     assert state.encounter.combatants["pc1"].status_effects == []
 
 
+def test_aura_of_life_grants_self_necrotic_resistance_and_records_srd_aura(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc1"]
+    caster.class_levels = {"cleric": 7}
+    caster.spell_slots["4"] = 1
+    protected.hp_current = 20
+    protected.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.aura_of_life",
+        [],
+        4,
+        idempotency_key="cast-aura-of-life",
+    )
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(9, damage_type="necrotic"),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="necrotic-damage-after-aura-of-life",
+    )
+    hp_max_reduction = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        ActionDefinition(
+            id="test.hp_max_reduction",
+            name="Test HP Max Reduction",
+            localization={"en": "Test HP Max Reduction", "zh": "测试生命上限降低", "aliases": []},
+            source="test",
+            rules_version="test",
+            action_type="test",
+            action_economy="none",
+            range={},
+            target_policy={"min": 1, "max": 1, "harmful": True},
+            automation=[
+                {"type": "target", "mode": "explicit"},
+                {"type": "max_hp_delta", "amount": -5, "record_hp_max_reduction_marker": True},
+            ],
+        ),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="hp-max-reduction-after-aura-of-life",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_4"
+    aura = state.world.active_effects[-1]
+    assert aura["source_action_id"] == "srd.aura_of_life"
+    assert aura["effect_type"] == "aura_of_life"
+    assert aura["concentration"] is True
+    assert aura["scope"] == {"target": "self_centered_emanation", "radius_ft": 30}
+    assert aura["duration"] == {"until": "concentration_10_minutes"}
+    assert aura["metadata"] == {
+        "self_centered_emanation": True,
+        "caster_and_allies_in_aura_gain_necrotic_resistance": True,
+        "caster_and_allies_in_aura_hp_max_cannot_be_reduced": True,
+        "ally_at_0_hp_starts_turn_in_aura_regains_hp": 1,
+        "dynamic_aura_membership_not_automated": True,
+        "turn_start_healing_not_automated": True,
+    }
+    effect = protected.status_effects[-1]
+    assert effect["source_action_id"] == "srd.aura_of_life"
+    assert effect["passive_modifiers"] == {
+        "aura_of_life": True,
+        "damage_resistances": ["necrotic"],
+        "prevents_hp_max_reduction": True,
+    }
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+
+    damage_change = next(change for change in damage.state_changes if change["type"] == "damage")
+    assert damage_change["amount"] == 9
+    assert damage_change["applied"] == 4
+    assert damage_change["damage_resistance_sources"] == [
+        {
+            "effect_id": effect["effect_id"],
+            "source_action_id": "srd.aura_of_life",
+            "modifier": "damage_resistances",
+            "damage_type": "necrotic",
+        }
+    ]
+    max_hp_change = next(
+        change for change in hp_max_reduction.state_changes if change["type"] == "max_hp_delta"
+    )
+    assert max_hp_change["prevented"] is True
+    assert max_hp_change["hp_max_before"] == 20
+    assert max_hp_change["hp_max_after"] == 20
+    assert protected.hp_max == 20
+    assert not any(
+        status_effect.get("effect_markers") == ["hp_max_reduction"]
+        for status_effect in protected.status_effects
+    )
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    aura_ticks = [
+        entry for entry in lifecycle.ticked if entry["source_action_id"] == "srd.aura_of_life"
+    ]
+    assert len(aura_ticks) == 2
+    assert {entry["remaining_ticks_before"] for entry in aura_ticks} == {100}
+    assert {entry["remaining_ticks_after"] for entry in aura_ticks} == {99}
+
+
 def test_resilient_sphere_failed_save_encloses_large_or_smaller_target(
     make_state,
 ) -> None:

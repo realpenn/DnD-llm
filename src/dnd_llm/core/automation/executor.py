@@ -3261,6 +3261,28 @@ class AutomationExecutor:
             target = self._entity(target_id)
             before_max = int(getattr(target, "hp_max"))
             before_current = int(getattr(target, "hp_current"))
+            prevention_sources = (
+                self._passive_hp_max_reduction_prevention_sources(target)
+                if amount < 0
+                else []
+            )
+            if prevention_sources:
+                ctx.result.state_changes.append(
+                    {
+                        "type": "max_hp_delta",
+                        "target_id": target_id,
+                        "amount": amount,
+                        "hp_max_before": before_max,
+                        "hp_max_after": before_max,
+                        "hp_current_before": before_current,
+                        "hp_current_after": before_current,
+                        "prevented": True,
+                        "prevented_amount": abs(amount),
+                        "prevention_sources": prevention_sources,
+                        "path": path,
+                    }
+                )
+                continue
             after_max = max(1, before_max + amount)
             after_current = before_current
             if increase_current and amount > 0:
@@ -8493,6 +8515,25 @@ class AutomationExecutor:
                         "source_action_id": effect.get("source_action_id"),
                         "modifier": "damage_resistances",
                         "damage_type": damage_type,
+                    }
+                )
+        return sources
+
+    def _passive_hp_max_reduction_prevention_sources(
+        self,
+        target: Character | Monster | Combatant,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(target):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("prevents_hp_max_reduction") is True:
+                sources.append(
+                    {
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                        "modifier": "prevents_hp_max_reduction",
                     }
                 )
         return sources

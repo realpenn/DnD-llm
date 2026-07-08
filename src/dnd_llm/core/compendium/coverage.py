@@ -63,6 +63,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.aura_of_courage",
     "srd.aura_of_devotion",
     "srd.aura_expansion",
+    "srd.aura_of_life",
     "srd.barbarian_unarmored_defense",
     "srd.bard_expertise",
     "srd.bardic_inspiration",
