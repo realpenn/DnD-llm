@@ -52,6 +52,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.finger_of_death",
         "srd.greater_invisibility",
         "srd.hallucinatory_terrain",
+        "srd.phantasmal_killer",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
@@ -928,6 +929,67 @@ def test_compendium_loads_srd_actions() -> None:
                 "disbelieved_illusion_appears_as_vague_image_superimposed_on_real_terrain": True,
             },
         }
+    ]
+    phantasmal_killer = compendium.action("srd.phantasmal_killer")
+    assert phantasmal_killer.requirements == {
+        "spell_level": 4,
+        "class_any": ["bard", "wizard"],
+    }
+    assert phantasmal_killer.properties == {
+        "spell_classes": ["bard", "wizard"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "components": ["V", "S"],
+        "spell_definition_id": "srd.spell.phantasmal_killer",
+        "spell_level": 4,
+    }
+    assert phantasmal_killer.cost.spell_slot_level == 4
+    assert phantasmal_killer.range == {"normal_ft": 120}
+    assert phantasmal_killer.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert phantasmal_killer.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "4d10",
+            "damage_type": "psychic",
+            "save_half": True,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d10",
+        },
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "phantasmal_killer": True,
+                "ability_check_disadvantage_abilities": [
+                    "str",
+                    "dex",
+                    "con",
+                    "int",
+                    "wis",
+                    "cha",
+                ],
+                "attack_roll_disadvantage": True,
+            },
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "target_turn_end",
+                    "failure_damage": {
+                        "dice": "4d10",
+                        "damage_type": "psychic",
+                        "base_spell_slot_level": 4,
+                        "extra_dice_per_slot_above": "1d10",
+                    },
+                },
+            },
+            "tick_on": "target_turn_end",
+            "concentration": True,
+        },
     ]
     freedom_of_movement = compendium.action("srd.freedom_of_movement")
     assert freedom_of_movement.requirements == {
@@ -6557,6 +6619,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fire_shield",
         "srd.spell.vitriolic_sphere",
         "srd.spell.wall_of_fire",
+        "srd.spell.phantasmal_killer",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",
         "srd.spell.aura_of_life",

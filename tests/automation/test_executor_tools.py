@@ -16662,6 +16662,228 @@ def test_hallucinatory_terrain_records_timed_natural_terrain_illusion(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_phantasmal_killer_failed_save_damages_and_repeats_psychic_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 7}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 8}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 22]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.phantasmal_killer",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-phantasmal-killer-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "psychic"
+    assert damage_change["amount"] == 22
+    assert damage_change["applied"] == 22
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20-1", "4d10"]
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.phantasmal_killer"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "phantasmal_killer": True,
+        "ability_check_disadvantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+        "attack_roll_disadvantage": True,
+    }
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 15,
+            "dc_source": "spell_save_dc:wizard",
+            "end_on_success": True,
+            "trigger": "target_turn_end",
+            "failure_damage": {"dice": "4d10", "damage_type": "psychic"},
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is True
+
+    ability_check = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(
+        ActionDefinition(
+            id="test.ability_check",
+            name="Test Ability Check",
+            localization={"en": "Test Ability Check", "zh": "测试属性检定", "aliases": []},
+            source="test",
+            rules_version="test",
+            action_type="test",
+            action_economy="none",
+            range={},
+            target_policy={"min": 0, "max": 0, "harmful": False},
+            automation=[{"type": "ability_check", "ability": "wis", "difficulty_tier": "medium"}],
+        ),
+        actor_id="goblin1",
+    )
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 3]),
+        AuditLog(),
+    ).execute(
+        _weapon_attack_action(),
+        actor_id="goblin1",
+        targets=["pc2"],
+    )
+    lifecycle = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([1, 17]),
+    )
+
+    check_node = ability_check.node_results["automation[0]"]
+    assert ability_check.dice_rolls[0]["advantage"] == "disadvantage"
+    assert check_node["status_sources"][0]["modifier"] == "ability_check_disadvantage_abilities"
+    attack_node = attack.node_results["automation[1]"]
+    assert attack.dice_rolls[0]["advantage"] == "disadvantage"
+    assert attack_node["status_sources"][0]["modifier"] == "attack_roll_disadvantage"
+    assert lifecycle.expired == []
+    assert lifecycle.ticked[0]["repeat_save"]["success"] is False
+    assert lifecycle.damage[0]["dice"] == "4d10"
+    assert lifecycle.damage[0]["amount"] == 17
+    assert lifecycle.damage[0]["applied"] == 17
+    assert target.hp_current == 41
+
+    ending = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert ending.expired[0]["source_action_id"] == "srd.phantasmal_killer"
+    assert ending.expired[0]["repeat_save"]["success"] is True
+    assert target.status_effects == []
+
+
+def test_phantasmal_killer_successful_save_has_half_damage_only(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 7}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 3
+    caster.spell_slots["4"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 21]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.phantasmal_killer",
+        ["goblin1"],
+        4,
+        idempotency_key="cast-phantasmal-killer-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["4"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 15
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 10
+    assert damage_change["applied"] == 10
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    assert target.status_effects == []
+    assert target.hp_current == 70
+
+
+def test_phantasmal_killer_upcast_scales_initial_and_repeat_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["4"] = 0
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 8}
+    target.hp_current = 90
+    target.hp_max = 90
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 33]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.phantasmal_killer",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-phantasmal-killer-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_5"
+    assert cost_change["base_spell_slot_level"] == 4
+    assert cost_change["spell_slot_level"] == 5
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 33
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20-1", "5d10"]
+    effect = target.status_effects[-1]
+    assert effect["duration"]["repeat_save"]["failure_damage"] == {
+        "dice": "5d10",
+        "damage_type": "psychic",
+    }
+
+    lifecycle = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([1, 27]),
+    )
+
+    assert lifecycle.ticked[0]["repeat_save"]["success"] is False
+    assert lifecycle.damage[0]["dice"] == "5d10"
+    assert lifecycle.damage[0]["amount"] == 27
+    assert target.hp_current == 30
+
+
 def test_fire_shield_warm_grants_cold_resistance_and_records_retaliation(
     make_state,
 ) -> None:

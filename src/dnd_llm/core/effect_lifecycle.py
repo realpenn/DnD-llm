@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .dice import RollService
-from .models import Character, GameState
+from .models import Character, Combatant, GameState, Monster
 from .rules.checks import d20_expression
 from .rules.class_features import (
     INDOMITABLE_MIGHT_ACTION_ID,
@@ -13,6 +13,7 @@ from .rules.class_features import (
     monk_self_restoration_applies,
     saving_throw_proficiency_sources,
 )
+from .rules.combat import apply_damage
 from .rules.conditions import exhaustion_d20_penalty, exhaustion_level, remove_condition
 
 SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
@@ -27,11 +28,18 @@ class EffectLifecycleResult:
     expired: list[dict[str, Any]] = field(default_factory=list)
     ticked: list[dict[str, Any]] = field(default_factory=list)
     removed: list[dict[str, Any]] = field(default_factory=list)
+    damage: list[dict[str, Any]] = field(default_factory=list)
     choice_required: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def changed(self) -> bool:
-        return bool(self.expired or self.ticked or self.removed or self.choice_required)
+        return bool(
+            self.expired
+            or self.ticked
+            or self.removed
+            or self.damage
+            or self.choice_required
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -40,6 +48,7 @@ class EffectLifecycleResult:
             "expired": self.expired,
             "ticked": self.ticked,
             "removed": self.removed,
+            "damage": self.damage,
             "choice_required": self.choice_required,
         }
 
@@ -90,6 +99,17 @@ def tick_effects(
                 pending_saving_throw_consumptions.append(
                     (str(effect.get("target_id") or actor_id), repeat_save_entry)
                 )
+                if not repeat_save_entry["success"]:
+                    failure_damage = _repeat_save_failure_damage(
+                        state,
+                        effect,
+                        actor_id,
+                        repeat_save,
+                        roll_service,
+                    )
+                    if failure_damage is not None:
+                        repeat_save_entry["failure_damage"] = failure_damage
+                        result.damage.append(failure_damage)
                 if repeat_save_entry["success"] and bool(repeat_save.get("end_on_success", True)):
                     result.expired.append(
                         _entry(
@@ -528,6 +548,80 @@ def _roll_repeat_save(
     if indomitable_might is not None:
         entry["indomitable_might"] = indomitable_might
     return entry
+
+
+def _repeat_save_failure_damage(
+    state: GameState,
+    effect: dict[str, Any],
+    actor_id: str,
+    repeat_save: dict[str, Any],
+    roll_service: RollService,
+) -> dict[str, Any] | None:
+    failure_damage = repeat_save.get("failure_damage")
+    if not isinstance(failure_damage, dict):
+        return None
+    target_id = str(effect.get("target_id") or actor_id)
+    target = state.entity_for_actor(target_id)
+    dice = str(failure_damage["dice"])
+    damage_type = str(failure_damage["damage_type"]).lower()
+    hp_before = int(getattr(target, "hp_current"))
+    temp_hp_before = int(getattr(target, "temp_hp", 0))
+    roll = roll_service.roll(dice)
+    applied = apply_damage(target, roll.total, damage_type)
+    _sync_hp_state_for_target(state, target_id, target)
+    return {
+        "type": "repeat_save_failure_damage",
+        "target_id": target_id,
+        "effect_id": effect.get("effect_id"),
+        "source_action_id": effect.get("source_action_id"),
+        "damage_type": damage_type,
+        "dice": dice,
+        "roll": roll.to_dict(),
+        "amount": roll.total,
+        "applied": applied,
+        "hp_before": hp_before,
+        "hp_after": int(getattr(target, "hp_current")),
+        "temp_hp_before": temp_hp_before,
+        "temp_hp_after": int(getattr(target, "temp_hp", 0)),
+    }
+
+
+def _sync_hp_state_for_target(
+    state: GameState,
+    target_id: str,
+    target: Character | Monster | Combatant,
+) -> None:
+    def copy_hp(source: Character | Monster | Combatant, destination: Any) -> None:
+        for field_name in (
+            "hp_current",
+            "hp_max",
+            "temp_hp",
+            "temp_hp_source_effect_id",
+            "death_save_successes",
+            "death_save_failures",
+            "stable",
+            "dead",
+        ):
+            if hasattr(source, field_name) and hasattr(destination, field_name):
+                setattr(destination, field_name, getattr(source, field_name))
+
+    if isinstance(target, Combatant):
+        if target.entity_id in state.characters:
+            copy_hp(target, state.characters[target.entity_id])
+        if target.entity_id in state.monsters:
+            copy_hp(target, state.monsters[target.entity_id])
+        return
+    if isinstance(target, Character):
+        if state.encounter is None:
+            return
+        for combatant in state.encounter.combatants.values():
+            if combatant.entity_id == target.id or combatant.id == target_id:
+                copy_hp(target, combatant)
+        return
+    if isinstance(target, Monster) and state.encounter is not None:
+        for combatant in state.encounter.combatants.values():
+            if combatant.entity_id == target.id or combatant.id == target_id:
+                copy_hp(target, combatant)
 
 
 def _indomitable_might_repeat_save(

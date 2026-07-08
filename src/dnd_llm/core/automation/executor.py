@@ -2979,6 +2979,7 @@ class AutomationExecutor:
     def _resolved_effect_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
         duration = self._resolved_duration_from_slot(ctx, duration)
+        duration = self._resolved_duration_repeat_save(ctx, duration)
         duration_roll = node.get("duration_roll")
         if not isinstance(duration_roll, dict):
             return duration
@@ -3000,6 +3001,14 @@ class AutomationExecutor:
     def _resolved_condition_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
         duration = self._resolved_duration_from_slot(ctx, duration)
+        duration = self._resolved_duration_repeat_save(ctx, duration)
+        return duration
+
+    def _resolved_duration_repeat_save(
+        self,
+        ctx: _Context,
+        duration: dict[str, Any],
+    ) -> dict[str, Any]:
         repeat_save = duration.get("repeat_save")
         if not isinstance(repeat_save, dict):
             return duration
@@ -3009,8 +3018,27 @@ class AutomationExecutor:
             dc, dc_source = self._resolve_dynamic_dc(ctx, dc_from)
             resolved_repeat_save["dc"] = dc
             resolved_repeat_save["dc_source"] = dc_source
+        failure_damage = resolved_repeat_save.get("failure_damage")
+        if isinstance(failure_damage, dict):
+            resolved_repeat_save["failure_damage"] = self._resolved_repeat_save_failure_damage(
+                ctx,
+                failure_damage,
+            )
         duration["repeat_save"] = resolved_repeat_save
         return duration
+
+    def _resolved_repeat_save_failure_damage(
+        self,
+        ctx: _Context,
+        failure_damage: dict[str, Any],
+    ) -> dict[str, Any]:
+        damage = dict(failure_damage)
+        if "dice" in damage:
+            damage["dice"] = self._scaled_dice_expression(ctx, damage)
+        return {
+            "dice": str(damage["dice"]),
+            "damage_type": str(damage["damage_type"]),
+        }
 
     def _resolved_duration_from_slot(
         self,

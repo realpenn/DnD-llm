@@ -117,6 +117,86 @@
         ],
         "audit_label": "Hallucinatory Terrain"
       }
+    },
+    {
+      "id": "srd.spell.phantasmal_killer",
+      "name": "Phantasmal Killer",
+      "localization": {
+        "en": "Phantasmal Killer",
+        "zh": "魅影杀手",
+        "aliases": ["魅影杀戮"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "illusion",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.phantasmal_killer",
+        "name": "Phantasmal Killer",
+        "localization": {
+          "en": "Phantasmal Killer",
+          "zh": "魅影杀手",
+          "aliases": ["魅影杀戮"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "components": ["V", "S"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "4d10",
+            "damage_type": "psychic",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d10"
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "phantasmal_killer": true,
+              "ability_check_disadvantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+              "attack_roll_disadvantage": true
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end",
+                "failure_damage": {
+                  "dice": "4d10",
+                  "damage_type": "psychic",
+                  "base_spell_slot_level": 4,
+                  "extra_dice_per_slot_above": "1d10"
+                }
+              }
+            },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Phantasmal Killer"
+      }
     }
   ]
 }

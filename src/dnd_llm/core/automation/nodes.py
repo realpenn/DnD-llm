@@ -109,6 +109,59 @@ def _validate_duration_from_slot(duration: dict[str, Any], path: str) -> list[st
     return errors
 
 
+def _validate_repeat_save(duration: dict[str, Any], path: str) -> list[str]:
+    errors: list[str] = []
+    repeat_save = duration.get("repeat_save")
+    if repeat_save is None:
+        return errors
+    if not isinstance(repeat_save, dict):
+        return [f"{path}: duration.repeat_save must be an object"]
+    if not isinstance(repeat_save.get("ability"), str):
+        errors.append(f"{path}: duration.repeat_save ability must be a string")
+    has_dc = isinstance(repeat_save.get("dc"), int) and not isinstance(
+        repeat_save.get("dc"),
+        bool,
+    )
+    has_dc_from = isinstance(repeat_save.get("dc_from"), dict)
+    if not has_dc and not has_dc_from:
+        errors.append(f"{path}: duration.repeat_save requires dc or dc_from")
+    if "end_on_success" in repeat_save and not isinstance(
+        repeat_save["end_on_success"],
+        bool,
+    ):
+        errors.append(f"{path}: duration.repeat_save end_on_success must be boolean")
+    failure_damage = repeat_save.get("failure_damage")
+    if failure_damage is not None:
+        errors.extend(_validate_repeat_save_failure_damage(failure_damage, path))
+    return errors
+
+
+def _validate_repeat_save_failure_damage(value: Any, path: str) -> list[str]:
+    if not isinstance(value, dict):
+        return [f"{path}: duration.repeat_save.failure_damage must be an object"]
+    errors: list[str] = []
+    dice = value.get("dice")
+    damage_type = value.get("damage_type")
+    if not isinstance(dice, str) or not dice:
+        errors.append(f"{path}: duration.repeat_save.failure_damage.dice must be a dice string")
+    if not isinstance(damage_type, str) or not damage_type:
+        errors.append(f"{path}: duration.repeat_save.failure_damage.damage_type must be a string")
+    if "extra_dice_per_slot_above" in value:
+        extra_dice = value["extra_dice_per_slot_above"]
+        if not isinstance(extra_dice, str) or not extra_dice:
+            errors.append(
+                f"{path}: duration.repeat_save.failure_damage.extra_dice_per_slot_above "
+                "must be a dice string"
+            )
+        base_slot = value.get("base_spell_slot_level")
+        if not isinstance(base_slot, int) or isinstance(base_slot, bool) or base_slot < 1:
+            errors.append(
+                f"{path}: duration.repeat_save.failure_damage.base_spell_slot_level "
+                "must be a positive integer"
+            )
+    return errors
+
+
 def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
     errors: list[str] = []
     node_type = node.get("type")
@@ -233,23 +286,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         duration = node.get("duration")
         if isinstance(duration, dict):
             errors.extend(_validate_duration_from_slot(duration, path))
-        if isinstance(duration, dict) and "repeat_save" in duration:
-            repeat_save = duration["repeat_save"]
-            if not isinstance(repeat_save, dict):
-                errors.append(f"{path}: duration.repeat_save must be an object")
-            else:
-                if not isinstance(repeat_save.get("ability"), str):
-                    errors.append(f"{path}: duration.repeat_save ability must be a string")
-                has_dc = isinstance(repeat_save.get("dc"), int) and not isinstance(
-                    repeat_save.get("dc"), bool
-                )
-                has_dc_from = isinstance(repeat_save.get("dc_from"), dict)
-                if not has_dc and not has_dc_from:
-                    errors.append(f"{path}: duration.repeat_save requires dc or dc_from")
-                if "end_on_success" in repeat_save and not isinstance(
-                    repeat_save["end_on_success"], bool
-                ):
-                    errors.append(f"{path}: duration.repeat_save end_on_success must be boolean")
+            errors.extend(_validate_repeat_save(duration, path))
     if (
         node_type in {"damage", "condition", "passive_effect"}
         and "requires_failed_save" in node
@@ -329,6 +366,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         duration = node.get("duration")
         if isinstance(duration, dict):
             errors.extend(_validate_duration_from_slot(duration, path))
+            errors.extend(_validate_repeat_save(duration, path))
         duration_roll = node.get("duration_roll")
         if duration_roll is not None:
             if not isinstance(duration_roll, dict):

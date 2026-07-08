@@ -34,6 +34,33 @@ class _FixedD20RollService:
         )
 
 
+class _FixedRollService:
+    def __init__(self, values: list[int]) -> None:
+        self.values = values
+        self.counter = 0
+
+    def roll(self, expression: str, advantage: str | None = None) -> RollResult:
+        value = self.values.pop(0)
+        modifier = 0
+        if expression.startswith("1d20"):
+            modifier = int(expression.split("1d20", 1)[1] or "0")
+        total = value + modifier
+        counter = self.counter
+        self.counter += 1
+        sides = 20 if expression.startswith("1d20") else 10
+        return RollResult(
+            roll_id=f"fixed-any-{counter}",
+            expression=expression,
+            seed=0,
+            counter=counter,
+            advantage=advantage,
+            dice=[RollDie(sides=sides, value=value, kept=True)],
+            modifier_total=modifier,
+            total=total,
+            display=f"{expression}: fixed => {total}",
+        )
+
+
 def test_dodge_expires_on_next_self_turn_start(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -499,6 +526,70 @@ def test_repeat_save_effect_ends_on_success_with_roll_service(make_state) -> Non
     assert result.expired[0]["condition"] == "poisoned"
     assert result.expired[0]["repeat_save"]["success"] is True
     assert result.expired[0]["repeat_save"]["roll"]["expression"] == "1d20+10"
+
+
+def test_repeat_save_failure_damage_keeps_effect_and_syncs_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.encounter.combatants["pc2"]
+    target.abilities = {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 8, "cha": 10}
+    target.hp_current = 20
+    target.hp_max = 20
+    state.characters["pc2"].hp_current = 20
+    state.characters["pc2"].hp_max = 20
+    target.status_effects.append(
+        {
+            "effect_id": "repeat-damage",
+            "source_ref": "test",
+            "source_action_id": "test.repeat_damage",
+            "target_id": "pc2",
+            "applied_by": "goblin1",
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc": 15,
+                    "dc_source": "test",
+                    "end_on_success": True,
+                    "failure_damage": {"dice": "4d10", "damage_type": "psychic"},
+                },
+            },
+            "tick_on": "target_turn_end",
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="pc2",
+        roll_service=_FixedRollService([1, 9]),
+    )
+
+    assert result.changed is True
+    assert result.expired == []
+    assert result.ticked[0]["remaining_ticks_before"] == 10
+    assert result.ticked[0]["repeat_save"]["success"] is False
+    assert result.damage == [
+        {
+            "type": "repeat_save_failure_damage",
+            "target_id": "pc2",
+            "effect_id": "repeat-damage",
+            "source_action_id": "test.repeat_damage",
+            "damage_type": "psychic",
+            "dice": "4d10",
+            "roll": result.damage[0]["roll"],
+            "amount": 9,
+            "applied": 9,
+            "hp_before": 20,
+            "hp_after": 11,
+            "temp_hp_before": 0,
+            "temp_hp_after": 0,
+        }
+    ]
+    assert result.damage[0]["roll"]["expression"] == "4d10"
+    assert target.hp_current == 11
+    assert state.characters["pc2"].hp_current == 11
+    assert target.status_effects[0]["effect_id"] == "repeat-damage"
 
 
 def test_indomitable_might_floors_repeat_strength_save(make_state) -> None:
