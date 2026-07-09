@@ -99,6 +99,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.find_the_path",
         "srd.foresight",
         "srd.locate_creature",
+        "srd.power_word_stun",
         "srd.telepathic_bond",
         "srd.true_seeing",
         "srd.passwall",
@@ -871,6 +872,67 @@ def test_compendium_loads_srd_actions() -> None:
             },
             "duration": {"until": "duration_1_hour"},
             "tick_on": "self_turn_end",
+        },
+    ]
+    power_word_stun_spell = compendium.spell("srd.spell.power_word_stun")
+    assert power_word_stun_spell.level == 8
+    assert power_word_stun_spell.school == "enchantment"
+    assert power_word_stun_spell.classes == ["bard", "sorcerer", "warlock", "wizard"]
+    power_word_stun = compendium.action("srd.power_word_stun")
+    assert power_word_stun.requirements == {
+        "spell_level": 8,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert power_word_stun.properties == {
+        "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+        "components": ["V"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "stun_hit_point_threshold": 150,
+        "high_hp_speed_zero_until_caster_next_turn": True,
+        "no_initial_saving_throw": True,
+        "spell_definition_id": "srd.spell.power_word_stun",
+        "spell_level": 8,
+    }
+    assert power_word_stun.cost.spell_slot_level == 8
+    assert power_word_stun.range == {"normal_ft": 60}
+    assert power_word_stun.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert power_word_stun.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "branch",
+            "condition": "target_hp_at_or_below",
+            "hp": 150,
+            "if_true": [
+                {
+                    "type": "condition",
+                    "condition": "stunned",
+                    "duration": {
+                        "until": "repeat_save_success",
+                        "repeat_save": {
+                            "ability": "con",
+                            "dc_from": {"spell_save_dc": "actor"},
+                            "end_on_success": True,
+                            "trigger": "target_turn_end",
+                        },
+                    },
+                    "tick_on": "target_turn_end",
+                }
+            ],
+            "if_false": [
+                {
+                    "type": "passive_effect",
+                    "passive_modifiers": {
+                        "power_word_stun_high_hp_speed_zero": True,
+                        "speed_multiplier": 0,
+                    },
+                    "duration": {
+                        "until": "start_of_next_turn",
+                        "turn_owner_id_from": "actor",
+                    },
+                    "tick_on": "self_turn_start",
+                }
+            ],
         },
     ]
     disintegrate = compendium.action("srd.disintegrate")

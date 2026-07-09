@@ -3044,6 +3044,7 @@ class AutomationExecutor:
 
     def _resolved_effect_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
+        duration = self._resolved_duration_turn_owner(ctx, duration)
         duration = self._resolved_duration_from_slot(ctx, duration)
         duration = self._resolved_duration_from_param(ctx, duration)
         duration = self._resolved_duration_repeat_save(ctx, duration)
@@ -3067,9 +3068,22 @@ class AutomationExecutor:
 
     def _resolved_condition_duration(self, ctx: _Context, node: dict[str, Any]) -> dict[str, Any]:
         duration = dict(node.get("duration", {}))
+        duration = self._resolved_duration_turn_owner(ctx, duration)
         duration = self._resolved_duration_from_slot(ctx, duration)
         duration = self._resolved_duration_from_param(ctx, duration)
         duration = self._resolved_duration_repeat_save(ctx, duration)
+        return duration
+
+    @staticmethod
+    def _resolved_duration_turn_owner(
+        ctx: _Context,
+        duration: dict[str, Any],
+    ) -> dict[str, Any]:
+        turn_owner_from = duration.pop("turn_owner_id_from", None)
+        if turn_owner_from == "actor":
+            duration["turn_owner_id"] = ctx.actor_id
+        elif turn_owner_from is not None:
+            raise AutomationError(f"unsupported duration turn_owner_id_from: {turn_owner_from}")
         return duration
 
     def _resolved_duration_repeat_save(
@@ -4421,6 +4435,14 @@ class AutomationExecutor:
             return any(ctx.save_successes.values())
         if condition == "ability_success":
             return bool(ctx.ability_success)
+        if condition == "target_hp_at_or_below":
+            if len(ctx.targets) != 1:
+                raise AutomationError("target_hp_at_or_below branch requires exactly one target")
+            threshold = node.get("hp")
+            if not isinstance(threshold, int) or isinstance(threshold, bool):
+                raise AutomationError("target_hp_at_or_below branch requires integer hp")
+            target = self._entity(ctx.targets[0])
+            return int(getattr(target, "hp_current")) <= threshold
         if condition == "actor_class_level_min":
             class_name = node.get("class")
             level = node.get("level")

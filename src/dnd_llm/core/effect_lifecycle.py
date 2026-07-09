@@ -125,6 +125,18 @@ def tick_effects(
                     continue
             remaining_before = _remaining_ticks(duration)
             if remaining_before is None:
+                if repeat_save_entry is not None:
+                    result.ticked.append(
+                        _entry(
+                            effect,
+                            owner_type=owner_type,
+                            owner_id=owner_id,
+                            trigger=trigger,
+                            remaining_before=0,
+                            remaining_after=0,
+                            repeat_save=repeat_save_entry,
+                        )
+                    )
                 retained.append(effect)
                 continue
             remaining_after = remaining_before - 1

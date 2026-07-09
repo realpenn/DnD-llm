@@ -165,6 +165,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.glibness",
     "srd.hallucinatory_terrain",
     "srd.phantasmal_killer",
+    "srd.power_word_stun",
     "srd.help",
     "srd.heightened_focus",
     "srd.hide",

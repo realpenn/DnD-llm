@@ -23984,6 +23984,124 @@ def test_foresight_recast_by_same_caster_ends_existing_effect(make_state) -> Non
     ]
 
 
+def test_power_word_stun_stuns_low_hp_target_until_successful_con_save(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 150
+    target.hp_max = 200
+    target.abilities["con"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.power_word_stun",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-power-word-stun-low-hp",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["8"] == 0
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.power_word_stun"
+    assert effect["condition"] == "stunned"
+    assert effect["duration"] == {
+        "until": "repeat_save_success",
+        "repeat_save": {
+            "ability": "con",
+            "dc": 17,
+            "dc_source": "spell_save_dc:wizard",
+            "end_on_success": True,
+            "trigger": "target_turn_end",
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is False
+    condition_change = next(
+        change for change in result["state_changes"] if change["type"] == "condition"
+    )
+    assert condition_change["path"] == "automation[1].if_true[0]"
+
+    failed_repeat = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+    assert failed_repeat.expired == []
+    assert failed_repeat.ticked[0]["repeat_save"]["dc"] == 17
+    assert failed_repeat.ticked[0]["repeat_save"]["success"] is False
+    assert any(active["condition"] == "stunned" for active in target.status_effects)
+
+    successful_repeat = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+    assert successful_repeat.expired[0]["condition"] == "stunned"
+    assert successful_repeat.expired[0]["repeat_save"]["success"] is True
+    assert not any(active["condition"] == "stunned" for active in target.status_effects)
+
+
+def test_power_word_stun_high_hp_sets_speed_zero_until_caster_next_turn(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 15}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 151
+    target.hp_max = 200
+    target.speed_ft = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.power_word_stun",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-power-word-stun-high-hp",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["8"] == 0
+    assert not any(effect.get("condition") == "stunned" for effect in target.status_effects)
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.power_word_stun"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "power_word_stun_high_hp_speed_zero": True,
+        "speed_multiplier": 0,
+    }
+    assert effect["duration"] == {"until": "start_of_next_turn", "turn_owner_id": "pc1"}
+    assert effect["tick_on"] == "self_turn_start"
+    assert effective_speed(target.speed_ft, target.status_effects) == 0
+
+    target_turn = tick_effects(state, trigger="self_turn_start", actor_id="goblin1")
+    assert target_turn.changed is False
+    assert effective_speed(target.speed_ft, target.status_effects) == 0
+
+    caster_turn = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert caster_turn.expired[0]["source_action_id"] == "srd.power_word_stun"
+    assert target.status_effects == []
+    assert effective_speed(target.speed_ft, target.status_effects) == 30
+
+
 def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
     make_state,
 ) -> None:
