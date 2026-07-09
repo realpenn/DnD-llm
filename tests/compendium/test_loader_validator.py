@@ -79,6 +79,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.commune",
         "srd.commune_with_nature",
         "srd.contact_other_plane",
+        "srd.control_weather",
         "srd.confusion",
         "srd.conjure_minor_elementals",
         "srd.conjure_woodland_beings",
@@ -4849,6 +4850,80 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "damage_or_dispel",
         },
     ]
+    control_weather_spell = compendium.spell("srd.spell.control_weather")
+    assert control_weather_spell.level == 8
+    assert control_weather_spell.school == "transmutation"
+    assert control_weather_spell.classes == ["cleric", "druid", "wizard"]
+    control_weather = compendium.action("srd.control_weather")
+    assert control_weather.requirements == {
+        "spell_level": 8,
+        "class_any": ["cleric", "druid", "wizard"],
+    }
+    assert control_weather.properties == {
+        "spell_classes": ["cleric", "druid", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "burning incense",
+            "consumed": False,
+        },
+        "casting_time": {"minutes": 10},
+        "must_be_outdoors_to_cast": True,
+        "ends_early_if_caster_goes_indoors": True,
+        "weather_radius_miles": 5,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.control_weather",
+        "spell_level": 8,
+    }
+    assert control_weather.cost.spell_slot_level == 8
+    assert control_weather.cost.gold == 0
+    assert control_weather.range == {"self": True}
+    assert control_weather.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert control_weather.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "control_weather",
+            "scope": {"target": "weather_within_radius", "range": "self", "radius_miles": 5},
+            "duration": {"until": "concentration_8_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "must_be_outdoors_to_cast": True,
+                "ends_early_if_caster_goes_indoors": True,
+                "current_weather_determined_by_gm": True,
+                "can_change": ["precipitation", "temperature", "wind"],
+                "new_conditions_take_effect_minutes": "1d4*10",
+                "can_change_again_after_new_conditions_take_effect": True,
+                "weather_returns_to_normal_gradually_when_spell_ends": True,
+                "change_stage_by_one_up_or_down": True,
+                "wind_direction_can_change": True,
+                "precipitation_stages": [
+                    "clear",
+                    "light_clouds",
+                    "overcast_or_ground_fog",
+                    "rain_hail_or_snow",
+                    "torrential_rain_driving_hail_or_blizzard",
+                ],
+                "temperature_stages": [
+                    "heat_wave",
+                    "hot",
+                    "warm",
+                    "cool",
+                    "cold",
+                    "freezing",
+                ],
+                "wind_stages": [
+                    "calm",
+                    "moderate_wind",
+                    "strong_wind",
+                    "gale",
+                    "storm",
+                ],
+                "weather_change_scheduler_not_automated": True,
+                "derived_weather_hazards_not_automated": True,
+            },
+        }
+    ]
     wind_walk = compendium.action("srd.wind_walk")
     assert wind_walk.requirements == {
         "spell_level": 6,
@@ -9076,6 +9151,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.maze",
         "srd.spell.etherealness",
         "srd.spell.gate",
+        "srd.spell.control_weather",
         "srd.spell.reverse_gravity",
         "srd.spell.sequester",
     } <= set(compendium.spells)

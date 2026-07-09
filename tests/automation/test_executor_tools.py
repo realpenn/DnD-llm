@@ -27639,6 +27639,121 @@ def test_move_earth_spends_slot_and_records_concentration_terrain_reshaping(
     assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 1199
 
 
+def test_control_weather_records_concentration_weather_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.spell_slots["8"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.control_weather",
+        [],
+        8,
+        idempotency_key="cast-control-weather",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.control_weather"
+    assert effect["effect_type"] == "control_weather"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "weather_within_radius",
+        "range": "self",
+        "radius_miles": 5,
+    }
+    assert effect["duration"] == {"until": "concentration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "must_be_outdoors_to_cast": True,
+        "ends_early_if_caster_goes_indoors": True,
+        "current_weather_determined_by_gm": True,
+        "can_change": ["precipitation", "temperature", "wind"],
+        "new_conditions_take_effect_minutes": "1d4*10",
+        "can_change_again_after_new_conditions_take_effect": True,
+        "weather_returns_to_normal_gradually_when_spell_ends": True,
+        "change_stage_by_one_up_or_down": True,
+        "wind_direction_can_change": True,
+        "precipitation_stages": [
+            "clear",
+            "light_clouds",
+            "overcast_or_ground_fog",
+            "rain_hail_or_snow",
+            "torrential_rain_driving_hail_or_blizzard",
+        ],
+        "temperature_stages": [
+            "heat_wave",
+            "hot",
+            "warm",
+            "cool",
+            "cold",
+            "freezing",
+        ],
+        "wind_stages": [
+            "calm",
+            "moderate_wind",
+            "strong_wind",
+            "gale",
+            "storm",
+        ],
+        "weather_change_scheduler_not_automated": True,
+        "derived_weather_hazards_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "control_weather"
+    assert world_effect_change["concentration"] is True
+    assert world_effect_change["scope"] == effect["scope"]
+
+    tick = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert tick.ticked[0]["remaining_ticks_before"] == 4800
+    assert tick.ticked[0]["remaining_ticks_after"] == 4799
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 4799
+
+
+def test_control_weather_upcast_spends_higher_slot_without_extra_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["8"] = 0
+    caster.spell_slots["9"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.control_weather",
+        [],
+        9,
+        idempotency_key="cast-control-weather-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    assert caster.spell_slots["9"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_9"
+    assert cost_change["base_spell_slot_level"] == 8
+    assert cost_change["spell_slot_level"] == 9
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert state.world.active_effects[-1]["duration"] == {"until": "concentration_8_hours"}
+
+
 def test_wind_walk_applies_cloud_form_and_allows_only_dash(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
