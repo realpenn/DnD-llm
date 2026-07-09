@@ -159,6 +159,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.font_of_magic_create_slot_3",
     "srd.foresight",
     "srd.freedom_of_movement",
+    "srd.gate",
     "srd.gaze_of_two_minds",
     "srd.gaze_of_two_minds_touch",
     "srd.gift_of_the_depths",

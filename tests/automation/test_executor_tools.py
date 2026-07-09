@@ -23074,6 +23074,75 @@ def test_etherealness_requires_self_target_before_spending_slot(make_state) -> N
     assert state.world.active_effects == []
 
 
+def test_gate_spends_slot_and_records_concentration_planar_portal(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 5000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.gate",
+        [],
+        9,
+        idempotency_key="cast-gate",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert caster.gold == 5000
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_9"
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.gate"
+    assert effect["effect_type"] == "gate_portal"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "unoccupied_space_you_can_see",
+        "range_ft": 60,
+        "shape": "circle",
+        "diameter_min_ft": 5,
+        "diameter_max_ft": 20,
+    }
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "links_to_precise_location_on_different_plane": True,
+        "destination_visible_through_portal": True,
+        "orientation_any_direction": True,
+        "front_and_back_on_each_plane": True,
+        "travel_only_through_front": True,
+        "front_entry_transports_to_other_plane": True,
+        "arrival_nearest_unoccupied_space_to_portal": True,
+        "deities_and_planar_rulers_can_prevent_opening": True,
+        "named_creature_option": True,
+        "specific_creature_name_required": True,
+        "pseudonym_title_or_nickname_does_not_work": True,
+        "named_creature_must_be_on_different_plane": True,
+        "portal_opens_next_to_named_creature": True,
+        "named_creature_transported_to_nearest_unoccupied_space_on_caster_side": True,
+        "named_creature_not_controlled": True,
+        "named_creature_behavior_gm_determined": True,
+        "destination_resolution_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "gate_portal"
+    assert world_effect_change["concentration"] is True
+    assert world_effect_change["scope"] == effect["scope"]
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
 def test_arcane_eye_records_concentration_visual_sensor_world_effect(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]

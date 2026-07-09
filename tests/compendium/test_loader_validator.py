@@ -97,6 +97,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.legend_lore",
         "srd.divination",
         "srd.etherealness",
+        "srd.gate",
         "srd.find_the_path",
         "srd.foresight",
         "srd.locate_creature",
@@ -3137,6 +3138,71 @@ def test_compendium_loads_srd_actions() -> None:
                 "includes_self": True,
             },
         },
+    ]
+    gate_spell = compendium.spell("srd.spell.gate")
+    assert gate_spell.level == 9
+    assert gate_spell.school == "conjuration"
+    assert gate_spell.classes == ["cleric", "sorcerer", "warlock", "wizard"]
+    gate = compendium.action("srd.gate")
+    assert gate.requirements == {
+        "spell_level": 9,
+        "class_any": ["cleric", "sorcerer", "warlock", "wizard"],
+    }
+    assert gate.properties == {
+        "spell_classes": ["cleric", "sorcerer", "warlock", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a diamond worth 5,000+ GP",
+            "consumed": False,
+        },
+        "destination_must_be_precise_location_on_different_plane": True,
+        "portal_must_open_in_unoccupied_visible_space": True,
+        "portal_diameter_min_ft": 5,
+        "portal_diameter_max_ft": 20,
+        "named_creature_option": True,
+        "named_creature_not_controlled": True,
+        "destination_resolution_not_automated": True,
+        "spell_definition_id": "srd.spell.gate",
+        "spell_level": 9,
+    }
+    assert gate.cost.spell_slot_level == 9
+    assert gate.cost.gold == 0
+    assert gate.range == {"normal_ft": 60}
+    assert gate.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert gate.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "gate_portal",
+            "scope": {
+                "target": "unoccupied_space_you_can_see",
+                "range_ft": 60,
+                "shape": "circle",
+                "diameter_min_ft": 5,
+                "diameter_max_ft": 20,
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+            "metadata": {
+                "links_to_precise_location_on_different_plane": True,
+                "destination_visible_through_portal": True,
+                "orientation_any_direction": True,
+                "front_and_back_on_each_plane": True,
+                "travel_only_through_front": True,
+                "front_entry_transports_to_other_plane": True,
+                "arrival_nearest_unoccupied_space_to_portal": True,
+                "deities_and_planar_rulers_can_prevent_opening": True,
+                "named_creature_option": True,
+                "specific_creature_name_required": True,
+                "pseudonym_title_or_nickname_does_not_work": True,
+                "named_creature_must_be_on_different_plane": True,
+                "portal_opens_next_to_named_creature": True,
+                "named_creature_transported_to_nearest_unoccupied_space_on_caster_side": True,
+                "named_creature_not_controlled": True,
+                "named_creature_behavior_gm_determined": True,
+                "destination_resolution_not_automated": True,
+            },
+        }
     ]
     arcane_eye = compendium.action("srd.arcane_eye")
     assert arcane_eye.requirements == {
@@ -7951,6 +8017,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.etherealness",
+        "srd.spell.gate",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9
     assert compendium.spell("srd.spell.flame_strike").level == 5

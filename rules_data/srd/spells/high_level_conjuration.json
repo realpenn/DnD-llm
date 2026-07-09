@@ -947,6 +947,92 @@
       }
     },
     {
+      "id": "srd.spell.gate",
+      "name": "Gate",
+      "localization": {
+        "en": "Gate",
+        "zh": "异界之门",
+        "aliases": ["异界门"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "conjuration",
+      "classes": ["cleric", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.gate",
+        "name": "Gate",
+        "localization": {
+          "en": "Gate",
+          "zh": "异界之门",
+          "aliases": ["异界门"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["cleric", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a diamond worth 5,000+ GP",
+            "consumed": false
+          },
+          "destination_must_be_precise_location_on_different_plane": true,
+          "portal_must_open_in_unoccupied_visible_space": true,
+          "portal_diameter_min_ft": 5,
+          "portal_diameter_max_ft": 20,
+          "named_creature_option": true,
+          "named_creature_not_controlled": true,
+          "destination_resolution_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "gate_portal",
+            "scope": {
+              "target": "unoccupied_space_you_can_see",
+              "range_ft": 60,
+              "shape": "circle",
+              "diameter_min_ft": 5,
+              "diameter_max_ft": 20
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true,
+            "metadata": {
+              "links_to_precise_location_on_different_plane": true,
+              "destination_visible_through_portal": true,
+              "orientation_any_direction": true,
+              "front_and_back_on_each_plane": true,
+              "travel_only_through_front": true,
+              "front_entry_transports_to_other_plane": true,
+              "arrival_nearest_unoccupied_space_to_portal": true,
+              "deities_and_planar_rulers_can_prevent_opening": true,
+              "named_creature_option": true,
+              "specific_creature_name_required": true,
+              "pseudonym_title_or_nickname_does_not_work": true,
+              "named_creature_must_be_on_different_plane": true,
+              "portal_opens_next_to_named_creature": true,
+              "named_creature_transported_to_nearest_unoccupied_space_on_caster_side": true,
+              "named_creature_not_controlled": true,
+              "named_creature_behavior_gm_determined": true,
+              "destination_resolution_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Gate"
+      }
+    },
+    {
       "id": "srd.spell.tree_stride",
       "name": "Tree Stride",
       "localization": {
