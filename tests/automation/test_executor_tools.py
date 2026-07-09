@@ -12,6 +12,7 @@ from dnd_llm.core.dice import RollDie, RollResult, RollService
 from dnd_llm.core.effect_lifecycle import tick_effects
 from dnd_llm.core.models import Combatant, Monster
 from dnd_llm.core.persistence import AuditLog
+from dnd_llm.core.positioning import PositionEdge, PositionNode, TacticalGraph
 from dnd_llm.core.resolver import ActionResolver, PlayerActionDraft
 from dnd_llm.core.rules.class_features import (
     second_story_work_climb_speed,
@@ -19518,6 +19519,488 @@ def test_circle_of_death_upcast_spends_requested_slot_and_adds_two_damage_dice(
     assert damage_change["damage_type"] == "necrotic"
     assert damage_change["amount"] == 8
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d8"]
+
+
+def _prepare_eyebite_caster(state: Any, *, slot_level: int = 6) -> Any:
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13 if slot_level >= 7 else 11}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5 if slot_level >= 7 else 4
+    caster.spell_slots[str(slot_level)] = 1
+    if slot_level != 6:
+        caster.spell_slots["6"] = 0
+    return caster
+
+
+def _eyebite_tools(state: Any, rolls: list[int]) -> EngineTools:
+    return EngineTools(
+        state,
+        CompendiumLoader("rules_data").load(),
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService(rolls),
+    )
+
+
+def _add_eyebite_target(
+    state: Any,
+    target_id: str,
+    *,
+    position_node_id: str = "cover",
+) -> Combatant:
+    assert state.encounter is not None
+    target = Combatant(
+        id=target_id,
+        entity_id=target_id,
+        name=target_id,
+        side="monsters",
+        hp_current=20,
+        hp_max=20,
+        armor_class=12,
+        abilities={"wis": 10},
+        position_node_id=position_node_id,
+    )
+    state.encounter.combatants[target_id] = target
+    return target
+
+
+def _add_eyebite_position(
+    state: Any,
+    node_id: str,
+    *,
+    source: str = "front",
+    distance_ft: int,
+    line_of_sight: bool = True,
+) -> None:
+    assert state.encounter is not None
+    assert state.encounter.tactical_graph is not None
+    graph = TacticalGraph.from_dict(state.encounter.tactical_graph)
+    graph.nodes[node_id] = PositionNode(node_id, node_id.title())
+    graph.edges.append(
+        PositionEdge(
+            source,
+            node_id,
+            distance_ft,
+            line_of_sight=line_of_sight,
+        )
+    )
+    state.encounter.tactical_graph = graph.to_dict()
+
+
+@pytest.mark.parametrize(
+    ("choice", "condition", "duration", "tick_on", "passive_modifiers"),
+    [
+        (
+            "asleep",
+            "unconscious",
+            {"until": "concentration_1_minute", "break_on_damage": True},
+            "duration_or_damage",
+            {
+                "eyebite_effect": "asleep",
+                "wakes_on_any_damage": True,
+                "can_be_awakened_by_creature_action": True,
+            },
+        ),
+        (
+            "panicked",
+            "frightened",
+            {"until": "concentration_1_minute"},
+            "target_turn_end",
+            {
+                "eyebite_effect": "panicked",
+                "must_take_dash_action": True,
+                "must_move_away_by_safest_shortest_route": True,
+                "ends_if_60_ft_away_and_cannot_see_caster": True,
+                "forced_movement_not_automated": True,
+            },
+        ),
+        (
+            "sickened",
+            "poisoned",
+            {"until": "concentration_1_minute"},
+            "target_turn_end",
+            {"eyebite_effect": "sickened"},
+        ),
+    ],
+)
+def test_eyebite_failed_save_applies_selected_srd_condition(
+    make_state,
+    choice: str,
+    condition: str,
+    duration: dict[str, Any],
+    tick_on: str,
+    passive_modifiers: dict[str, Any],
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = _prepare_eyebite_caster(state)
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    tools = _eyebite_tools(state, [1])
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 6, "eyebite_effect": choice},
+        idempotency_key=f"cast-eyebite-{choice}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    active = state.world.active_effects[-1]
+    assert active["source_action_id"] == "srd.eyebite"
+    assert active["effect_type"] == "eyebite_active"
+    assert active["concentration"] is True
+    assert active["duration"] == {"until": "concentration_1_minute"}
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.eyebite"
+    assert effect["condition"] == condition
+    assert effect["duration"] == duration
+    assert effect["tick_on"] == tick_on
+    assert effect["passive_modifiers"] == passive_modifiers
+    assert effect["concentration"] is True
+    assert effect["parent_effect_id"] == active["effect_id"]
+    assert active["child_effect_ids"] == [effect["effect_id"]]
+
+
+def test_eyebite_successful_save_records_this_casting_marker(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = _prepare_eyebite_caster(state)
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    tools = _eyebite_tools(state, [20])
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 6, "eyebite_effect": "sickened"},
+        idempotency_key="cast-eyebite-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert result["node_results"]["automation[1]"]["success"] is True
+    active = state.world.active_effects[-1]
+    marker = target.status_effects[-1]
+    assert marker["source_action_id"] == "srd.eyebite"
+    assert marker["condition"] is None
+    assert marker["passive_modifiers"]["eyebite_save_success"] is True
+    assert marker["parent_effect_id"] == active["effect_id"]
+    assert active["child_effect_ids"] == [marker["effect_id"]]
+    marker_change = next(
+        change for change in result["state_changes"] if change["type"] == "eyebite_save_success"
+    )
+    assert marker_change["parent_effect_id"] == active["effect_id"]
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+
+
+def test_eyebite_requires_valid_effect_choice_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = _prepare_eyebite_caster(state)
+    tools = _eyebite_tools(state, [])
+
+    with pytest.raises(AutomationError, match="missing required parameter eyebite_effect"):
+        tools.perform_action(
+            "pc1",
+            "srd.eyebite",
+            ["goblin1"],
+            {"slot_level": 6},
+            idempotency_key="cast-eyebite-missing-choice",
+        )
+
+    assert caster.spell_slots["6"] == 1
+    assert state.encounter.action_budgets.get("pc1", {}).get("action", 1) == 1
+
+    with pytest.raises(AutomationError, match="eyebite_effect must be one of"):
+        tools.perform_action(
+            "pc1",
+            "srd.eyebite",
+            ["goblin1"],
+            {"slot_level": 6, "eyebite_effect": "stunned"},
+            idempotency_key="cast-eyebite-invalid-choice",
+        )
+
+    assert caster.spell_slots["6"] == 1
+    assert state.encounter.action_budgets.get("pc1", {}).get("action", 1) == 1
+
+
+def test_eyebite_rejects_out_of_range_and_nonvisible_targets_before_cost(
+    make_state,
+) -> None:
+    out_of_range_state = make_state()
+    assert out_of_range_state.encounter is not None
+    out_of_range_caster = _prepare_eyebite_caster(out_of_range_state)
+    _add_eyebite_position(out_of_range_state, "far", source="cover", distance_ft=100)
+    _add_eyebite_target(out_of_range_state, "far_goblin", position_node_id="far")
+    out_of_range_tools = _eyebite_tools(out_of_range_state, [])
+
+    with pytest.raises(AutomationError, match="Eyebite target out of range"):
+        out_of_range_tools.perform_action(
+            "pc1",
+            "srd.eyebite",
+            ["far_goblin"],
+            {"slot_level": 6, "eyebite_effect": "sickened"},
+            idempotency_key="cast-eyebite-out-of-range",
+        )
+
+    assert out_of_range_caster.spell_slots["6"] == 1
+    assert out_of_range_state.encounter.action_budgets.get("pc1", {}).get("action", 1) == 1
+
+    hidden_state = make_state()
+    assert hidden_state.encounter is not None
+    hidden_caster = _prepare_eyebite_caster(hidden_state)
+    hidden_caster.actions.append("srd.eyebite")
+    _add_eyebite_position(hidden_state, "hidden", distance_ft=10, line_of_sight=False)
+    _add_eyebite_target(hidden_state, "hidden_goblin", position_node_id="hidden")
+    hidden_compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(hidden_state, hidden_compendium.actions, hidden_compendium.items)
+    resolved = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="eyebite",
+            candidate_action_id="srd.eyebite",
+            target_ids=["hidden_goblin"],
+            params={"slot_level": 6, "eyebite_effect": "sickened"},
+        )
+    )
+    assert resolved.status == "rejected"
+    assert resolved.reason == "Eyebite target must be visible"
+
+    hidden_tools = EngineTools(
+        hidden_state,
+        hidden_compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([]),
+    )
+    with pytest.raises(AutomationError, match="Eyebite target must be visible"):
+        hidden_tools.perform_action(
+            "pc1",
+            "srd.eyebite",
+            ["hidden_goblin"],
+            {"slot_level": 6, "eyebite_effect": "sickened"},
+            idempotency_key="cast-eyebite-not-visible",
+        )
+
+    assert hidden_caster.spell_slots["6"] == 1
+    assert hidden_state.encounter.action_budgets.get("pc1", {}).get("action", 1) == 1
+
+
+def test_eyebite_target_requires_active_eyebite_before_action_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    _prepare_eyebite_caster(state)
+    tools = _eyebite_tools(state, [])
+
+    with pytest.raises(
+        AutomationError,
+        match="srd.eyebite_target requires active effect from srd.eyebite",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.eyebite_target",
+            ["goblin1"],
+            {"eyebite_effect": "sickened"},
+            idempotency_key="eyebite-target-without-active-effect",
+        )
+
+    assert state.encounter.action_budgets.get("pc1", {}).get("action", 1) == 1
+
+
+def test_eyebite_target_uses_magic_action_without_spending_spell_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = _prepare_eyebite_caster(state)
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    second_target = _add_eyebite_target(state, "goblin2")
+    tools = _eyebite_tools(state, [1, 1])
+
+    initial = tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 6, "eyebite_effect": "asleep"},
+        idempotency_key="cast-eyebite-before-target-action",
+    )
+    tools.economy.set("pc1", "action", 1)
+    followup = tools.perform_action(
+        "pc1",
+        "srd.eyebite_target",
+        ["goblin2"],
+        {"eyebite_effect": "sickened"},
+        idempotency_key="eyebite-target-with-active-effect",
+    )
+
+    assert initial["success"] is True
+    assert followup["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert not any(change["type"] == "cost" for change in followup["state_changes"])
+    assert state.encounter.action_budgets["pc1"]["action"] == 0
+    active = next(
+        effect for effect in state.world.active_effects if effect["effect_type"] == "eyebite_active"
+    )
+    assert active["source_action_id"] == "srd.eyebite"
+    first_effect = target.status_effects[-1]
+    second_effect = second_target.status_effects[-1]
+    assert first_effect["condition"] == "unconscious"
+    assert second_effect["source_action_id"] == "srd.eyebite_target"
+    assert second_effect["condition"] == "poisoned"
+    assert second_effect["parent_effect_id"] == active["effect_id"]
+    assert set(active["child_effect_ids"]) == {
+        first_effect["effect_id"],
+        second_effect["effect_id"],
+    }
+
+
+def test_eyebite_target_rejects_creature_that_saved_against_this_casting(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    _prepare_eyebite_caster(state)
+    state.encounter.combatants["goblin1"].abilities = {"wis": 10}
+    tools = _eyebite_tools(state, [20])
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 6, "eyebite_effect": "sickened"},
+        idempotency_key="cast-eyebite-target-succeeds",
+    )
+    tools.economy.set("pc1", "action", 1)
+
+    assert result["success"] is True
+    with pytest.raises(
+        AutomationError,
+        match="Eyebite target has already succeeded on a save against this casting",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.eyebite_target",
+            ["goblin1"],
+            {"eyebite_effect": "sickened"},
+            idempotency_key="eyebite-target-saved-creature",
+        )
+
+    assert state.encounter.action_budgets["pc1"]["action"] == 1
+
+
+def test_eyebite_children_clear_when_source_concentration_ends(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = _prepare_eyebite_caster(state)
+    caster.spell_slots["1"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    second_target = _add_eyebite_target(state, "goblin2")
+    tools = _eyebite_tools(state, [1, 20])
+
+    tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 6, "eyebite_effect": "panicked"},
+        idempotency_key="cast-eyebite-before-concentration-clear",
+    )
+    tools.economy.set("pc1", "action", 1)
+    tools.perform_action(
+        "pc1",
+        "srd.eyebite_target",
+        ["goblin2"],
+        {"eyebite_effect": "sickened"},
+        idempotency_key="eyebite-target-success-before-concentration-clear",
+    )
+    tools.economy.set("pc1", "action", 1)
+    result = tools.cast_spell(
+        "pc1",
+        "srd.detect_magic",
+        [],
+        1,
+        idempotency_key="detect-magic-clears-eyebite",
+    )
+
+    assert result["success"] is True
+    assert not any(effect.get("source_action_id") == "srd.eyebite" for effect in target.status_effects)
+    assert second_target.status_effects == []
+    assert not any(
+        effect.get("effect_type") == "eyebite_active"
+        for effect in state.world.active_effects
+    )
+    assert state.world.active_effects[-1]["source_action_id"] == "srd.detect_magic"
+    cleared = next(
+        change for change in result["state_changes"] if change["type"] == "concentration_cleared"
+    )
+    assert {entry["source_action_id"] for entry in cleared["removed"]} >= {
+        "srd.eyebite",
+        "srd.eyebite_target",
+    }
+
+
+def test_eyebite_children_expire_with_source_duration(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    _prepare_eyebite_caster(state)
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    tools = _eyebite_tools(state, [1])
+
+    tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 6, "eyebite_effect": "sickened"},
+        idempotency_key="cast-eyebite-before-source-expiry",
+    )
+
+    active = state.world.active_effects[-1]
+    child = target.status_effects[-1]
+    active["duration"]["remaining_ticks"] = 1
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    expired_by_id = {entry["effect_id"]: entry for entry in lifecycle.expired}
+    assert active["effect_id"] in expired_by_id
+    assert child["effect_id"] in expired_by_id
+    assert expired_by_id[child["effect_id"]]["expired_parent_effect_id"] == active["effect_id"]
+    assert state.world.active_effects == []
+    assert target.status_effects == []
+
+
+def test_eyebite_upcast_spends_higher_slot_without_extra_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = _prepare_eyebite_caster(state, slot_level=7)
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    tools = _eyebite_tools(state, [1])
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.eyebite",
+        ["goblin1"],
+        {"slot_level": 7, "eyebite_effect": "sickened"},
+        idempotency_key="cast-eyebite-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert target.status_effects[-1]["condition"] == "poisoned"
 
 
 @pytest.mark.parametrize(

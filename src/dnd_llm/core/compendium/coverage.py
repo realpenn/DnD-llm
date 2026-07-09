@@ -116,6 +116,8 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.eldritch_mind",
     "srd.eldritch_smite",
     "srd.eldritch_spear",
+    "srd.eyebite",
+    "srd.eyebite_target",
     "srd.divine_order",
     "srd.divine_spark_heal",
     "srd.divine_spark_necrotic",

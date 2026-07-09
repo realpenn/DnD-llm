@@ -43,6 +43,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.chain_lightning",
         "srd.fire_storm",
         "srd.forcecage",
+        "srd.eyebite",
+        "srd.eyebite_target",
         "srd.sunbeam",
         "srd.sunbeam_radiant_line",
         "srd.sunburst",
@@ -721,6 +723,99 @@ def test_compendium_loads_srd_actions() -> None:
             "save_half": True,
             "base_spell_slot_level": 6,
             "extra_dice_per_slot_above": "2d8",
+        },
+    ]
+    eyebite_spell = compendium.spell("srd.spell.eyebite")
+    assert eyebite_spell.level == 6
+    assert eyebite_spell.school == "necromancy"
+    assert eyebite_spell.classes == ["bard", "sorcerer", "warlock", "wizard"]
+    eyebite = compendium.action("srd.eyebite")
+    assert eyebite.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert eyebite.properties == {
+        "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+        "components": ["V", "S"],
+        "effect_target_range_ft": 60,
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "allowed_eyebite_effects": ["asleep", "panicked", "sickened"],
+        "eyebite_effect_param": "eyebite_effect",
+        "magic_action_target_action_id": "srd.eyebite_target",
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.eyebite",
+        "spell_level": 6,
+    }
+    assert eyebite.cost.spell_slot_level == 6
+    assert eyebite.range == {"self": True}
+    assert eyebite.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert eyebite.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "world_effect",
+            "effect_type": "eyebite_active",
+            "scope": {"target": "self"},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "eyes_become_inky_void": True,
+                "can_target_another_creature_with_magic_action": True,
+                "magic_action_target_action_id": "srd.eyebite_target",
+                "effect_target_range_ft": 60,
+                "target_must_be_visible": True,
+                "successful_save_target_cannot_be_targeted_again_by_this_casting": True,
+                "allowed_eyebite_effects": ["asleep", "panicked", "sickened"],
+            },
+        },
+        {
+            "type": "eyebite_effect",
+            "choice_param": "eyebite_effect",
+            "choices": ["asleep", "panicked", "sickened"],
+        },
+        {
+            "type": "text_result",
+            "text": (
+                "For the duration, the caster's eyes become an inky void and the caster "
+                "can use a Magic action on later turns to target another eligible creature."
+            ),
+        },
+    ]
+    eyebite_target = compendium.action("srd.eyebite_target")
+    assert eyebite_target.action_type == "base_action"
+    assert eyebite_target.action_economy == "action"
+    assert eyebite_target.cost.spell_slot_level is None
+    assert eyebite_target.properties == {
+        "magic_action": True,
+        "requires_active_effect_source_action_id": "srd.eyebite",
+        "spell_definition_id": "srd.spell.eyebite",
+        "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+        "spell_level": 6,
+        "effect_target_range_ft": 60,
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "allowed_eyebite_effects": ["asleep", "panicked", "sickened"],
+        "eyebite_effect_param": "eyebite_effect",
+        "eyebite_reject_successful_save_targets": True,
+        "no_spell_slot_cost": True,
+    }
+    assert eyebite_target.range == {"self": True}
+    assert eyebite_target.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert eyebite_target.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "eyebite_effect",
+            "choice_param": "eyebite_effect",
+            "choices": ["asleep", "panicked", "sickened"],
+        },
+        {
+            "type": "text_result",
+            "text": (
+                "The caster uses the ongoing Eyebite spell to target another creature "
+                "with one of Eyebite's SRD effects."
+            ),
         },
     ]
     chain_lightning = compendium.action("srd.chain_lightning")

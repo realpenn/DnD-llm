@@ -47,6 +47,9 @@ RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
     {"acid", "cold", "fire", "lightning"}
 )
 RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
+RESOLVER_EYEBITE_EFFECT_PARAM = "eyebite_effect"
+RESOLVER_EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
+RESOLVER_EYEBITE_SUCCESS_MARKER = "eyebite_save_success"
 RESOLVER_HALLOW_ACTION_ID = "srd.hallow"
 RESOLVER_HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES = frozenset(
     {
@@ -318,6 +321,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=hallow_error,
+                action_id=action.id,
+            )
+        eyebite_error = self._eyebite_effect_error(draft, action)
+        if eyebite_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=eyebite_error,
                 action_id=action.id,
             )
         greater_restoration_error = self._greater_restoration_choice_error(draft, action)
@@ -700,6 +710,101 @@ class ActionResolver:
             if expected_count is not None and len(normalized_values) != int(expected_count):
                 return f"{param} must contain exactly {int(expected_count)} choices"
             draft.params[param] = normalized_values
+        return None
+
+    def _eyebite_effect_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if not any(
+            node.get("type") == "eyebite_effect"
+            for node in self._automation_nodes(action.automation)
+        ):
+            return None
+        param_name = str(
+            action.properties.get("eyebite_effect_param", RESOLVER_EYEBITE_EFFECT_PARAM)
+        )
+        raw = draft.params.get(param_name)
+        if raw is None or raw == "":
+            return f"missing required parameter {param_name}"
+        if isinstance(raw, (dict, list)):
+            return f"parameter {param_name} must be a scalar"
+        allowed_raw = action.properties.get("allowed_eyebite_effects")
+        allowed = {
+            str(choice).casefold().strip()
+            for choice in (allowed_raw if isinstance(allowed_raw, list) else RESOLVER_EYEBITE_EFFECTS)
+        }
+        if not allowed:
+            allowed = set(RESOLVER_EYEBITE_EFFECTS)
+        normalized = str(raw).casefold().strip()
+        if normalized not in allowed or normalized not in RESOLVER_EYEBITE_EFFECTS:
+            expected = ", ".join(sorted(allowed & RESOLVER_EYEBITE_EFFECTS))
+            return f"{param_name} must be one of: {expected}"
+        draft.params[param_name] = normalized
+        range_error = self._eyebite_target_range_visibility_error(draft, action)
+        if range_error is not None:
+            return range_error
+        if action.properties.get("eyebite_reject_successful_save_targets") is True:
+            for target_id in draft.target_ids:
+                if self._target_has_eyebite_success_marker(draft.actor_id, target_id):
+                    return "Eyebite target has already succeeded on a save against this casting"
+        return None
+
+    def _target_has_eyebite_success_marker(self, actor_id: str, target_id: str) -> bool:
+        try:
+            target = self.state.entity_for_actor(target_id)
+        except KeyError:
+            return False
+        for effect in self._status_effects_for(target):
+            if not self._effect_has_marker(effect, RESOLVER_EYEBITE_SUCCESS_MARKER):
+                continue
+            applied_by = effect.get("applied_by")
+            if (
+                isinstance(applied_by, str)
+                and bool(self._entity_aliases(applied_by) & self._entity_aliases(actor_id))
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _effect_has_marker(effect: dict[str, Any], marker: str) -> bool:
+        if effect.get(marker) is True:
+            return True
+        for marker_field in ("passive_modifiers", "metadata", "audit"):
+            value = effect.get(marker_field, {})
+            if isinstance(value, dict) and value.get(marker) is True:
+                return True
+        markers = effect.get("effect_markers", [])
+        return isinstance(markers, list) and marker in {str(item) for item in markers}
+
+    def _eyebite_target_range_visibility_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        range_raw = action.properties.get("effect_target_range_ft")
+        if not isinstance(range_raw, int):
+            return None
+        if self.state.encounter is None or not self.state.encounter.tactical_graph:
+            return None
+        actor = self.state.encounter.combatants.get(draft.actor_id)
+        if actor is None or actor.position_node_id is None:
+            return None
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        target_must_be_visible = action.properties.get("target_must_be_visible") is True
+        for target_id in draft.target_ids:
+            target = self.state.encounter.combatants.get(target_id)
+            if target is None or target.position_node_id is None:
+                continue
+            distance = graph.shortest_distance(actor.position_node_id, target.position_node_id)
+            if distance is None or distance > range_raw:
+                return "Eyebite target out of range"
+            if target_must_be_visible and not graph.has_line_of_sight(
+                actor.position_node_id,
+                target.position_node_id,
+            ):
+                return "Eyebite target must be visible"
         return None
 
     @staticmethod

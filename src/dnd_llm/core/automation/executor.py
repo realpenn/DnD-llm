@@ -170,6 +170,11 @@ CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE = "conjure_minor_elementals_emanation"
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_type"
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "lightning"})
 CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
+EYEBITE_EFFECT_PARAM = "eyebite_effect"
+EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
+EYEBITE_SOURCE_ACTION_ID = "srd.eyebite"
+EYEBITE_ACTIVE_EFFECT_TYPE = "eyebite_active"
+EYEBITE_SUCCESS_MARKER = "eyebite_save_success"
 HALLOW_ACTION_ID = "srd.hallow"
 HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES = frozenset(
     {
@@ -607,6 +612,7 @@ class AutomationExecutor:
         self._validate_allowed_creature_types_param(action, params)
         self._validate_allowed_list_params(action, params)
         self._validate_hallow_params(action, params)
+        self._validate_eyebite_preconditions(action, actor_id, targets or [], params)
         self._validate_fire_shield_type_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
@@ -686,6 +692,8 @@ class AutomationExecutor:
             self._node_remove_condition(ctx, node, path)
         elif node_type == "optional_reaction_remove_condition":
             self._node_optional_reaction_remove_condition(ctx, node, path)
+        elif node_type == "eyebite_effect":
+            self._node_eyebite_effect(ctx, node, path)
         elif node_type == "greater_restoration":
             self._node_greater_restoration(ctx, node, path)
         elif node_type == "restoring_touch":
@@ -2274,6 +2282,132 @@ class AutomationExecutor:
                     "path": path,
                 }
             )
+
+    def _node_eyebite_effect(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        choice = self._eyebite_effect_choice(ctx.action, ctx.params, node)
+        parent_effect = self._active_eyebite_effect(ctx.actor_id)
+        parent_effect_id = (
+            str(parent_effect["effect_id"])
+            if parent_effect is not None and isinstance(parent_effect.get("effect_id"), str)
+            else None
+        )
+        for target_id in ctx.targets:
+            if ctx.save_successes.get(target_id) is True:
+                self._record_eyebite_success_marker(ctx, target_id, path, parent_effect_id)
+                continue
+            if ctx.save_successes.get(target_id) is not False:
+                continue
+            self._apply_eyebite_condition(ctx, target_id, choice, path, parent_effect_id)
+
+    def _record_eyebite_success_marker(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+        parent_effect_id: str | None,
+    ) -> None:
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, f"{path}.success"),
+            source_ref=ctx.action.source,
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=None,
+            passive_modifiers={
+                EYEBITE_SUCCESS_MARKER: True,
+                "eyebite_casting_source_action_id": "srd.eyebite",
+            },
+            duration={"until": "concentration_1_minute"},
+            tick_on="self_turn_end",
+            concentration=True,
+            stacking_policy="replace",
+            parent_effect_id=parent_effect_id,
+            audit={"node_path": path, EYEBITE_SUCCESS_MARKER: True},
+        )
+        target = self._entity(target_id)
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if not (
+                self._effect_has_marker(existing, EYEBITE_SUCCESS_MARKER)
+                and isinstance(existing.get("applied_by"), str)
+                and self._entity_ids_match(str(existing["applied_by"]), ctx.actor_id)
+            )
+        ]
+        effects.append(effect.to_dict())
+        self._link_eyebite_child_effect(parent_effect_id, effect.effect_id)
+        ctx.result.state_changes.append(
+            {
+                "type": "eyebite_save_success",
+                "target_id": target_id,
+                "effect_id": effect.effect_id,
+                "parent_effect_id": parent_effect_id,
+                "duration": effect.duration,
+                "path": path,
+            }
+        )
+
+    def _apply_eyebite_condition(
+        self,
+        ctx: _Context,
+        target_id: str,
+        choice: str,
+        path: str,
+        parent_effect_id: str | None,
+    ) -> None:
+        condition, duration, tick_on, passive_modifiers = self._eyebite_condition_spec(choice)
+        target = self._entity(target_id)
+        immunity_sources = self._condition_immunity_sources(target, condition)
+        if immunity_sources:
+            ctx.result.state_changes.append(
+                {
+                    "type": "condition_immune",
+                    "target_id": target_id,
+                    "condition": condition,
+                    "immunity_sources": immunity_sources,
+                    "path": path,
+                }
+            )
+            return
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, path),
+            source_ref=ctx.action.source,
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=condition,
+            passive_modifiers=passive_modifiers,
+            duration=duration,
+            tick_on=tick_on,
+            concentration=True,
+            stacking_policy="replace",
+            parent_effect_id=parent_effect_id,
+            audit={"node_path": path, "eyebite_effect": choice},
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != condition
+            or existing.get("source_action_id") not in {"srd.eyebite", "srd.eyebite_target"}
+        ]
+        effects.append(effect.to_dict())
+        self._link_eyebite_child_effect(parent_effect_id, effect.effect_id)
+        ctx.result.state_changes.append(
+            {
+                "type": "condition",
+                "target_id": target_id,
+                "condition": condition,
+                "eyebite_effect": choice,
+                "parent_effect_id": parent_effect_id,
+                "passive_modifiers": passive_modifiers,
+                "path": path,
+            }
+        )
+        ctx.result.state_changes.extend(
+            self._expire_effects_ended_by_condition(target_id, condition, path)
+        )
 
     def _node_greater_restoration(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         choice_param = str(node.get("choice_param", "greater_restoration_choice"))
@@ -10909,6 +11043,165 @@ class AutomationExecutor:
             if expected_count is not None and len(normalized_values) != int(expected_count):
                 raise AutomationError(f"{param} must contain exactly {int(expected_count)} choices")
             params[param] = normalized_values
+
+    def _validate_eyebite_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if not self._action_has_node_type(action, "eyebite_effect"):
+            return
+        self._eyebite_effect_choice(action, params)
+        if action.properties.get("eyebite_reject_successful_save_targets") is not True:
+            self._validate_eyebite_target_range_and_visibility(action, actor_id, targets)
+            return
+        self._validate_eyebite_target_range_and_visibility(action, actor_id, targets)
+        for target_id in targets:
+            if self._target_has_eyebite_success_marker(actor_id, target_id):
+                raise AutomationError(
+                    "Eyebite target has already succeeded on a save against this casting"
+                )
+
+    @staticmethod
+    def _action_has_node_type(action: ActionDefinition, node_type: str) -> bool:
+        return any(node.get("type") == node_type for node in action.automation)
+
+    @staticmethod
+    def _eyebite_effect_choice(
+        action: ActionDefinition,
+        params: dict[str, Any],
+        node: dict[str, Any] | None = None,
+    ) -> str:
+        node = node or {}
+        param_name = str(
+            node.get(
+                "choice_param",
+                action.properties.get("eyebite_effect_param", EYEBITE_EFFECT_PARAM),
+            )
+        )
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            raise AutomationError(f"missing required parameter {param_name}")
+        if isinstance(raw, (dict, list)):
+            raise AutomationError(f"parameter {param_name} must be a scalar")
+        allowed_raw = node.get("choices", action.properties.get("allowed_eyebite_effects"))
+        allowed = {
+            str(choice).casefold().strip()
+            for choice in (allowed_raw if isinstance(allowed_raw, list) else EYEBITE_EFFECTS)
+        }
+        if not allowed:
+            allowed = set(EYEBITE_EFFECTS)
+        choice = str(raw).casefold().strip()
+        if choice not in allowed or choice not in EYEBITE_EFFECTS:
+            expected = ", ".join(sorted(allowed & EYEBITE_EFFECTS))
+            raise AutomationError(f"{param_name} must be one of: {expected}")
+        params[param_name] = choice
+        return choice
+
+    @staticmethod
+    def _eyebite_condition_spec(
+        choice: str,
+    ) -> tuple[str, dict[str, Any], str, dict[str, Any]]:
+        if choice == "asleep":
+            return (
+                "unconscious",
+                {"until": "concentration_1_minute", "break_on_damage": True},
+                "duration_or_damage",
+                {
+                    "eyebite_effect": "asleep",
+                    "wakes_on_any_damage": True,
+                    "can_be_awakened_by_creature_action": True,
+                },
+            )
+        if choice == "panicked":
+            return (
+                "frightened",
+                {"until": "concentration_1_minute"},
+                "target_turn_end",
+                {
+                    "eyebite_effect": "panicked",
+                    "must_take_dash_action": True,
+                    "must_move_away_by_safest_shortest_route": True,
+                    "ends_if_60_ft_away_and_cannot_see_caster": True,
+                    "forced_movement_not_automated": True,
+                },
+            )
+        if choice == "sickened":
+            return (
+                "poisoned",
+                {"until": "concentration_1_minute"},
+                "target_turn_end",
+                {"eyebite_effect": "sickened"},
+            )
+        raise AutomationError(f"unsupported Eyebite effect {choice}")
+
+    def _target_has_eyebite_success_marker(self, actor_id: str, target_id: str) -> bool:
+        for _, _, effects in self._target_effect_lists(target_id):
+            for effect in effects:
+                if not self._effect_has_marker(effect, EYEBITE_SUCCESS_MARKER):
+                    continue
+                applied_by = effect.get("applied_by")
+                if isinstance(applied_by, str) and self._entity_ids_match(applied_by, actor_id):
+                    return True
+        return False
+
+    def _active_eyebite_effect(self, actor_id: str) -> dict[str, Any] | None:
+        for effect in reversed(self.state.world.active_effects):
+            applied_by = effect.get("applied_by")
+            if (
+                effect.get("source_action_id") == EYEBITE_SOURCE_ACTION_ID
+                and effect.get("effect_type") == EYEBITE_ACTIVE_EFFECT_TYPE
+                and isinstance(applied_by, str)
+                and self._entity_ids_match(applied_by, actor_id)
+            ):
+                return effect
+        return None
+
+    def _link_eyebite_child_effect(
+        self,
+        parent_effect_id: str | None,
+        child_effect_id: str,
+    ) -> None:
+        if parent_effect_id is None:
+            return
+        for effect in self.state.world.active_effects:
+            if effect.get("effect_id") != parent_effect_id:
+                continue
+            child_effect_ids = effect.setdefault("child_effect_ids", [])
+            if isinstance(child_effect_ids, list) and child_effect_id not in child_effect_ids:
+                child_effect_ids.append(child_effect_id)
+            return
+
+    def _validate_eyebite_target_range_and_visibility(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+    ) -> None:
+        range_raw = action.properties.get("effect_target_range_ft")
+        if not isinstance(range_raw, int):
+            return
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return
+        actor = self.state.encounter.combatants.get(actor_id)
+        if actor is None or actor.position_node_id is None:
+            return
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        target_must_be_visible = action.properties.get("target_must_be_visible") is True
+        for target_id in targets:
+            target = self.state.encounter.combatants.get(target_id)
+            if target is None or target.position_node_id is None:
+                continue
+            distance = graph.shortest_distance(actor.position_node_id, target.position_node_id)
+            if distance is None or distance > range_raw:
+                raise AutomationError("Eyebite target out of range")
+            if target_must_be_visible and not graph.has_line_of_sight(
+                actor.position_node_id,
+                target.position_node_id,
+            ):
+                raise AutomationError("Eyebite target must be visible")
 
     @staticmethod
     def _validate_hallow_params(

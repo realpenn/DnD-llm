@@ -62,6 +62,7 @@ def tick_effects(
 ) -> EffectLifecycleResult:
     result = EffectLifecycleResult(trigger=trigger, actor_id=actor_id)
     pending_saving_throw_consumptions: list[tuple[str, dict[str, Any]]] = []
+    expired_effect_ids: set[str] = set()
     for owner_type, owner_id, effects in _effect_lists(state):
         retained: list[dict[str, Any]] = []
         for effect in effects:
@@ -85,6 +86,7 @@ def tick_effects(
                         ended_by_condition=ended_by_condition,
                     )
                 )
+                _remember_expired_effect(effect, expired_effect_ids)
                 continue
             repeat_save = _repeat_save(effect, trigger)
             repeat_save_entry = None
@@ -122,6 +124,7 @@ def tick_effects(
                             repeat_save=repeat_save_entry,
                         )
                     )
+                    _remember_expired_effect(effect, expired_effect_ids)
                     continue
             remaining_before = _remaining_ticks(duration)
             if remaining_before is None:
@@ -161,6 +164,7 @@ def tick_effects(
                     entry["banishment_completed"] = permanent_banishment["entry"]
                     retained.append(permanent_banishment["effect"])
                 result.expired.append(entry)
+                _remember_expired_effect(effect, expired_effect_ids)
             else:
                 duration["remaining_ticks"] = remaining_after
                 result.ticked.append(entry)
@@ -172,7 +176,61 @@ def tick_effects(
             repeat_save_entry["consumed_effects"] = consumed
     if trigger == "self_turn_end":
         _apply_monk_self_restoration(state, actor_id, result)
+    if expired_effect_ids:
+        _expire_child_effects(state, expired_effect_ids, result)
     return result
+
+
+def _remember_expired_effect(effect: dict[str, Any], expired_effect_ids: set[str]) -> None:
+    effect_id = effect.get("effect_id")
+    if isinstance(effect_id, str) and effect_id:
+        expired_effect_ids.add(effect_id)
+
+
+def _expire_child_effects(
+    state: GameState,
+    expired_parent_ids: set[str],
+    result: EffectLifecycleResult,
+) -> None:
+    pending_parent_ids = set(expired_parent_ids)
+    processed_parent_ids: set[str] = set()
+    while pending_parent_ids:
+        current_parent_ids = pending_parent_ids - processed_parent_ids
+        if not current_parent_ids:
+            return
+        processed_parent_ids.update(current_parent_ids)
+        next_parent_ids: set[str] = set()
+        for owner_type, owner_id, effects in _effect_lists(state):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                parent_effect_id = effect.get("parent_effect_id")
+                if isinstance(parent_effect_id, str) and parent_effect_id in current_parent_ids:
+                    duration = effect.get("duration", {})
+                    if not isinstance(duration, dict):
+                        duration = {}
+                    effect_id = effect.get("effect_id")
+                    if isinstance(effect_id, str) and effect_id:
+                        result.ticked[:] = [
+                            entry
+                            for entry in result.ticked
+                            if entry.get("effect_id") != effect_id
+                        ]
+                    entry = _entry(
+                        effect,
+                        owner_type=owner_type,
+                        owner_id=owner_id,
+                        trigger=result.trigger,
+                        remaining_before=_remaining_ticks(duration) or 0,
+                        remaining_after=0,
+                    )
+                    entry["expired_parent_effect_id"] = parent_effect_id
+                    result.expired.append(entry)
+                    if isinstance(effect_id, str) and effect_id:
+                        next_parent_ids.add(effect_id)
+                    continue
+                retained.append(effect)
+            effects[:] = retained
+        pending_parent_ids = next_parent_ids
 
 
 def _apply_monk_self_restoration(

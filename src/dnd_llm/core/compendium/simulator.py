@@ -77,6 +77,7 @@ class CompendiumSimulator:
                     )
                     params[creature_types_param] = [str(allowed_creature_types[0])]
                 _add_allowed_list_params(params, action)
+                _add_eyebite_params(params, action)
                 _add_fire_shield_params(params, action)
                 if action.properties.get("requires_willing_target") is True:
                     params["target_willing"] = True
@@ -435,6 +436,7 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
         creature_types_param = str(action.properties.get("creature_types_param", "creature_types"))
         params[creature_types_param] = [str(allowed_creature_types[0])]
     _add_allowed_list_params(params, action)
+    _add_eyebite_params(params, action)
     if action.id == "srd.hallow":
         params["hallow_extra_effect_creature_types"] = ["aberration"]
     _add_fire_shield_params(params, action)
@@ -467,6 +469,14 @@ def _add_allowed_list_params(params: dict[str, Any], action: ActionDefinition) -
             count = int(required_counts.get(param, 1))
             count = max(1, count)
             params[param] = [str(item) for item in allowed_raw[:count]]
+
+
+def _add_eyebite_params(params: dict[str, Any], action: ActionDefinition) -> None:
+    allowed = action.properties.get("allowed_eyebite_effects")
+    if not isinstance(allowed, list) or not allowed:
+        return
+    param_name = str(action.properties.get("eyebite_effect_param", "eyebite_effect"))
+    params[param_name] = str(allowed[0])
 
 
 def _add_fire_shield_params(params: dict[str, Any], action: ActionDefinition) -> None:

@@ -98,6 +98,74 @@
         ],
         "audit_label": "Circle of Death"
       }
+    },
+    {
+      "id": "srd.spell.eyebite",
+      "name": "Eyebite",
+      "localization": { "en": "Eyebite", "zh": "摄魂目光", "aliases": ["眼魔法"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "necromancy",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.eyebite",
+        "name": "Eyebite",
+        "localization": { "en": "Eyebite", "zh": "摄魂目光", "aliases": ["眼魔法"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S"],
+          "effect_target_range_ft": 60,
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "allowed_eyebite_effects": ["asleep", "panicked", "sickened"],
+          "eyebite_effect_param": "eyebite_effect",
+          "magic_action_target_action_id": "srd.eyebite_target",
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "world_effect",
+            "effect_type": "eyebite_active",
+            "scope": { "target": "self" },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "eyes_become_inky_void": true,
+              "can_target_another_creature_with_magic_action": true,
+              "magic_action_target_action_id": "srd.eyebite_target",
+              "effect_target_range_ft": 60,
+              "target_must_be_visible": true,
+              "successful_save_target_cannot_be_targeted_again_by_this_casting": true,
+              "allowed_eyebite_effects": ["asleep", "panicked", "sickened"]
+            }
+          },
+          {
+            "type": "eyebite_effect",
+            "choice_param": "eyebite_effect",
+            "choices": ["asleep", "panicked", "sickened"]
+          },
+          {
+            "type": "text_result",
+            "text": "For the duration, the caster's eyes become an inky void and the caster can use a Magic action on later turns to target another eligible creature."
+          }
+        ],
+        "audit_label": "Eyebite"
+      }
     }
   ]
 }

@@ -4982,6 +4982,52 @@
             "audit_label": "Sunbeam: Radiant Line"
         },
         {
+            "id": "srd.eyebite_target",
+            "name": "Eyebite: Target Creature",
+            "localization": {
+                "en": "Eyebite: Target Creature",
+                "zh": "摄魂目光：指定生物",
+                "aliases": ["摄魂目光再指定", "眼魔法再指定"]
+            },
+            "source": "SRD 5.2.1 Chapter 7: Spells: Eyebite",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "magic_action": true,
+                "requires_active_effect_source_action_id": "srd.eyebite",
+                "spell_definition_id": "srd.spell.eyebite",
+                "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+                "spell_level": 6,
+                "effect_target_range_ft": 60,
+                "target_must_be_visible": true,
+                "target_type": "creature",
+                "allowed_eyebite_effects": ["asleep", "panicked", "sickened"],
+                "eyebite_effect_param": "eyebite_effect",
+                "eyebite_reject_successful_save_targets": true,
+                "no_spell_slot_cost": true
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+                {
+                    "type": "eyebite_effect",
+                    "choice_param": "eyebite_effect",
+                    "choices": ["asleep", "panicked", "sickened"]
+                },
+                {
+                    "type": "text_result",
+                    "text": "The caster uses the ongoing Eyebite spell to target another creature with one of Eyebite's SRD effects."
+                }
+            ],
+            "audit_label": "Eyebite: Target Creature"
+        },
+        {
             "id": "srd.maze_escape",
             "name": "Maze Escape",
             "localization": {
