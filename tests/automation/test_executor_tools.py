@@ -17965,6 +17965,142 @@ def test_ice_storm_upcast_adds_only_bludgeoning_damage_die(make_state) -> None:
     ]
 
 
+def test_reverse_gravity_failed_save_records_upward_fall_and_cylinder(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.reverse_gravity",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-reverse-gravity-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.reverse_gravity"
+    assert effect["effect_type"] == "reverse_gravity_cylinder"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "shape": "cylinder",
+        "radius_ft": 50,
+        "height_ft": 100,
+        "range_ft": 100,
+    }
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "reverses_gravity": True,
+        "unanchored_creatures_and_objects_fall_upward": True,
+        "creature_can_make_dexterity_save_to_grab_reachable_fixed_object": True,
+        "successful_save_avoids_fall_upward": True,
+        "ceiling_or_anchored_object_collision_as_downward_fall": True,
+        "reaches_cylinder_top_if_unobstructed": True,
+        "hovers_at_top_for_duration_if_unobstructed": True,
+        "affected_objects_and_creatures_fall_downward_when_spell_ends": True,
+        "fixed_object_reach_prerequisite_not_automated": True,
+        "object_and_collision_resolution_not_automated": True,
+    }
+    passive = target.status_effects[-1]
+    assert passive["source_action_id"] == "srd.reverse_gravity"
+    assert passive["condition"] is None
+    assert passive["passive_modifiers"] == {
+        "reverse_gravity": True,
+        "falls_upward": True,
+        "reaches_cylinder_top_if_unobstructed": True,
+        "hovers_at_top_for_duration_if_unobstructed": True,
+        "falls_downward_when_spell_ends": True,
+        "ceiling_or_anchored_object_collision_as_downward_fall": True,
+        "object_and_collision_resolution_not_automated": True,
+    }
+    assert passive["duration"] == {"until": "concentration_1_minute"}
+    assert passive["tick_on"] == "self_turn_end"
+    assert passive["concentration"] is True
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "reverse_gravity_cylinder"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    ticks = [
+        entry
+        for entry in lifecycle.ticked
+        if entry["source_action_id"] == "srd.reverse_gravity"
+    ]
+    assert len(ticks) == 2
+    assert {entry["remaining_ticks_before"] for entry in ticks} == {10}
+    assert {entry["remaining_ticks_after"] for entry in ticks} == {9}
+
+
+def test_reverse_gravity_successful_save_records_cylinder_without_target_effect(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.reverse_gravity",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-reverse-gravity-successful-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == "spell_save_dc:druid"
+    assert save_node["success"] is True
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert not any(
+        effect["source_action_id"] == "srd.reverse_gravity"
+        for effect in target.status_effects
+    )
+    assert state.world.active_effects[-1]["effect_type"] == "reverse_gravity_cylinder"
+
+
 def test_blight_uses_actor_spell_dc_and_plant_auto_fails_save(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

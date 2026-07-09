@@ -114,6 +114,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.passwall",
         "srd.move_earth",
         "srd.wind_walk",
+        "srd.reverse_gravity",
         "srd.tree_stride",
         "srd.fabricate",
         "srd.stone_shape",
@@ -4033,6 +4034,77 @@ def test_compendium_loads_srd_actions() -> None:
                 "moved_earth_carries_plants_along": True,
             },
         }
+    ]
+    reverse_gravity_spell = compendium.spell("srd.spell.reverse_gravity")
+    assert reverse_gravity_spell.level == 7
+    assert reverse_gravity_spell.school == "transmutation"
+    assert reverse_gravity_spell.classes == ["druid", "sorcerer", "wizard"]
+    reverse_gravity = compendium.action("srd.reverse_gravity")
+    assert reverse_gravity.requirements == {
+        "spell_level": 7,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert reverse_gravity.properties == {
+        "spell_classes": ["druid", "sorcerer", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a lodestone and iron filings",
+            "consumed": False,
+        },
+        "area_shape": "cylinder",
+        "area_radius_ft": 50,
+        "area_height_ft": 100,
+        "fixed_object_reach_prerequisite_not_automated": True,
+        "spell_definition_id": "srd.spell.reverse_gravity",
+        "spell_level": 7,
+    }
+    assert reverse_gravity.cost.spell_slot_level == 7
+    assert reverse_gravity.cost.gold == 0
+    assert reverse_gravity.range == {
+        "normal_ft": 100,
+        "shape": "cylinder",
+        "radius_ft": 50,
+        "height_ft": 100,
+    }
+    assert reverse_gravity.target_policy == {"min": 1, "max": 20, "harmful": True}
+    assert reverse_gravity.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "world_effect",
+            "effect_type": "reverse_gravity_cylinder",
+            "scope": {"shape": "cylinder", "radius_ft": 50, "height_ft": 100, "range_ft": 100},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "reverses_gravity": True,
+                "unanchored_creatures_and_objects_fall_upward": True,
+                "creature_can_make_dexterity_save_to_grab_reachable_fixed_object": True,
+                "successful_save_avoids_fall_upward": True,
+                "ceiling_or_anchored_object_collision_as_downward_fall": True,
+                "reaches_cylinder_top_if_unobstructed": True,
+                "hovers_at_top_for_duration_if_unobstructed": True,
+                "affected_objects_and_creatures_fall_downward_when_spell_ends": True,
+                "fixed_object_reach_prerequisite_not_automated": True,
+                "object_and_collision_resolution_not_automated": True,
+            },
+        },
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "reverse_gravity": True,
+                "falls_upward": True,
+                "reaches_cylinder_top_if_unobstructed": True,
+                "hovers_at_top_for_duration_if_unobstructed": True,
+                "falls_downward_when_spell_ends": True,
+                "ceiling_or_anchored_object_collision_as_downward_fall": True,
+                "object_and_collision_resolution_not_automated": True,
+            },
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
     ]
     wind_walk = compendium.action("srd.wind_walk")
     assert wind_walk.requirements == {
@@ -8254,6 +8326,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.maze",
         "srd.spell.etherealness",
         "srd.spell.gate",
+        "srd.spell.reverse_gravity",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9
     assert compendium.spell("srd.spell.flame_strike").level == 5

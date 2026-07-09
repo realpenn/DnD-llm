@@ -242,6 +242,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.relentless_hunter",
     "srd.resilient_sphere",
     "srd.banishment",
+    "srd.reverse_gravity",
     "srd.tireless",
     "srd.preserve_life",
     "srd.primal_knowledge",
