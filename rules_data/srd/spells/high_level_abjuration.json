@@ -553,6 +553,164 @@
       }
     },
     {
+      "id": "srd.spell.hallow",
+      "name": "Hallow",
+      "localization": {
+        "en": "Hallow",
+        "zh": "圣居",
+        "aliases": ["圣化术", "圣化"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.hallow",
+        "name": "Hallow",
+        "localization": {
+          "en": "Hallow",
+          "zh": "圣居",
+          "aliases": ["圣化术", "圣化"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 24 },
+          "material_component": {
+            "description": "incense worth 1,000+ GP",
+            "consumed": true
+          },
+          "ward_creature_types_param": "hallow_ward_creature_types",
+          "extra_effect_param": "hallow_extra_effect",
+          "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+          "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+          "extra_effect_allowed_creature_types": [
+            "aberration",
+            "beast",
+            "celestial",
+            "construct",
+            "dragon",
+            "elemental",
+            "fey",
+            "fiend",
+            "giant",
+            "humanoid",
+            "monstrosity",
+            "ooze",
+            "plant",
+            "undead"
+          ],
+          "extra_effect_allowed_damage_types": [
+            "acid",
+            "bludgeoning",
+            "cold",
+            "fire",
+            "force",
+            "lightning",
+            "necrotic",
+            "piercing",
+            "poison",
+            "psychic",
+            "radiant",
+            "slashing",
+            "thunder"
+          ],
+          "allowed_list_params": {
+            "hallow_ward_creature_types": [
+              "aberration",
+              "celestial",
+              "elemental",
+              "fey",
+              "fiend",
+              "undead"
+            ],
+            "hallow_extra_effect": [
+              "courage",
+              "darkness",
+              "daylight",
+              "peaceful_rest",
+              "extradimensional_interference",
+              "fear",
+              "resistance",
+              "silence",
+              "tongues",
+              "vulnerability"
+            ]
+          },
+          "required_list_param_counts": {
+            "hallow_extra_effect": 1
+          },
+          "no_damage": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5, "gold": 1000 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "hallow_ward",
+            "scope": {
+              "target": "touched_point_area",
+              "shape": "sphere",
+              "radius_ft": 60
+            },
+            "duration": { "until": "until_dispelled" },
+            "metadata": {
+              "holy_or_unholy_power": true,
+              "fails_if_area_includes_existing_hallow": true,
+              "hallowed_ward_creature_types": { "param_list": "hallow_ward_creature_types" },
+              "warded_creature_types_cannot_willingly_enter_area": true,
+              "ward_suppresses_possession_charmed_and_frightened_from_warded_types": true,
+              "selected_extra_effect": { "param_list": "hallow_extra_effect" },
+              "selected_extra_effect_creature_types": {
+                "optional_param_list": "hallow_extra_effect_creature_types"
+              },
+              "selected_extra_effect_damage_type": {
+                "optional_param": "hallow_extra_effect_damage_type"
+              },
+              "allowed_extra_effects": [
+                "courage",
+                "darkness",
+                "daylight",
+                "peaceful_rest",
+                "extradimensional_interference",
+                "fear",
+                "resistance",
+                "silence",
+                "tongues",
+                "vulnerability"
+              ],
+              "courage_prevents_frightened": true,
+              "darkness_fills_area_and_blocks_lower_level_magical_light": true,
+              "daylight_fills_area_and_blocks_lower_level_magical_darkness": true,
+              "peaceful_rest_prevents_interred_dead_becoming_undead": true,
+              "extradimensional_interference_blocks_teleportation_and_interplanar_travel": true,
+              "fear_gives_frightened_condition": true,
+              "resistance_grants_chosen_damage_resistance": true,
+              "silence_blocks_sound_in_or_out": true,
+              "tongues_allows_communication": true,
+              "vulnerability_grants_chosen_damage_vulnerability": true,
+              "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+              "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+              "area_membership_and_extra_effect_application_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Hallow"
+      }
+    },
+    {
       "id": "srd.spell.antilife_shell",
       "name": "Antilife Shell",
       "localization": {

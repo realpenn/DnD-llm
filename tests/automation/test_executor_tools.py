@@ -22481,6 +22481,158 @@ def test_forbiddance_spends_slot_records_ward_and_does_not_consume_ruby_dust(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_hallow_spends_slot_consumes_incense_and_records_ward(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.hallow",
+        actor_id="pc1",
+        targets=[],
+        params={
+            "slot_level": 5,
+            "hallow_ward_creature_types": ["Fiend", "Undead"],
+            "hallow_extra_effect": "Resistance",
+            "hallow_extra_effect_creature_types": ["Humanoid", "Celestial"],
+            "hallow_extra_effect_damage_type": "Fire",
+        },
+        idempotency_key="cast-hallow",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert caster.gold == 0
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_5", "gold"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.hallow"
+    assert effect["effect_type"] == "hallow_ward"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "touched_point_area",
+        "shape": "sphere",
+        "radius_ft": 60,
+    }
+    assert effect["duration"] == {"until": "until_dispelled"}
+    assert "tick_on" not in effect
+    assert effect["metadata"] == {
+        "holy_or_unholy_power": True,
+        "fails_if_area_includes_existing_hallow": True,
+        "hallowed_ward_creature_types": ["fiend", "undead"],
+        "warded_creature_types_cannot_willingly_enter_area": True,
+        "ward_suppresses_possession_charmed_and_frightened_from_warded_types": True,
+        "selected_extra_effect": ["resistance"],
+        "selected_extra_effect_creature_types": ["humanoid", "celestial"],
+        "selected_extra_effect_damage_type": "fire",
+        "allowed_extra_effects": [
+            "courage",
+            "darkness",
+            "daylight",
+            "peaceful_rest",
+            "extradimensional_interference",
+            "fear",
+            "resistance",
+            "silence",
+            "tongues",
+            "vulnerability",
+        ],
+        "courage_prevents_frightened": True,
+        "darkness_fills_area_and_blocks_lower_level_magical_light": True,
+        "daylight_fills_area_and_blocks_lower_level_magical_darkness": True,
+        "peaceful_rest_prevents_interred_dead_becoming_undead": True,
+        "extradimensional_interference_blocks_teleportation_and_interplanar_travel": True,
+        "fear_gives_frightened_condition": True,
+        "resistance_grants_chosen_damage_resistance": True,
+        "silence_blocks_sound_in_or_out": True,
+        "tongues_allows_communication": True,
+        "vulnerability_grants_chosen_damage_vulnerability": True,
+        "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+        "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+        "area_membership_and_extra_effect_application_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "hallow_ward"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.changed is False
+    assert state.world.active_effects[-1]["effect_id"] == effect["effect_id"]
+
+
+def test_hallow_rejects_invalid_or_missing_choices_before_spending_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="missing required parameter hallow_extra_effect_damage_type"):
+        tools._execute_action(
+            action_id="srd.hallow",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "resistance",
+                "hallow_extra_effect_creature_types": ["humanoid"],
+            },
+            idempotency_key="hallow-missing-damage-type",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 1000
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="hallow_extra_effect must contain only"):
+        tools._execute_action(
+            action_id="srd.hallow",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "banishment",
+            },
+            idempotency_key="hallow-bad-extra-effect",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 1000
+    assert state.world.active_effects == []
+
+    caster.gold = 999
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools._execute_action(
+            action_id="srd.hallow",
+            actor_id="pc1",
+            targets=[],
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "courage",
+                "hallow_extra_effect_creature_types": ["humanoid"],
+            },
+            idempotency_key="hallow-insufficient-gold",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 999
+    assert state.world.active_effects == []
+
+
 def test_forbiddance_can_be_cast_as_ritual_without_spending_spell_slot(
     make_state,
 ) -> None:

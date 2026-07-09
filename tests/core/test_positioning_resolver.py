@@ -1061,6 +1061,78 @@ def test_resolver_validates_creation_material_and_class(make_state) -> None:
     assert rejected_class.reason == "requires one of sorcerer, wizard"
 
 
+def test_resolver_validates_hallow_extra_effect_choices(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 9}
+    character.actions.append("srd.hallow")
+    character.spell_slots["5"] = 1
+    character.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_damage_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣居",
+            target_ids=[],
+            candidate_action_id="srd.hallow",
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "resistance",
+                "hallow_extra_effect_creature_types": ["humanoid"],
+            },
+        )
+    )
+    assert missing_damage_type.status == "rejected"
+    assert (
+        missing_damage_type.reason
+        == "missing required parameter hallow_extra_effect_damage_type"
+    )
+
+    invalid_creature_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣居",
+            target_ids=[],
+            candidate_action_id="srd.hallow",
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "fear",
+                "hallow_extra_effect_creature_types": ["modron"],
+            },
+        )
+    )
+    assert invalid_creature_type.status == "rejected"
+    assert invalid_creature_type.reason.startswith(
+        "hallow_extra_effect_creature_types must contain only:"
+    )
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="圣居",
+        target_ids=[],
+        candidate_action_id="srd.hallow",
+        params={
+            "slot_level": 5,
+            "hallow_ward_creature_types": ["Fiend"],
+            "hallow_extra_effect": "Resistance",
+            "hallow_extra_effect_creature_types": ["Humanoid"],
+            "hallow_extra_effect_damage_type": "Fire",
+        },
+    )
+    accepted = resolver.resolve(draft)
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.hallow"
+    assert draft.params["hallow_ward_creature_types"] == ["fiend"]
+    assert draft.params["hallow_extra_effect"] == ["resistance"]
+    assert draft.params["hallow_extra_effect_creature_types"] == ["humanoid"]
+    assert draft.params["hallow_extra_effect_damage_type"] == "fire"
+
+
 def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
     make_state,
 ) -> None:

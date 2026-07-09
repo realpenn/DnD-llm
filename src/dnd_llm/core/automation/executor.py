@@ -170,6 +170,53 @@ CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE = "conjure_minor_elementals_emanation"
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_type"
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "lightning"})
 CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
+HALLOW_ACTION_ID = "srd.hallow"
+HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES = frozenset(
+    {
+        "courage",
+        "extradimensional_interference",
+        "fear",
+        "resistance",
+        "tongues",
+        "vulnerability",
+    }
+)
+HALLOW_EXTRA_EFFECTS_REQUIRING_DAMAGE_TYPE = frozenset({"resistance", "vulnerability"})
+HALLOW_EXTRA_EFFECT_CREATURE_TYPES = frozenset(
+    {
+        "aberration",
+        "beast",
+        "celestial",
+        "construct",
+        "dragon",
+        "elemental",
+        "fey",
+        "fiend",
+        "giant",
+        "humanoid",
+        "monstrosity",
+        "ooze",
+        "plant",
+        "undead",
+    }
+)
+HALLOW_EXTRA_EFFECT_DAMAGE_TYPES = frozenset(
+    {
+        "acid",
+        "bludgeoning",
+        "cold",
+        "fire",
+        "force",
+        "lightning",
+        "necrotic",
+        "piercing",
+        "poison",
+        "psychic",
+        "radiant",
+        "slashing",
+        "thunder",
+    }
+)
 RESTORING_TOUCH_ALLOWED_CONDITIONS = frozenset(
     {"blinded", "charmed", "deafened", "frightened", "paralyzed", "stunned"}
 )
@@ -559,6 +606,7 @@ class AutomationExecutor:
         self._validate_allowed_damage_type_param(action, params)
         self._validate_allowed_creature_types_param(action, params)
         self._validate_allowed_list_params(action, params)
+        self._validate_hallow_params(action, params)
         self._validate_fire_shield_type_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
@@ -3426,6 +3474,16 @@ class AutomationExecutor:
             if isinstance(selected, (dict, list)):
                 raise AutomationError(f"parameter {param_name} must be a scalar")
             return str(selected)
+        if isinstance(value, dict) and set(value) == {"optional_param_list"}:
+            param_name = str(value["optional_param_list"])
+            selected = ctx.params.get(param_name)
+            if selected is None or selected == "":
+                return []
+            if isinstance(selected, dict):
+                raise AutomationError(f"parameter {param_name} must be a list")
+            if isinstance(selected, list):
+                return [str(item) for item in selected]
+            return [str(selected)]
         if isinstance(value, dict) and set(value) == {"param_list"}:
             param_name = str(value["param_list"])
             selected = ctx.params.get(param_name)
@@ -10851,6 +10909,114 @@ class AutomationExecutor:
             if expected_count is not None and len(normalized_values) != int(expected_count):
                 raise AutomationError(f"{param} must contain exactly {int(expected_count)} choices")
             params[param] = normalized_values
+
+    @staticmethod
+    def _validate_hallow_params(
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        if action.id != HALLOW_ACTION_ID:
+            return
+        effect_param = str(action.properties.get("extra_effect_param", "hallow_extra_effect"))
+        effect = AutomationExecutor._first_normalized_list_value(params, effect_param)
+        creature_param = str(
+            action.properties.get(
+                "extra_effect_creature_types_param",
+                "hallow_extra_effect_creature_types",
+            )
+        )
+        damage_param = str(
+            action.properties.get("extra_effect_damage_type_param", "hallow_extra_effect_damage_type")
+        )
+        if effect in HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES:
+            AutomationExecutor._normalize_hallow_list_param(
+                params,
+                creature_param,
+                allowed=HALLOW_EXTRA_EFFECT_CREATURE_TYPES,
+                required=True,
+            )
+        elif params.get(creature_param) not in (None, ""):
+            AutomationExecutor._normalize_hallow_list_param(
+                params,
+                creature_param,
+                allowed=HALLOW_EXTRA_EFFECT_CREATURE_TYPES,
+                required=False,
+            )
+        if effect in HALLOW_EXTRA_EFFECTS_REQUIRING_DAMAGE_TYPE:
+            AutomationExecutor._normalize_hallow_scalar_param(
+                params,
+                damage_param,
+                allowed=HALLOW_EXTRA_EFFECT_DAMAGE_TYPES,
+                required=True,
+            )
+        elif params.get(damage_param) not in (None, ""):
+            AutomationExecutor._normalize_hallow_scalar_param(
+                params,
+                damage_param,
+                allowed=HALLOW_EXTRA_EFFECT_DAMAGE_TYPES,
+                required=False,
+            )
+
+    @staticmethod
+    def _first_normalized_list_value(params: dict[str, Any], param_name: str) -> str:
+        raw = params.get(param_name)
+        raw_values = raw if isinstance(raw, list) else [raw]
+        if not raw_values:
+            return ""
+        return str(raw_values[0]).casefold().strip()
+
+    @staticmethod
+    def _normalize_hallow_list_param(
+        params: dict[str, Any],
+        param_name: str,
+        *,
+        allowed: frozenset[str],
+        required: bool,
+    ) -> None:
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            if required:
+                raise AutomationError(f"missing required parameter {param_name}")
+            return
+        if isinstance(raw, dict):
+            raise AutomationError(f"parameter {param_name} must be a list")
+        raw_values = raw if isinstance(raw, list) else [raw]
+        if not raw_values:
+            if required:
+                raise AutomationError(f"parameter {param_name} must not be empty")
+            return
+        normalized_values: list[str] = []
+        for value in raw_values:
+            if isinstance(value, (dict, list)):
+                raise AutomationError(f"parameter {param_name} entries must be scalars")
+            normalized = str(value).casefold().strip()
+            if normalized not in allowed:
+                expected = ", ".join(sorted(allowed))
+                raise AutomationError(f"{param_name} must contain only: {expected}")
+            if normalized not in normalized_values:
+                normalized_values.append(normalized)
+        params[param_name] = normalized_values
+
+    @staticmethod
+    def _normalize_hallow_scalar_param(
+        params: dict[str, Any],
+        param_name: str,
+        *,
+        allowed: frozenset[str],
+        required: bool,
+    ) -> None:
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            if required:
+                raise AutomationError(f"missing required parameter {param_name}")
+            return
+        if isinstance(raw, (dict, list)):
+            raise AutomationError(f"parameter {param_name} must be a scalar")
+        normalized = str(raw).casefold().strip()
+        if normalized not in allowed:
+            expected = ", ".join(sorted(allowed))
+            raise AutomationError(f"{param_name} must be one of: {expected}")
+        params[param_name] = normalized
 
     @staticmethod
     def _validate_fire_shield_type_param(

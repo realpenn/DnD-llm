@@ -428,6 +428,8 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
         creature_types_param = str(action.properties.get("creature_types_param", "creature_types"))
         params[creature_types_param] = [str(allowed_creature_types[0])]
     _add_allowed_list_params(params, action)
+    if action.id == "srd.hallow":
+        params["hallow_extra_effect_creature_types"] = ["aberration"]
     _add_fire_shield_params(params, action)
     if action.properties.get("requires_willing_target") is True:
         params["target_willing"] = True

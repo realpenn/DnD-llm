@@ -88,6 +88,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.irresistible_dance",
         "srd.mass_suggestion",
         "srd.greater_restoration",
+        "srd.hallow",
         "srd.globe_of_invulnerability",
         "srd.forbiddance",
         "srd.cloudkill",
@@ -1565,6 +1566,138 @@ def test_compendium_loads_srd_actions() -> None:
                 "discerned_creature_can_see_through_image": True,
                 "discerned_noise_sounds_hollow": True,
                 "trigger_and_performance_resolution_not_automated": True,
+            },
+        }
+    ]
+    hallow_spell = compendium.spell("srd.spell.hallow")
+    assert hallow_spell.level == 5
+    assert hallow_spell.school == "abjuration"
+    assert hallow_spell.classes == ["cleric"]
+    hallow = compendium.action("srd.hallow")
+    assert hallow.requirements == {"spell_level": 5, "class_any": ["cleric"]}
+    assert hallow.properties == {
+        "spell_classes": ["cleric"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"hours": 24},
+        "material_component": {
+            "description": "incense worth 1,000+ GP",
+            "consumed": True,
+        },
+        "ward_creature_types_param": "hallow_ward_creature_types",
+        "extra_effect_param": "hallow_extra_effect",
+        "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+        "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+        "extra_effect_allowed_creature_types": [
+            "aberration",
+            "beast",
+            "celestial",
+            "construct",
+            "dragon",
+            "elemental",
+            "fey",
+            "fiend",
+            "giant",
+            "humanoid",
+            "monstrosity",
+            "ooze",
+            "plant",
+            "undead",
+        ],
+        "extra_effect_allowed_damage_types": [
+            "acid",
+            "bludgeoning",
+            "cold",
+            "fire",
+            "force",
+            "lightning",
+            "necrotic",
+            "piercing",
+            "poison",
+            "psychic",
+            "radiant",
+            "slashing",
+            "thunder",
+        ],
+        "allowed_list_params": {
+            "hallow_ward_creature_types": [
+                "aberration",
+                "celestial",
+                "elemental",
+                "fey",
+                "fiend",
+                "undead",
+            ],
+            "hallow_extra_effect": [
+                "courage",
+                "darkness",
+                "daylight",
+                "peaceful_rest",
+                "extradimensional_interference",
+                "fear",
+                "resistance",
+                "silence",
+                "tongues",
+                "vulnerability",
+            ],
+        },
+        "required_list_param_counts": {"hallow_extra_effect": 1},
+        "no_damage": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.hallow",
+        "spell_level": 5,
+    }
+    assert hallow.cost.spell_slot_level == 5
+    assert hallow.cost.gold == 1000
+    assert hallow.range == {"touch": True, "shape": "sphere", "radius_ft": 60}
+    assert hallow.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert hallow.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "hallow_ward",
+            "scope": {
+                "target": "touched_point_area",
+                "shape": "sphere",
+                "radius_ft": 60,
+            },
+            "duration": {"until": "until_dispelled"},
+            "metadata": {
+                "holy_or_unholy_power": True,
+                "fails_if_area_includes_existing_hallow": True,
+                "hallowed_ward_creature_types": {"param_list": "hallow_ward_creature_types"},
+                "warded_creature_types_cannot_willingly_enter_area": True,
+                "ward_suppresses_possession_charmed_and_frightened_from_warded_types": True,
+                "selected_extra_effect": {"param_list": "hallow_extra_effect"},
+                "selected_extra_effect_creature_types": {
+                    "optional_param_list": "hallow_extra_effect_creature_types",
+                },
+                "selected_extra_effect_damage_type": {
+                    "optional_param": "hallow_extra_effect_damage_type",
+                },
+                "allowed_extra_effects": [
+                    "courage",
+                    "darkness",
+                    "daylight",
+                    "peaceful_rest",
+                    "extradimensional_interference",
+                    "fear",
+                    "resistance",
+                    "silence",
+                    "tongues",
+                    "vulnerability",
+                ],
+                "courage_prevents_frightened": True,
+                "darkness_fills_area_and_blocks_lower_level_magical_light": True,
+                "daylight_fills_area_and_blocks_lower_level_magical_darkness": True,
+                "peaceful_rest_prevents_interred_dead_becoming_undead": True,
+                "extradimensional_interference_blocks_teleportation_and_interplanar_travel": True,
+                "fear_gives_frightened_condition": True,
+                "resistance_grants_chosen_damage_resistance": True,
+                "silence_blocks_sound_in_or_out": True,
+                "tongues_allows_communication": True,
+                "vulnerability_grants_chosen_damage_vulnerability": True,
+                "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+                "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+                "area_membership_and_extra_effect_application_not_automated": True,
             },
         }
     ]
@@ -8726,6 +8859,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.creation",
         "srd.spell.mislead",
         "srd.spell.seeming",
+        "srd.spell.hallow",
         "srd.spell.project_image",
         "srd.spell.mirage_arcane",
         "srd.spell.weird",

@@ -47,6 +47,53 @@ RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
     {"acid", "cold", "fire", "lightning"}
 )
 RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
+RESOLVER_HALLOW_ACTION_ID = "srd.hallow"
+RESOLVER_HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES = frozenset(
+    {
+        "courage",
+        "extradimensional_interference",
+        "fear",
+        "resistance",
+        "tongues",
+        "vulnerability",
+    }
+)
+RESOLVER_HALLOW_EXTRA_EFFECTS_REQUIRING_DAMAGE_TYPE = frozenset({"resistance", "vulnerability"})
+RESOLVER_HALLOW_EXTRA_EFFECT_CREATURE_TYPES = frozenset(
+    {
+        "aberration",
+        "beast",
+        "celestial",
+        "construct",
+        "dragon",
+        "elemental",
+        "fey",
+        "fiend",
+        "giant",
+        "humanoid",
+        "monstrosity",
+        "ooze",
+        "plant",
+        "undead",
+    }
+)
+RESOLVER_HALLOW_EXTRA_EFFECT_DAMAGE_TYPES = frozenset(
+    {
+        "acid",
+        "bludgeoning",
+        "cold",
+        "fire",
+        "force",
+        "lightning",
+        "necrotic",
+        "piercing",
+        "poison",
+        "psychic",
+        "radiant",
+        "slashing",
+        "thunder",
+    }
+)
 RESOLVER_HIDE_ACTION_IDS = frozenset({"srd.hide", "srd.cunning_action_hide"})
 RESOLVER_SUPREME_SNEAK_COVER_ALIASES = {
     "3_4": "three_quarters",
@@ -264,6 +311,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=allowed_list_error,
+                action_id=action.id,
+            )
+        hallow_error = self._hallow_params_error(draft, action)
+        if hallow_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=hallow_error,
                 action_id=action.id,
             )
         greater_restoration_error = self._greater_restoration_choice_error(draft, action)
@@ -646,6 +700,123 @@ class ActionResolver:
             if expected_count is not None and len(normalized_values) != int(expected_count):
                 return f"{param} must contain exactly {int(expected_count)} choices"
             draft.params[param] = normalized_values
+        return None
+
+    @staticmethod
+    def _hallow_params_error(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.id != RESOLVER_HALLOW_ACTION_ID:
+            return None
+        effect_param = str(action.properties.get("extra_effect_param", "hallow_extra_effect"))
+        effect = ActionResolver._first_normalized_list_value(draft.params, effect_param)
+        creature_param = str(
+            action.properties.get(
+                "extra_effect_creature_types_param",
+                "hallow_extra_effect_creature_types",
+            )
+        )
+        damage_param = str(
+            action.properties.get("extra_effect_damage_type_param", "hallow_extra_effect_damage_type")
+        )
+        if effect in RESOLVER_HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES:
+            error = ActionResolver._normalize_hallow_list_param(
+                draft.params,
+                creature_param,
+                allowed=RESOLVER_HALLOW_EXTRA_EFFECT_CREATURE_TYPES,
+                required=True,
+            )
+            if error is not None:
+                return error
+        elif draft.params.get(creature_param) not in (None, ""):
+            error = ActionResolver._normalize_hallow_list_param(
+                draft.params,
+                creature_param,
+                allowed=RESOLVER_HALLOW_EXTRA_EFFECT_CREATURE_TYPES,
+                required=False,
+            )
+            if error is not None:
+                return error
+        if effect in RESOLVER_HALLOW_EXTRA_EFFECTS_REQUIRING_DAMAGE_TYPE:
+            error = ActionResolver._normalize_hallow_scalar_param(
+                draft.params,
+                damage_param,
+                allowed=RESOLVER_HALLOW_EXTRA_EFFECT_DAMAGE_TYPES,
+                required=True,
+            )
+            if error is not None:
+                return error
+        elif draft.params.get(damage_param) not in (None, ""):
+            return ActionResolver._normalize_hallow_scalar_param(
+                draft.params,
+                damage_param,
+                allowed=RESOLVER_HALLOW_EXTRA_EFFECT_DAMAGE_TYPES,
+                required=False,
+            )
+        return None
+
+    @staticmethod
+    def _first_normalized_list_value(params: dict[str, Any], param_name: str) -> str:
+        raw = params.get(param_name)
+        raw_values = raw if isinstance(raw, list) else [raw]
+        if not raw_values:
+            return ""
+        return str(raw_values[0]).casefold().strip()
+
+    @staticmethod
+    def _normalize_hallow_list_param(
+        params: dict[str, Any],
+        param_name: str,
+        *,
+        allowed: frozenset[str],
+        required: bool,
+    ) -> str | None:
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            if required:
+                return f"missing required parameter {param_name}"
+            return None
+        if isinstance(raw, dict):
+            return f"parameter {param_name} must be a list"
+        raw_values = raw if isinstance(raw, list) else [raw]
+        if not raw_values:
+            if required:
+                return f"parameter {param_name} must not be empty"
+            return None
+        normalized_values: list[str] = []
+        for value in raw_values:
+            if isinstance(value, (dict, list)):
+                return f"parameter {param_name} entries must be scalars"
+            normalized = str(value).casefold().strip()
+            if normalized not in allowed:
+                expected = ", ".join(sorted(allowed))
+                return f"{param_name} must contain only: {expected}"
+            if normalized not in normalized_values:
+                normalized_values.append(normalized)
+        params[param_name] = normalized_values
+        return None
+
+    @staticmethod
+    def _normalize_hallow_scalar_param(
+        params: dict[str, Any],
+        param_name: str,
+        *,
+        allowed: frozenset[str],
+        required: bool,
+    ) -> str | None:
+        raw = params.get(param_name)
+        if raw is None or raw == "":
+            if required:
+                return f"missing required parameter {param_name}"
+            return None
+        if isinstance(raw, (dict, list)):
+            return f"parameter {param_name} must be a scalar"
+        normalized = str(raw).casefold().strip()
+        if normalized not in allowed:
+            expected = ", ".join(sorted(allowed))
+            return f"{param_name} must be one of: {expected}"
+        params[param_name] = normalized
         return None
 
     @staticmethod
