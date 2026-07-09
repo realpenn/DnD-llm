@@ -260,6 +260,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.reckless_attack",
     "srd.regenerate",
     "srd.resurrection",
+    "srd.true_resurrection",
     "srd.reliable_talent",
     "srd.remarkable_athlete",
     "srd.repelling_blast",

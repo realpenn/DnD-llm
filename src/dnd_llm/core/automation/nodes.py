@@ -432,20 +432,38 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             "dead_days_param",
             "died_of_old_age_param",
             "undead_when_died_param",
+            "restored_creature_type_param",
+            "original_body_exists_param",
+            "creature_name_param",
         ):
             value = node.get(key)
             if value is not None and (not isinstance(value, str) or not value):
                 errors.append(f"{path}: resurrection {key} must be a string")
-        for key in (
-            "max_dead_days",
-            "caster_tax_dead_days_at_least",
-            "target_d20_test_penalty",
-        ):
+        for key in ("max_dead_days", "caster_tax_dead_days_at_least"):
             value = node.get(key)
             if value is not None and (
                 not isinstance(value, int) or isinstance(value, bool) or value < 1
             ):
                 errors.append(f"{path}: resurrection {key} must be a positive integer")
+        target_penalty = node.get("target_d20_test_penalty")
+        if target_penalty is not None and (
+            not isinstance(target_penalty, int)
+            or isinstance(target_penalty, bool)
+            or target_penalty < 0
+        ):
+            errors.append(
+                f"{path}: resurrection target_d20_test_penalty must be a non-negative integer"
+            )
+        for key in ("allow_undead_when_died", "restores_undead_to_non_undead_form"):
+            value = node.get(key)
+            if value is not None and not isinstance(value, bool):
+                errors.append(f"{path}: resurrection {key} must be a boolean")
+        markers = node.get("remove_effect_markers")
+        if markers is not None and (
+            not isinstance(markers, list)
+            or not all(isinstance(marker, str) and marker for marker in markers)
+        ):
+            errors.append(f"{path}: resurrection remove_effect_markers must be strings")
     if node_type == "preserve_life_healing":
         points_param = node.get("points_param", "preserve_life_points")
         if not isinstance(points_param, str) or not points_param:

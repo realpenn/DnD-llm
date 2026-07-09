@@ -54,6 +54,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.circle_of_death",
         "srd.clone",
         "srd.resurrection",
+        "srd.true_resurrection",
         "srd.disintegrate",
         "srd.heal",
         "srd.harm",
@@ -954,6 +955,81 @@ def test_compendium_loads_srd_actions() -> None:
             "max_dead_days": 36500,
             "target_d20_test_penalty": 4,
             "caster_tax_dead_days_at_least": 365,
+        },
+    ]
+    true_resurrection_spell = compendium.spell("srd.spell.true_resurrection")
+    assert true_resurrection_spell.level == 9
+    assert true_resurrection_spell.school == "necromancy"
+    assert true_resurrection_spell.classes == ["cleric", "druid"]
+    true_resurrection = compendium.action("srd.true_resurrection")
+    assert true_resurrection.requirements == {
+        "spell_level": 9,
+        "class_any": ["cleric", "druid"],
+    }
+    assert true_resurrection.properties == {
+        "spell_classes": ["cleric", "druid"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"hours": 1},
+        "material_component": {
+            "description": "diamonds worth 25,000+ GP, which the spell consumes",
+            "consumed": True,
+            "consumed_gold": 25000,
+        },
+        "target_type": "dead_creature",
+        "dead_no_more_than_years": 200,
+        "dead_no_more_than_days": 73000,
+        "cannot_revive_old_age_death": True,
+        "can_revive_undead_and_restore_non_undead_form": True,
+        "returns_with_all_hit_points": True,
+        "closes_all_wounds": True,
+        "neutralizes_any_poison": True,
+        "cures_all_magical_contagions": True,
+        "lifts_curses_at_death": True,
+        "replaces_damaged_or_missing_organs_and_limbs": True,
+        "can_provide_new_body_if_original_no_longer_exists": True,
+        "requires_creature_name_if_new_body": True,
+        "new_body_appears_in_unoccupied_space_within_10_ft": True,
+        "original_body_database_not_automated": True,
+        "body_creation_not_automated": True,
+        "chosen_unoccupied_space_not_automated": True,
+        "restored_creature_type_param": "true_resurrection_restored_creature_type",
+        "original_body_exists_param": "true_resurrection_original_body_exists",
+        "creature_name_param": "true_resurrection_creature_name",
+        "no_resurrection_penalty": True,
+        "no_resurrection_caster_tax": True,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.true_resurrection",
+        "spell_level": 9,
+    }
+    assert "does_not_cure_disease" not in true_resurrection.properties
+    assert true_resurrection.cost.spell_slot_level == 9
+    assert true_resurrection.cost.gold == 25000
+    assert true_resurrection.range == {"touch": True}
+    assert true_resurrection.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert true_resurrection.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "resurrection",
+            "dead_days_param": "true_resurrection_dead_days",
+            "died_of_old_age_param": "true_resurrection_old_age_death",
+            "undead_when_died_param": "true_resurrection_undead_when_died",
+            "restored_creature_type_param": "true_resurrection_restored_creature_type",
+            "original_body_exists_param": "true_resurrection_original_body_exists",
+            "creature_name_param": "true_resurrection_creature_name",
+            "max_dead_days": 73000,
+            "target_d20_test_penalty": 0,
+            "allow_undead_when_died": True,
+            "restores_undead_to_non_undead_form": True,
+            "remove_effect_markers": [
+                "magical_contagion",
+                "curse",
+                "cursed_item_attunement",
+            ],
+            "cures_all_magical_contagions": True,
+            "lifts_curses_at_death": True,
+            "replaces_damaged_or_missing_organs_and_limbs": True,
         },
     ]
     chain_lightning = compendium.action("srd.chain_lightning")
@@ -9317,6 +9393,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.finger_of_death",
         "srd.spell.clone",
         "srd.spell.resurrection",
+        "srd.spell.true_resurrection",
         "srd.spell.antimagic_field",
         "srd.spell.charm_monster",
         "srd.spell.commune",

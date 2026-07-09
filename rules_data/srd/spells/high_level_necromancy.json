@@ -241,6 +241,97 @@
       }
     },
     {
+      "id": "srd.spell.true_resurrection",
+      "name": "True Resurrection",
+      "localization": {
+        "en": "True Resurrection",
+        "zh": "完全复生术",
+        "aliases": ["完全复活术", "真正复活术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "necromancy",
+      "classes": ["cleric", "druid"],
+      "action": {
+        "id": "srd.true_resurrection",
+        "name": "True Resurrection",
+        "localization": {
+          "en": "True Resurrection",
+          "zh": "完全复生术",
+          "aliases": ["完全复活术", "真正复活术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["cleric", "druid"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 1 },
+          "material_component": {
+            "description": "diamonds worth 25,000+ GP, which the spell consumes",
+            "consumed": true,
+            "consumed_gold": 25000
+          },
+          "target_type": "dead_creature",
+          "dead_no_more_than_years": 200,
+          "dead_no_more_than_days": 73000,
+          "cannot_revive_old_age_death": true,
+          "can_revive_undead_and_restore_non_undead_form": true,
+          "returns_with_all_hit_points": true,
+          "closes_all_wounds": true,
+          "neutralizes_any_poison": true,
+          "cures_all_magical_contagions": true,
+          "lifts_curses_at_death": true,
+          "replaces_damaged_or_missing_organs_and_limbs": true,
+          "can_provide_new_body_if_original_no_longer_exists": true,
+          "requires_creature_name_if_new_body": true,
+          "new_body_appears_in_unoccupied_space_within_10_ft": true,
+          "original_body_database_not_automated": true,
+          "body_creation_not_automated": true,
+          "chosen_unoccupied_space_not_automated": true,
+          "restored_creature_type_param": "true_resurrection_restored_creature_type",
+          "original_body_exists_param": "true_resurrection_original_body_exists",
+          "creature_name_param": "true_resurrection_creature_name",
+          "no_resurrection_penalty": true,
+          "no_resurrection_caster_tax": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9, "gold": 25000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "resurrection",
+            "dead_days_param": "true_resurrection_dead_days",
+            "died_of_old_age_param": "true_resurrection_old_age_death",
+            "undead_when_died_param": "true_resurrection_undead_when_died",
+            "restored_creature_type_param": "true_resurrection_restored_creature_type",
+            "original_body_exists_param": "true_resurrection_original_body_exists",
+            "creature_name_param": "true_resurrection_creature_name",
+            "max_dead_days": 73000,
+            "target_d20_test_penalty": 0,
+            "allow_undead_when_died": true,
+            "restores_undead_to_non_undead_form": true,
+            "remove_effect_markers": ["magical_contagion", "curse", "cursed_item_attunement"],
+            "cures_all_magical_contagions": true,
+            "lifts_curses_at_death": true,
+            "replaces_damaged_or_missing_organs_and_limbs": true
+          }
+        ],
+        "audit_label": "True Resurrection"
+      }
+    },
+    {
       "id": "srd.spell.clone",
       "name": "Clone",
       "localization": { "en": "Clone", "zh": "克隆术", "aliases": ["克隆"] },

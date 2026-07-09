@@ -1452,44 +1452,81 @@ class AutomationExecutor:
                         "path": path,
                     }
                 )
+            marker_names = [str(marker) for marker in node.get("remove_effect_markers", [])]
+            removed_markers: dict[str, int] = {}
+            removed_marker_owners: list[dict[str, Any]] = []
+            if marker_names:
+                removed_markers, removed_marker_owners = self._remove_effect_markers_for_target(
+                    target_id,
+                    marker_names,
+                )
+                if removed_markers:
+                    ctx.result.state_changes.append(
+                        {
+                            "type": "remove_condition",
+                            "target_id": target_id,
+                            "removed": {},
+                            "removed_markers": removed_markers,
+                            "removed_owners": removed_marker_owners,
+                            "true_resurrection_lifts_markers": True,
+                            "path": path,
+                        }
+                    )
+            undead_form_change = self._restore_non_undead_form_if_needed(
+                ctx,
+                node,
+                target_id,
+                path,
+            )
+            if undead_form_change is not None:
+                ctx.result.state_changes.append(undead_form_change)
 
             revived = self._entity(target_id)
-            ctx.result.state_changes.append(
-                {
-                    "type": "resurrection",
-                    "target_id": target_id,
-                    "hp_before": hp_before,
-                    "hp_after": int(getattr(revived, "hp_current")),
-                    "hp_max": hp_max,
-                    "dead_before": dead_before,
-                    "dead_after": bool(getattr(revived, "dead", False)),
-                    "stable_before": stable_before,
-                    "stable_after": bool(getattr(revived, "stable", False)),
-                    "death_save_successes_before": successes_before,
-                    "death_save_successes_after": int(
-                        getattr(revived, "death_save_successes", 0)
-                    ),
-                    "death_save_failures_before": failures_before,
-                    "death_save_failures_after": int(
-                        getattr(revived, "death_save_failures", 0)
-                    ),
-                    "returns_with_all_hit_points": True,
-                    "closes_mortal_wounds": True,
-                    "restores_missing_body_parts": True,
-                    "path": path,
-                }
-            )
-            ctx.result.state_changes.append(
-                self._apply_resurrection_penalty_effect(
-                    ctx,
-                    target_id,
-                    target_penalty,
-                    path,
+            change: dict[str, Any] = {
+                "type": "resurrection",
+                "target_id": target_id,
+                "hp_before": hp_before,
+                "hp_after": int(getattr(revived, "hp_current")),
+                "hp_max": hp_max,
+                "dead_before": dead_before,
+                "dead_after": bool(getattr(revived, "dead", False)),
+                "stable_before": stable_before,
+                "stable_after": bool(getattr(revived, "stable", False)),
+                "death_save_successes_before": successes_before,
+                "death_save_successes_after": int(getattr(revived, "death_save_successes", 0)),
+                "death_save_failures_before": failures_before,
+                "death_save_failures_after": int(getattr(revived, "death_save_failures", 0)),
+                "returns_with_all_hit_points": True,
+                "closes_mortal_wounds": True,
+                "restores_missing_body_parts": True,
+                "path": path,
+            }
+            if node.get("cures_all_magical_contagions") is True:
+                change["cures_all_magical_contagions"] = True
+            if node.get("lifts_curses_at_death") is True:
+                change["lifts_curses_at_death"] = True
+            if node.get("replaces_damaged_or_missing_organs_and_limbs") is True:
+                change["replaces_damaged_or_missing_organs_and_limbs"] = True
+            if self._resurrection_original_body_exists(node, ctx.params) is False:
+                creature_name_param = str(
+                    node.get("creature_name_param", "true_resurrection_creature_name")
                 )
-            )
+                change["provides_new_body"] = True
+                change["creature_name"] = str(ctx.params[creature_name_param])
+                change["appears_in_unoccupied_space_within_10_ft"] = True
+            ctx.result.state_changes.append(change)
+            if target_penalty > 0:
+                ctx.result.state_changes.append(
+                    self._apply_resurrection_penalty_effect(
+                        ctx,
+                        target_id,
+                        target_penalty,
+                        path,
+                    )
+                )
 
-        threshold = int(node.get("caster_tax_dead_days_at_least", 365))
-        if dead_days is not None and dead_days >= threshold:
+        threshold_raw = node.get("caster_tax_dead_days_at_least")
+        if threshold_raw is not None and dead_days is not None and dead_days >= int(threshold_raw):
             ctx.result.state_changes.append(
                 self._apply_resurrection_caster_tax(ctx, path, dead_days)
             )
@@ -3778,6 +3815,53 @@ class AutomationExecutor:
     def _effect_id(self, target_id: str, path: str) -> str:
         safe_path = re.sub(r"[^a-zA-Z0-9]+", "-", path).strip("-") or "effect"
         return f"effect-{self.state.event_counter}-{target_id}-{safe_path}"
+
+    def _restore_non_undead_form_if_needed(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        path: str,
+    ) -> dict[str, Any] | None:
+        if node.get("restores_undead_to_non_undead_form") is not True:
+            return None
+        target = self._entity(target_id)
+        current_type = str(getattr(target, "creature_type", "")).lower()
+        undead_when_died = bool(
+            ctx.params.get(str(node.get("undead_when_died_param", "resurrection_undead_when_died")))
+        )
+        if current_type != "undead" and not undead_when_died:
+            return None
+        restored_type = self._validated_restored_creature_type(node, ctx.params)
+        changed = self._set_creature_type_for_target(target_id, restored_type)
+        return {
+            "type": "creature_type_restored",
+            "target_id": target_id,
+            "source_action_id": ctx.action.id,
+            "creature_type_before": current_type or None,
+            "creature_type_after": restored_type,
+            "restored_from_undead_form": True,
+            "changed": changed,
+            "path": path,
+        }
+
+    def _set_creature_type_for_target(self, target_id: str, creature_type: str) -> bool:
+        changed = False
+
+        def set_if_possible(entity: Any) -> None:
+            nonlocal changed
+            if hasattr(entity, "creature_type"):
+                setattr(entity, "creature_type", creature_type)
+                changed = True
+
+        if target_id in self.state.monsters:
+            set_if_possible(self.state.monsters[target_id])
+        if self.state.encounter is not None and target_id in self.state.encounter.combatants:
+            combatant = self.state.encounter.combatants[target_id]
+            set_if_possible(combatant)
+            if combatant.entity_id in self.state.monsters:
+                set_if_possible(self.state.monsters[combatant.entity_id])
+        return changed
 
     def _apply_resurrection_penalty_effect(
         self,
@@ -11588,14 +11672,23 @@ class AutomationExecutor:
             self._resurrection_dead_days(node, params)
             if bool(params.get(str(node.get("died_of_old_age_param", "resurrection_old_age_death")))):
                 raise AutomationError("Resurrection cannot revive a creature that died of old age")
-            if bool(
-                params.get(
-                    str(node.get("undead_when_died_param", "resurrection_undead_when_died"))
-                )
-            ):
+            allow_undead = bool(node.get("allow_undead_when_died", False))
+            undead_when_died = bool(
+                params.get(str(node.get("undead_when_died_param", "resurrection_undead_when_died")))
+            )
+            if undead_when_died and not allow_undead:
                 raise AutomationError(
                     "Resurrection cannot revive a creature that was Undead when it died"
                 )
+            original_body_exists = self._resurrection_original_body_exists(node, params)
+            if original_body_exists is False:
+                creature_name_param = str(
+                    node.get("creature_name_param", "true_resurrection_creature_name")
+                )
+                if not str(params.get(creature_name_param, "")).strip():
+                    raise AutomationError(
+                        f"missing required parameter {creature_name_param} when original body no longer exists"
+                    )
             for target_id in targets:
                 target = self._entity(target_id)
                 if hasattr(target, "dead"):
@@ -11604,10 +11697,13 @@ class AutomationExecutor:
                 elif int(getattr(target, "hp_current", 1)) > 0:
                     raise AutomationError("Resurrection target must be dead")
                 creature_type = str(getattr(target, "creature_type", "")).lower()
-                if creature_type == "undead":
+                restores_undead = bool(node.get("restores_undead_to_non_undead_form", False))
+                if creature_type == "undead" and not allow_undead:
                     raise AutomationError(
                         "Resurrection cannot revive a creature that was Undead when it died"
                     )
+                if restores_undead and (creature_type == "undead" or undead_when_died):
+                    self._validated_restored_creature_type(node, params)
             return
         _ = actor_id
 
@@ -11627,8 +11723,46 @@ class AutomationExecutor:
             raise AutomationError(f"parameter {param_name} must be non-negative")
         max_dead_days = int(node.get("max_dead_days", 36500))
         if dead_days > max_dead_days:
+            if max_dead_days == 36500:
+                raise AutomationError("Resurrection cannot revive a creature dead over a century")
+            if max_dead_days == 73000:
+                raise AutomationError(
+                    "True Resurrection cannot revive a creature dead over 200 years"
+                )
             raise AutomationError("Resurrection cannot revive a creature dead over a century")
         return dead_days
+
+    @staticmethod
+    def _resurrection_original_body_exists(
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> bool | None:
+        param_name = str(node.get("original_body_exists_param", "true_resurrection_original_body_exists"))
+        if param_name not in params:
+            return None
+        value = params[param_name]
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "yes", "1"}:
+                return True
+            if normalized in {"false", "no", "0"}:
+                return False
+        raise AutomationError(f"parameter {param_name} must be a boolean")
+
+    @staticmethod
+    def _validated_restored_creature_type(
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> str:
+        param_name = str(node.get("restored_creature_type_param", "true_resurrection_restored_creature_type"))
+        restored = str(params.get(param_name, "")).strip().lower()
+        allowed = HALLOW_EXTRA_EFFECT_CREATURE_TYPES - {"undead"}
+        if restored not in allowed:
+            expected = ", ".join(sorted(allowed))
+            raise AutomationError(f"{param_name} must be a non-Undead creature type: {expected}")
+        return restored
 
     def _validate_restoring_touch_preconditions(
         self,

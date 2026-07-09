@@ -28136,6 +28136,204 @@ def test_resurrection_rejects_srd_exclusions_before_cost(make_state) -> None:
     assert caster.gold == 1000
 
 
+def test_true_resurrection_revives_and_cleans_magical_contagions_and_curses(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 25000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.hp_max = 55
+    target.dead = True
+    target.stable = True
+    target.death_save_successes = 2
+    target.death_save_failures = 1
+    target.status_effects = [
+        {"effect_id": "combat-poison", "condition": "poisoned"},
+        {"effect_id": "combat-contagion", "effect_markers": ["magical_contagion"]},
+        {"effect_id": "combat-curse", "effect_markers": ["curse"]},
+    ]
+    target_character = state.characters["pc2"]
+    target_character.hp_current = 0
+    target_character.hp_max = 55
+    target_character.dead = True
+    target_character.stable = True
+    target_character.death_save_successes = 2
+    target_character.death_save_failures = 1
+    target_character.status_effects = [
+        {"effect_id": "character-poison", "condition": "poisoned"},
+        {"effect_id": "character-contagion", "effect_markers": ["magical_contagion"]},
+        {"effect_id": "character-cursed-item", "effect_markers": ["cursed_item_attunement"]},
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.true_resurrection",
+        ["pc2"],
+        params={
+            "slot_level": 9,
+            "true_resurrection_dead_days": 73000,
+            "true_resurrection_original_body_exists": False,
+            "true_resurrection_creature_name": "Ally",
+        },
+        idempotency_key="cast-true-resurrection",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert caster.gold == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] in {"damage", "saving_throw"} for change in result["state_changes"])
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_9", "gold"]
+    resurrection_change = next(
+        change for change in result["state_changes"] if change["type"] == "resurrection"
+    )
+    assert resurrection_change["hp_after"] == 55
+    assert resurrection_change["dead_after"] is False
+    assert resurrection_change["death_save_successes_after"] == 0
+    assert resurrection_change["death_save_failures_after"] == 0
+    assert resurrection_change["cures_all_magical_contagions"] is True
+    assert resurrection_change["lifts_curses_at_death"] is True
+    assert resurrection_change["replaces_damaged_or_missing_organs_and_limbs"] is True
+    assert resurrection_change["provides_new_body"] is True
+    assert resurrection_change["creature_name"] == "Ally"
+    assert resurrection_change["appears_in_unoccupied_space_within_10_ft"] is True
+    assert target.hp_current == 55
+    assert target.dead is False
+    assert target_character.hp_current == 55
+    assert target_character.dead is False
+
+    remove_conditions = [
+        change for change in result["state_changes"] if change["type"] == "remove_condition"
+    ]
+    assert remove_conditions[0]["removed"] == {"poisoned": 2}
+    assert remove_conditions[1]["removed_markers"] == {
+        "magical_contagion": 2,
+        "curse": 1,
+        "cursed_item_attunement": 1,
+    }
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    assert not any(
+        effect.get("passive_modifiers", {}).get("resurrection_penalty") is True
+        for effect in target_character.status_effects
+    )
+    assert not any(
+        effect.get("passive_modifiers", {}).get("resurrection_caster_tax") is True
+        for effect in caster.status_effects
+    )
+
+
+def test_true_resurrection_restores_undead_to_non_undead_form(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 25000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.dead = True
+    target.creature_type = "undead"
+    state.characters["pc2"].hp_current = 0
+    state.characters["pc2"].dead = True
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.true_resurrection",
+        ["pc2"],
+        params={
+            "slot_level": 9,
+            "true_resurrection_dead_days": 30,
+            "true_resurrection_restored_creature_type": "humanoid",
+        },
+        idempotency_key="true-resurrection-undead",
+    )
+
+    type_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "creature_type_restored"
+    )
+    assert type_change["creature_type_before"] == "undead"
+    assert type_change["creature_type_after"] == "humanoid"
+    assert type_change["restored_from_undead_form"] is True
+    assert target.creature_type == "humanoid"
+    assert target.dead is False
+    assert target.hp_current == target.hp_max
+
+
+def test_true_resurrection_rejects_srd_exclusions_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 25000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.dead = True
+    state.characters["pc2"].hp_current = 0
+    state.characters["pc2"].dead = True
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="died of old age"):
+        tools.perform_action(
+            "pc1",
+            "srd.true_resurrection",
+            ["pc2"],
+            params={"slot_level": 9, "true_resurrection_old_age_death": True},
+            idempotency_key="true-resurrection-old-age",
+        )
+    assert caster.spell_slots["9"] == 1
+    assert caster.gold == 25000
+
+    with pytest.raises(AutomationError, match="dead over 200 years"):
+        tools.perform_action(
+            "pc1",
+            "srd.true_resurrection",
+            ["pc2"],
+            params={"slot_level": 9, "true_resurrection_dead_days": 73001},
+            idempotency_key="true-resurrection-too-old",
+        )
+    assert caster.spell_slots["9"] == 1
+    assert caster.gold == 25000
+
+    with pytest.raises(AutomationError, match="true_resurrection_creature_name"):
+        tools.perform_action(
+            "pc1",
+            "srd.true_resurrection",
+            ["pc2"],
+            params={"slot_level": 9, "true_resurrection_original_body_exists": False},
+            idempotency_key="true-resurrection-missing-name",
+        )
+    assert caster.spell_slots["9"] == 1
+    assert caster.gold == 25000
+
+    target.creature_type = "undead"
+    with pytest.raises(AutomationError, match="non-Undead creature type"):
+        tools.perform_action(
+            "pc1",
+            "srd.true_resurrection",
+            ["pc2"],
+            params={"slot_level": 9, "true_resurrection_dead_days": 30},
+            idempotency_key="true-resurrection-missing-restored-type",
+        )
+    assert caster.spell_slots["9"] == 1
+    assert caster.gold == 25000
+
+
 def test_regenerate_heals_and_restores_one_hp_on_target_turn_start(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -159,7 +159,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
     enemy_status_effects: list[dict[str, Any]] = []
     enemy_resistances: list[str] = []
     ally_status_effects: list[dict[str, Any]] = []
-    ally_dead = action_id == "srd.resurrection"
+    ally_dead = action_id in {"srd.resurrection", "srd.true_resurrection"}
     if isinstance(action, ActionDefinition):
         required_item = action.requirements.get("item")
         if isinstance(required_item, str) and required_item:
