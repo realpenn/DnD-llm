@@ -65,6 +65,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.project_image",
         "srd.mirage_arcane",
         "srd.weird",
+        "srd.regenerate",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
@@ -4999,6 +5000,57 @@ def test_compendium_loads_srd_actions() -> None:
             },
         }
     ]
+    regenerate_spell = compendium.spell("srd.spell.regenerate")
+    assert regenerate_spell.level == 7
+    assert regenerate_spell.school == "transmutation"
+    assert regenerate_spell.classes == ["bard", "cleric", "druid"]
+    regenerate = compendium.action("srd.regenerate")
+    assert regenerate.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "cleric", "druid"],
+    }
+    assert regenerate.properties == {
+        "spell_classes": ["bard", "cleric", "druid"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"minutes": 1},
+        "material_component": {
+            "description": "a prayer wheel",
+            "consumed": False,
+        },
+        "target_type": "creature",
+        "initial_healing": "4d8+15",
+        "regenerate_hit_points_at_turn_start": 1,
+        "severed_body_parts_regrow_after_minutes": 2,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.regenerate",
+        "spell_level": 7,
+    }
+    assert regenerate.cost.spell_slot_level == 7
+    assert regenerate.cost.gold == 0
+    assert regenerate.range == {"touch": True}
+    assert regenerate.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert regenerate.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "healing",
+            "dice": "4d8+15",
+        },
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "regenerate": True,
+                "regenerate_hit_points_at_turn_start": 1,
+                "severed_body_parts_regrow_after_minutes": 2,
+                "severed_body_parts_regrow_after_rounds": 20,
+                "severed_body_parts_regrow": True,
+                "severed_body_part_tracking_not_automated": True,
+            },
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "target_turn_start",
+        },
+    ]
     wind_walk = compendium.action("srd.wind_walk")
     assert wind_walk.requirements == {
         "spell_level": 6,
@@ -9228,6 +9280,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.etherealness",
         "srd.spell.gate",
         "srd.spell.control_weather",
+        "srd.spell.regenerate",
         "srd.spell.reverse_gravity",
         "srd.spell.sequester",
     } <= set(compendium.spells)

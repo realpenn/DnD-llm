@@ -29,6 +29,7 @@ class EffectLifecycleResult:
     ticked: list[dict[str, Any]] = field(default_factory=list)
     removed: list[dict[str, Any]] = field(default_factory=list)
     damage: list[dict[str, Any]] = field(default_factory=list)
+    healing: list[dict[str, Any]] = field(default_factory=list)
     choice_required: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -38,6 +39,7 @@ class EffectLifecycleResult:
             or self.ticked
             or self.removed
             or self.damage
+            or self.healing
             or self.choice_required
         )
 
@@ -49,6 +51,7 @@ class EffectLifecycleResult:
             "ticked": self.ticked,
             "removed": self.removed,
             "damage": self.damage,
+            "healing": self.healing,
             "choice_required": self.choice_required,
         }
 
@@ -126,6 +129,16 @@ def tick_effects(
                     )
                     _remember_expired_effect(effect, expired_effect_ids)
                     continue
+            healing_entry = _turn_start_healing(
+                state,
+                effect,
+                owner_type,
+                owner_id,
+                actor_id,
+                trigger,
+            )
+            if healing_entry is not None:
+                result.healing.append(healing_entry)
             remaining_before = _remaining_ticks(duration)
             if remaining_before is None:
                 if repeat_save_entry is not None:
@@ -416,6 +429,64 @@ def _permanent_banishment_on_full_duration(
         "destination": destination,
     }
     return {"entry": entry, "effect": _permanent_banishment_effect(effect, entry)}
+
+
+def _turn_start_healing(
+    state: GameState,
+    effect: dict[str, Any],
+    owner_type: str,
+    owner_id: str,
+    actor_id: str,
+    trigger: str,
+) -> dict[str, Any] | None:
+    if trigger != "target_turn_start":
+        return None
+    modifiers = effect.get("passive_modifiers", {})
+    if not isinstance(modifiers, dict):
+        return None
+    amount_raw = modifiers.get("regenerate_hit_points_at_turn_start")
+    if amount_raw is None:
+        return None
+    amount = max(0, int(amount_raw))
+    if amount <= 0:
+        return None
+    target_id = _effect_target_id(effect, owner_type, owner_id) or actor_id
+    try:
+        target = state.entity_for_actor(target_id)
+    except KeyError:
+        target = _effect_owner(state, owner_type, owner_id)
+    if target is None or not hasattr(target, "hp_current") or not hasattr(target, "hp_max"):
+        return None
+    hp_before = int(getattr(target, "hp_current"))
+    hp_max = int(getattr(target, "hp_max"))
+    hp_after = min(hp_max, hp_before + amount)
+    setattr(target, "hp_current", hp_after)
+    _sync_linked_actor_hp(state, target, hp_after)
+    return {
+        "type": "healing",
+        "source_action_id": effect.get("source_action_id"),
+        "effect_id": effect.get("effect_id"),
+        "target_id": target_id,
+        "amount": amount,
+        "applied": hp_after - hp_before,
+        "hp_before": hp_before,
+        "hp_after": hp_after,
+        "trigger": trigger,
+        "owner_type": owner_type,
+        "owner_id": owner_id,
+    }
+
+
+def _sync_linked_actor_hp(state: GameState, target: Any, hp_current: int) -> None:
+    entity_id = getattr(target, "entity_id", None)
+    if isinstance(entity_id, str) and entity_id in state.characters:
+        state.characters[entity_id].hp_current = hp_current
+    target_id = getattr(target, "id", None)
+    if state.encounter is None or not isinstance(target_id, str):
+        return
+    for combatant in state.encounter.combatants.values():
+        if combatant.entity_id == target_id:
+            combatant.hp_current = hp_current
 
 
 def _effect_target_id(effect: dict[str, Any], owner_type: str, owner_id: str) -> str | None:

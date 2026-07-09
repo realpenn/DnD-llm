@@ -27878,6 +27878,132 @@ def test_control_weather_upcast_spends_higher_slot_without_extra_effect(
     assert state.world.active_effects[-1]["duration"] == {"until": "concentration_8_hours"}
 
 
+def test_regenerate_heals_and_restores_one_hp_on_target_turn_start(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 10
+    target.hp_max = 50
+    state.characters["pc2"].hp_current = 10
+    state.characters["pc2"].hp_max = 50
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([4]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.regenerate",
+        ["pc2"],
+        7,
+        idempotency_key="cast-regenerate",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["4d8+15"]
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == result["dice_rolls"][0]["total"]
+    assert healing_change["applied"] == 19
+    assert target.hp_current == 29
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc2"
+    assert passive_change["passive_modifiers"] == {
+        "regenerate": True,
+        "regenerate_hit_points_at_turn_start": 1,
+        "severed_body_parts_regrow_after_minutes": 2,
+        "severed_body_parts_regrow_after_rounds": 20,
+        "severed_body_parts_regrow": True,
+        "severed_body_part_tracking_not_automated": True,
+    }
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.regenerate"
+    assert effect["condition"] is None
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "target_turn_start"
+
+    caster_turn = tick_effects(state, trigger="target_turn_start", actor_id="pc1")
+    assert caster_turn.changed is False
+    assert target.hp_current == 29
+
+    target_turn = tick_effects(state, trigger="target_turn_start", actor_id="pc2")
+    assert target_turn.healing == [
+        {
+            "type": "healing",
+            "source_action_id": "srd.regenerate",
+            "effect_id": effect["effect_id"],
+            "target_id": "pc2",
+            "amount": 1,
+            "applied": 1,
+            "hp_before": 29,
+            "hp_after": 30,
+            "trigger": "target_turn_start",
+            "owner_type": "combatant",
+            "owner_id": "pc2",
+        }
+    ]
+    assert target_turn.ticked[0]["source_action_id"] == "srd.regenerate"
+    assert target_turn.ticked[0]["remaining_ticks_before"] == 600
+    assert target_turn.ticked[0]["remaining_ticks_after"] == 599
+    assert target.hp_current == 30
+    assert state.characters["pc2"].hp_current == 30
+
+
+def test_regenerate_upcast_spends_higher_slot_without_extra_healing(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 15}
+    caster.spell_slots["7"] = 0
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 1
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.regenerate",
+        ["pc2"],
+        8,
+        idempotency_key="cast-regenerate-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    assert cost_change["base_spell_slot_level"] == 7
+    assert cost_change["spell_slot_level"] == 8
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["4d8+15"]
+    healing_change = next(
+        change for change in result["state_changes"] if change["type"] == "healing"
+    )
+    assert healing_change["amount"] == result["dice_rolls"][0]["total"]
+    assert healing_change["applied"] == 16
+    assert state.encounter.combatants["pc2"].status_effects[-1]["duration"] == {
+        "until": "duration_1_hour"
+    }
+
+
 def test_wind_walk_applies_cloud_form_and_allows_only_dash(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
