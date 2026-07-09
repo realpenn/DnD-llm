@@ -56,6 +56,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.hallucinatory_terrain",
         "srd.phantasmal_killer",
         "srd.mislead",
+        "srd.project_image",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
@@ -1503,6 +1504,69 @@ def test_compendium_loads_srd_actions() -> None:
                 "discerned_creature_can_see_through_image": True,
                 "discerned_noise_sounds_hollow": True,
                 "trigger_and_performance_resolution_not_automated": True,
+            },
+        }
+    ]
+    project_image_spell = compendium.spell("srd.spell.project_image")
+    assert project_image_spell.level == 7
+    assert project_image_spell.school == "illusion"
+    assert project_image_spell.classes == ["bard", "wizard"]
+    project_image = compendium.action("srd.project_image")
+    assert project_image.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "wizard"],
+    }
+    assert project_image.properties == {
+        "spell_classes": ["bard", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a statuette of yourself worth 5+ GP",
+            "consumed": False,
+        },
+        "range_miles": 500,
+        "illusion_move_action_economy": "magic_action",
+        "illusion_move_distance_ft": 60,
+        "spell_definition_id": "srd.spell.project_image",
+        "spell_level": 7,
+    }
+    assert project_image.cost.spell_slot_level == 7
+    assert project_image.cost.gold == 0
+    assert project_image.range == {"normal_miles": 500}
+    assert project_image.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert project_image.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "projected_image",
+            "scope": {
+                "target": "previously_seen_location",
+                "range_miles": 500,
+            },
+            "duration": {"until": "concentration_1_day"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "illusory_copy_of_caster": True,
+                "can_appear_at_any_seen_location_within_range": True,
+                "ignores_intervening_obstacles": True,
+                "looks_and_sounds_like_caster": True,
+                "intangible": True,
+                "any_damage_makes_illusion_disappear_and_spell_end": True,
+                "caster_can_see_and_hear_through_illusion": True,
+                "move_action_economy": "magic_action",
+                "move_distance_ft": 60,
+                "can_gesture_speak_and_behave_as_caster_chooses": True,
+                "perfectly_mimics_caster_mannerisms": True,
+                "physical_interaction_reveals_illusion": True,
+                "things_can_pass_through_image": True,
+                "disbelieve_check": {
+                    "action": "study",
+                    "ability": "int",
+                    "skill": "investigation",
+                    "dc_from": {"spell_save_dc": "actor"},
+                },
+                "discerned_creature_can_see_through_image": True,
+                "discerned_noise_sounds_hollow": True,
+                "remote_location_and_sensory_routing_not_automated": True,
+                "illusion_damage_ending_not_automated": True,
             },
         }
     ]
@@ -8495,6 +8559,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.incendiary_cloud",
         "srd.spell.creation",
         "srd.spell.mislead",
+        "srd.spell.project_image",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.demiplane",

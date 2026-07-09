@@ -237,6 +237,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.primal_champion",
     "srd.primal_order",
     "srd.programmed_illusion",
+    "srd.project_image",
     "srd.private_sanctum",
     "srd.rage",
     "srd.ranger_expertise",

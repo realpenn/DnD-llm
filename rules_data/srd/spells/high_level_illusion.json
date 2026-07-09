@@ -460,6 +460,90 @@
         ],
         "audit_label": "Programmed Illusion"
       }
+    },
+    {
+      "id": "srd.spell.project_image",
+      "name": "Project Image",
+      "localization": {
+        "en": "Project Image",
+        "zh": "投影术",
+        "aliases": ["投影视像"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "illusion",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.project_image",
+        "name": "Project Image",
+        "localization": {
+          "en": "Project Image",
+          "zh": "投影术",
+          "aliases": ["投影视像"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_miles": 500 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a statuette of yourself worth 5+ GP",
+            "consumed": false
+          },
+          "range_miles": 500,
+          "illusion_move_action_economy": "magic_action",
+          "illusion_move_distance_ft": 60
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "projected_image",
+            "scope": {
+              "target": "previously_seen_location",
+              "range_miles": 500
+            },
+            "duration": { "until": "concentration_1_day" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "illusory_copy_of_caster": true,
+              "can_appear_at_any_seen_location_within_range": true,
+              "ignores_intervening_obstacles": true,
+              "looks_and_sounds_like_caster": true,
+              "intangible": true,
+              "any_damage_makes_illusion_disappear_and_spell_end": true,
+              "caster_can_see_and_hear_through_illusion": true,
+              "move_action_economy": "magic_action",
+              "move_distance_ft": 60,
+              "can_gesture_speak_and_behave_as_caster_chooses": true,
+              "perfectly_mimics_caster_mannerisms": true,
+              "physical_interaction_reveals_illusion": true,
+              "things_can_pass_through_image": true,
+              "disbelieve_check": {
+                "action": "study",
+                "ability": "int",
+                "skill": "investigation",
+                "dc_from": { "spell_save_dc": "actor" }
+              },
+              "discerned_creature_can_see_through_image": true,
+              "discerned_noise_sounds_hollow": true,
+              "remote_location_and_sensory_routing_not_automated": true,
+              "illusion_damage_ending_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Project Image"
+      }
     }
   ]
 }

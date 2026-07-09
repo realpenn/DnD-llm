@@ -16669,6 +16669,74 @@ def test_mislead_applies_invisibility_and_persistent_illusory_double(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
 
 
+def test_project_image_records_remote_intangible_illusion_without_consuming_material_gold(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 5
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.project_image",
+        [],
+        7,
+        idempotency_key="cast-project-image",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 5
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_7"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.project_image"
+    assert effect["effect_type"] == "projected_image"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "previously_seen_location",
+        "range_miles": 500,
+    }
+    assert effect["duration"] == {"until": "concentration_1_day"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "illusory_copy_of_caster": True,
+        "can_appear_at_any_seen_location_within_range": True,
+        "ignores_intervening_obstacles": True,
+        "looks_and_sounds_like_caster": True,
+        "intangible": True,
+        "any_damage_makes_illusion_disappear_and_spell_end": True,
+        "caster_can_see_and_hear_through_illusion": True,
+        "move_action_economy": "magic_action",
+        "move_distance_ft": 60,
+        "can_gesture_speak_and_behave_as_caster_chooses": True,
+        "perfectly_mimics_caster_mannerisms": True,
+        "physical_interaction_reveals_illusion": True,
+        "things_can_pass_through_image": True,
+        "disbelieve_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc_from": {"spell_save_dc": "actor"},
+        },
+        "discerned_creature_can_see_through_image": True,
+        "discerned_noise_sounds_hollow": True,
+        "remote_location_and_sensory_routing_not_automated": True,
+        "illusion_damage_ending_not_automated": True,
+    }
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["source_action_id"] == "srd.project_image"
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+
+
 def test_hallucinatory_terrain_records_timed_natural_terrain_illusion(
     make_state,
 ) -> None:
