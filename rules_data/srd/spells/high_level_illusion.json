@@ -378,6 +378,86 @@
       }
     },
     {
+      "id": "srd.spell.seeming",
+      "name": "Seeming",
+      "localization": {
+        "en": "Seeming",
+        "zh": "伪装群像",
+        "aliases": ["群体易容术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.seeming",
+        "name": "Seeming",
+        "localization": {
+          "en": "Seeming",
+          "zh": "伪装群像",
+          "aliases": ["群体易容术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "components": ["V", "S"],
+          "target_type": "creature",
+          "target_must_be_visible": true,
+          "allows_willing_target": true,
+          "willing_targets_are_affected_without_save": true,
+          "unwilling_targets_make_charisma_save": true,
+          "no_damage": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "saving_throw",
+            "ability": "cha",
+            "dc_from": { "spell_save_dc": "actor" },
+            "auto_fail_willing_targets": true
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "seeming": true,
+              "illusory_disguise": true,
+              "can_give_same_or_different_appearance_per_target": true,
+              "changes_appearance_of_body_and_equipment": true,
+              "apparent_height_change_max_ft": 1,
+              "can_appear_heavier_or_lighter": true,
+              "same_basic_limb_arrangement_required": true,
+              "physical_inspection_reveals_illusion": true,
+              "objects_pass_through_added_illusory_equipment": true,
+              "study_investigation_reveals_disguise": {
+                "action": "study",
+                "ability": "int",
+                "skill": "investigation",
+                "dc_from": { "spell_save_dc": "actor" }
+              },
+              "appearance_generation_and_study_resolution_not_automated": true
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Seeming"
+      }
+    },
+    {
       "id": "srd.spell.programmed_illusion",
       "name": "Programmed Illusion",
       "localization": {

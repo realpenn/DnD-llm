@@ -16669,6 +16669,161 @@ def test_mislead_applies_invisibility_and_persistent_illusory_double(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
 
 
+def _seeming_passive_modifiers() -> dict[str, Any]:
+    return {
+        "seeming": True,
+        "illusory_disguise": True,
+        "can_give_same_or_different_appearance_per_target": True,
+        "changes_appearance_of_body_and_equipment": True,
+        "apparent_height_change_max_ft": 1,
+        "can_appear_heavier_or_lighter": True,
+        "same_basic_limb_arrangement_required": True,
+        "physical_inspection_reveals_illusion": True,
+        "objects_pass_through_added_illusory_equipment": True,
+        "study_investigation_reveals_disguise": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc_from": {"spell_save_dc": "actor"},
+        },
+        "appearance_generation_and_study_resolution_not_automated": True,
+    }
+
+
+def test_seeming_affects_willing_target_without_save_and_ticks(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["pc2"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.seeming",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 5, "target_willing": {"pc2": True}},
+        idempotency_key="cast-seeming-willing-target",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node == {
+        "target_id": "pc2",
+        "ability": "cha",
+        "dc": 16,
+        "dc_source": "spell_save_dc:wizard",
+        "auto_failed": True,
+        "status_sources": [
+            {"kind": "auto_fail", "modifier": "auto_fail_willing_targets"},
+        ],
+        "success": False,
+    }
+    assert result["dice_rolls"] == []
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.seeming"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == _seeming_passive_modifiers()
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "damage", "condition"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+
+    assert lifecycle.ticked[0]["source_action_id"] == "srd.seeming"
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+
+
+def test_seeming_unwilling_failed_charisma_save_applies_disguise(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"wizard": 9}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target.abilities = {"cha": 8}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.seeming",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-seeming-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["target_id"] == "goblin1"
+    assert save_node["ability"] == "cha"
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20-1"]
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.seeming"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == _seeming_passive_modifiers()
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+
+
+def test_seeming_successful_charisma_save_is_unaffected(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"sorcerer": 9}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target.abilities = {"cha": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.seeming",
+        ["goblin1"],
+        5,
+        idempotency_key="cast-seeming-successful-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["target_id"] == "goblin1"
+    assert save_node["ability"] == "cha"
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:sorcerer"
+    assert save_node["success"] is True
+    assert target.status_effects == []
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+
 def test_project_image_records_remote_intangible_illusion_without_consuming_material_gold(
     make_state,
 ) -> None:

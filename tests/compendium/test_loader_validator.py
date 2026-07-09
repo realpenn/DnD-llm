@@ -56,6 +56,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.hallucinatory_terrain",
         "srd.phantasmal_killer",
         "srd.mislead",
+        "srd.seeming",
         "srd.project_image",
         "srd.mirage_arcane",
         "srd.weird",
@@ -1444,6 +1445,64 @@ def test_compendium_loads_srd_actions() -> None:
                 "caster_can_see_and_hear_through_double": True,
                 "double_movement_and_sensory_routing_not_automated": True,
             },
+        },
+    ]
+    seeming_spell = compendium.spell("srd.spell.seeming")
+    assert seeming_spell.level == 5
+    assert seeming_spell.school == "illusion"
+    assert seeming_spell.classes == ["bard", "sorcerer", "wizard"]
+    seeming = compendium.action("srd.seeming")
+    assert seeming.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "sorcerer", "wizard"],
+    }
+    assert seeming.properties == {
+        "spell_classes": ["bard", "sorcerer", "wizard"],
+        "components": ["V", "S"],
+        "target_type": "creature",
+        "target_must_be_visible": True,
+        "allows_willing_target": True,
+        "willing_targets_are_affected_without_save": True,
+        "unwilling_targets_make_charisma_save": True,
+        "no_damage": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.seeming",
+        "spell_level": 5,
+    }
+    assert seeming.cost.spell_slot_level == 5
+    assert seeming.range == {"normal_ft": 30}
+    assert seeming.target_policy == {"min": 1, "harmful": True}
+    assert seeming.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "saving_throw",
+            "ability": "cha",
+            "dc_from": {"spell_save_dc": "actor"},
+            "auto_fail_willing_targets": True,
+        },
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "seeming": True,
+                "illusory_disguise": True,
+                "can_give_same_or_different_appearance_per_target": True,
+                "changes_appearance_of_body_and_equipment": True,
+                "apparent_height_change_max_ft": 1,
+                "can_appear_heavier_or_lighter": True,
+                "same_basic_limb_arrangement_required": True,
+                "physical_inspection_reveals_illusion": True,
+                "objects_pass_through_added_illusory_equipment": True,
+                "study_investigation_reveals_disguise": {
+                    "action": "study",
+                    "ability": "int",
+                    "skill": "investigation",
+                    "dc_from": {"spell_save_dc": "actor"},
+                },
+                "appearance_generation_and_study_resolution_not_automated": True,
+            },
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
         },
     ]
     programmed_illusion_spell = compendium.spell("srd.spell.programmed_illusion")
@@ -8666,6 +8725,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.incendiary_cloud",
         "srd.spell.creation",
         "srd.spell.mislead",
+        "srd.spell.seeming",
         "srd.spell.project_image",
         "srd.spell.mirage_arcane",
         "srd.spell.weird",

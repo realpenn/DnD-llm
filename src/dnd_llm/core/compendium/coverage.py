@@ -263,6 +263,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.second_wind",
     "srd.second_story_work",
     "srd.secret_chest",
+    "srd.seeming",
     "srd.shortsword_attack",
     "srd.slow_fall",
     "srd.sneak_attack",
