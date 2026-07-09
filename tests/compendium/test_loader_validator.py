@@ -99,6 +99,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.find_the_path",
         "srd.foresight",
         "srd.locate_creature",
+        "srd.power_word_kill",
         "srd.power_word_stun",
         "srd.telepathic_bond",
         "srd.true_seeing",
@@ -931,6 +932,52 @@ def test_compendium_loads_srd_actions() -> None:
                         "turn_owner_id_from": "actor",
                     },
                     "tick_on": "self_turn_start",
+                }
+            ],
+        },
+    ]
+    power_word_kill_spell = compendium.spell("srd.spell.power_word_kill")
+    assert power_word_kill_spell.level == 9
+    assert power_word_kill_spell.school == "enchantment"
+    assert power_word_kill_spell.classes == ["bard", "sorcerer", "warlock", "wizard"]
+    power_word_kill = compendium.action("srd.power_word_kill")
+    assert power_word_kill.requirements == {
+        "spell_level": 9,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert power_word_kill.properties == {
+        "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+        "components": ["V"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "kill_hit_point_threshold": 100,
+        "high_hp_damage": {"dice": "12d12", "damage_type": "psychic"},
+        "no_initial_saving_throw": True,
+        "no_no_effect_high_hp_branch": True,
+        "spell_definition_id": "srd.spell.power_word_kill",
+        "spell_level": 9,
+    }
+    assert power_word_kill.cost.spell_slot_level == 9
+    assert power_word_kill.range == {"normal_ft": 60}
+    assert power_word_kill.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert power_word_kill.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "branch",
+            "condition": "target_hp_at_or_below",
+            "hp": 100,
+            "if_true": [
+                {
+                    "type": "instant_death",
+                    "reason": "power_word_kill",
+                    "death_ward_negated_reason": "power_word_kill",
+                }
+            ],
+            "if_false": [
+                {
+                    "type": "damage",
+                    "dice": "12d12",
+                    "damage_type": "psychic",
                 }
             ],
         },

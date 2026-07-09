@@ -8,6 +8,7 @@ NODE_TYPES = {
     "saving_throw",
     "ability_check",
     "damage",
+    "instant_death",
     "healing",
     "temp_hp",
     "condition",
@@ -42,6 +43,7 @@ NODE_TYPES = {
 
 STATE_CHANGING_NODE_TYPES = {
     "damage",
+    "instant_death",
     "healing",
     "temp_hp",
     "condition",
@@ -265,6 +267,18 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         and not isinstance(node["shared_roll"], bool)
     ):
         errors.append(f"{path}: shared_roll must be a boolean")
+    if node_type == "instant_death":
+        reason = node.get("reason")
+        if reason is not None and (not isinstance(reason, str) or not reason):
+            errors.append(f"{path}: instant_death.reason must be a non-empty string")
+        negated_reason = node.get("death_ward_negated_reason")
+        if negated_reason is not None and (
+            not isinstance(negated_reason, str) or not negated_reason
+        ):
+            errors.append(
+                f"{path}: instant_death.death_ward_negated_reason "
+                "must be a non-empty string"
+            )
     if node_type in {"damage", "healing", "temp_hp"} and "minimum_amount" in node:
         minimum_amount = node["minimum_amount"]
         if (

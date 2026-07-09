@@ -24102,6 +24102,133 @@ def test_power_word_stun_high_hp_sets_speed_zero_until_caster_next_turn(
     assert effective_speed(target.speed_ft, target.status_effects) == 30
 
 
+def test_power_word_kill_low_hp_target_dies_without_save_or_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 100
+    target.hp_max = 140
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.power_word_kill",
+        ["goblin1"],
+        9,
+        idempotency_key="cast-power-word-kill-low-hp",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["9"] == 0
+    death_change = next(change for change in result["state_changes"] if change["type"] == "death")
+    assert death_change["source_action_id"] == "srd.power_word_kill"
+    assert death_change["reason"] == "power_word_kill"
+    assert death_change["path"] == "automation[1].if_true[0]"
+    assert death_change["entities"][0]["hp_before"] == 100
+    assert death_change["entities"][0]["hp_after"] == 0
+    assert death_change["entities"][0]["dead_after"] is True
+    assert target.hp_current == 0
+    assert target.dead is True
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+
+def test_power_word_kill_low_hp_instant_death_is_negated_by_death_ward(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 100
+    target.hp_max = 140
+    target.status_effects.append(
+        {
+            "effect_id": "death-ward-effect",
+            "source_action_id": "srd.death_ward",
+            "condition": None,
+            "passive_modifiers": {"death_ward": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.power_word_kill",
+        ["goblin1"],
+        9,
+        idempotency_key="cast-power-word-kill-death-ward",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["9"] == 0
+    death_ward_change = next(
+        change for change in result["state_changes"] if change["type"] == "death_ward"
+    )
+    assert death_ward_change["trigger"] == "instant_death_without_damage"
+    assert death_ward_change["negated_reason"] == "power_word_kill"
+    assert death_ward_change["negated_source_action_id"] == "srd.power_word_kill"
+    assert death_ward_change["removed_effects"] == [
+        {
+            "owner_type": "combatant",
+            "owner_id": "goblin1",
+            "effect_id": "death-ward-effect",
+            "source_action_id": "srd.death_ward",
+        }
+    ]
+    assert target.hp_current == 100
+    assert target.dead is False
+    assert target.status_effects == []
+    assert not any(change["type"] == "death" for change in result["state_changes"])
+
+
+def test_power_word_kill_high_hp_deals_srd_psychic_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 200
+    target.hp_max = 200
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.power_word_kill",
+        ["goblin1"],
+        9,
+        idempotency_key="cast-power-word-kill-high-hp",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert len(result["dice_rolls"]) == 1
+    damage_roll = result["dice_rolls"][0]
+    assert damage_roll["expression"] == "12d12"
+    assert len(damage_roll["dice"]) == 12
+    assert {die["sides"] for die in damage_roll["dice"]} == {12}
+    damage_change = next(
+        change for change in result["state_changes"] if change["type"] == "damage"
+    )
+    assert damage_change["path"] == "automation[1].if_false[0]"
+    assert damage_change["amount"] == damage_roll["total"]
+    assert damage_change["applied"] == damage_roll["total"]
+    assert damage_change["damage_type"] == "psychic"
+    assert target.hp_current == 200 - damage_roll["total"]
+    assert target.dead is False
+    assert not any(change["type"] == "death" for change in result["state_changes"])
+
+
 def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
     make_state,
 ) -> None:

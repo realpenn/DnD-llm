@@ -613,6 +613,8 @@ class AutomationExecutor:
             self._node_ability_check(ctx, node, path)
         elif node_type == "damage":
             self._node_damage(ctx, node, path)
+        elif node_type == "instant_death":
+            self._node_instant_death(ctx, node, path)
         elif node_type == "healing":
             self._node_healing(ctx, node, path)
         elif node_type == "cutting_words":
@@ -1327,6 +1329,29 @@ class AutomationExecutor:
             ctx.result.node_results[path]["tactical_mind"] = tactical_mind_result
         if stroke_of_luck_result is not None:
             ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
+
+    def _node_instant_death(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        reason = str(node.get("reason") or ctx.action.id)
+        negated_reason = str(node.get("death_ward_negated_reason") or reason)
+        for target_id in ctx.targets:
+            death_ward = self._consume_death_ward(
+                target_id,
+                trigger="instant_death_without_damage",
+                path=path,
+            )
+            if death_ward is not None:
+                death_ward["negated_reason"] = negated_reason
+                death_ward["negated_source_action_id"] = ctx.action.id
+                ctx.result.state_changes.append(death_ward)
+                continue
+            ctx.result.state_changes.append(
+                self._instant_death_change(
+                    target_id,
+                    reason=reason,
+                    source_action_id=ctx.action.id,
+                    path=path,
+                )
+            )
 
     def _node_damage(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         damage_type = self._pact_weapon_damage_type(
@@ -8942,6 +8967,51 @@ class AutomationExecutor:
             "target_id": target_id,
             "reason": "exhaustion",
             "exhaustion_level": level,
+            "entities": changed,
+            "path": path,
+        }
+
+    def _instant_death_change(
+        self,
+        target_id: str,
+        *,
+        reason: str,
+        source_action_id: str,
+        path: str,
+    ) -> dict[str, Any]:
+        target = self._entity(target_id)
+        owner = self._resource_owner(target_id)
+        changed: list[dict[str, Any]] = []
+        seen: set[int] = set()
+        for entity in (target, owner):
+            entity_key = id(entity)
+            if entity_key in seen:
+                continue
+            seen.add(entity_key)
+            before_hp = int(getattr(entity, "hp_current", 0))
+            before_dead = bool(getattr(entity, "dead", False))
+            if hasattr(entity, "hp_current"):
+                setattr(entity, "hp_current", 0)
+            if hasattr(entity, "dead"):
+                setattr(entity, "dead", True)
+            if hasattr(entity, "stable"):
+                setattr(entity, "stable", False)
+            changed.append(
+                {
+                    "entity_id": getattr(entity, "id", target_id),
+                    "hp_before": before_hp,
+                    "hp_after": int(getattr(entity, "hp_current", 0)),
+                    "dead_before": before_dead,
+                    "dead_after": bool(getattr(entity, "dead", False)),
+                }
+            )
+        if isinstance(owner, Character):
+            self._sync_character_to_combatants(owner)
+        return {
+            "type": "death",
+            "target_id": target_id,
+            "source_action_id": source_action_id,
+            "reason": reason,
             "entities": changed,
             "path": path,
         }
