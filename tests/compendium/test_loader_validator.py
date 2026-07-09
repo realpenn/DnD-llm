@@ -104,6 +104,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.incendiary_cloud",
         "srd.teleportation_circle",
         "srd.teleport",
+        "srd.plane_shift",
         "srd.demiplane",
         "srd.maze",
         "srd.maze_escape",
@@ -4179,6 +4180,75 @@ def test_compendium_loads_srd_actions() -> None:
                 "off_target_direction": "1d8",
                 "destination_database_not_automated": True,
                 "similar_area_search_not_automated": True,
+                "map_movement_not_automated": True,
+            },
+        },
+    ]
+    plane_shift_spell = compendium.spell("srd.spell.plane_shift")
+    assert plane_shift_spell.level == 7
+    assert plane_shift_spell.school == "conjuration"
+    assert plane_shift_spell.classes == ["cleric", "druid", "sorcerer", "warlock", "wizard"]
+    plane_shift = compendium.action("srd.plane_shift")
+    assert plane_shift.requirements == {
+        "spell_level": 7,
+        "class_any": ["cleric", "druid", "sorcerer", "warlock", "wizard"],
+    }
+    assert plane_shift.properties == {
+        "spell_classes": ["cleric", "druid", "sorcerer", "warlock", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a forked, metal rod worth 250+ GP and attuned to a plane of existence",
+            "consumed": False,
+        },
+        "requires_willing_target": True,
+        "requires_self_target": True,
+        "max_willing_companions": 8,
+        "linked_hands_in_circle_required": True,
+        "destination_plane_must_be_different": True,
+        "destination_general_terms_allowed": True,
+        "gm_determines_arrival_in_or_near_destination": True,
+        "teleportation_circle_sigil_sequence_option": True,
+        "teleportation_circle_must_be_on_another_plane": True,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_attack_roll": True,
+        "no_concentration": True,
+        "no_material_consumption": True,
+        "no_higher_level_spell_slot_effect": True,
+        "attuned_rod_inventory_not_automated": True,
+        "destination_resolution_not_automated": True,
+        "map_movement_not_automated": True,
+        "spell_definition_id": "srd.spell.plane_shift",
+        "spell_level": 7,
+    }
+    assert plane_shift.cost.spell_slot_level == 7
+    assert plane_shift.cost.gold == 0
+    assert plane_shift.range == {"touch": True}
+    assert plane_shift.target_policy == {
+        "min": 1,
+        "max": 9,
+        "self": True,
+        "harmful": False,
+    }
+    assert plane_shift.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "world_effect",
+            "effect_type": "plane_shift_transport",
+            "scope": {"target": "explicit", "range": "touch"},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "transports_actor": True,
+                "max_willing_companions": 8,
+                "linked_hands_in_circle_required": True,
+                "destination_plane_must_be_different": True,
+                "destination_can_be_specified_in_general_terms": True,
+                "gm_determines_arrival_in_or_near_destination": True,
+                "teleportation_circle_sigil_sequence_option": True,
+                "teleportation_circle_must_be_on_another_plane": True,
+                "too_small_circle_places_creatures_in_closest_unoccupied_spaces": True,
+                "attuned_rod_inventory_not_automated": True,
+                "destination_resolution_not_automated": True,
                 "map_movement_not_automated": True,
             },
         },
@@ -9514,6 +9584,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.resurrection",
         "srd.spell.true_resurrection",
         "srd.spell.teleport",
+        "srd.spell.plane_shift",
         "srd.spell.antimagic_field",
         "srd.spell.charm_monster",
         "srd.spell.commune",

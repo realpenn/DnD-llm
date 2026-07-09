@@ -25239,6 +25239,118 @@ def test_teleport_rejects_invalid_table_params_before_spending_slot(make_state) 
     assert state.world.active_effects == []
 
 
+def test_plane_shift_spends_slot_and_records_instant_cross_planar_transport(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 250
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.plane_shift",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 7, "target_willing": True},
+        idempotency_key="cast-plane-shift",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 250
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(
+        change["type"] in {"attack_roll", "saving_throw", "damage"}
+        for change in result["state_changes"]
+    )
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.plane_shift"
+    assert effect["effect_type"] == "plane_shift_transport"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "explicit",
+        "range": "touch",
+        "target_ids": ["pc1", "pc2"],
+    }
+    assert "target_id" not in effect["scope"]
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "transports_actor": True,
+        "max_willing_companions": 8,
+        "linked_hands_in_circle_required": True,
+        "destination_plane_must_be_different": True,
+        "destination_can_be_specified_in_general_terms": True,
+        "gm_determines_arrival_in_or_near_destination": True,
+        "teleportation_circle_sigil_sequence_option": True,
+        "teleportation_circle_must_be_on_another_plane": True,
+        "too_small_circle_places_creatures_in_closest_unoccupied_spaces": True,
+        "attuned_rod_inventory_not_automated": True,
+        "destination_resolution_not_automated": True,
+        "map_movement_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "plane_shift_transport"
+    assert world_effect_change["concentration"] is False
+    assert world_effect_change["scope"] == effect["scope"]
+
+
+def test_plane_shift_requires_self_and_willing_targets_before_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.actions.append("srd.plane_shift")
+    caster.spell_slots["7"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    resolver = ActionResolver(state, compendium.actions)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="位面传送盟友",
+            target_ids=["pc2"],
+            candidate_action_id="srd.plane_shift",
+            params={"slot_level": 7, "target_willing": True},
+        )
+    )
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target list must include self"
+
+    with pytest.raises(AutomationError, match="target list must include self"):
+        tools._execute_action(
+            action_id="srd.plane_shift",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 7, "target_willing": True},
+            idempotency_key="cast-plane-shift-without-self",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.plane_shift",
+            actor_id="pc1",
+            targets=["pc1", "pc2"],
+            params={"slot_level": 7, "target_willing": {"pc1": True}},
+            idempotency_key="cast-plane-shift-unwilling-companion",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert state.world.active_effects == []
+
+
 def test_etherealness_records_border_ethereal_world_effect_and_upcast_targets(
     make_state,
 ) -> None:

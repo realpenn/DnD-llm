@@ -1084,6 +1084,91 @@
       }
     },
     {
+      "id": "srd.spell.plane_shift",
+      "name": "Plane Shift",
+      "localization": {
+        "en": "Plane Shift",
+        "zh": "异界传送",
+        "aliases": ["位面传送", "异界传送术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "conjuration",
+      "classes": ["cleric", "druid", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.plane_shift",
+        "name": "Plane Shift",
+        "localization": {
+          "en": "Plane Shift",
+          "zh": "异界传送",
+          "aliases": ["位面传送", "异界传送术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 9, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["cleric", "druid", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a forked, metal rod worth 250+ GP and attuned to a plane of existence",
+            "consumed": false
+          },
+          "requires_willing_target": true,
+          "requires_self_target": true,
+          "max_willing_companions": 8,
+          "linked_hands_in_circle_required": true,
+          "destination_plane_must_be_different": true,
+          "destination_general_terms_allowed": true,
+          "gm_determines_arrival_in_or_near_destination": true,
+          "teleportation_circle_sigil_sequence_option": true,
+          "teleportation_circle_must_be_on_another_plane": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_concentration": true,
+          "no_material_consumption": true,
+          "no_higher_level_spell_slot_effect": true,
+          "attuned_rod_inventory_not_automated": true,
+          "destination_resolution_not_automated": true,
+          "map_movement_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "world_effect",
+            "effect_type": "plane_shift_transport",
+            "scope": { "target": "explicit", "range": "touch" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "transports_actor": true,
+              "max_willing_companions": 8,
+              "linked_hands_in_circle_required": true,
+              "destination_plane_must_be_different": true,
+              "destination_can_be_specified_in_general_terms": true,
+              "gm_determines_arrival_in_or_near_destination": true,
+              "teleportation_circle_sigil_sequence_option": true,
+              "teleportation_circle_must_be_on_another_plane": true,
+              "too_small_circle_places_creatures_in_closest_unoccupied_spaces": true,
+              "attuned_rod_inventory_not_automated": true,
+              "destination_resolution_not_automated": true,
+              "map_movement_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Plane Shift"
+      }
+    },
+    {
       "id": "srd.spell.etherealness",
       "name": "Etherealness",
       "localization": {
