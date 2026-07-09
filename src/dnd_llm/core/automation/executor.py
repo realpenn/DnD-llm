@@ -617,6 +617,7 @@ class AutomationExecutor:
         self._validate_fire_shield_type_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
         self._validate_resurrection_preconditions(action, actor_id, targets or [], params)
+        self._validate_teleport_outcome_preconditions(action, targets or [], params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
@@ -672,6 +673,8 @@ class AutomationExecutor:
             self._node_ability_check(ctx, node, path)
         elif node_type == "maze_escape":
             self._node_maze_escape(ctx, node, path)
+        elif node_type == "teleport_outcome":
+            self._node_teleport_outcome(ctx, node, path)
         elif node_type == "damage":
             self._node_damage(ctx, node, path)
         elif node_type == "instant_death":
@@ -1565,6 +1568,172 @@ class AutomationExecutor:
         }
         ctx.result.state_changes.append(change)
         ctx.result.node_results[path] = change
+
+    def _node_teleport_outcome(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        familiarity = self._teleport_familiarity(node, ctx.params)
+        target_mode = self._teleport_target_mode(node, ctx.params)
+        affected_target_ids = (
+            self._teleport_affected_creature_ids(ctx) if target_mode == "creatures" else []
+        )
+        table_rolls: list[dict[str, Any]] = []
+        object_mishap_damage: list[int] = []
+        mishap_count = 0
+        max_mishaps = int(node.get("max_mishaps", 20))
+
+        while True:
+            table_roll = self.roll_service.roll("1d100")
+            ctx.result.dice_rolls.append(table_roll.to_dict())
+            outcome = self._teleport_outcome_for_roll(
+                familiarity,
+                table_roll.total,
+                node.get("outcome_table", {}),
+            )
+            table_rolls.append({"roll": table_roll.total, "outcome": outcome})
+            if outcome != "mishap":
+                break
+            mishap_count += 1
+            if mishap_count > max_mishaps:
+                raise AutomationError("Teleport Mishap rerolled too many times")
+            if target_mode == "object":
+                object_mishap_damage.append(
+                    self._roll_teleport_object_mishap_damage(ctx, node)
+                )
+            else:
+                for target_id in affected_target_ids:
+                    self._apply_teleport_mishap_damage(
+                        ctx,
+                        node,
+                        target_id,
+                        mishap_count,
+                        path,
+                    )
+
+        change: dict[str, Any] = {
+            "type": "teleport_outcome",
+            "actor_id": ctx.actor_id,
+            "target_mode": target_mode,
+            "familiarity": familiarity,
+            "table_rolls": table_rolls,
+            "final_outcome": outcome,
+            "mishap_count": mishap_count,
+            "affected_target_ids": affected_target_ids,
+            "same_plane_required": True,
+            "destination_must_be_known_to_caster": True,
+            "destination_resolution_not_automated": True,
+            "map_movement_not_automated": True,
+            "path": path,
+        }
+        if object_mishap_damage:
+            change["object_mishap_damage"] = object_mishap_damage
+            change["object_damage_not_applied"] = True
+        if outcome == "off_target":
+            change["off_target"] = self._teleport_off_target_result(ctx, node)
+        if outcome == "similar_area":
+            change["similar_area_resolution_not_automated"] = True
+        if outcome == "on_target":
+            change["arrives_where_intended"] = True
+        ctx.result.state_changes.append(change)
+        ctx.result.node_results[path] = {
+            "target_mode": target_mode,
+            "familiarity": familiarity,
+            "table_rolls": table_rolls,
+            "final_outcome": outcome,
+            "mishap_count": mishap_count,
+            "affected_target_ids": affected_target_ids,
+        }
+
+    def _apply_teleport_mishap_damage(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        mishap_index: int,
+        path: str,
+    ) -> None:
+        damage = node.get("mishap_damage", {})
+        dice = str(damage.get("dice", "3d10"))
+        damage_type = str(damage.get("damage_type", "force"))
+        roll = self.roll_service.roll(dice)
+        ctx.result.dice_rolls.append(roll.to_dict())
+        target_before = self._entity(target_id)
+        hp_before = int(getattr(target_before, "hp_current"))
+        damage_taken = self._mitigated_damage(target_before, roll.total, damage_type)
+        damage_immunity_sources = self._passive_damage_immunity_sources(
+            target_before,
+            damage_type,
+        )
+        damage_resistance_sources = self._passive_damage_resistance_sources(
+            target_before,
+            damage_type,
+        )
+        applied = self._apply_damage(target_id, roll.total, damage_type, ctx=ctx, path=path)
+        ctx.last_damage_taken[target_id] = damage_taken
+        hp_after = int(getattr(self._entity(target_id), "hp_current"))
+        change: dict[str, Any] = {
+            "type": "damage",
+            "target_id": target_id,
+            "amount": roll.total,
+            "applied": applied,
+            "damage_type": damage_type,
+            "teleport_mishap": True,
+            "mishap_index": mishap_index,
+            "path": path,
+        }
+        if damage_immunity_sources:
+            change["damage_immunity_sources"] = damage_immunity_sources
+        if damage_resistance_sources:
+            change["damage_resistance_sources"] = damage_resistance_sources
+        ctx.result.state_changes.append(change)
+        concentration = self._concentration_save_after_damage(target_id, damage_taken, path)
+        if concentration is not None:
+            concentration_change, concentration_roll = concentration
+            ctx.result.dice_rolls.append(concentration_roll.to_dict())
+            ctx.result.state_changes.append(concentration_change)
+        if damage_taken > 0:
+            ctx.result.state_changes.extend(
+                self._expire_target_effects_on_damage(
+                    ctx,
+                    target_id,
+                    path,
+                    damage_source_actor_id=ctx.actor_id,
+                )
+            )
+        if hp_before > 0 and hp_after == 0 and applied > 0:
+            ctx.result.state_changes.extend(
+                self._dark_ones_blessing_changes(ctx.actor_id, target_id, path)
+            )
+
+    def _roll_teleport_object_mishap_damage(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> int:
+        damage = node.get("mishap_damage", {})
+        roll = self.roll_service.roll(str(damage.get("dice", "3d10")))
+        ctx.result.dice_rolls.append(roll.to_dict())
+        return roll.total
+
+    def _teleport_off_target_result(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> dict[str, Any]:
+        distance_roll = self.roll_service.roll(str(node.get("off_target_distance_dice", "2d12")))
+        direction_roll = self.roll_service.roll(str(node.get("off_target_direction_dice", "1d8")))
+        ctx.result.dice_rolls.append(distance_roll.to_dict())
+        ctx.result.dice_rolls.append(direction_roll.to_dict())
+        direction_table = node.get("direction_table", {})
+        direction = str(direction_table.get(str(direction_roll.total), "unknown"))
+        return {
+            "distance_miles": distance_roll.total,
+            "direction_roll": direction_roll.total,
+            "direction": direction,
+        }
 
     def _node_restore_all_hit_points(self, ctx: _Context, path: str) -> None:
         blessed_healer_triggered = False
@@ -11763,6 +11932,76 @@ class AutomationExecutor:
             expected = ", ".join(sorted(allowed))
             raise AutomationError(f"{param_name} must be a non-Undead creature type: {expected}")
         return restored
+
+    def _validate_teleport_outcome_preconditions(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        for node in action.automation:
+            if node.get("type") != "teleport_outcome":
+                continue
+            self._teleport_familiarity(node, params)
+            target_mode = self._teleport_target_mode(node, params)
+            if target_mode == "object" and targets:
+                raise AutomationError("Teleport object target is not modeled by creature targets")
+            if target_mode == "creatures" and len(targets) > 8:
+                raise AutomationError("Teleport can take up to eight willing creatures")
+            return
+
+    @staticmethod
+    def _teleport_normalized_param(value: Any) -> str:
+        return re.sub(r"[^a-z0-9]+", "_", str(value).strip().casefold()).strip("_")
+
+    def _teleport_familiarity(
+        self,
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> str:
+        param_name = str(node.get("familiarity_param", "teleport_familiarity"))
+        if param_name not in params:
+            raise AutomationError(f"missing required parameter {param_name}")
+        familiarity = self._teleport_normalized_param(params[param_name])
+        table = node.get("outcome_table", {})
+        if not isinstance(table, dict) or familiarity not in table:
+            expected = ", ".join(sorted(str(key) for key in table))
+            raise AutomationError(f"{param_name} must be one of: {expected}")
+        return familiarity
+
+    def _teleport_target_mode(
+        self,
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> str:
+        param_name = str(node.get("target_mode_param", "teleport_target_mode"))
+        target_mode = self._teleport_normalized_param(params.get(param_name, "creatures"))
+        if target_mode not in {"creatures", "object"}:
+            raise AutomationError(f"{param_name} must be creatures or object")
+        return target_mode
+
+    @staticmethod
+    def _teleport_outcome_for_roll(
+        familiarity: str,
+        roll: int,
+        table: Any,
+    ) -> str:
+        if not isinstance(table, dict):
+            raise AutomationError("Teleport outcome table is missing")
+        outcomes = table.get(familiarity)
+        if not isinstance(outcomes, dict):
+            raise AutomationError(f"Teleport outcome table is missing {familiarity}")
+        for outcome, span in outcomes.items():
+            if not isinstance(span, list) or len(span) != 2:
+                continue
+            if int(span[0]) <= roll <= int(span[1]):
+                return str(outcome)
+        raise AutomationError(f"Teleport outcome roll {roll} is outside the table")
+
+    @staticmethod
+    def _teleport_affected_creature_ids(ctx: _Context) -> list[str]:
+        affected = [ctx.actor_id, *ctx.targets]
+        return list(dict.fromkeys(str(target_id) for target_id in affected))
 
     def _validate_restoring_touch_preconditions(
         self,

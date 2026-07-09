@@ -8,6 +8,7 @@ NODE_TYPES = {
     "saving_throw",
     "ability_check",
     "maze_escape",
+    "teleport_outcome",
     "damage",
     "instant_death",
     "resurrection",
@@ -64,6 +65,7 @@ STATE_CHANGING_NODE_TYPES = {
     "passive_effect",
     "world_effect",
     "maze_escape",
+    "teleport_outcome",
     "natures_sanctuary",
     "natures_sanctuary_move",
     "repeat_use_save_before_long_rest",
@@ -464,6 +466,64 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             or not all(isinstance(marker, str) and marker for marker in markers)
         ):
             errors.append(f"{path}: resurrection remove_effect_markers must be strings")
+    if node_type == "teleport_outcome":
+        for key in ("familiarity_param", "target_mode_param"):
+            value = node.get(key)
+            if value is not None and (not isinstance(value, str) or not value):
+                errors.append(f"{path}: teleport_outcome {key} must be a string")
+        table = node.get("outcome_table")
+        if not isinstance(table, dict) or not table:
+            errors.append(f"{path}: teleport_outcome requires outcome_table")
+        else:
+            for familiarity, outcomes in table.items():
+                if not isinstance(familiarity, str) or not familiarity:
+                    errors.append(f"{path}: teleport_outcome familiarity keys must be strings")
+                    continue
+                if not isinstance(outcomes, dict) or not outcomes:
+                    errors.append(
+                        f"{path}: teleport_outcome table for {familiarity} must be an object"
+                    )
+                    continue
+                for outcome, span in outcomes.items():
+                    if not isinstance(outcome, str) or not outcome:
+                        errors.append(f"{path}: teleport_outcome outcomes must be strings")
+                    if (
+                        not isinstance(span, list)
+                        or len(span) != 2
+                        or not all(
+                            isinstance(value, int)
+                            and not isinstance(value, bool)
+                            and 1 <= value <= 100
+                            for value in span
+                        )
+                        or int(span[0]) > int(span[1])
+                    ):
+                        errors.append(
+                            f"{path}: teleport_outcome {familiarity}.{outcome} "
+                            "must be a [min, max] d100 range"
+                        )
+        mishap_damage = node.get("mishap_damage")
+        if not isinstance(mishap_damage, dict):
+            errors.append(f"{path}: teleport_outcome requires mishap_damage")
+        else:
+            dice = mishap_damage.get("dice")
+            damage_type = mishap_damage.get("damage_type")
+            if not isinstance(dice, str) or not dice:
+                errors.append(f"{path}: teleport_outcome mishap_damage.dice must be a string")
+            if not isinstance(damage_type, str) or not damage_type:
+                errors.append(
+                    f"{path}: teleport_outcome mishap_damage.damage_type must be a string"
+                )
+        for key in ("off_target_distance_dice", "off_target_direction_dice"):
+            value = node.get(key)
+            if value is not None and (not isinstance(value, str) or not value):
+                errors.append(f"{path}: teleport_outcome {key} must be a string")
+        direction_table = node.get("direction_table")
+        if direction_table is not None and (
+            not isinstance(direction_table, dict)
+            or not all(str(key).isdigit() and isinstance(value, str) and value for key, value in direction_table.items())
+        ):
+            errors.append(f"{path}: teleport_outcome direction_table must map dice to strings")
     if node_type == "preserve_life_healing":
         points_param = node.get("points_param", "preserve_life_points")
         if not isinstance(points_param, str) or not points_param:

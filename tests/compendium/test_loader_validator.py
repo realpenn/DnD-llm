@@ -103,6 +103,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.cloudkill",
         "srd.incendiary_cloud",
         "srd.teleportation_circle",
+        "srd.teleport",
         "srd.demiplane",
         "srd.maze",
         "srd.maze_escape",
@@ -4061,6 +4062,124 @@ def test_compendium_loads_srd_actions() -> None:
                 "appears_nearest_unoccupied_space_to_designated_spot": True,
                 "designates_sanctuary_by_casting_this_spell_there": True,
                 "destination": "previously_designated_sanctuary",
+            },
+        },
+    ]
+    teleport_spell = compendium.spell("srd.spell.teleport")
+    assert teleport_spell.level == 7
+    assert teleport_spell.school == "conjuration"
+    assert teleport_spell.classes == ["bard", "sorcerer", "wizard"]
+    teleport = compendium.action("srd.teleport")
+    assert teleport.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "sorcerer", "wizard"],
+    }
+    assert teleport.properties == {
+        "spell_classes": ["bard", "sorcerer", "wizard"],
+        "components": ["V"],
+        "requires_willing_target": True,
+        "max_willing_creatures": 8,
+        "companions_must_be_seen_within_ft": 10,
+        "single_object_alternative": True,
+        "object_size_max": "large",
+        "object_cannot_be_held_or_carried_by_unwilling_creature": True,
+        "destination_must_be_known_to_caster": True,
+        "same_plane_required": True,
+        "familiarity_param": "teleport_familiarity",
+        "target_mode_param": "teleport_target_mode",
+        "familiarities": [
+            "permanent_circle",
+            "linked_object",
+            "very_familiar",
+            "seen_casually",
+            "viewed_once_or_described",
+            "false_destination",
+        ],
+        "mishap_damage": {"dice": "3d10", "damage_type": "force"},
+        "off_target_distance_dice": "2d12",
+        "off_target_direction_dice": "1d8",
+        "no_saving_throw": True,
+        "no_attack_roll": True,
+        "no_concentration": True,
+        "no_material_component": True,
+        "no_higher_level_spell_slot_effect": True,
+        "destination_database_not_automated": True,
+        "similar_area_search_not_automated": True,
+        "map_movement_not_automated": True,
+        "spell_definition_id": "srd.spell.teleport",
+        "spell_level": 7,
+    }
+    assert teleport.cost.spell_slot_level == 7
+    assert teleport.cost.gold == 0
+    assert teleport.range == {"normal_ft": 10}
+    assert teleport.target_policy == {"min": 0, "max": 8, "harmful": False}
+    teleport_outcome_node = {
+        "type": "teleport_outcome",
+        "familiarity_param": "teleport_familiarity",
+        "target_mode_param": "teleport_target_mode",
+        "outcome_table": {
+            "permanent_circle": {"on_target": [1, 100]},
+            "linked_object": {"on_target": [1, 100]},
+            "very_familiar": {
+                "mishap": [1, 5],
+                "similar_area": [6, 13],
+                "off_target": [14, 24],
+                "on_target": [25, 100],
+            },
+            "seen_casually": {
+                "mishap": [1, 33],
+                "similar_area": [34, 43],
+                "off_target": [44, 53],
+                "on_target": [54, 100],
+            },
+            "viewed_once_or_described": {
+                "mishap": [1, 43],
+                "similar_area": [44, 53],
+                "off_target": [54, 73],
+                "on_target": [74, 100],
+            },
+            "false_destination": {
+                "mishap": [1, 50],
+                "similar_area": [51, 100],
+            },
+        },
+        "mishap_damage": {"dice": "3d10", "damage_type": "force"},
+        "off_target_distance_dice": "2d12",
+        "off_target_direction_dice": "1d8",
+        "direction_table": {
+            "1": "east",
+            "2": "southeast",
+            "3": "south",
+            "4": "southwest",
+            "5": "west",
+            "6": "northwest",
+            "7": "north",
+            "8": "northeast",
+        },
+    }
+    assert teleport.automation == [
+        teleport_outcome_node,
+        {
+            "type": "world_effect",
+            "effect_type": "teleport_transport",
+            "scope": {"target": "explicit", "range_ft": 10},
+            "duration": {"until": "instant"},
+            "metadata": {
+                "teleports_actor": True,
+                "max_willing_creatures": 8,
+                "companions_must_be_seen_within_ft": 10,
+                "single_large_or_smaller_object_alternative": True,
+                "object_cannot_be_held_or_carried_by_unwilling_creature": True,
+                "destination_must_be_known_to_caster": True,
+                "same_plane_required": True,
+                "outcome_resolved_by_teleport_outcome_node": True,
+                "mishap_damage": "3d10 force",
+                "mishap_rerolls_until_non_mishap": True,
+                "off_target_distance": "2d12 miles",
+                "off_target_direction": "1d8",
+                "destination_database_not_automated": True,
+                "similar_area_search_not_automated": True,
+                "map_movement_not_automated": True,
             },
         },
     ]
@@ -9394,6 +9513,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.clone",
         "srd.spell.resurrection",
         "srd.spell.true_resurrection",
+        "srd.spell.teleport",
         "srd.spell.antimagic_field",
         "srd.spell.charm_monster",
         "srd.spell.commune",

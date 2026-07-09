@@ -25051,6 +25051,194 @@ def test_word_of_recall_spends_slot_and_records_instant_sanctuary_teleport(
     assert world_effect_change["scope"] == effect["scope"]
 
 
+def test_teleport_rolls_on_target_and_records_instant_transport(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 500
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([25]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.teleport",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={
+            "slot_level": 7,
+            "target_willing": True,
+            "teleport_familiarity": "very_familiar",
+        },
+        idempotency_key="cast-teleport-on-target",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 500
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d100"]
+    assert not any(
+        change["type"] in {"attack_roll", "saving_throw", "damage"}
+        for change in result["state_changes"]
+    )
+    outcome = next(
+        change for change in result["state_changes"] if change["type"] == "teleport_outcome"
+    )
+    assert outcome["familiarity"] == "very_familiar"
+    assert outcome["table_rolls"] == [{"roll": 25, "outcome": "on_target"}]
+    assert outcome["final_outcome"] == "on_target"
+    assert outcome["mishap_count"] == 0
+    assert outcome["affected_target_ids"] == ["pc1", "pc2"]
+    assert outcome["arrives_where_intended"] is True
+    assert outcome["destination_resolution_not_automated"] is True
+    assert outcome["map_movement_not_automated"] is True
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.teleport"
+    assert effect["effect_type"] == "teleport_transport"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "explicit",
+        "range_ft": 10,
+        "target_ids": ["pc2"],
+        "target_id": "pc2",
+    }
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"]["teleports_actor"] is True
+    assert effect["metadata"]["max_willing_creatures"] == 8
+    assert effect["metadata"]["mishap_damage"] == "3d10 force"
+    assert effect["metadata"]["off_target_distance"] == "2d12 miles"
+    assert effect["metadata"]["destination_database_not_automated"] is True
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "teleport_transport"
+
+
+def test_teleport_mishap_damages_each_creature_then_rolls_off_target(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.spell_slots["7"] = 1
+    actor = state.encounter.combatants["pc1"]
+    ally = state.encounter.combatants["pc2"]
+    actor.hp_current = 50
+    actor.hp_max = 50
+    ally.hp_current = 50
+    ally.hp_max = 50
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 12, 21, 14, 12, 6]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.teleport",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={
+            "slot_level": 7,
+            "target_willing": True,
+            "teleport_familiarity": "very_familiar",
+        },
+        idempotency_key="cast-teleport-mishap-off-target",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d100",
+        "3d10",
+        "3d10",
+        "1d100",
+        "2d12",
+        "1d8",
+    ]
+    damage_changes = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "damage" and change.get("teleport_mishap") is True
+    ]
+    assert [
+        (change["target_id"], change["amount"], change["applied"], change["damage_type"])
+        for change in damage_changes
+    ] == [("pc1", 12, 12, "force"), ("pc2", 21, 21, "force")]
+    assert actor.hp_current == 38
+    assert ally.hp_current == 29
+    outcome = next(
+        change for change in result["state_changes"] if change["type"] == "teleport_outcome"
+    )
+    assert outcome["table_rolls"] == [
+        {"roll": 1, "outcome": "mishap"},
+        {"roll": 14, "outcome": "off_target"},
+    ]
+    assert outcome["mishap_count"] == 1
+    assert outcome["final_outcome"] == "off_target"
+    assert outcome["off_target"] == {
+        "distance_miles": 12,
+        "direction_roll": 6,
+        "direction": "northwest",
+    }
+
+
+def test_teleport_rejects_invalid_table_params_before_spending_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 13}
+    caster.spell_slots["7"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="teleport_familiarity"):
+        tools._execute_action(
+            action_id="srd.teleport",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 7, "target_willing": True},
+            idempotency_key="cast-teleport-missing-familiarity",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.teleport",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 7, "teleport_familiarity": "permanent_circle"},
+            idempotency_key="cast-teleport-unwilling",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert state.world.active_effects == []
+
+    with pytest.raises(AutomationError, match="creature targets"):
+        tools._execute_action(
+            action_id="srd.teleport",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={
+                "slot_level": 7,
+                "target_willing": True,
+                "teleport_familiarity": "permanent_circle",
+                "teleport_target_mode": "object",
+            },
+            idempotency_key="cast-teleport-object-with-creature-target",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert state.world.active_effects == []
+
+
 def test_etherealness_records_border_ethereal_world_effect_and_upcast_targets(
     make_state,
 ) -> None:

@@ -82,6 +82,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.contact_other_plane",
     "srd.control_weather",
     "srd.telepathic_bond",
+    "srd.teleport",
     "srd.conjure_minor_elementals",
     "srd.compulsion",
     "srd.confusion",

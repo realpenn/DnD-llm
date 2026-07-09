@@ -453,6 +453,8 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
         choices = action.properties.get("greater_restoration_choices", [])
         if isinstance(choices, list) and choices:
             params["greater_restoration_choice"] = str(choices[0])
+    if action.id == "srd.teleport":
+        params["teleport_familiarity"] = "permanent_circle"
     for node in action.automation:
         if node.get("type") == "healing_pool":
             param_name = str(node.get("points_param", "healing_points"))
