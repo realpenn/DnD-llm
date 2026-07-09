@@ -615,6 +615,8 @@ class AutomationExecutor:
             self._node_damage(ctx, node, path)
         elif node_type == "instant_death":
             self._node_instant_death(ctx, node, path)
+        elif node_type == "restore_all_hit_points":
+            self._node_restore_all_hit_points(ctx, path)
         elif node_type == "healing":
             self._node_healing(ctx, node, path)
         elif node_type == "cutting_words":
@@ -627,6 +629,8 @@ class AutomationExecutor:
             self._node_condition(ctx, node, path)
         elif node_type == "remove_condition":
             self._node_remove_condition(ctx, node, path)
+        elif node_type == "optional_reaction_remove_condition":
+            self._node_optional_reaction_remove_condition(ctx, node, path)
         elif node_type == "greater_restoration":
             self._node_greater_restoration(ctx, node, path)
         elif node_type == "restoring_touch":
@@ -1353,6 +1357,44 @@ class AutomationExecutor:
                 )
             )
 
+    def _node_restore_all_hit_points(self, ctx: _Context, path: str) -> None:
+        blessed_healer_triggered = False
+        for target_id in ctx.targets:
+            target = self._entity(target_id)
+            before = int(getattr(target, "hp_current"))
+            hp_max = int(getattr(target, "hp_max"))
+            amount = max(0, hp_max - before)
+            applied = self._apply_healing(target_id, amount)
+            if target_id != ctx.actor_id and applied > 0:
+                blessed_healer_triggered = True
+            ctx.result.state_changes.append(
+                {
+                    "type": "healing",
+                    "target_id": target_id,
+                    "amount": amount,
+                    "applied": applied,
+                    "restore_all_hit_points": True,
+                    "hp_before": before,
+                    "hp_max": hp_max,
+                    "path": path,
+                }
+            )
+        if blessed_healer_triggered:
+            blessed_bonus = self._blessed_healer_bonus(ctx)
+            if blessed_bonus:
+                applied = self._apply_healing(ctx.actor_id, blessed_bonus)
+                ctx.result.state_changes.append(
+                    {
+                        "type": "healing",
+                        "target_id": ctx.actor_id,
+                        "amount": blessed_bonus,
+                        "applied": applied,
+                        "blessed_healer_bonus": blessed_bonus,
+                        "blessed_healer_source": BLESSED_HEALER_ACTION_ID,
+                        "path": path,
+                    }
+                )
+
     def _node_damage(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         damage_type = self._pact_weapon_damage_type(
             ctx,
@@ -2028,6 +2070,65 @@ class AutomationExecutor:
                         "path": path,
                     }
                 )
+
+    def _node_optional_reaction_remove_condition(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        condition = str(node["condition"])
+        param_name = str(node.get("param", "use_reaction_remove_condition"))
+        for target_id in ctx.targets:
+            target = self._entity(target_id)
+            requested = self._target_bool_param(ctx.params, param_name, target_id)
+            has_target_condition = condition in self._condition_names(target)
+            reaction_available = self._reaction_budget_available(target_id, target)
+            if not requested or not has_target_condition or not reaction_available:
+                ctx.result.state_changes.append(
+                    {
+                        "type": "optional_reaction_remove_condition",
+                        "target_id": target_id,
+                        "condition": condition,
+                        "param": param_name,
+                        "requested": requested,
+                        "condition_present": has_target_condition,
+                        "reaction_available": reaction_available,
+                        "removed": False,
+                        "path": path,
+                    }
+                )
+                continue
+            before = self.economy.budget_for(target_id, self._effective_speed(target)).to_dict()
+            self.economy.spend(target_id, "reaction", 1)
+            after = self.economy.budget_for(target_id).to_dict()
+            ctx.result.state_changes.append(
+                {
+                    "type": "action_economy",
+                    "actor_id": target_id,
+                    "economy": "reaction",
+                    "amount": 1,
+                    "before": before,
+                    "after": after,
+                    "source_action_id": ctx.action.id,
+                    "path": path,
+                }
+            )
+            removed, removed_owners = self._remove_conditions_for_target(
+                target_id,
+                [condition],
+            )
+            ctx.result.state_changes.append(
+                {
+                    "type": "remove_condition",
+                    "target_id": target_id,
+                    "removed": removed,
+                    "removed_markers": {},
+                    "removed_owners": removed_owners,
+                    "reaction_spent": True,
+                    "path": path,
+                }
+            )
 
     def _node_greater_restoration(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         choice_param = str(node.get("choice_param", "greater_restoration_choice"))
@@ -14641,6 +14742,15 @@ class AutomationExecutor:
         willing_targets = params.get("willing_target_ids")
         if isinstance(willing_targets, list):
             return target_id in {str(candidate) for candidate in willing_targets}
+        return False
+
+    @staticmethod
+    def _target_bool_param(params: dict[str, Any], param_name: str, target_id: str) -> bool:
+        value = params.get(param_name)
+        if value is True:
+            return True
+        if isinstance(value, dict):
+            return value.get(target_id) is True
         return False
 
     def _validate_mage_armor_unarmored_targets(

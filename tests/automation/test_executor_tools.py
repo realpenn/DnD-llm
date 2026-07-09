@@ -24379,6 +24379,181 @@ def test_power_word_kill_high_hp_deals_srd_psychic_damage(make_state) -> None:
     assert not any(change["type"] == "death" for change in result["state_changes"])
 
 
+def test_power_word_heal_restores_all_hp_and_removes_exact_srd_conditions(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 3
+    target.hp_max = 44
+    target.status_effects = [
+        {"effect_id": "charmed-test", "condition": "charmed"},
+        {"effect_id": "frightened-test", "condition": "frightened"},
+        {"effect_id": "paralyzed-test", "condition": "paralyzed"},
+        {"effect_id": "poisoned-test", "condition": "poisoned"},
+        {"effect_id": "stunned-test", "condition": "stunned"},
+        {"effect_id": "blinded-test", "condition": "blinded"},
+        {"effect_id": "prone-test", "condition": "prone"},
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.power_word_heal",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 9},
+        idempotency_key="cast-power-word-heal-default",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["9"] == 0
+    healing_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "healing" and change["target_id"] == "pc2"
+    )
+    assert healing_change == {
+        "type": "healing",
+        "target_id": "pc2",
+        "amount": 41,
+        "applied": 41,
+        "restore_all_hit_points": True,
+        "hp_before": 3,
+        "hp_max": 44,
+        "path": "automation[1]",
+    }
+    remove_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "remove_condition" and change["path"] == "automation[2]"
+    )
+    assert remove_change["removed"] == {
+        "charmed": 1,
+        "frightened": 1,
+        "paralyzed": 1,
+        "poisoned": 1,
+        "stunned": 1,
+    }
+    optional_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "optional_reaction_remove_condition"
+    )
+    assert optional_change == {
+        "type": "optional_reaction_remove_condition",
+        "target_id": "pc2",
+        "condition": "prone",
+        "param": "power_word_heal_stand_up",
+        "requested": False,
+        "condition_present": True,
+        "reaction_available": True,
+        "removed": False,
+        "path": "automation[3]",
+    }
+    assert target.hp_current == 44
+    assert {effect["condition"] for effect in target.status_effects} == {"blinded", "prone"}
+    assert "pc2" not in state.encounter.action_budgets
+
+
+def test_power_word_heal_prone_target_can_spend_reaction_to_stand(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 20
+    target.hp_max = 44
+    target.status_effects = [{"effect_id": "prone-test", "condition": "prone"}]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.power_word_heal",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 9, "power_word_heal_stand_up": True},
+        idempotency_key="cast-power-word-heal-stand-up",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["9"] == 0
+    reaction_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "action_economy"
+        and change["actor_id"] == "pc2"
+        and change["economy"] == "reaction"
+    )
+    assert reaction_change["before"]["reaction"] == 1
+    assert reaction_change["after"]["reaction"] == 0
+    assert reaction_change["source_action_id"] == "srd.power_word_heal"
+    assert reaction_change["path"] == "automation[3]"
+    remove_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "remove_condition" and change["path"] == "automation[3]"
+    )
+    assert remove_change["removed"] == {"prone": 1}
+    assert remove_change["reaction_spent"] is True
+    assert target.hp_current == 44
+    assert target.status_effects == []
+    assert state.encounter.action_budgets["pc2"]["reaction"] == 0
+
+
+def test_power_word_heal_prone_target_without_reaction_does_not_stand(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 20
+    target.hp_max = 44
+    target.status_effects = [{"effect_id": "prone-test", "condition": "prone"}]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools.economy.set("pc2", "reaction", 0)
+
+    result = tools._execute_action(
+        action_id="srd.power_word_heal",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 9, "power_word_heal_stand_up": True},
+        idempotency_key="cast-power-word-heal-no-reaction",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    optional_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "optional_reaction_remove_condition"
+    )
+    assert optional_change["requested"] is True
+    assert optional_change["condition_present"] is True
+    assert optional_change["reaction_available"] is False
+    assert optional_change["removed"] is False
+    assert {effect["condition"] for effect in target.status_effects} == {"prone"}
+    assert target.hp_current == 44
+    assert not any(
+        change["type"] == "action_economy" and change["actor_id"] == "pc2"
+        for change in result["state_changes"]
+    )
+    assert state.encounter.action_budgets["pc2"]["reaction"] == 0
+
+
 def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
     make_state,
 ) -> None:

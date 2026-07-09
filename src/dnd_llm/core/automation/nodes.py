@@ -9,12 +9,14 @@ NODE_TYPES = {
     "ability_check",
     "damage",
     "instant_death",
+    "restore_all_hit_points",
     "healing",
     "temp_hp",
     "condition",
     "cutting_words",
     "hunter_lore",
     "remove_condition",
+    "optional_reaction_remove_condition",
     "greater_restoration",
     "restoring_touch",
     "passive_effect",
@@ -44,10 +46,12 @@ NODE_TYPES = {
 STATE_CHANGING_NODE_TYPES = {
     "damage",
     "instant_death",
+    "restore_all_hit_points",
     "healing",
     "temp_hp",
     "condition",
     "remove_condition",
+    "optional_reaction_remove_condition",
     "greater_restoration",
     "restoring_touch",
     "passive_effect",
@@ -277,6 +281,19 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         ):
             errors.append(
                 f"{path}: instant_death.death_ward_negated_reason "
+                "must be a non-empty string"
+            )
+    if node_type == "optional_reaction_remove_condition":
+        condition = node.get("condition")
+        if not isinstance(condition, str) or not condition:
+            errors.append(
+                f"{path}: optional_reaction_remove_condition.condition "
+                "must be a non-empty string"
+            )
+        param = node.get("param")
+        if param is not None and (not isinstance(param, str) or not param):
+            errors.append(
+                f"{path}: optional_reaction_remove_condition.param "
                 "must be a non-empty string"
             )
     if node_type in {"damage", "healing", "temp_hp"} and "minimum_amount" in node:

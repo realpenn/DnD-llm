@@ -100,6 +100,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.find_the_path",
         "srd.foresight",
         "srd.locate_creature",
+        "srd.power_word_heal",
         "srd.power_word_kill",
         "srd.power_word_stun",
         "srd.telepathic_bond",
@@ -981,6 +982,43 @@ def test_compendium_loads_srd_actions() -> None:
                     "damage_type": "psychic",
                 }
             ],
+        },
+    ]
+    power_word_heal_spell = compendium.spell("srd.spell.power_word_heal")
+    assert power_word_heal_spell.level == 9
+    assert power_word_heal_spell.school == "enchantment"
+    assert power_word_heal_spell.classes == ["bard", "cleric"]
+    power_word_heal = compendium.action("srd.power_word_heal")
+    assert power_word_heal.requirements == {
+        "spell_level": 9,
+        "class_any": ["bard", "cleric"],
+    }
+    assert power_word_heal.properties == {
+        "spell_classes": ["bard", "cleric"],
+        "components": ["V"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "restores_all_hit_points": True,
+        "removed_conditions": ["charmed", "frightened", "paralyzed", "poisoned", "stunned"],
+        "prone_can_use_reaction_to_stand": True,
+        "prone_stand_up_not_automatic": True,
+        "spell_definition_id": "srd.spell.power_word_heal",
+        "spell_level": 9,
+    }
+    assert power_word_heal.cost.spell_slot_level == 9
+    assert power_word_heal.range == {"normal_ft": 60}
+    assert power_word_heal.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert power_word_heal.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "restore_all_hit_points"},
+        {
+            "type": "remove_condition",
+            "conditions": ["charmed", "frightened", "paralyzed", "poisoned", "stunned"],
+        },
+        {
+            "type": "optional_reaction_remove_condition",
+            "condition": "prone",
+            "param": "power_word_heal_stand_up",
         },
     ]
     disintegrate = compendium.action("srd.disintegrate")
