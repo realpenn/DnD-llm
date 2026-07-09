@@ -259,6 +259,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.restoring_touch",
     "srd.reckless_attack",
     "srd.regenerate",
+    "srd.resurrection",
     "srd.reliable_talent",
     "srd.remarkable_athlete",
     "srd.repelling_blast",

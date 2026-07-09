@@ -180,6 +180,7 @@ def long_rest(
     before_hit_dice = dict(character.hit_dice)
     before_resources = dict(character.resources)
     exhaustion_before, exhaustion_after = lower_exhaustion(character.status_effects)
+    resurrection_penalty_recovery = _recover_resurrection_penalty_effects(character)
     removed_long_rest_effects = _remove_long_rest_effects(character)
 
     character.hp_current = character.hp_max
@@ -227,6 +228,7 @@ def long_rest(
         "reset_resources": reset_resources,
         "exhaustion_before": exhaustion_before,
         "exhaustion_after": exhaustion_after,
+        "resurrection_penalty_recovery": resurrection_penalty_recovery,
         "removed_long_rest_effects": removed_long_rest_effects,
     }
     fiendish_resilience = _apply_warlock_fiendish_resilience_choice(
@@ -476,6 +478,50 @@ def _remove_long_rest_effects(character: Character) -> list[dict[str, Any]]:
         retained.append(effect)
     character.status_effects[:] = retained
     return removed
+
+
+def _recover_resurrection_penalty_effects(character: Character) -> list[dict[str, Any]]:
+    recovered: list[dict[str, Any]] = []
+    retained: list[dict[str, Any]] = []
+    for effect in character.status_effects:
+        modifiers = effect.get("passive_modifiers", {})
+        if not isinstance(modifiers, dict) or modifiers.get("resurrection_penalty") is not True:
+            retained.append(effect)
+            continue
+        before = _resurrection_penalty_value(modifiers)
+        after = max(0, before - 1)
+        recovered.append(
+            {
+                "effect_id": effect.get("effect_id"),
+                "source_action_id": effect.get("source_action_id"),
+                "penalty_before": before,
+                "penalty_after": after,
+            }
+        )
+        if after <= 0:
+            continue
+        updated = dict(effect)
+        updated_modifiers = dict(modifiers)
+        updated_modifiers["d20_test_penalty"] = after
+        updated_modifiers["resurrection_d20_test_penalty"] = -after
+        updated["passive_modifiers"] = updated_modifiers
+        retained.append(updated)
+    character.status_effects[:] = retained
+    return recovered
+
+
+def _resurrection_penalty_value(modifiers: dict[str, Any]) -> int:
+    value = modifiers.get("d20_test_penalty")
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, (int, float)):
+        return max(0, int(value))
+    legacy = modifiers.get("resurrection_d20_test_penalty")
+    if isinstance(legacy, bool):
+        return 0
+    if isinstance(legacy, (int, float)):
+        return abs(int(legacy))
+    return 0
 
 
 def _apply_warlock_fiendish_resilience_choice(

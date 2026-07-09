@@ -159,6 +159,7 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
     enemy_status_effects: list[dict[str, Any]] = []
     enemy_resistances: list[str] = []
     ally_status_effects: list[dict[str, Any]] = []
+    ally_dead = action_id == "srd.resurrection"
     if isinstance(action, ActionDefinition):
         required_item = action.requirements.get("item")
         if isinstance(required_item, str) and required_item:
@@ -293,6 +294,9 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
         actions=[],
         zone_id="zone_start",
     )
+    if ally_dead:
+        ally.hp_current = 0
+        ally.dead = True
     graph = TacticalGraph(
         nodes={
             "node_front": PositionNode("node_front", "Front"),
@@ -325,12 +329,13 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                 entity_id="pc_ally",
                 name="Ally",
                 side="party",
-                hp_current=3,
+                hp_current=0 if ally_dead else 3,
                 hp_max=9,
                 armor_class=14,
                 speed_ft=30,
                 status_effects=[dict(effect) for effect in ally_status_effects],
                 position_node_id="node_front",
+                dead=ally_dead,
             ),
             "npc_enemy": Combatant(
                 id="npc_enemy",

@@ -53,6 +53,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.flame_strike",
         "srd.circle_of_death",
         "srd.clone",
+        "srd.resurrection",
         "srd.disintegrate",
         "srd.heal",
         "srd.harm",
@@ -894,6 +895,66 @@ def test_compendium_loads_srd_actions() -> None:
                 "vessel_disturbance_tracking_not_automated": True,
             },
         }
+    ]
+    resurrection_spell = compendium.spell("srd.spell.resurrection")
+    assert resurrection_spell.level == 7
+    assert resurrection_spell.school == "necromancy"
+    assert resurrection_spell.classes == ["bard", "cleric"]
+    resurrection = compendium.action("srd.resurrection")
+    assert resurrection.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "cleric"],
+    }
+    assert resurrection.properties == {
+        "spell_classes": ["bard", "cleric"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"hours": 1},
+        "material_component": {
+            "description": "a diamond worth 1,000+ GP, which the spell consumes",
+            "consumed": True,
+            "consumed_gold": 1000,
+        },
+        "target_type": "dead_creature",
+        "dead_no_more_than_years": 100,
+        "dead_no_more_than_days": 36500,
+        "cannot_revive_old_age_death": True,
+        "cannot_revive_creature_undead_when_it_died": True,
+        "returns_with_all_hit_points": True,
+        "neutralizes_poisons_at_death": True,
+        "does_not_cure_disease": True,
+        "closes_mortal_wounds": True,
+        "restores_missing_body_parts": True,
+        "missing_body_part_tracking_not_automated": True,
+        "resurrection_d20_test_penalty": -4,
+        "resurrection_penalty_reduces_by_1_per_long_rest": True,
+        "caster_tax_if_dead_days_at_least": 365,
+        "caster_tax_until_long_rest": True,
+        "caster_tax_blocks_spellcasting": True,
+        "caster_tax_d20_tests_disadvantage": True,
+        "death_cause_database_not_automated": True,
+        "death_age_database_not_automated": True,
+        "poison_identity_database_not_automated": True,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.resurrection",
+        "spell_level": 7,
+    }
+    assert resurrection.cost.spell_slot_level == 7
+    assert resurrection.cost.gold == 1000
+    assert resurrection.range == {"touch": True}
+    assert resurrection.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert resurrection.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "resurrection",
+            "dead_days_param": "resurrection_dead_days",
+            "died_of_old_age_param": "resurrection_old_age_death",
+            "undead_when_died_param": "resurrection_undead_when_died",
+            "max_dead_days": 36500,
+            "target_d20_test_penalty": 4,
+            "caster_tax_dead_days_at_least": 365,
+        },
     ]
     chain_lightning = compendium.action("srd.chain_lightning")
     assert chain_lightning.requirements == {
@@ -9255,6 +9316,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.harm",
         "srd.spell.finger_of_death",
         "srd.spell.clone",
+        "srd.spell.resurrection",
         "srd.spell.antimagic_field",
         "srd.spell.charm_monster",
         "srd.spell.commune",

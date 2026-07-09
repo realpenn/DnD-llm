@@ -55,7 +55,13 @@ from .rules.class_features import (
     warlock_fiendish_resilience_damage_type,
 )
 from .rules.combat import apply_healing as apply_healing_rule
-from .rules.conditions import apply_exhaustion, exhaustion_d20_penalty, exhaustion_level
+from .rules.conditions import (
+    apply_exhaustion,
+    exhaustion_d20_penalty,
+    exhaustion_level,
+    passive_d20_test_penalty,
+    passive_d20_test_penalty_sources,
+)
 from .rules.death import roll_death_save as roll_death_save_rule
 from .rules.difficulty import resolve_dc
 from .rules.rests import long_rest as long_rest_rule
@@ -2285,10 +2291,22 @@ class EngineTools:
     def _exhaustion_penalty_for(self, actor_id: str) -> tuple[int, list[dict[str, Any]]]:
         effects = self._status_effects_for_actor(actor_id)
         level = exhaustion_level(effects)
-        penalty = exhaustion_d20_penalty(effects)
+        exhaustion_penalty = exhaustion_d20_penalty(effects)
+        passive_penalty = passive_d20_test_penalty(effects)
+        penalty = exhaustion_penalty + passive_penalty
         if penalty == 0:
             return 0, []
-        return penalty, [{"condition": "exhaustion", "level": level, "penalty": penalty}]
+        sources: list[dict[str, Any]] = []
+        if exhaustion_penalty:
+            sources.append(
+                {
+                    "condition": "exhaustion",
+                    "level": level,
+                    "penalty": exhaustion_penalty,
+                }
+            )
+        sources.extend(passive_d20_test_penalty_sources(effects))
+        return penalty, sources
 
     @staticmethod
     def _validate_tactical_mind_available(actor: Character | Monster | Combatant) -> None:

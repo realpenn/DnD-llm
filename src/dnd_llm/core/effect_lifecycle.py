@@ -14,7 +14,12 @@ from .rules.class_features import (
     saving_throw_proficiency_sources,
 )
 from .rules.combat import apply_damage
-from .rules.conditions import exhaustion_d20_penalty, exhaustion_level, remove_condition
+from .rules.conditions import (
+    exhaustion_d20_penalty,
+    exhaustion_level,
+    passive_d20_test_penalty,
+    remove_condition,
+)
 
 SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
 SELF_RESTORATION_CONDITIONS = ("charmed", "frightened", "poisoned")
@@ -656,9 +661,9 @@ def _roll_repeat_save(
     target = state.entity_for_actor(str(effect.get("target_id") or actor_id))
     ability = str(repeat_save["ability"]).lower()
     base_bonus, proficient, proficiency_sources = _saving_throw_bonus(state, target, ability)
-    status_effects = getattr(target, "status_effects", [])
+    status_effects = _status_effects_for(state, target)
     exhaustion = exhaustion_level(status_effects)
-    penalty = exhaustion_d20_penalty(status_effects)
+    penalty = exhaustion_d20_penalty(status_effects) + passive_d20_test_penalty(status_effects)
     bonus = base_bonus - penalty
     status_advantage, status_sources = _saving_throw_status_advantage(target)
     roll = roll_service.roll(d20_expression(bonus), advantage=status_advantage)
@@ -691,6 +696,18 @@ def _roll_repeat_save(
     if indomitable_might is not None:
         entry["indomitable_might"] = indomitable_might
     return entry
+
+
+def _status_effects_for(
+    state: GameState,
+    entity: Character | Monster | Combatant,
+) -> list[dict[str, Any]]:
+    effects = list(getattr(entity, "status_effects", []))
+    if isinstance(entity, Combatant) and entity.entity_id in state.characters:
+        effects.extend(state.characters[entity.entity_id].status_effects)
+    if isinstance(entity, Combatant) and entity.entity_id in state.monsters:
+        effects.extend(state.monsters[entity.entity_id].status_effects)
+    return effects
 
 
 def _repeat_save_failure_damage(

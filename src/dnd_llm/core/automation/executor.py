@@ -106,6 +106,7 @@ from ..rules.conditions import (
     effective_speed,
     exhaustion_d20_penalty,
     exhaustion_level,
+    passive_d20_test_penalty,
     remove_condition,
 )
 from ..rules.difficulty import resolve_dc
@@ -615,6 +616,7 @@ class AutomationExecutor:
         self._validate_eyebite_preconditions(action, actor_id, targets or [], params)
         self._validate_fire_shield_type_param(action, params)
         self._validate_greater_restoration_preconditions(action, params)
+        self._validate_resurrection_preconditions(action, actor_id, targets or [], params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
@@ -674,6 +676,8 @@ class AutomationExecutor:
             self._node_damage(ctx, node, path)
         elif node_type == "instant_death":
             self._node_instant_death(ctx, node, path)
+        elif node_type == "resurrection":
+            self._node_resurrection(ctx, node, path)
         elif node_type == "restore_all_hit_points":
             self._node_restore_all_hit_points(ctx, path)
         elif node_type == "healing":
@@ -1418,6 +1422,76 @@ class AutomationExecutor:
                     source_action_id=ctx.action.id,
                     path=path,
                 )
+            )
+
+    def _node_resurrection(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        dead_days = self._resurrection_dead_days(node, ctx.params)
+        target_penalty = int(node.get("target_d20_test_penalty", 4))
+        for target_id in ctx.targets:
+            target = self._entity(target_id)
+            hp_before = int(getattr(target, "hp_current"))
+            hp_max = int(getattr(target, "hp_max"))
+            dead_before = bool(getattr(target, "dead", False))
+            stable_before = bool(getattr(target, "stable", False))
+            successes_before = int(getattr(target, "death_save_successes", 0))
+            failures_before = int(getattr(target, "death_save_failures", 0))
+
+            self._set_hp_and_clear_death_state(target_id, hp_max)
+            removed_conditions, removed_owners = self._remove_conditions_for_target(
+                target_id,
+                ["poisoned"],
+            )
+            if removed_conditions:
+                ctx.result.state_changes.append(
+                    {
+                        "type": "remove_condition",
+                        "target_id": target_id,
+                        "removed": removed_conditions,
+                        "removed_owners": removed_owners,
+                        "resurrection_neutralizes_poisons_at_death": True,
+                        "path": path,
+                    }
+                )
+
+            revived = self._entity(target_id)
+            ctx.result.state_changes.append(
+                {
+                    "type": "resurrection",
+                    "target_id": target_id,
+                    "hp_before": hp_before,
+                    "hp_after": int(getattr(revived, "hp_current")),
+                    "hp_max": hp_max,
+                    "dead_before": dead_before,
+                    "dead_after": bool(getattr(revived, "dead", False)),
+                    "stable_before": stable_before,
+                    "stable_after": bool(getattr(revived, "stable", False)),
+                    "death_save_successes_before": successes_before,
+                    "death_save_successes_after": int(
+                        getattr(revived, "death_save_successes", 0)
+                    ),
+                    "death_save_failures_before": failures_before,
+                    "death_save_failures_after": int(
+                        getattr(revived, "death_save_failures", 0)
+                    ),
+                    "returns_with_all_hit_points": True,
+                    "closes_mortal_wounds": True,
+                    "restores_missing_body_parts": True,
+                    "path": path,
+                }
+            )
+            ctx.result.state_changes.append(
+                self._apply_resurrection_penalty_effect(
+                    ctx,
+                    target_id,
+                    target_penalty,
+                    path,
+                )
+            )
+
+        threshold = int(node.get("caster_tax_dead_days_at_least", 365))
+        if dead_days is not None and dead_days >= threshold:
+            ctx.result.state_changes.append(
+                self._apply_resurrection_caster_tax(ctx, path, dead_days)
             )
 
     def _node_maze_escape(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
@@ -3704,6 +3778,140 @@ class AutomationExecutor:
     def _effect_id(self, target_id: str, path: str) -> str:
         safe_path = re.sub(r"[^a-zA-Z0-9]+", "-", path).strip("-") or "effect"
         return f"effect-{self.state.event_counter}-{target_id}-{safe_path}"
+
+    def _apply_resurrection_penalty_effect(
+        self,
+        ctx: _Context,
+        target_id: str,
+        penalty: int,
+        path: str,
+    ) -> dict[str, Any]:
+        passive_modifiers = {
+            "resurrection_penalty": True,
+            "d20_test_penalty": penalty,
+            "resurrection_d20_test_penalty": -penalty,
+            "resurrection_penalty_reduces_by_1_per_long_rest": True,
+        }
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, f"{path}.resurrection_penalty"),
+            source_ref=ctx.action.source,
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            passive_modifiers=passive_modifiers,
+            duration={"until": "resurrection_penalty_recovered"},
+            tick_on="long_rest",
+            stacking_policy="replace",
+            audit={"node_path": path},
+        )
+        owners: list[dict[str, str]] = []
+        for owner_type, owner_id, effects in self._resurrection_penalty_effect_lists(target_id):
+            effects[:] = [
+                existing
+                for existing in effects
+                if not self._is_resurrection_penalty_effect(existing)
+            ]
+            effects.append(effect.to_dict())
+            owners.append({"owner_type": owner_type, "owner_id": owner_id})
+        return {
+            "type": "passive_effect",
+            "target_id": target_id,
+            "effect_id": effect.effect_id,
+            "condition": effect.condition,
+            "passive_modifiers": effect.passive_modifiers,
+            "duration": effect.duration,
+            "tick_on": effect.tick_on,
+            "owners": owners,
+            "path": path,
+        }
+
+    def _apply_resurrection_caster_tax(
+        self,
+        ctx: _Context,
+        path: str,
+        dead_days: int,
+    ) -> dict[str, Any]:
+        abilities = ["str", "dex", "con", "int", "wis", "cha"]
+        passive_modifiers = {
+            "resurrection_caster_tax": True,
+            "blocks_spellcasting": True,
+            "d20_tests_disadvantage": True,
+            "ability_check_disadvantage_abilities": abilities,
+            "saving_throw_disadvantage_abilities": abilities,
+            "attack_roll_disadvantage": True,
+        }
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, f"{path}.caster_tax"),
+            source_ref=ctx.action.source,
+            source_action_id=ctx.action.id,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            passive_modifiers=passive_modifiers,
+            duration={"until": "long_rest"},
+            tick_on="long_rest",
+            stacking_policy="replace",
+            audit={"node_path": path, "resurrection_dead_days": dead_days},
+        )
+        owners: list[dict[str, str]] = []
+        for owner_type, owner_id, effects in self._resurrection_caster_tax_effect_lists(
+            ctx.actor_id
+        ):
+            effects[:] = [
+                existing
+                for existing in effects
+                if not self._is_resurrection_caster_tax_effect(existing)
+            ]
+            effects.append(effect.to_dict())
+            owners.append({"owner_type": owner_type, "owner_id": owner_id})
+        return {
+            "type": "passive_effect",
+            "target_id": ctx.actor_id,
+            "effect_id": effect.effect_id,
+            "condition": effect.condition,
+            "passive_modifiers": effect.passive_modifiers,
+            "duration": effect.duration,
+            "tick_on": effect.tick_on,
+            "resurrection_dead_days": dead_days,
+            "owners": owners,
+            "path": path,
+        }
+
+    def _resurrection_penalty_effect_lists(
+        self,
+        target_id: str,
+    ) -> list[tuple[str, str, list[dict[str, Any]]]]:
+        if target_id in self.state.characters:
+            return [("character", target_id, self.state.characters[target_id].status_effects)]
+        if self.state.encounter is not None and target_id in self.state.encounter.combatants:
+            combatant = self.state.encounter.combatants[target_id]
+            if combatant.entity_id in self.state.characters:
+                character = self.state.characters[combatant.entity_id]
+                return [("character", character.id, character.status_effects)]
+            return [("combatant", target_id, combatant.status_effects)]
+        if target_id in self.state.monsters:
+            return [("monster", target_id, self.state.monsters[target_id].status_effects)]
+        target = self._entity(target_id)
+        return [("entity", target_id, getattr(target, "status_effects"))]
+
+    def _resurrection_caster_tax_effect_lists(
+        self,
+        actor_id: str,
+    ) -> list[tuple[str, str, list[dict[str, Any]]]]:
+        actor = self._entity(actor_id)
+        if isinstance(actor, Combatant) and actor.entity_id in self.state.characters:
+            character = self.state.characters[actor.entity_id]
+            return [("character", character.id, character.status_effects)]
+        return [("entity", actor_id, getattr(actor, "status_effects"))]
+
+    @staticmethod
+    def _is_resurrection_penalty_effect(effect: dict[str, Any]) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        return isinstance(modifiers, dict) and modifiers.get("resurrection_penalty") is True
+
+    @staticmethod
+    def _is_resurrection_caster_tax_effect(effect: dict[str, Any]) -> bool:
+        modifiers = effect.get("passive_modifiers", {})
+        return isinstance(modifiers, dict) and modifiers.get("resurrection_caster_tax") is True
 
     def _node_world_effect(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         concentration = self._node_requires_concentration(node)
@@ -9254,7 +9462,7 @@ class AutomationExecutor:
     def _exhaustion_details(self, entity: Character | Monster | Combatant) -> tuple[int, int]:
         effects = self._status_effects_for(entity)
         level = exhaustion_level(effects)
-        return level, exhaustion_d20_penalty(effects)
+        return level, exhaustion_d20_penalty(effects) + passive_d20_test_penalty(effects)
 
     def _effective_speed(self, entity: Character | Monster | Combatant) -> int:
         base_speed = self._speed_override(entity)
@@ -11364,6 +11572,63 @@ class AutomationExecutor:
                 raise AutomationError(
                     f"unsupported Greater Restoration choice {choice}; choose {expected}"
                 )
+
+    def _validate_resurrection_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        for node in action.automation:
+            if node.get("type") != "resurrection":
+                continue
+            if not targets:
+                raise AutomationError("Resurrection requires a dead target")
+            self._resurrection_dead_days(node, params)
+            if bool(params.get(str(node.get("died_of_old_age_param", "resurrection_old_age_death")))):
+                raise AutomationError("Resurrection cannot revive a creature that died of old age")
+            if bool(
+                params.get(
+                    str(node.get("undead_when_died_param", "resurrection_undead_when_died"))
+                )
+            ):
+                raise AutomationError(
+                    "Resurrection cannot revive a creature that was Undead when it died"
+                )
+            for target_id in targets:
+                target = self._entity(target_id)
+                if hasattr(target, "dead"):
+                    if not bool(getattr(target, "dead", False)):
+                        raise AutomationError("Resurrection target must be dead")
+                elif int(getattr(target, "hp_current", 1)) > 0:
+                    raise AutomationError("Resurrection target must be dead")
+                creature_type = str(getattr(target, "creature_type", "")).lower()
+                if creature_type == "undead":
+                    raise AutomationError(
+                        "Resurrection cannot revive a creature that was Undead when it died"
+                    )
+            return
+        _ = actor_id
+
+    @staticmethod
+    def _resurrection_dead_days(
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> int | None:
+        param_name = str(node.get("dead_days_param", "resurrection_dead_days"))
+        if param_name not in params:
+            return None
+        try:
+            dead_days = int(params[param_name])
+        except (TypeError, ValueError) as exc:
+            raise AutomationError(f"parameter {param_name} must be an integer") from exc
+        if dead_days < 0:
+            raise AutomationError(f"parameter {param_name} must be non-negative")
+        max_dead_days = int(node.get("max_dead_days", 36500))
+        if dead_days > max_dead_days:
+            raise AutomationError("Resurrection cannot revive a creature dead over a century")
+        return dead_days
 
     def _validate_restoring_touch_preconditions(
         self,

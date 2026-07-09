@@ -41,6 +41,29 @@ def exhaustion_d20_penalty(status_effects: list[dict[str, Any]]) -> int:
     return 2 * exhaustion_level(status_effects)
 
 
+def passive_d20_test_penalty(status_effects: list[dict[str, Any]]) -> int:
+    return sum(_passive_d20_test_penalty(effect) for effect in status_effects)
+
+
+def passive_d20_test_penalty_sources(
+    status_effects: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    sources: list[dict[str, Any]] = []
+    for effect in status_effects:
+        penalty = _passive_d20_test_penalty(effect)
+        if penalty <= 0:
+            continue
+        sources.append(
+            {
+                "effect_id": effect.get("effect_id"),
+                "source_action_id": effect.get("source_action_id"),
+                "modifier": "d20_test_penalty",
+                "penalty": penalty,
+            }
+        )
+    return sources
+
+
 def effective_speed(speed_ft: int, status_effects: list[dict[str, Any]]) -> int:
     bonus = 0
     multiplier = 1.0
@@ -346,6 +369,18 @@ def _exhaustion_effect_level(effect: dict[str, Any]) -> int:
             if level is not None:
                 return level
     return 1
+
+
+def _passive_d20_test_penalty(effect: dict[str, Any]) -> int:
+    modifiers = effect.get("passive_modifiers", {})
+    if not isinstance(modifiers, dict):
+        return 0
+    value = modifiers.get("d20_test_penalty")
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, (int, float)):
+        return max(0, int(value))
+    return 0
 
 
 def _level_value(raw: Any) -> int | None:

@@ -27878,6 +27878,264 @@ def test_control_weather_upcast_spends_higher_slot_without_extra_effect(
     assert state.world.active_effects[-1]["duration"] == {"until": "concentration_8_hours"}
 
 
+def test_resurrection_revives_with_full_hp_and_long_rest_reduces_penalty(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 1000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.hp_max = 42
+    target.dead = True
+    target.stable = True
+    target.death_save_successes = 2
+    target.death_save_failures = 1
+    target.status_effects.append({"effect_id": "combat-poison", "condition": "poisoned"})
+    target_character = state.characters["pc2"]
+    target_character.hp_current = 0
+    target_character.hp_max = 42
+    target_character.dead = True
+    target_character.stable = True
+    target_character.death_save_successes = 2
+    target_character.death_save_failures = 1
+    target_character.status_effects.append(
+        {"effect_id": "character-poison", "condition": "poisoned"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.resurrection",
+        ["pc2"],
+        params={"slot_level": 7, "resurrection_dead_days": 30},
+        idempotency_key="cast-resurrection",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] in {"damage", "saving_throw"} for change in result["state_changes"])
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_7", "gold"]
+    resurrection_change = next(
+        change for change in result["state_changes"] if change["type"] == "resurrection"
+    )
+    assert resurrection_change["hp_before"] == 0
+    assert resurrection_change["hp_after"] == 42
+    assert resurrection_change["dead_before"] is True
+    assert resurrection_change["dead_after"] is False
+    assert resurrection_change["stable_after"] is False
+    assert resurrection_change["death_save_successes_after"] == 0
+    assert resurrection_change["death_save_failures_after"] == 0
+    assert target.hp_current == 42
+    assert target.dead is False
+    assert target.stable is False
+    assert target.death_save_successes == 0
+    assert target.death_save_failures == 0
+    assert target_character.hp_current == 42
+    assert target_character.dead is False
+    assert target_character.stable is False
+    assert target_character.death_save_successes == 0
+    assert target_character.death_save_failures == 0
+    remove_change = next(
+        change for change in result["state_changes"] if change["type"] == "remove_condition"
+    )
+    assert remove_change["removed"] == {"poisoned": 2}
+
+    penalty_effect = next(
+        effect
+        for effect in target_character.status_effects
+        if effect.get("source_action_id") == "srd.resurrection"
+    )
+    assert penalty_effect["passive_modifiers"] == {
+        "resurrection_penalty": True,
+        "d20_test_penalty": 4,
+        "resurrection_d20_test_penalty": -4,
+        "resurrection_penalty_reduces_by_1_per_long_rest": True,
+    }
+    assert penalty_effect["duration"] == {"until": "resurrection_penalty_recovered"}
+    assert target.status_effects == []
+    check = tools.roll_check("pc2", "wis", difficulty_tier="medium", idempotency_key="check")
+    assert check["d20_penalty"] == 4
+    assert check["d20_penalty_sources"] == [
+        {
+            "effect_id": penalty_effect["effect_id"],
+            "source_action_id": "srd.resurrection",
+            "modifier": "d20_test_penalty",
+            "penalty": 4,
+        }
+    ]
+
+    first_rest = tools.long_rest(["pc2"], idempotency_key="resurrection-rest-1")
+    assert first_rest["results"]["pc2"]["resurrection_penalty_recovery"] == [
+        {
+            "effect_id": penalty_effect["effect_id"],
+            "source_action_id": "srd.resurrection",
+            "penalty_before": 4,
+            "penalty_after": 3,
+        }
+    ]
+    assert target_character.status_effects[0]["passive_modifiers"]["d20_test_penalty"] == 3
+    for index in range(2, 5):
+        tools.long_rest(["pc2"], idempotency_key=f"resurrection-rest-{index}")
+    assert not any(
+        effect.get("passive_modifiers", {}).get("resurrection_penalty") is True
+        for effect in target_character.status_effects
+    )
+
+
+def test_resurrection_requires_consumed_diamond_before_spending_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 999
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.dead = True
+    state.characters["pc2"].hp_current = 0
+    state.characters["pc2"].dead = True
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools.perform_action(
+            "pc1",
+            "srd.resurrection",
+            ["pc2"],
+            params={"slot_level": 7, "resurrection_dead_days": 30},
+            idempotency_key="cast-resurrection-insufficient-diamond",
+        )
+
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 999
+    assert target.dead is True
+    assert target.hp_current == 0
+
+
+def test_resurrection_caster_tax_for_creature_dead_at_least_365_days(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 1000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.dead = True
+    state.characters["pc2"].hp_current = 0
+    state.characters["pc2"].dead = True
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.resurrection",
+        ["pc2"],
+        params={"slot_level": 7, "resurrection_dead_days": 365},
+        idempotency_key="cast-resurrection-long-dead",
+    )
+
+    caster_tax = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "passive_effect" and change["target_id"] == "pc1"
+    ][0]
+    assert caster_tax["passive_modifiers"] == {
+        "resurrection_caster_tax": True,
+        "blocks_spellcasting": True,
+        "d20_tests_disadvantage": True,
+        "ability_check_disadvantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+        "saving_throw_disadvantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+        "attack_roll_disadvantage": True,
+    }
+    assert caster_tax["duration"] == {"until": "long_rest"}
+    with pytest.raises(AutomationError, match="actor cannot cast spells while affected by srd.resurrection"):
+        tools.cast_spell(
+            "pc1",
+            "srd.cure_wounds",
+            ["pc1"],
+            1,
+            idempotency_key="blocked-after-resurrection",
+        )
+    check = tools.roll_check(
+        "pc1",
+        "wis",
+        difficulty_tier="medium",
+        idempotency_key="resurrection-tax-check",
+    )
+    assert check["status_advantage"] == "disadvantage"
+    assert check["status_sources"][0]["modifier"] == "ability_check_disadvantage_abilities"
+
+    long_rest = tools.long_rest(["pc1"], idempotency_key="resurrection-caster-tax-rest")
+    removed = long_rest["results"]["pc1"]["removed_long_rest_effects"]
+    assert removed[0]["source_action_id"] == "srd.resurrection"
+    assert removed[0]["passive_modifiers"]["resurrection_caster_tax"] is True
+    assert not any(
+        effect.get("passive_modifiers", {}).get("resurrection_caster_tax") is True
+        for effect in caster.status_effects
+    )
+
+
+def test_resurrection_rejects_srd_exclusions_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 1000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 0
+    target.dead = True
+    state.characters["pc2"].hp_current = 0
+    state.characters["pc2"].dead = True
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="died of old age"):
+        tools.perform_action(
+            "pc1",
+            "srd.resurrection",
+            ["pc2"],
+            params={"slot_level": 7, "resurrection_old_age_death": True},
+            idempotency_key="resurrection-old-age",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 1000
+
+    with pytest.raises(AutomationError, match="dead over a century"):
+        tools.perform_action(
+            "pc1",
+            "srd.resurrection",
+            ["pc2"],
+            params={"slot_level": 7, "resurrection_dead_days": 36501},
+            idempotency_key="resurrection-too-old",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 1000
+
+
 def test_regenerate_heals_and_restores_one_hp_on_target_turn_start(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

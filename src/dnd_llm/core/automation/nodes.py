@@ -10,6 +10,7 @@ NODE_TYPES = {
     "maze_escape",
     "damage",
     "instant_death",
+    "resurrection",
     "restore_all_hit_points",
     "healing",
     "healing_pool",
@@ -49,6 +50,7 @@ NODE_TYPES = {
 STATE_CHANGING_NODE_TYPES = {
     "damage",
     "instant_death",
+    "resurrection",
     "restore_all_hit_points",
     "healing",
     "healing_pool",
@@ -425,6 +427,25 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.append(f"{path}: restoring_touch requires allowed_conditions")
         elif not all(isinstance(condition, str) and condition for condition in allowed_conditions):
             errors.append(f"{path}: restoring_touch allowed_conditions must be strings")
+    if node_type == "resurrection":
+        for key in (
+            "dead_days_param",
+            "died_of_old_age_param",
+            "undead_when_died_param",
+        ):
+            value = node.get(key)
+            if value is not None and (not isinstance(value, str) or not value):
+                errors.append(f"{path}: resurrection {key} must be a string")
+        for key in (
+            "max_dead_days",
+            "caster_tax_dead_days_at_least",
+            "target_d20_test_penalty",
+        ):
+            value = node.get(key)
+            if value is not None and (
+                not isinstance(value, int) or isinstance(value, bool) or value < 1
+            ):
+                errors.append(f"{path}: resurrection {key} must be a positive integer")
     if node_type == "preserve_life_healing":
         points_param = node.get("points_param", "preserve_life_points")
         if not isinstance(points_param, str) or not points_param:
