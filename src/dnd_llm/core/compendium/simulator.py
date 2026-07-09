@@ -207,6 +207,13 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                 class_levels = {class_any: max(1, class_any_level_min)}
             elif isinstance(class_any, list) and class_any:
                 class_levels = {str(class_any[0]): max(1, class_any_level_min)}
+        elif action.properties.get("spell_classes") is not None:
+            spell_classes = action.properties["spell_classes"]
+            spell_level = int(action.properties.get("spell_level", 1))
+            if isinstance(spell_classes, str):
+                class_levels = {spell_classes: max(1, spell_level)}
+            elif isinstance(spell_classes, list) and spell_classes:
+                class_levels = {str(spell_classes[0]): max(1, spell_level)}
         elif "class_level_min" in action.requirements:
             class_levels = {"fighter": max(1, class_level_min)}
         if action.id == "srd.hunters_lore":

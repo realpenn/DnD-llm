@@ -19675,6 +19675,267 @@ def test_fire_storm_uses_actor_spell_dc_and_records_srd_area_metadata(
     ]
 
 
+def test_sunbeam_failed_save_blinds_until_caster_next_turn_and_records_sunlight(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 100
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 27]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.sunbeam",
+        ["goblin1"],
+        6,
+        idempotency_key="cast-sunbeam-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == "spell_save_dc:cleric"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "radiant"
+    assert damage_change["amount"] == 27
+    assert damage_change["applied"] == 27
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.sunbeam"
+    assert effect["condition"] == "blinded"
+    assert effect["duration"] == {"until": "start_of_next_turn", "turn_owner_id": "pc1"}
+    assert effect["tick_on"] == "self_turn_start"
+    radiance = state.world.active_effects[-1]
+    assert radiance["source_action_id"] == "srd.sunbeam"
+    assert radiance["applied_by"] == "pc1"
+    assert radiance["effect_type"] == "sunbeam_radiance"
+    assert radiance["concentration"] is True
+    assert radiance["duration"] == {"until": "concentration_1_minute"}
+    assert radiance["metadata"] == {
+        "sunbeam_active": True,
+        "radiance_mote_above_caster": True,
+        "bright_light_radius_ft": 30,
+        "dim_light_additional_ft": 30,
+        "light_is_sunlight": True,
+        "can_create_new_line_with_magic_action": True,
+        "radiant_line_action_id": "srd.sunbeam_radiant_line",
+        "line_width_ft": 5,
+        "line_length_ft": 60,
+    }
+    assert result["messages"] == [
+        "A 5-foot-wide, 60-foot-long Line of sunlight radiance flashes from the caster; "
+        "a brilliant mote sheds sunlight while the spell lasts."
+    ]
+    assert target.hp_current == 73
+
+    target_turn = tick_effects(state, trigger="self_turn_start", actor_id="goblin1")
+    assert target_turn.changed is False
+    assert target.status_effects[-1]["condition"] == "blinded"
+
+    caster_turn = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert caster_turn.expired[0]["source_action_id"] == "srd.sunbeam"
+    assert target.status_effects == []
+
+
+@pytest.mark.parametrize(
+    ("class_name", "ability", "dc_source"),
+    [
+        ("cleric", "wis", "spell_save_dc:cleric"),
+        ("druid", "wis", "spell_save_dc:druid"),
+        ("sorcerer", "cha", "spell_save_dc:sorcerer"),
+        ("wizard", "int", "spell_save_dc:wizard"),
+    ],
+)
+def test_sunbeam_successful_save_halves_damage_and_does_not_blind(
+    make_state,
+    class_name: str,
+    ability: str,
+    dc_source: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {class_name: 15}
+    caster.abilities[ability] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 100
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 28]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.sunbeam",
+        ["goblin1"],
+        6,
+        idempotency_key=f"cast-sunbeam-success-{class_name}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == dc_source
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "radiant"
+    assert damage_change["amount"] == 14
+    assert damage_change["applied"] == 14
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+    assert target.status_effects == []
+    assert state.world.active_effects[-1]["source_action_id"] == "srd.sunbeam"
+    assert target.hp_current == 86
+
+
+def test_sunbeam_upcast_uses_higher_slot_without_extra_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.abilities["int"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 0
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 100
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 28]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.sunbeam",
+        ["goblin1"],
+        7,
+        idempotency_key="cast-sunbeam-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_7"
+    assert cost_change["base_spell_slot_level"] == 6
+    assert cost_change["spell_slot_level"] == 7
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 14
+
+
+def test_sunbeam_radiant_line_requires_active_sunbeam_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="srd.sunbeam_radiant_line requires active effect from srd.sunbeam",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.sunbeam_radiant_line",
+            ["goblin1"],
+            idempotency_key="sunbeam-radiant-line-without-effect",
+        )
+
+    assert state.encounter.action_budgets.get("pc1", {}).get("action", 1) == 1
+    assert state.encounter.combatants["goblin1"].status_effects == []
+
+
+def test_sunbeam_radiant_line_uses_action_without_spending_spell_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.abilities["int"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["6"] = 0
+    state.world.active_effects.append(
+        {
+            "effect_id": "sunbeam-active-test",
+            "source_ref": "SRD 5.2.1 Chapter 7: Spells: Sunbeam",
+            "source_action_id": "srd.sunbeam",
+            "applied_by": "pc1",
+            "effect_type": "sunbeam_radiance",
+            "concentration": True,
+            "scope": {"target": "self"},
+            "duration": {"until": "concentration_1_minute"},
+            "metadata": {"sunbeam_active": True},
+            "audit": {"test": True},
+        }
+    )
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"con": 10}
+    target.hp_current = 100
+    target.hp_max = 100
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 24]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.sunbeam_radiant_line",
+        ["goblin1"],
+        idempotency_key="sunbeam-radiant-line-with-effect",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert state.encounter.action_budgets["pc1"]["action"] == 0
+    assert not any(change["type"] == "cost" for change in result["state_changes"])
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "radiant"
+    assert damage_change["amount"] == 24
+    assert damage_change["applied"] == 24
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.sunbeam_radiant_line"
+    assert effect["condition"] == "blinded"
+    assert effect["duration"] == {"until": "start_of_next_turn", "turn_owner_id": "pc1"}
+    assert result["messages"] == [
+        "The caster uses the ongoing Sunbeam spell to create a new "
+        "5-foot-wide, 60-foot-long Line of radiance."
+    ]
+    assert target.hp_current == 76
+
+
 def test_sunburst_failed_save_deals_radiant_damage_and_blinds_until_repeat_save(
     make_state,
 ) -> None:

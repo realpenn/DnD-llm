@@ -4935,6 +4935,53 @@
             "audit_label": "Conjure Woodland Beings: Disengage"
         },
         {
+            "id": "srd.sunbeam_radiant_line",
+            "name": "Sunbeam: Radiant Line",
+            "localization": {
+                "en": "Sunbeam: Radiant Line",
+                "zh": "阳炎射线：辉光线",
+                "aliases": ["阳炎射线再发", "阳炎光束再发"]
+            },
+            "source": "SRD 5.2.1 Chapter 7: Spells: Sunbeam",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true, "shape": "line", "length_ft": 60, "width_ft": 5},
+            "target_policy": {"min": 1, "max": 12, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "magic_action": true,
+                "requires_active_effect_source_action_id": "srd.sunbeam",
+                "spell_definition_id": "srd.spell.sunbeam",
+                "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+                "spell_level": 6,
+                "line_width_ft": 5,
+                "line_length_ft": 60
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "area"},
+                {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+                {"type": "damage", "dice": "6d8", "damage_type": "radiant", "save_half": true},
+                {
+                    "type": "condition",
+                    "condition": "blinded",
+                    "requires_failed_save": true,
+                    "duration": {
+                        "until": "start_of_next_turn",
+                        "turn_owner_id_from": "actor"
+                    },
+                    "tick_on": "self_turn_start"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The caster uses the ongoing Sunbeam spell to create a new 5-foot-wide, 60-foot-long Line of radiance."
+                }
+            ],
+            "audit_label": "Sunbeam: Radiant Line"
+        },
+        {
             "id": "srd.maze_escape",
             "name": "Maze Escape",
             "localization": {

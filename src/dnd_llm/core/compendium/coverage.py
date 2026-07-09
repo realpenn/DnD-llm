@@ -279,6 +279,8 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.stunning_strike",
     "srd.superior_defense",
     "srd.superior_inspiration",
+    "srd.sunbeam",
+    "srd.sunbeam_radiant_line",
     "srd.sunburst",
     "srd.step_of_the_wind",
     "srd.step_of_the_wind_focus",

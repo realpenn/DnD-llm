@@ -626,6 +626,85 @@
       }
     },
     {
+      "id": "srd.spell.sunbeam",
+      "name": "Sunbeam",
+      "localization": { "en": "Sunbeam", "zh": "阳炎射线", "aliases": ["阳炎光束"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.sunbeam",
+        "name": "Sunbeam",
+        "localization": { "en": "Sunbeam", "zh": "阳炎射线", "aliases": ["阳炎光束"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "line", "length_ft": 60, "width_ft": 5 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric", "druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a magnifying glass",
+            "consumed": false
+          },
+          "line_width_ft": 5,
+          "line_length_ft": 60,
+          "radiant_line_action_id": "srd.sunbeam_radiant_line",
+          "bright_light_radius_ft": 30,
+          "dim_light_additional_ft": 30,
+          "light_is_sunlight": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "6d8", "damage_type": "radiant", "save_half": true },
+          {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": true,
+            "duration": {
+              "until": "start_of_next_turn",
+              "turn_owner_id_from": "actor"
+            },
+            "tick_on": "self_turn_start"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "sunbeam_radiance",
+            "scope": { "target": "self" },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "sunbeam_active": true,
+              "radiance_mote_above_caster": true,
+              "bright_light_radius_ft": 30,
+              "dim_light_additional_ft": 30,
+              "light_is_sunlight": true,
+              "can_create_new_line_with_magic_action": true,
+              "radiant_line_action_id": "srd.sunbeam_radiant_line",
+              "line_width_ft": 5,
+              "line_length_ft": 60
+            }
+          },
+          {
+            "type": "text_result",
+            "text": "A 5-foot-wide, 60-foot-long Line of sunlight radiance flashes from the caster; a brilliant mote sheds sunlight while the spell lasts."
+          }
+        ],
+        "audit_label": "Sunbeam"
+      }
+    },
+    {
       "id": "srd.spell.chain_lightning",
       "name": "Chain Lightning",
       "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },

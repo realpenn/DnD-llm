@@ -43,6 +43,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.chain_lightning",
         "srd.fire_storm",
         "srd.forcecage",
+        "srd.sunbeam",
+        "srd.sunbeam_radiant_line",
         "srd.sunburst",
         "srd.mind_blank",
         "srd.meteor_swarm",
@@ -749,6 +751,116 @@ def test_compendium_loads_srd_actions() -> None:
         {"type": "target", "mode": "explicit"},
         {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
         {"type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": True},
+    ]
+    sunbeam_spell = compendium.spell("srd.spell.sunbeam")
+    assert sunbeam_spell.level == 6
+    assert sunbeam_spell.school == "evocation"
+    assert sunbeam_spell.classes == ["cleric", "druid", "sorcerer", "wizard"]
+    sunbeam = compendium.action("srd.sunbeam")
+    assert sunbeam.requirements == {
+        "spell_level": 6,
+        "class_any": ["cleric", "druid", "sorcerer", "wizard"],
+    }
+    assert sunbeam.properties == {
+        "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a magnifying glass",
+            "consumed": False,
+        },
+        "line_width_ft": 5,
+        "line_length_ft": 60,
+        "radiant_line_action_id": "srd.sunbeam_radiant_line",
+        "bright_light_radius_ft": 30,
+        "dim_light_additional_ft": 30,
+        "light_is_sunlight": True,
+        "spell_definition_id": "srd.spell.sunbeam",
+        "spell_level": 6,
+    }
+    assert sunbeam.cost.spell_slot_level == 6
+    assert sunbeam.range == {"self": True, "shape": "line", "length_ft": 60, "width_ft": 5}
+    assert sunbeam.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert sunbeam.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "6d8", "damage_type": "radiant", "save_half": True},
+        {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": True,
+            "duration": {
+                "until": "start_of_next_turn",
+                "turn_owner_id_from": "actor",
+            },
+            "tick_on": "self_turn_start",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "sunbeam_radiance",
+            "scope": {"target": "self"},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "sunbeam_active": True,
+                "radiance_mote_above_caster": True,
+                "bright_light_radius_ft": 30,
+                "dim_light_additional_ft": 30,
+                "light_is_sunlight": True,
+                "can_create_new_line_with_magic_action": True,
+                "radiant_line_action_id": "srd.sunbeam_radiant_line",
+                "line_width_ft": 5,
+                "line_length_ft": 60,
+            },
+        },
+        {
+            "type": "text_result",
+            "text": (
+                "A 5-foot-wide, 60-foot-long Line of sunlight radiance flashes "
+                "from the caster; a brilliant mote sheds sunlight while the spell lasts."
+            ),
+        },
+    ]
+    sunbeam_line = compendium.action("srd.sunbeam_radiant_line")
+    assert sunbeam_line.action_type == "base_action"
+    assert sunbeam_line.action_economy == "action"
+    assert sunbeam_line.cost.spell_slot_level is None
+    assert sunbeam_line.properties == {
+        "magic_action": True,
+        "requires_active_effect_source_action_id": "srd.sunbeam",
+        "spell_definition_id": "srd.spell.sunbeam",
+        "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+        "spell_level": 6,
+        "line_width_ft": 5,
+        "line_length_ft": 60,
+    }
+    assert sunbeam_line.range == {
+        "self": True,
+        "shape": "line",
+        "length_ft": 60,
+        "width_ft": 5,
+    }
+    assert sunbeam_line.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert sunbeam_line.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "con", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "6d8", "damage_type": "radiant", "save_half": True},
+        {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": True,
+            "duration": {
+                "until": "start_of_next_turn",
+                "turn_owner_id_from": "actor",
+            },
+            "tick_on": "self_turn_start",
+        },
+        {
+            "type": "text_result",
+            "text": (
+                "The caster uses the ongoing Sunbeam spell to create a new "
+                "5-foot-wide, 60-foot-long Line of radiance."
+            ),
+        },
     ]
     sunburst_spell = compendium.spell("srd.spell.sunburst")
     assert sunburst_spell.level == 8
