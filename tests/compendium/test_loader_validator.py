@@ -118,6 +118,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.secret_chest",
         "srd.insect_plague",
         "srd.transport_via_plants",
+        "srd.heroes_feast",
         "srd.word_of_recall",
         "srd.legend_lore",
         "srd.divination",
@@ -4035,6 +4036,88 @@ def test_compendium_loads_srd_actions() -> None:
                 "enter_target_plant_and_exit_destination_plant": True,
             },
         }
+    ]
+    heroes_feast_spell = compendium.spell("srd.spell.heroes_feast")
+    assert heroes_feast_spell.level == 6
+    assert heroes_feast_spell.school == "conjuration"
+    assert heroes_feast_spell.classes == ["bard", "cleric", "druid"]
+    heroes_feast = compendium.action("srd.heroes_feast")
+    assert heroes_feast.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "cleric", "druid"],
+    }
+    assert heroes_feast.properties == {
+        "spell_classes": ["bard", "cleric", "druid"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"minutes": 10},
+        "material_component": {
+            "description": "a gem-encrusted bowl worth 1,000+ GP",
+            "consumed": True,
+        },
+        "feast_appears_in_adjacent_unoccupied_cube_ft": 10,
+        "partaking_time_hours": 1,
+        "max_partakers": 12,
+        "benefits_duration": "duration_24_hours",
+        "benefits_after_consuming_feast": True,
+        "requires_willing_target": True,
+        "hp_max_increase": "2d10",
+        "heals_same_amount_as_hp_max_increase": True,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_attack_roll": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.heroes_feast",
+        "spell_level": 6,
+    }
+    assert heroes_feast.cost.spell_slot_level == 6
+    assert heroes_feast.cost.gold == 1000
+    assert heroes_feast.range == {"self": True}
+    assert heroes_feast.target_policy == {"min": 1, "max": 12, "harmful": False}
+    assert heroes_feast.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "world_effect",
+            "effect_type": "heroes_feast",
+            "scope": {
+                "target": "adjacent_unoccupied_10_foot_cube_surface",
+                "range": "self",
+            },
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "feast_appears_on_surface": True,
+                "adjacent_unoccupied_cube_size_ft": 10,
+                "takes_1_hour_to_consume": True,
+                "disappears_after_consumption_hour": True,
+                "beneficial_effects_begin_after_1_hour": True,
+                "max_partakers": 12,
+                "partaker_target_ids_from_spell": True,
+                "partaker_effect_duration": "duration_24_hours",
+                "hp_max_increase": "2d10",
+                "heals_same_amount_as_hp_max_increase": True,
+                "feast_consumption_scheduler_not_automated": True,
+                "hp_max_expiry_rollback_not_automated": True,
+            },
+        },
+        {
+            "type": "max_hp_delta",
+            "dice": "2d10",
+            "increase_current": True,
+        },
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "heroes_feast": True,
+                "damage_resistances": ["poison"],
+                "condition_immunities": ["frightened", "poisoned"],
+                "benefits_after_consuming_feast_1_hour": True,
+                "hp_max_increase": "2d10",
+                "heals_same_amount_as_hp_max_increase": True,
+                "hp_max_expiry_rollback_not_automated": True,
+            },
+            "duration": {"until": "duration_24_hours"},
+            "tick_on": "self_turn_end",
+        },
     ]
     word_of_recall = compendium.action("srd.word_of_recall")
     assert word_of_recall.requirements == {
@@ -9769,6 +9852,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.regenerate",
         "srd.spell.shapechange",
         "srd.spell.time_stop",
+        "srd.spell.heroes_feast",
         "srd.spell.reverse_gravity",
         "srd.spell.sequester",
     } <= set(compendium.spells)

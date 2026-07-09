@@ -4656,6 +4656,10 @@ class AutomationExecutor:
     ) -> int:
         if "amount" in node:
             return int(node["amount"])
+        if "dice" in node:
+            roll = self.roll_service.roll(str(node["dice"]))
+            ctx.result.dice_rolls.append(roll.to_dict())
+            return roll.total
         amount_from = node.get("amount_from")
         if amount_from == "last_damage_taken":
             return ctx.last_damage_taken.get(target_id, 0)

@@ -694,13 +694,15 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         if not isinstance(patches, dict) or not patches:
             errors.append(f"{path}: robe_of_useful_items_patch requires patches")
     if node_type == "max_hp_delta":
-        if "amount" not in node and "amount_from" not in node:
-            errors.append(f"{path}: max_hp_delta requires amount or amount_from")
+        if "amount" not in node and "amount_from" not in node and "dice" not in node:
+            errors.append(f"{path}: max_hp_delta requires amount, amount_from, or dice")
         if "amount_from" in node and node["amount_from"] not in {
             "last_damage_taken",
             "-last_damage_taken",
         }:
             errors.append(f"{path}: unsupported max_hp_delta amount_from")
+        if "dice" in node and not isinstance(node["dice"], str):
+            errors.append(f"{path}: max_hp_delta dice must be a string")
         if "record_hp_max_reduction_marker" in node and not isinstance(
             node["record_hp_max_reduction_marker"], bool
         ):

@@ -175,6 +175,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.glibness",
     "srd.hallucinatory_terrain",
     "srd.hallow",
+    "srd.heroes_feast",
     "srd.mass_heal",
     "srd.phantasmal_killer",
     "srd.plane_shift",

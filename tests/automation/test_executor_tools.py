@@ -25002,6 +25002,163 @@ def test_transport_via_plants_spends_slot_and_records_timed_plant_link(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_heroes_feast_consumes_bowl_gold_and_grants_partaker_benefits(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 11}
+    caster.spell_slots["6"] = 1
+    caster.gold = 1000
+    pc1 = state.encounter.combatants["pc1"]
+    pc2 = state.encounter.combatants["pc2"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([7, 8]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.heroes_feast",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 6, "target_willing": True},
+        idempotency_key="cast-heroes-feast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.gold == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["2d10", "2d10"]
+    assert [roll["total"] for roll in result["dice_rolls"]] == [7, 8]
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_6", "gold"]
+
+    feast = state.world.active_effects[-1]
+    assert feast["source_action_id"] == "srd.heroes_feast"
+    assert feast["effect_type"] == "heroes_feast"
+    assert feast["scope"] == {
+        "target": "adjacent_unoccupied_10_foot_cube_surface",
+        "range": "self",
+    }
+    assert feast["duration"] == {"until": "duration_1_hour"}
+    assert feast["tick_on"] == "self_turn_end"
+    assert feast["metadata"]["takes_1_hour_to_consume"] is True
+    assert feast["metadata"]["beneficial_effects_begin_after_1_hour"] is True
+    assert feast["metadata"]["max_partakers"] == 12
+    assert feast["metadata"]["feast_consumption_scheduler_not_automated"] is True
+
+    max_hp_changes = [
+        change for change in result["state_changes"] if change["type"] == "max_hp_delta"
+    ]
+    assert [(change["target_id"], change["amount"]) for change in max_hp_changes] == [
+        ("pc1", 7),
+        ("pc2", 8),
+    ]
+    assert pc1.hp_max == 19
+    assert pc1.hp_current == 17
+    assert pc2.hp_max == 16
+    assert pc2.hp_current == 12
+
+    effects = {
+        effect["target_id"]: effect
+        for combatant in (pc1, pc2)
+        for effect in combatant.status_effects
+        if effect.get("source_action_id") == "srd.heroes_feast"
+    }
+    assert set(effects) == {"pc1", "pc2"}
+    assert effects["pc2"]["passive_modifiers"] == {
+        "heroes_feast": True,
+        "damage_resistances": ["poison"],
+        "condition_immunities": ["frightened", "poisoned"],
+        "benefits_after_consuming_feast_1_hour": True,
+        "hp_max_increase": "2d10",
+        "heals_same_amount_as_hp_max_increase": True,
+        "hp_max_expiry_rollback_not_automated": True,
+    }
+    assert effects["pc2"]["duration"] == {"until": "duration_24_hours"}
+    assert effects["pc2"]["tick_on"] == "self_turn_end"
+
+    poison = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(5, damage_type="poison"),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="heroes-feast-poison-damage",
+    )
+    poison_damage = next(change for change in poison.state_changes if change["type"] == "damage")
+    assert poison_damage["amount"] == 5
+    assert poison_damage["applied"] == 2
+    assert poison_damage["damage_resistance_sources"][0]["source_action_id"] == (
+        "srd.heroes_feast"
+    )
+
+    frightened_action = ActionDefinition(
+        id="test.heroes_feast.frightened",
+        name="Heroes Feast Frightened",
+        localization={"en": "Heroes Feast Frightened", "zh": "英雄宴恐慌", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[{"type": "condition", "condition": "frightened"}],
+    )
+    frightened = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        frightened_action,
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="heroes-feast-frightened",
+    )
+    immune_change = next(
+        change for change in frightened.state_changes if change["type"] == "condition_immune"
+    )
+    assert immune_change["condition"] == "frightened"
+    assert immune_change["immunity_sources"][0]["source_action_id"] == "srd.heroes_feast"
+    assert not any(effect.get("condition") == "frightened" for effect in pc2.status_effects)
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
+    heroes_ticks = [
+        entry
+        for entry in lifecycle.ticked
+        if entry["effect_id"] == effects["pc2"]["effect_id"]
+    ]
+    assert heroes_ticks[0]["remaining_ticks_before"] == 14400
+    assert heroes_ticks[0]["remaining_ticks_after"] == 14399
+
+
+def test_heroes_feast_requires_consumed_bowl_gold_before_spending_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 11}
+    caster.spell_slots["6"] = 1
+    caster.gold = 999
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools._execute_action(
+            action_id="srd.heroes_feast",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 6, "target_willing": True},
+            idempotency_key="cast-heroes-feast-insufficient-gold",
+        )
+
+    assert caster.spell_slots["6"] == 1
+    assert caster.gold == 999
+    assert state.world.active_effects == []
+    assert state.encounter.action_budgets["pc1"]["action"] == 1
+
+
 def test_word_of_recall_spends_slot_and_records_instant_sanctuary_teleport(
     make_state,
 ) -> None:
