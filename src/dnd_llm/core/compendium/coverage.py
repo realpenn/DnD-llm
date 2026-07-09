@@ -256,6 +256,8 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.banishment",
     "srd.reverse_gravity",
     "srd.sequester",
+    "srd.shapechange",
+    "srd.shapechange_change_form",
     "srd.tireless",
     "srd.preserve_life",
     "srd.primal_knowledge",

@@ -118,6 +118,9 @@ from .effects import EffectInstance
 from .nodes import STATE_CHANGING_NODE_TYPES
 
 ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_attack"}
+SHAPECHANGE_ACTION_ID = "srd.shapechange"
+SHAPECHANGE_BLOCKED_CREATURE_TYPES = frozenset({"construct", "undead"})
+SHAPECHANGE_EQUIPMENT_HANDLING_OPTIONS = frozenset({"drop", "fit_new_form"})
 CUNNING_STRIKE_EFFECTS = {"poison", "stealth_attack", "trip", "withdraw"}
 MAX_CUNNING_STRIKE_EFFECTS = 2
 BRUTAL_STRIKE_EFFECTS = {
@@ -619,6 +622,7 @@ class AutomationExecutor:
         self._validate_resurrection_preconditions(action, actor_id, targets or [], params)
         self._validate_teleport_outcome_preconditions(action, targets or [], params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
+        self._validate_shapechange_preconditions(action, actor_id, params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
         self._validate_tactical_shift_preconditions(action, actor_id, params)
@@ -705,6 +709,8 @@ class AutomationExecutor:
             self._node_greater_restoration(ctx, node, path)
         elif node_type == "restoring_touch":
             self._node_restoring_touch(ctx, node, path)
+        elif node_type == "shapechange_form":
+            self._node_shapechange_form(ctx, node, path)
         elif node_type == "passive_effect":
             self._node_passive_effect(ctx, node, path)
         elif node_type == "world_effect":
@@ -2340,6 +2346,286 @@ class AutomationExecutor:
                         "path": path,
                     }
                 )
+
+    def _validate_shapechange_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        for node in action.automation:
+            if node.get("type") == "shapechange_form":
+                self._shapechange_form_info(actor_id, node, params)
+
+    def _node_shapechange_form(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        form = self._shapechange_form_info(ctx.actor_id, node, ctx.params)
+        mode = str(node.get("mode", "initial"))
+        if mode == "change_form":
+            self._update_shapechange_form(ctx, node, path, form)
+            return
+
+        concentration = self._node_requires_concentration(node)
+        self._clear_existing_concentration_if_needed(ctx, concentration, path)
+        target_id = ctx.targets[0] if ctx.targets else ctx.actor_id
+        target = self._entity(target_id)
+        effect_id = self._effect_id(target_id, path)
+        temp_hp_before = int(getattr(target, "temp_hp", 0))
+        temp_hp_after = max(temp_hp_before, int(form["hit_points"]))
+        temp_hp_source = temp_hp_after > temp_hp_before
+        setattr(target, "temp_hp", temp_hp_after)
+        if temp_hp_source:
+            self._set_temp_hp_source(target_id, target, effect_id)
+
+        audit: dict[str, Any] = {"node_path": path}
+        if temp_hp_source:
+            audit.update(
+                {
+                    "temp_hp_source": True,
+                    "temporary_hit_points": temp_hp_after,
+                    "shapechange_first_form_hit_points": int(form["hit_points"]),
+                }
+            )
+        effect = EffectInstance(
+            effect_id=effect_id,
+            source_ref=ctx.action.source,
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=None,
+            passive_modifiers=self._shapechange_passive_modifiers(form, node),
+            duration=self._resolved_effect_duration(ctx, node),
+            tick_on=node.get("tick_on"),
+            concentration=concentration,
+            stacking_policy=str(node.get("stacking_policy", "replace")),
+            audit=audit,
+        )
+        effects = getattr(target, "status_effects")
+        if effect.stacking_policy == "replace":
+            effects[:] = [
+                existing
+                for existing in effects
+                if existing.get("source_action_id") != effect.source_action_id
+            ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "temp_hp",
+                "target_id": target_id,
+                "before": temp_hp_before,
+                "after": temp_hp_after,
+                "amount": int(form["hit_points"]),
+                "source_effect_id": effect_id if temp_hp_source else None,
+                "path": path,
+            }
+        )
+        ctx.result.state_changes.append(
+            {
+                "type": "shapechange_form",
+                "target_id": target_id,
+                "mode": "initial",
+                "form_id": form["id"],
+                "form_name": form["name"],
+                "form_hit_points": form["hit_points"],
+                "form_cr": form["cr"],
+                "equipment_handling": form["equipment_handling"],
+                "effect_id": effect.effect_id,
+                "path": path,
+            }
+        )
+
+    def _update_shapechange_form(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+        form: dict[str, Any],
+    ) -> None:
+        entry = self._active_shapechange_effect_entry(ctx.actor_id)
+        if entry is None:
+            raise AutomationError("Shapechange requires an active Shapechange effect")
+        _, _, effect = entry
+        modifiers = effect.setdefault("passive_modifiers", {})
+        if not isinstance(modifiers, dict):
+            modifiers = {}
+        previous_form_id = modifiers.get("shapechange_current_form_id")
+        effect["passive_modifiers"] = self._shapechange_passive_modifiers(form, node)
+        ctx.result.state_changes.append(
+            {
+                "type": "shapechange_form",
+                "target_id": effect.get("target_id", ctx.actor_id),
+                "mode": "change_form",
+                "previous_form_id": previous_form_id,
+                "form_id": form["id"],
+                "form_name": form["name"],
+                "form_hit_points": form["hit_points"],
+                "form_cr": form["cr"],
+                "equipment_handling": form["equipment_handling"],
+                "effect_id": effect.get("effect_id"),
+                "temporary_hit_points_refreshed": False,
+                "path": path,
+            }
+        )
+
+    def _shapechange_form_info(
+        self,
+        actor_id: str,
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
+        form_param = str(node.get("form_param", "shapechange_form_id"))
+        form_id = self._shapechange_string_param(params, form_param)
+        prefix = str(node.get("resolved_param_prefix", "shapechange_form_"))
+        resolved_id = self._shapechange_string_param(params, f"{prefix}id")
+        if resolved_id != form_id:
+            raise AutomationError("Shapechange form resolution does not match requested form")
+        seen_param = str(node.get("seen_param", "shapechange_seen"))
+        if params.get(seen_param) is not True:
+            raise AutomationError("Shapechange requires the caster to have seen the form")
+        creature_type = self._shapechange_string_param(params, f"{prefix}creature_type").lower()
+        if creature_type in SHAPECHANGE_BLOCKED_CREATURE_TYPES:
+            raise AutomationError("Shapechange form cannot be a Construct or an Undead")
+        form_cr = self._shapechange_float_param(params, f"{prefix}cr")
+        actor_limit = self._shapechange_actor_level_or_cr(actor_id, params)
+        if form_cr > actor_limit:
+            raise AutomationError("Shapechange form CR exceeds the actor's level or CR")
+        equipment_handling = self._shapechange_equipment_handling(node, params)
+        return {
+            "id": form_id,
+            "name": self._shapechange_string_param(params, f"{prefix}name"),
+            "hit_points": self._shapechange_positive_int_param(params, f"{prefix}hit_points"),
+            "cr": form_cr,
+            "creature_type": creature_type,
+            "armor_class": self._shapechange_positive_int_param(params, f"{prefix}armor_class"),
+            "speed_ft": self._shapechange_positive_int_param(params, f"{prefix}speed_ft"),
+            "size": self._shapechange_string_param(params, f"{prefix}size"),
+            "actions": self._shapechange_string_list_param(params, f"{prefix}actions"),
+            "abilities": self._shapechange_abilities_param(params, f"{prefix}abilities"),
+            "equipment_handling": equipment_handling,
+            "actor_limit": actor_limit,
+        }
+
+    def _shapechange_passive_modifiers(
+        self,
+        form: dict[str, Any],
+        node: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "shapechange": True,
+            "shapechange_current_form_id": form["id"],
+            "shapechange_current_form_name": form["name"],
+            "shapechange_current_form_hit_points": form["hit_points"],
+            "shapechange_current_form_cr": form["cr"],
+            "shapechange_current_form_creature_type": form["creature_type"],
+            "shapechange_current_form_armor_class": form["armor_class"],
+            "shapechange_current_form_speed_ft": form["speed_ft"],
+            "shapechange_current_form_size": form["size"],
+            "shapechange_current_form_actions": form["actions"],
+            "shapechange_current_form_abilities": form["abilities"],
+            "shapechange_equipment_handling": form["equipment_handling"],
+            "shapechange_form_cr_must_not_exceed_level_or_cr": True,
+            "shapechange_requires_seen_form": True,
+            "shapechange_forbidden_creature_types": sorted(SHAPECHANGE_BLOCKED_CREATURE_TYPES),
+            "shapechange_temporary_hit_points_from_first_form_only": True,
+            "shapechange_temporary_hit_points_end_with_spell": True,
+            "shapechange_can_change_form_with_magic_action": True,
+            "shapechange_change_form_action_id": str(
+                node.get("change_form_action_id", "srd.shapechange_change_form")
+            ),
+            "replaced_by_form_stat_block": True,
+            "retains_creature_type": True,
+            "retains_alignment": True,
+            "retains_personality": True,
+            "retains_mental_ability_scores": ["int", "wis", "cha"],
+            "retains_hit_points": True,
+            "retains_hit_dice": True,
+            "retains_proficiencies": True,
+            "retains_communication_ability": True,
+            "retains_spellcasting_feature": True,
+            "full_stat_block_replacement_not_automated": True,
+            "death_reversion_uses_general_shape_shifting_rules": True,
+        }
+
+    def _active_shapechange_effect_entry(
+        self,
+        actor_id: str,
+    ) -> tuple[str, str, dict[str, Any]] | None:
+        for owner_type, owner_id, effects in self._actor_effect_lists(actor_id):
+            for effect in effects:
+                modifiers = effect.get("passive_modifiers", {})
+                if (
+                    effect.get("source_action_id") == SHAPECHANGE_ACTION_ID
+                    and isinstance(modifiers, dict)
+                    and modifiers.get("shapechange") is True
+                    and self._effect_is_actor_concentration(effect, actor_id)
+                ):
+                    return owner_type, owner_id, effect
+        return None
+
+    @staticmethod
+    def _shapechange_string_param(params: dict[str, Any], param_name: str) -> str:
+        value = params.get(param_name)
+        if isinstance(value, list) and len(value) == 1:
+            value = value[0]
+        if not isinstance(value, str) or not value.strip():
+            raise AutomationError(f"missing required parameter {param_name}")
+        return value.strip()
+
+    @staticmethod
+    def _shapechange_string_list_param(params: dict[str, Any], param_name: str) -> list[str]:
+        value = params.get(param_name, [])
+        if not isinstance(value, list):
+            raise AutomationError(f"parameter {param_name} must be a list")
+        return [str(item) for item in value]
+
+    @staticmethod
+    def _shapechange_abilities_param(params: dict[str, Any], param_name: str) -> dict[str, int]:
+        value = params.get(param_name)
+        if not isinstance(value, dict):
+            raise AutomationError(f"parameter {param_name} must be an object")
+        return {str(ability): int(score) for ability, score in value.items()}
+
+    @staticmethod
+    def _shapechange_positive_int_param(params: dict[str, Any], param_name: str) -> int:
+        try:
+            value = int(params[param_name])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise AutomationError(f"parameter {param_name} must be an integer") from exc
+        if value <= 0:
+            raise AutomationError(f"parameter {param_name} must be positive")
+        return value
+
+    @staticmethod
+    def _shapechange_float_param(params: dict[str, Any], param_name: str) -> float:
+        try:
+            value = float(params[param_name])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise AutomationError(f"parameter {param_name} must be numeric") from exc
+        if value < 0:
+            raise AutomationError(f"parameter {param_name} must be non-negative")
+        return value
+
+    def _shapechange_actor_level_or_cr(
+        self,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> float:
+        owner = self._resource_owner(actor_id)
+        class_levels = getattr(owner, "class_levels", None)
+        if isinstance(class_levels, dict) and class_levels:
+            return float(sum(max(0, int(level)) for level in class_levels.values()))
+        return self._shapechange_float_param(params, "shapechange_actor_level_or_cr")
+
+    def _shapechange_equipment_handling(
+        self,
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> str:
+        param_name = str(node.get("equipment_handling_param", "shapechange_equipment_handling"))
+        handling = self._shapechange_string_param(params, param_name)
+        if handling not in SHAPECHANGE_EQUIPMENT_HANDLING_OPTIONS:
+            expected = ", ".join(sorted(SHAPECHANGE_EQUIPMENT_HANDLING_OPTIONS))
+            raise AutomationError(f"{param_name} must be one of: {expected}")
+        return handling
 
     def _node_condition(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         concentration = bool(node.get("concentration", False))
@@ -13642,13 +13928,21 @@ class AutomationExecutor:
             retained: list[dict[str, Any]] = []
             for effect in effects:
                 if self._effect_is_actor_concentration(effect, actor_id):
+                    removed_entry: dict[str, Any] = {
+                        "owner_type": owner_type,
+                        "owner_id": owner_id,
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                    }
+                    temp_hp_expired = self._expire_temp_hp_source_effect(
+                        effect,
+                        owner_type,
+                        owner_id,
+                    )
+                    if temp_hp_expired is not None:
+                        removed_entry["temp_hp_expired"] = temp_hp_expired
                     removed.append(
-                        {
-                            "owner_type": owner_type,
-                            "owner_id": owner_id,
-                            "effect_id": effect.get("effect_id"),
-                            "source_action_id": effect.get("source_action_id"),
-                        }
+                        removed_entry
                     )
                 else:
                     retained.append(effect)
@@ -13669,6 +13963,58 @@ class AutomationExecutor:
                 retained_world_effects.append(effect)
         self.state.world.active_effects[:] = retained_world_effects
         return removed
+
+    def _expire_temp_hp_source_effect(
+        self,
+        effect: dict[str, Any],
+        owner_type: str,
+        owner_id: str,
+    ) -> dict[str, int] | None:
+        audit = effect.get("audit", {})
+        if not isinstance(audit, dict) or audit.get("temp_hp_source") is not True:
+            return None
+        owner = self._effect_owner(owner_type, owner_id)
+        if owner is None:
+            return None
+        effect_id = effect.get("effect_id")
+        if getattr(owner, "temp_hp_source_effect_id", None) != effect_id:
+            return None
+        before = int(getattr(owner, "temp_hp", 0))
+        setattr(owner, "temp_hp", 0)
+        setattr(owner, "temp_hp_source_effect_id", None)
+        self._sync_temp_hp_source_clear(owner_type, owner_id, owner)
+        return {"before": before, "after": 0}
+
+    def _effect_owner(
+        self,
+        owner_type: str,
+        owner_id: str,
+    ) -> Character | Monster | Combatant | None:
+        if owner_type == "character":
+            return self.state.characters.get(owner_id)
+        if owner_type == "monster":
+            return self.state.monsters.get(owner_id)
+        if owner_type == "combatant" and self.state.encounter is not None:
+            return self.state.encounter.combatants.get(owner_id)
+        return None
+
+    def _sync_temp_hp_source_clear(
+        self,
+        owner_type: str,
+        owner_id: str,
+        owner: Character | Monster | Combatant,
+    ) -> None:
+        if owner_type == "combatant":
+            entity_id = getattr(owner, "entity_id", None)
+            if isinstance(entity_id, str) and entity_id in self.state.characters:
+                self.state.characters[entity_id].temp_hp = 0
+                self.state.characters[entity_id].temp_hp_source_effect_id = None
+            return
+        if owner_type == "character" and self.state.encounter is not None:
+            for combatant in self.state.encounter.combatants.values():
+                if combatant.entity_id == owner_id:
+                    combatant.temp_hp = 0
+                    combatant.temp_hp_source_effect_id = None
 
     def _clear_existing_effects_from_same_caster_action(
         self,

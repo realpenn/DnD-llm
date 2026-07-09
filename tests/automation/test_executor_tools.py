@@ -28760,6 +28760,248 @@ def test_regenerate_upcast_spends_higher_slot_without_extra_healing(make_state) 
     }
 
 
+def test_shapechange_grants_first_form_temp_hp_and_allows_magic_action_change(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 1500
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.shapechange",
+        [],
+        params={
+            "slot_level": 9,
+            "shapechange_form_id": "srd.wolf",
+            "shapechange_seen": True,
+            "shapechange_equipment_handling": "fit_new_form",
+        },
+        idempotency_key="cast-shapechange",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert caster.gold == 1500
+    assert result["dice_rolls"] == []
+    assert not any(
+        change["type"] in {"damage", "saving_throw", "attack_roll", "healing"}
+        for change in result["state_changes"]
+    )
+    combatant = state.encounter.combatants["pc1"]
+    assert combatant.temp_hp == compendium.monsters["srd.wolf"].hit_points
+    temp_hp_change = next(
+        change for change in result["state_changes"] if change["type"] == "temp_hp"
+    )
+    assert temp_hp_change["amount"] == compendium.monsters["srd.wolf"].hit_points
+    shape_change = next(
+        change for change in result["state_changes"] if change["type"] == "shapechange_form"
+    )
+    assert shape_change["form_id"] == "srd.wolf"
+    assert shape_change["mode"] == "initial"
+    effect = combatant.status_effects[-1]
+    assert effect["source_action_id"] == "srd.shapechange"
+    assert effect["duration"] == {"until": "concentration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+    assert effect["audit"]["temp_hp_source"] is True
+    modifiers = effect["passive_modifiers"]
+    assert modifiers["shapechange"] is True
+    assert modifiers["shapechange_current_form_id"] == "srd.wolf"
+    assert modifiers["shapechange_current_form_hit_points"] == 11
+    assert modifiers["shapechange_current_form_actions"] == ["srd.wolf_bite"]
+    assert modifiers["retains_mental_ability_scores"] == ["int", "wis", "cha"]
+    assert modifiers["retains_hit_points"] is True
+    assert modifiers["retains_spellcasting_feature"] is True
+    assert modifiers["shapechange_equipment_handling"] == "fit_new_form"
+    assert modifiers["full_stat_block_replacement_not_automated"] is True
+
+    tools.economy.reset_turn_start("pc1", 30)
+    follow_up = tools.perform_action(
+        "pc1",
+        "srd.shapechange_change_form",
+        [],
+        params={
+            "shapechange_form_id": "srd.bandit_captain",
+            "shapechange_seen": True,
+            "shapechange_equipment_handling": "drop",
+        },
+        idempotency_key="shapechange-change-form",
+    )
+
+    assert follow_up["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert combatant.temp_hp == 11
+    assert not any(change["type"] == "temp_hp" for change in follow_up["state_changes"])
+    follow_up_shape = next(
+        change for change in follow_up["state_changes"] if change["type"] == "shapechange_form"
+    )
+    assert follow_up_shape["previous_form_id"] == "srd.wolf"
+    assert follow_up_shape["form_id"] == "srd.bandit_captain"
+    assert follow_up_shape["temporary_hit_points_refreshed"] is False
+    assert effect["passive_modifiers"]["shapechange_current_form_id"] == "srd.bandit_captain"
+    assert effect["passive_modifiers"]["shapechange_current_form_hit_points"] == 52
+    assert effect["passive_modifiers"]["shapechange_equipment_handling"] == "drop"
+
+
+def test_shapechange_rejects_ineligible_forms_before_spending_slot(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 1}
+    caster.spell_slots["9"] = 1
+    caster.gold = 1500
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="seen"):
+        tools.perform_action(
+            "pc1",
+            "srd.shapechange",
+            [],
+            params={
+                "slot_level": 9,
+                "shapechange_form_id": "srd.wolf",
+                "shapechange_seen": False,
+                "shapechange_equipment_handling": "fit_new_form",
+            },
+            idempotency_key="shapechange-unseen",
+        )
+    assert caster.spell_slots["9"] == 1
+    assert caster.gold == 1500
+
+    with pytest.raises(AutomationError, match="Construct or an Undead"):
+        tools.perform_action(
+            "pc1",
+            "srd.shapechange",
+            [],
+            params={
+                "slot_level": 9,
+                "shapechange_form_id": "srd.skeleton",
+                "shapechange_seen": True,
+                "shapechange_equipment_handling": "fit_new_form",
+            },
+            idempotency_key="shapechange-undead",
+        )
+    assert caster.spell_slots["9"] == 1
+
+    with pytest.raises(AutomationError, match="CR exceeds"):
+        tools.perform_action(
+            "pc1",
+            "srd.shapechange",
+            [],
+            params={
+                "slot_level": 9,
+                "shapechange_form_id": "srd.bandit_captain",
+                "shapechange_seen": True,
+                "shapechange_equipment_handling": "fit_new_form",
+            },
+            idempotency_key="shapechange-cr-too-high",
+        )
+    assert caster.spell_slots["9"] == 1
+
+
+def test_shapechange_concentration_end_clears_only_its_temp_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 17}
+    caster.spell_slots["9"] = 1
+    caster.spell_slots["1"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools.perform_action(
+        "pc1",
+        "srd.shapechange",
+        [],
+        params={
+            "slot_level": 9,
+            "shapechange_form_id": "srd.wolf",
+            "shapechange_seen": True,
+            "shapechange_equipment_handling": "fit_new_form",
+        },
+        idempotency_key="shapechange-before-detect-magic",
+    )
+    combatant = state.encounter.combatants["pc1"]
+    assert combatant.temp_hp == 11
+
+    tools.economy.reset_turn_start("pc1", 30)
+    result = tools.cast_spell(
+        "pc1",
+        "srd.detect_magic",
+        [],
+        1,
+        idempotency_key="detect-magic-clears-shapechange",
+    )
+
+    cleared = next(
+        change for change in result["state_changes"] if change["type"] == "concentration_cleared"
+    )
+    assert cleared["removed"][0]["source_action_id"] == "srd.shapechange"
+    assert cleared["removed"][0]["temp_hp_expired"] == {"before": 11, "after": 0}
+    assert combatant.temp_hp == 0
+    assert combatant.temp_hp_source_effect_id is None
+
+    other_state = make_state()
+    assert other_state.encounter is not None
+    other_caster = other_state.characters["pc1"]
+    other_caster.class_levels = {"druid": 17}
+    other_caster.spell_slots["9"] = 1
+    other_caster.spell_slots["1"] = 1
+    other_combatant = other_state.encounter.combatants["pc1"]
+    other_combatant.temp_hp = 20
+    other_combatant.temp_hp_source_effect_id = "other-effect"
+    other_tools = EngineTools(other_state, compendium, AuditLog())
+    other_tools.perform_action(
+        "pc1",
+        "srd.shapechange",
+        [],
+        params={
+            "slot_level": 9,
+            "shapechange_form_id": "srd.wolf",
+            "shapechange_seen": True,
+            "shapechange_equipment_handling": "fit_new_form",
+        },
+        idempotency_key="shapechange-with-higher-temp-hp",
+    )
+    other_tools.economy.reset_turn_start("pc1", 30)
+    other_tools.cast_spell(
+        "pc1",
+        "srd.detect_magic",
+        [],
+        1,
+        idempotency_key="detect-magic-keeps-other-temp-hp",
+    )
+    assert other_combatant.temp_hp == 20
+    assert other_combatant.temp_hp_source_effect_id == "other-effect"
+
+
+def test_shapechange_change_form_requires_active_spell_before_action_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="requires active effect from srd.shapechange"):
+        tools.perform_action(
+            "pc1",
+            "srd.shapechange_change_form",
+            [],
+            params={
+                "shapechange_form_id": "srd.wolf",
+                "shapechange_seen": True,
+                "shapechange_equipment_handling": "fit_new_form",
+            },
+            idempotency_key="shapechange-change-no-active-spell",
+        )
+    assert state.encounter.action_budgets == {}
+
+
 def test_time_stop_spends_slot_and_records_time_stop_window(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]

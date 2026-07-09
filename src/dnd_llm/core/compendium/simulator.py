@@ -79,6 +79,7 @@ class CompendiumSimulator:
                 _add_allowed_list_params(params, action)
                 _add_eyebite_params(params, action)
                 _add_fire_shield_params(params, action)
+                _add_shapechange_params(params, action)
                 if action.properties.get("requires_willing_target") is True:
                     params["target_willing"] = True
                 if action.properties.get("pact_of_the_blade_weapon") is True:
@@ -397,6 +398,27 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                     "audit": {"simulation": True},
                 }
             )
+            if action.id == "srd.shapechange_change_form":
+                assert state.encounter is not None
+                state.encounter.combatants["pc_actor"].status_effects.append(
+                    {
+                        "effect_id": "simulation-shapechange",
+                        "source_ref": "simulation",
+                        "source_action_id": "srd.shapechange",
+                        "target_id": "pc_actor",
+                        "applied_by": "pc_actor",
+                        "condition": None,
+                        "passive_modifiers": {
+                            "shapechange": True,
+                            "shapechange_current_form_id": "srd.giant_rat",
+                        },
+                        "duration": {"until": "concentration_1_hour"},
+                        "tick_on": "self_turn_end",
+                        "concentration": True,
+                        "stacking_policy": "replace",
+                        "audit": {"simulation": True},
+                    }
+                )
         actor_source_action_id = action.properties.get("requires_actor_effect_source_action_id")
         if isinstance(actor_source_action_id, str) and actor_source_action_id:
             actor.status_effects.append(
@@ -445,6 +467,7 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
     if action.id == "srd.hallow":
         params["hallow_extra_effect_creature_types"] = ["aberration"]
     _add_fire_shield_params(params, action)
+    _add_shapechange_params(params, action)
     if action.properties.get("requires_willing_target") is True:
         params["target_willing"] = True
     if action.properties.get("requires_dim_light_or_darkness") is True:
@@ -476,6 +499,14 @@ def _add_allowed_list_params(params: dict[str, Any], action: ActionDefinition) -
             count = int(required_counts.get(param, 1))
             count = max(1, count)
             params[param] = [str(item) for item in allowed_raw[:count]]
+
+
+def _add_shapechange_params(params: dict[str, Any], action: ActionDefinition) -> None:
+    if not any(node.get("type") == "shapechange_form" for node in action.automation):
+        return
+    params["shapechange_form_id"] = "srd.wolf"
+    params["shapechange_seen"] = True
+    params["shapechange_equipment_handling"] = "fit_new_form"
 
 
 def _add_eyebite_params(params: dict[str, Any], action: ActionDefinition) -> None:

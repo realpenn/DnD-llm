@@ -732,6 +732,80 @@
       }
     },
     {
+      "id": "srd.spell.shapechange",
+      "name": "Shapechange",
+      "localization": {
+        "en": "Shapechange",
+        "zh": "形体变化",
+        "aliases": ["形体改变", "变形术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "transmutation",
+      "classes": ["druid", "wizard"],
+      "action": {
+        "id": "srd.shapechange",
+        "name": "Shapechange",
+        "localization": {
+          "en": "Shapechange",
+          "zh": "形体变化",
+          "aliases": ["形体改变", "变形术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a jade circlet worth 1,500+ GP",
+            "consumed": false
+          },
+          "shapechange_form_param": "shapechange_form_id",
+          "shapechange_seen_param": "shapechange_seen",
+          "shapechange_equipment_handling_param": "shapechange_equipment_handling",
+          "shapechange_equipment_handling_options": ["drop", "fit_new_form"],
+          "shapechange_change_form_action_id": "srd.shapechange_change_form",
+          "shapechange_form_cr_must_not_exceed_level_or_cr": true,
+          "shapechange_requires_seen_form": true,
+          "shapechange_forbidden_creature_types": ["construct", "undead"],
+          "temporary_hit_points_equal_first_form_hit_points": true,
+          "temporary_hit_points_vanish_when_spell_ends": true,
+          "can_change_form_with_magic_action": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "shapechange_form",
+            "mode": "initial",
+            "form_param": "shapechange_form_id",
+            "seen_param": "shapechange_seen",
+            "equipment_handling_param": "shapechange_equipment_handling",
+            "resolved_param_prefix": "shapechange_form_",
+            "change_form_action_id": "srd.shapechange_change_form",
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Shapechange"
+      }
+    },
+    {
       "id": "srd.spell.time_stop",
       "name": "Time Stop",
       "localization": {

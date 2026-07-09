@@ -4935,6 +4935,57 @@
             "audit_label": "Conjure Woodland Beings: Disengage"
         },
         {
+            "id": "srd.shapechange_change_form",
+            "name": "Shapechange: Change Form",
+            "localization": {
+                "en": "Shapechange: Change Form",
+                "zh": "形体变化：更换形态",
+                "aliases": ["Shapechange Change Form", "形体变化换形态", "变形术换形态"]
+            },
+            "source": "SRD 5.2.1 Chapter 7: Spells: Shapechange",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "properties": {
+                "magic_action": true,
+                "requires_active_effect_source_action_id": "srd.shapechange",
+                "spell_definition_id": "srd.spell.shapechange",
+                "spell_classes": ["druid", "wizard"],
+                "spell_level": 9,
+                "shapechange_form_param": "shapechange_form_id",
+                "shapechange_seen_param": "shapechange_seen",
+                "shapechange_equipment_handling_param": "shapechange_equipment_handling",
+                "shapechange_equipment_handling_options": ["drop", "fit_new_form"],
+                "shapechange_form_cr_must_not_exceed_level_or_cr": true,
+                "shapechange_requires_seen_form": true,
+                "shapechange_forbidden_creature_types": ["construct", "undead"],
+                "temporary_hit_points_refreshed": false,
+                "no_spell_slot_cost": true
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "self"},
+                {
+                    "type": "shapechange_form",
+                    "mode": "change_form",
+                    "form_param": "shapechange_form_id",
+                    "seen_param": "shapechange_seen",
+                    "equipment_handling_param": "shapechange_equipment_handling",
+                    "resolved_param_prefix": "shapechange_form_",
+                    "change_form_action_id": "srd.shapechange_change_form"
+                },
+                {
+                    "type": "text_result",
+                    "text": "The caster uses Shapechange's ongoing Magic action option to assume another eligible form."
+                }
+            ],
+            "audit_label": "Shapechange: Change Form"
+        },
+        {
             "id": "srd.sunbeam_radiant_line",
             "name": "Sunbeam: Radiant Line",
             "localization": {

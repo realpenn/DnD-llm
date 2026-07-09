@@ -5,7 +5,7 @@ from typing import Any
 
 from .automation.definitions import ActionDefinition, SpellDefinition
 from .automation.effects import EffectInstance
-from .automation.executor import AutomationExecutor
+from .automation.executor import AutomationError, AutomationExecutor
 from .compendium.loader import Compendium
 from .compendium.validators import ALLOWED_DAMAGE_TYPES
 from .dice import RollResult, RollService
@@ -1584,6 +1584,7 @@ class EngineTools:
         cached = self._cached_result(idempotency_key)
         if cached is not None:
             return cached
+        params = self._prepared_action_params(action, actor_id, params)
         executor = AutomationExecutor(self.state, self.roll_service, self.audit_log, self.economy)
         result = executor.execute(
             action,
@@ -1594,6 +1595,65 @@ class EngineTools:
         ).to_dict()
         require_game_state_invariants(self.state)
         return result
+
+    def _prepared_action_params(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        prepared = dict(params or {})
+        for node in action.automation:
+            if node.get("type") == "shapechange_form":
+                self._prepare_shapechange_form_params(actor_id, node, prepared)
+        return prepared
+
+    def _prepare_shapechange_form_params(
+        self,
+        actor_id: str,
+        node: dict[str, Any],
+        params: dict[str, Any],
+    ) -> None:
+        form_param = str(node.get("form_param", "shapechange_form_id"))
+        form_id = self._scalar_string_param(params, form_param)
+        if form_id not in self.compendium.monsters:
+            raise AutomationError("Shapechange form must be a loaded SRD monster")
+        monster = self.compendium.monsters[form_id]
+        prefix = str(node.get("resolved_param_prefix", "shapechange_form_"))
+        params[f"{prefix}id"] = monster.id
+        params[f"{prefix}name"] = monster.name
+        params[f"{prefix}hit_points"] = monster.hit_points
+        params[f"{prefix}cr"] = monster.cr
+        params[f"{prefix}creature_type"] = monster.creature_type
+        params[f"{prefix}armor_class"] = monster.armor_class
+        params[f"{prefix}speed_ft"] = monster.speed_ft
+        params[f"{prefix}size"] = monster.size
+        params[f"{prefix}actions"] = list(monster.actions)
+        params[f"{prefix}abilities"] = dict(monster.abilities)
+        params["shapechange_actor_level_or_cr"] = self._shapechange_actor_level_or_cr(actor_id)
+
+    @staticmethod
+    def _scalar_string_param(params: dict[str, Any], param_name: str) -> str:
+        value = params.get(param_name)
+        if isinstance(value, list) and len(value) == 1:
+            value = value[0]
+        if not isinstance(value, str) or not value.strip():
+            raise AutomationError(f"missing required parameter {param_name}")
+        return value.strip()
+
+    def _shapechange_actor_level_or_cr(self, actor_id: str) -> float:
+        actor = self.state.entity_for_actor(actor_id)
+        if isinstance(actor, Combatant) and actor.entity_id in self.state.characters:
+            actor = self.state.characters[actor.entity_id]
+        elif isinstance(actor, Combatant) and actor.entity_id in self.state.monsters:
+            actor = self.state.monsters[actor.entity_id]
+        if isinstance(actor, Character):
+            return float(sum(max(0, int(level)) for level in actor.class_levels.values()))
+        if isinstance(actor, Monster) and actor.id in self.compendium.monsters:
+            return float(self.compendium.monsters[actor.id].cr)
+        if isinstance(actor, Combatant) and actor.entity_id in self.compendium.monsters:
+            return float(self.compendium.monsters[actor.entity_id].cr)
+        raise AutomationError("Shapechange actor level or CR is unavailable")
 
     def _fast_hands_item_action(
         self,

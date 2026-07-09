@@ -68,6 +68,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mirage_arcane",
         "srd.weird",
         "srd.regenerate",
+        "srd.shapechange",
+        "srd.shapechange_change_form",
         "srd.time_stop",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
@@ -5378,6 +5380,105 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "target_turn_start",
         },
     ]
+    shapechange_spell = compendium.spell("srd.spell.shapechange")
+    assert shapechange_spell.level == 9
+    assert shapechange_spell.school == "transmutation"
+    assert shapechange_spell.classes == ["druid", "wizard"]
+    shapechange = compendium.action("srd.shapechange")
+    assert shapechange.requirements == {
+        "spell_level": 9,
+        "class_any": ["druid", "wizard"],
+    }
+    assert shapechange.properties == {
+        "spell_classes": ["druid", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a jade circlet worth 1,500+ GP",
+            "consumed": False,
+        },
+        "shapechange_form_param": "shapechange_form_id",
+        "shapechange_seen_param": "shapechange_seen",
+        "shapechange_equipment_handling_param": "shapechange_equipment_handling",
+        "shapechange_equipment_handling_options": ["drop", "fit_new_form"],
+        "shapechange_change_form_action_id": "srd.shapechange_change_form",
+        "shapechange_form_cr_must_not_exceed_level_or_cr": True,
+        "shapechange_requires_seen_form": True,
+        "shapechange_forbidden_creature_types": ["construct", "undead"],
+        "temporary_hit_points_equal_first_form_hit_points": True,
+        "temporary_hit_points_vanish_when_spell_ends": True,
+        "can_change_form_with_magic_action": True,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_attack_roll": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.shapechange",
+        "spell_level": 9,
+    }
+    assert shapechange.cost.spell_slot_level == 9
+    assert shapechange.cost.gold == 0
+    assert shapechange.range == {"self": True}
+    assert shapechange.target_policy == {"min": 0, "max": 0, "self": True, "harmful": False}
+    shapechange_node = {
+        "type": "shapechange_form",
+        "mode": "initial",
+        "form_param": "shapechange_form_id",
+        "seen_param": "shapechange_seen",
+        "equipment_handling_param": "shapechange_equipment_handling",
+        "resolved_param_prefix": "shapechange_form_",
+        "change_form_action_id": "srd.shapechange_change_form",
+        "duration": {"until": "concentration_1_hour"},
+        "tick_on": "self_turn_end",
+        "concentration": True,
+    }
+    assert shapechange.automation == [
+        {"type": "target", "mode": "self"},
+        shapechange_node,
+    ]
+    shapechange_change = compendium.action("srd.shapechange_change_form")
+    assert shapechange_change.action_type == "base_action"
+    assert shapechange_change.action_economy == "action"
+    assert shapechange_change.cost.spell_slot_level is None
+    assert shapechange_change.cost.gold == 0
+    assert shapechange_change.properties == {
+        "magic_action": True,
+        "requires_active_effect_source_action_id": "srd.shapechange",
+        "spell_definition_id": "srd.spell.shapechange",
+        "spell_classes": ["druid", "wizard"],
+        "spell_level": 9,
+        "shapechange_form_param": "shapechange_form_id",
+        "shapechange_seen_param": "shapechange_seen",
+        "shapechange_equipment_handling_param": "shapechange_equipment_handling",
+        "shapechange_equipment_handling_options": ["drop", "fit_new_form"],
+        "shapechange_form_cr_must_not_exceed_level_or_cr": True,
+        "shapechange_requires_seen_form": True,
+        "shapechange_forbidden_creature_types": ["construct", "undead"],
+        "temporary_hit_points_refreshed": False,
+        "no_spell_slot_cost": True,
+    }
+    assert shapechange_change.range == {"self": True}
+    assert shapechange_change.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    shapechange_change_node = {
+        "type": "shapechange_form",
+        "mode": "change_form",
+        "form_param": "shapechange_form_id",
+        "seen_param": "shapechange_seen",
+        "equipment_handling_param": "shapechange_equipment_handling",
+        "resolved_param_prefix": "shapechange_form_",
+        "change_form_action_id": "srd.shapechange_change_form",
+    }
+    assert shapechange_change.automation == [
+        {"type": "target", "mode": "self"},
+        shapechange_change_node,
+        {
+            "type": "text_result",
+            "text": "The caster uses Shapechange's ongoing Magic action option to assume another eligible form.",
+        },
+    ]
     time_stop_spell = compendium.spell("srd.spell.time_stop")
     assert time_stop_spell.level == 9
     assert time_stop_spell.school == "transmutation"
@@ -9666,6 +9767,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.gate",
         "srd.spell.control_weather",
         "srd.spell.regenerate",
+        "srd.spell.shapechange",
         "srd.spell.time_stop",
         "srd.spell.reverse_gravity",
         "srd.spell.sequester",

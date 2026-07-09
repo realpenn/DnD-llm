@@ -24,6 +24,7 @@ NODE_TYPES = {
     "eyebite_effect",
     "greater_restoration",
     "restoring_touch",
+    "shapechange_form",
     "passive_effect",
     "world_effect",
     "natures_sanctuary",
@@ -62,6 +63,7 @@ STATE_CHANGING_NODE_TYPES = {
     "eyebite_effect",
     "greater_restoration",
     "restoring_touch",
+    "shapechange_form",
     "passive_effect",
     "world_effect",
     "maze_escape",
@@ -558,6 +560,24 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         )
         if not isinstance(destination_param, str) or not destination_param:
             errors.append(f"{path}: instinctive_pounce_move destination_param must be a string")
+    if node_type == "shapechange_form":
+        mode = node.get("mode", "initial")
+        if mode not in {"initial", "change_form"}:
+            errors.append(f"{path}: shapechange_form mode must be initial or change_form")
+        for key in (
+            "form_param",
+            "seen_param",
+            "equipment_handling_param",
+            "resolved_param_prefix",
+        ):
+            value = node.get(key)
+            if value is not None and (not isinstance(value, str) or not value):
+                errors.append(f"{path}: shapechange_form {key} must be a non-empty string")
+        duration = node.get("duration")
+        if isinstance(duration, dict):
+            errors.extend(_validate_duration_from_slot(duration, path))
+            errors.extend(_validate_duration_from_param(duration, path))
+            errors.extend(_validate_repeat_save(duration, path))
     if node_type == "passive_effect":
         modifiers = node.get("passive_modifiers")
         if not isinstance(modifiers, dict) or not modifiers:
