@@ -243,6 +243,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.resilient_sphere",
     "srd.banishment",
     "srd.reverse_gravity",
+    "srd.sequester",
     "srd.tireless",
     "srd.preserve_life",
     "srd.primal_knowledge",

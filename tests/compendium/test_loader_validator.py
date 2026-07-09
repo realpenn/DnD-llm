@@ -115,6 +115,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.move_earth",
         "srd.wind_walk",
         "srd.reverse_gravity",
+        "srd.sequester",
         "srd.tree_stride",
         "srd.fabricate",
         "srd.stone_shape",
@@ -4104,6 +4105,71 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "concentration_1_minute"},
             "tick_on": "self_turn_end",
             "concentration": True,
+        },
+    ]
+    sequester_spell = compendium.spell("srd.spell.sequester")
+    assert sequester_spell.level == 7
+    assert sequester_spell.school == "transmutation"
+    assert sequester_spell.classes == ["wizard"]
+    sequester = compendium.action("srd.sequester")
+    assert sequester.requirements == {
+        "spell_level": 7,
+        "class_any": ["wizard"],
+    }
+    assert sequester.properties == {
+        "spell_classes": ["wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "gem dust worth 5,000+ GP",
+            "consumed": True,
+        },
+        "target_must_be_touched": True,
+        "target_can_be_object_or_willing_creature": True,
+        "requires_willing_target": True,
+        "early_end_condition_param": "sequester_end_condition",
+        "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+        "object_target_resolution_not_automated": True,
+        "early_end_condition_listener_not_automated": True,
+        "divination_detection_blocking_not_automated": True,
+        "spell_definition_id": "srd.spell.sequester",
+        "spell_level": 7,
+    }
+    assert sequester.cost.spell_slot_level == 7
+    assert sequester.cost.gold == 5000
+    assert sequester.range == {"touch": True}
+    assert sequester.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert sequester.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "condition",
+            "condition": "invisible",
+            "duration": {"until": "until_dispelled", "break_on_damage": True},
+            "tick_on": "damage_or_dispel",
+        },
+        {
+            "type": "condition",
+            "condition": "unconscious",
+            "duration": {"until": "until_dispelled", "break_on_damage": True},
+            "tick_on": "damage_or_dispel",
+        },
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "sequestered": True,
+                "cant_be_targeted_by_divination_spells": True,
+                "cant_be_detected_by_magic": True,
+                "cant_be_viewed_remotely_with_magic": True,
+                "suspended_animation": True,
+                "does_not_age": True,
+                "does_not_need_food_water_or_air": True,
+                "early_end_condition": {"optional_param": "sequester_end_condition"},
+                "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+                "object_target_resolution_not_automated": True,
+                "early_end_condition_listener_not_automated": True,
+                "divination_detection_blocking_not_automated": True,
+            },
+            "duration": {"until": "until_dispelled", "break_on_damage": True},
+            "tick_on": "damage_or_dispel",
         },
     ]
     wind_walk = compendium.action("srd.wind_walk")
@@ -8327,6 +8393,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.etherealness",
         "srd.spell.gate",
         "srd.spell.reverse_gravity",
+        "srd.spell.sequester",
     } <= set(compendium.spells)
     assert compendium.spell("srd.spell.meteor_swarm").level == 9
     assert compendium.spell("srd.spell.flame_strike").level == 5

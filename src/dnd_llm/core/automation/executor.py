@@ -3418,6 +3418,14 @@ class AutomationExecutor:
             if isinstance(selected, (dict, list)):
                 raise AutomationError(f"parameter {param_name} must be a scalar")
             return str(selected)
+        if isinstance(value, dict) and set(value) == {"optional_param"}:
+            param_name = str(value["optional_param"])
+            selected = ctx.params.get(param_name)
+            if selected is None or selected == "":
+                return None
+            if isinstance(selected, (dict, list)):
+                raise AutomationError(f"parameter {param_name} must be a scalar")
+            return str(selected)
         if isinstance(value, dict) and set(value) == {"param_list"}:
             param_name = str(value["param_list"])
             selected = ctx.params.get(param_name)

@@ -400,6 +400,92 @@
       }
     },
     {
+      "id": "srd.spell.sequester",
+      "name": "Sequester",
+      "localization": {
+        "en": "Sequester",
+        "zh": "封藏术",
+        "aliases": ["隐封术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.sequester",
+        "name": "Sequester",
+        "localization": {
+          "en": "Sequester",
+          "zh": "封藏术",
+          "aliases": ["隐封术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "spell_classes": ["wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "gem dust worth 5,000+ GP",
+            "consumed": true
+          },
+          "target_must_be_touched": true,
+          "target_can_be_object_or_willing_creature": true,
+          "requires_willing_target": true,
+          "early_end_condition_param": "sequester_end_condition",
+          "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+          "object_target_resolution_not_automated": true,
+          "early_end_condition_listener_not_automated": true,
+          "divination_detection_blocking_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7, "gold": 5000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "condition",
+            "condition": "invisible",
+            "duration": { "until": "until_dispelled", "break_on_damage": true },
+            "tick_on": "damage_or_dispel"
+          },
+          {
+            "type": "condition",
+            "condition": "unconscious",
+            "duration": { "until": "until_dispelled", "break_on_damage": true },
+            "tick_on": "damage_or_dispel"
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "sequestered": true,
+              "cant_be_targeted_by_divination_spells": true,
+              "cant_be_detected_by_magic": true,
+              "cant_be_viewed_remotely_with_magic": true,
+              "suspended_animation": true,
+              "does_not_age": true,
+              "does_not_need_food_water_or_air": true,
+              "early_end_condition": { "optional_param": "sequester_end_condition" },
+              "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+              "object_target_resolution_not_automated": true,
+              "early_end_condition_listener_not_automated": true,
+              "divination_detection_blocking_not_automated": true
+            },
+            "duration": { "until": "until_dispelled", "break_on_damage": true },
+            "tick_on": "damage_or_dispel"
+          }
+        ],
+        "audit_label": "Sequester"
+      }
+    },
+    {
       "id": "srd.spell.wind_walk",
       "name": "Wind Walk",
       "localization": {

@@ -18101,6 +18101,164 @@ def test_reverse_gravity_successful_save_records_cylinder_without_target_effect(
     assert state.world.active_effects[-1]["effect_type"] == "reverse_gravity_cylinder"
 
 
+def test_sequester_consumes_slot_and_gem_dust_records_suspended_animation(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 5000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 20
+    target.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.sequester",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={
+            "slot_level": 7,
+            "target_willing": True,
+            "sequester_end_condition": "when the seal is spoken within 1 mile",
+        },
+        idempotency_key="cast-sequester",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_7", "gold"]
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert [effect["condition"] for effect in target.status_effects] == [
+        "invisible",
+        "unconscious",
+        None,
+    ]
+    assert all(
+        effect["source_action_id"] == "srd.sequester"
+        and effect["duration"] == {"until": "until_dispelled", "break_on_damage": True}
+        and effect["tick_on"] == "damage_or_dispel"
+        and effect["concentration"] is False
+        for effect in target.status_effects
+    )
+    passive = target.status_effects[-1]
+    assert passive["passive_modifiers"] == {
+        "sequestered": True,
+        "cant_be_targeted_by_divination_spells": True,
+        "cant_be_detected_by_magic": True,
+        "cant_be_viewed_remotely_with_magic": True,
+        "suspended_animation": True,
+        "does_not_age": True,
+        "does_not_need_food_water_or_air": True,
+        "early_end_condition": "when the seal is spoken within 1 mile",
+        "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+        "object_target_resolution_not_automated": True,
+        "early_end_condition_listener_not_automated": True,
+        "divination_detection_blocking_not_automated": True,
+    }
+    assert len([change for change in result["state_changes"] if change["type"] == "condition"]) == 2
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc2"
+    assert passive_change["passive_modifiers"] == passive["passive_modifiers"]
+
+
+def test_sequester_effects_end_when_target_takes_any_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 5000
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 20
+    target.hp_max = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    tools._execute_action(
+        action_id="srd.sequester",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 7, "target_willing": True},
+        idempotency_key="cast-sequester-before-damage",
+    )
+    assert len(
+        [effect for effect in target.status_effects if effect["source_action_id"] == "srd.sequester"]
+    ) == 3
+    passive = target.status_effects[-1]
+    assert passive["passive_modifiers"]["early_end_condition"] is None
+
+    damage = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _damage_action(1),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="damage-sequestered-target",
+    )
+
+    assert target.hp_current == 19
+    assert not any(
+        effect["source_action_id"] == "srd.sequester" for effect in target.status_effects
+    )
+    expired = next(change for change in damage.state_changes if change["type"] == "effect_expired")
+    assert expired["target_id"] == "pc2"
+    assert expired["trigger"] == "damage"
+    assert {removed["condition"] for removed in expired["removed"]} == {
+        "invisible",
+        "unconscious",
+        None,
+    }
+
+
+def test_sequester_requires_willing_target_and_consumed_gem_dust_gold(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 5000
+    target = state.encounter.combatants["pc2"]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.sequester",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 7},
+            idempotency_key="cast-sequester-unwilling",
+        )
+
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 5000
+    assert target.status_effects == []
+
+    caster.gold = 4999
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools._execute_action(
+            action_id="srd.sequester",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 7, "target_willing": True},
+            idempotency_key="cast-sequester-insufficient-gold",
+        )
+
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 4999
+    assert target.status_effects == []
+
+
 def test_blight_uses_actor_spell_dc_and_plant_auto_fails_save(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
