@@ -773,6 +773,98 @@
       }
     },
     {
+      "id": "srd.spell.antimagic_field",
+      "name": "Antimagic Field",
+      "localization": {
+        "en": "Antimagic Field",
+        "zh": "反魔法场",
+        "aliases": ["反魔法力场", "反魔法领域"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "abjuration",
+      "classes": ["cleric", "wizard"],
+      "action": {
+        "id": "srd.antimagic_field",
+        "name": "Antimagic Field",
+        "localization": {
+          "en": "Antimagic Field",
+          "zh": "反魔法场",
+          "aliases": ["反魔法力场", "反魔法领域"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "iron filings",
+            "consumed": false
+          },
+          "self_centered_emanation_radius_ft": 10,
+          "dynamic_aura_membership_not_automated": true,
+          "magic_item_suppression_not_automated": true,
+          "teleport_and_planar_travel_blocking_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "world_effect",
+            "effect_type": "antimagic_field",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 10 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "self_centered_emanation": true,
+              "blocks_spellcasting_inside_aura": true,
+              "blocks_magic_actions_inside_aura": true,
+              "blocks_new_magical_effects_inside_aura": true,
+              "blocks_magic_targeting_or_affecting_inside_aura": true,
+              "suppresses_magic_item_properties_inside_aura": true,
+              "blocks_area_effects_extending_into_aura": true,
+              "blocks_teleport_into_or_out_of_aura": true,
+              "blocks_planar_travel_into_or_out_of_aura": true,
+              "portals_close_temporarily_inside_aura": true,
+              "ongoing_spells_suppressed_except_artifact_or_deity": true,
+              "suppressed_effect_duration_still_counts_down": true,
+              "dispel_magic_has_no_effect_on_aura": true,
+              "different_antimagic_fields_do_not_nullify_each_other": true,
+              "dynamic_aura_membership_not_automated": true,
+              "magic_item_suppression_not_automated": true,
+              "teleport_and_planar_travel_blocking_not_automated": true
+            }
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "antimagic_field": true,
+              "blocks_spellcasting": true,
+              "blocks_magic_actions": true,
+              "blocks_new_magical_effects": true,
+              "inside_antimagic_field": true,
+              "magic_item_properties_suppressed": true,
+              "teleport_and_planar_travel_blocked": true
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Antimagic Field"
+      }
+    },
+    {
       "id": "srd.spell.mind_blank",
       "name": "Mind Blank",
       "localization": {

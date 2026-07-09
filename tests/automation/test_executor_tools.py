@@ -21465,6 +21465,120 @@ def test_globe_of_invulnerability_upcast_records_higher_blocked_spell_level(
     assert effect["metadata"]["blocks_spell_level_lte"] == 6
 
 
+def test_antimagic_field_records_aura_and_blocks_caster_spellcasting(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    protected = state.encounter.combatants["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.spell_slots["8"] = 1
+    caster.spell_slots["1"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.antimagic_field",
+        [],
+        8,
+        idempotency_key="cast-antimagic-field",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    assert caster.spell_slots["1"] == 1
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+
+    aura = state.world.active_effects[-1]
+    assert aura["source_action_id"] == "srd.antimagic_field"
+    assert aura["effect_type"] == "antimagic_field"
+    assert aura["concentration"] is True
+    assert aura["scope"] == {"target": "self_centered_emanation", "radius_ft": 10}
+    assert aura["duration"] == {"until": "concentration_1_hour"}
+    assert aura["tick_on"] == "self_turn_end"
+    assert aura["metadata"] == {
+        "self_centered_emanation": True,
+        "blocks_spellcasting_inside_aura": True,
+        "blocks_magic_actions_inside_aura": True,
+        "blocks_new_magical_effects_inside_aura": True,
+        "blocks_magic_targeting_or_affecting_inside_aura": True,
+        "suppresses_magic_item_properties_inside_aura": True,
+        "blocks_area_effects_extending_into_aura": True,
+        "blocks_teleport_into_or_out_of_aura": True,
+        "blocks_planar_travel_into_or_out_of_aura": True,
+        "portals_close_temporarily_inside_aura": True,
+        "ongoing_spells_suppressed_except_artifact_or_deity": True,
+        "suppressed_effect_duration_still_counts_down": True,
+        "dispel_magic_has_no_effect_on_aura": True,
+        "different_antimagic_fields_do_not_nullify_each_other": True,
+        "dynamic_aura_membership_not_automated": True,
+        "magic_item_suppression_not_automated": True,
+        "teleport_and_planar_travel_blocking_not_automated": True,
+    }
+    passive = protected.status_effects[-1]
+    assert passive["source_action_id"] == "srd.antimagic_field"
+    assert passive["condition"] is None
+    assert passive["passive_modifiers"] == {
+        "antimagic_field": True,
+        "blocks_spellcasting": True,
+        "blocks_magic_actions": True,
+        "blocks_new_magical_effects": True,
+        "inside_antimagic_field": True,
+        "magic_item_properties_suppressed": True,
+        "teleport_and_planar_travel_blocked": True,
+    }
+    assert passive["duration"] == {"until": "concentration_1_hour"}
+    assert passive["tick_on"] == "self_turn_end"
+    assert passive["concentration"] is True
+
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "antimagic_field"
+    assert world_effect_change["concentration"] is True
+
+    with pytest.raises(
+        AutomationError,
+        match="actor cannot cast spells while affected by srd.antimagic_field",
+    ):
+        tools.cast_spell(
+            "pc1",
+            "srd.cure_wounds",
+            ["pc2"],
+            1,
+            idempotency_key="cast-cure-wounds-inside-antimagic-field",
+        )
+
+    assert caster.spell_slots["1"] == 1
+
+    resolver = ActionResolver(state, compendium.actions)
+    resolved = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="cure wounds",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cure_wounds",
+            params={"slot_level": 1, "target_willing": True},
+        )
+    )
+    assert resolved.status == "rejected"
+    assert resolved.reason == "actor cannot cast spells while affected by srd.antimagic_field"
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    ticks = [
+        entry
+        for entry in lifecycle.ticked
+        if entry["source_action_id"] == "srd.antimagic_field"
+    ]
+    assert len(ticks) == 2
+    assert {entry["remaining_ticks_before"] for entry in ticks} == {600}
+    assert {entry["remaining_ticks_after"] for entry in ticks} == {599}
+
+
 def test_forbiddance_spends_slot_records_ward_and_does_not_consume_ruby_dust(
     make_state,
 ) -> None:

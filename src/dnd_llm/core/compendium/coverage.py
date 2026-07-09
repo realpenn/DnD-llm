@@ -55,6 +55,7 @@ EXPECTED_PHASE1_HAZARDS = {
 EXPECTED_PHASE1_ACTIONS = {
     "srd.action_surge",
     "srd.agonizing_blast",
+    "srd.antimagic_field",
     "srd.antilife_shell",
     "srd.arcane_eye",
     "srd.ascendant_step",

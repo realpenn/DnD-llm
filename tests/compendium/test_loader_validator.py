@@ -59,6 +59,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.private_sanctum",
         "srd.resilient_sphere",
         "srd.banishment",
+        "srd.antimagic_field",
         "srd.antilife_shell",
         "srd.aura_of_life",
         "srd.death_ward",
@@ -2385,6 +2386,86 @@ def test_compendium_loads_srd_actions() -> None:
                 "ends_if_caster_moves_and_forces_affected_creature_through_barrier": True,
                 "barrier_collision_not_automated": True,
             },
+        },
+    ]
+    antimagic_field_spell = compendium.spell("srd.spell.antimagic_field")
+    assert antimagic_field_spell.level == 8
+    assert antimagic_field_spell.school == "abjuration"
+    assert antimagic_field_spell.classes == ["cleric", "wizard"]
+    antimagic_field = compendium.action("srd.antimagic_field")
+    assert antimagic_field.requirements == {
+        "spell_level": 8,
+        "class_any": ["cleric", "wizard"],
+    }
+    assert antimagic_field.properties == {
+        "spell_classes": ["cleric", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "iron filings",
+            "consumed": False,
+        },
+        "self_centered_emanation_radius_ft": 10,
+        "dynamic_aura_membership_not_automated": True,
+        "magic_item_suppression_not_automated": True,
+        "teleport_and_planar_travel_blocking_not_automated": True,
+        "spell_definition_id": "srd.spell.antimagic_field",
+        "spell_level": 8,
+    }
+    assert antimagic_field.cost.spell_slot_level == 8
+    assert antimagic_field.cost.gold == 0
+    assert antimagic_field.range == {
+        "self": True,
+        "shape": "emanation",
+        "radius_ft": 10,
+    }
+    assert antimagic_field.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert antimagic_field.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "world_effect",
+            "effect_type": "antimagic_field",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 10},
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "self_centered_emanation": True,
+                "blocks_spellcasting_inside_aura": True,
+                "blocks_magic_actions_inside_aura": True,
+                "blocks_new_magical_effects_inside_aura": True,
+                "blocks_magic_targeting_or_affecting_inside_aura": True,
+                "suppresses_magic_item_properties_inside_aura": True,
+                "blocks_area_effects_extending_into_aura": True,
+                "blocks_teleport_into_or_out_of_aura": True,
+                "blocks_planar_travel_into_or_out_of_aura": True,
+                "portals_close_temporarily_inside_aura": True,
+                "ongoing_spells_suppressed_except_artifact_or_deity": True,
+                "suppressed_effect_duration_still_counts_down": True,
+                "dispel_magic_has_no_effect_on_aura": True,
+                "different_antimagic_fields_do_not_nullify_each_other": True,
+                "dynamic_aura_membership_not_automated": True,
+                "magic_item_suppression_not_automated": True,
+                "teleport_and_planar_travel_blocking_not_automated": True,
+            },
+        },
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "antimagic_field": True,
+                "blocks_spellcasting": True,
+                "blocks_magic_actions": True,
+                "blocks_new_magical_effects": True,
+                "inside_antimagic_field": True,
+                "magic_item_properties_suppressed": True,
+                "teleport_and_planar_travel_blocked": True,
+            },
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
         },
     ]
     globe_of_invulnerability = compendium.action("srd.globe_of_invulnerability")
@@ -8156,6 +8237,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.heal",
         "srd.spell.harm",
         "srd.spell.finger_of_death",
+        "srd.spell.antimagic_field",
         "srd.spell.charm_monster",
         "srd.spell.commune",
         "srd.spell.commune_with_nature",
