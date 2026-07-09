@@ -1233,6 +1233,69 @@ def test_compendium_loads_srd_actions() -> None:
             },
         }
     ]
+    programmed_illusion_spell = compendium.spell("srd.spell.programmed_illusion")
+    assert programmed_illusion_spell.level == 6
+    assert programmed_illusion_spell.school == "illusion"
+    assert programmed_illusion_spell.classes == ["bard", "wizard"]
+    programmed_illusion = compendium.action("srd.programmed_illusion")
+    assert programmed_illusion.requirements == {
+        "spell_level": 6,
+        "class_any": ["bard", "wizard"],
+    }
+    assert programmed_illusion.properties == {
+        "spell_classes": ["bard", "wizard"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "jade dust worth 25+ GP",
+            "consumed": False,
+        },
+        "max_cube_size_ft": 30,
+        "scripted_performance_max_minutes": 5,
+        "trigger_range_ft": 30,
+        "dormant_after_performance_minutes": 10,
+        "spell_definition_id": "srd.spell.programmed_illusion",
+        "spell_level": 6,
+    }
+    assert programmed_illusion.cost.spell_slot_level == 6
+    assert programmed_illusion.cost.gold == 0
+    assert programmed_illusion.range == {"normal_ft": 120, "shape": "cube", "max_size_ft": 30}
+    assert programmed_illusion.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert programmed_illusion.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "programmed_illusion",
+            "scope": {
+                "target": "visible_phenomenon_within_range",
+                "range_ft": 120,
+                "shape": "cube",
+                "max_size_ft": 30,
+            },
+            "duration": {"until": "until_dispelled"},
+            "metadata": {
+                "illusion_can_be_object_creature_or_visible_phenomenon": True,
+                "imperceptible_until_triggered": True,
+                "trigger_specified_on_cast": True,
+                "trigger_must_be_visual_or_audible_phenomenon": True,
+                "trigger_must_occur_within_ft_of_area": 30,
+                "behavior_and_sounds_scripted_on_cast": True,
+                "scripted_performance_max_minutes": 5,
+                "disappears_after_performance": True,
+                "dormant_after_performance_minutes": 10,
+                "can_activate_again_after_dormant_period": True,
+                "physical_interaction_reveals_illusion": True,
+                "things_can_pass_through_image": True,
+                "disbelieve_check": {
+                    "action": "study",
+                    "ability": "int",
+                    "skill": "investigation",
+                    "dc_from": {"spell_save_dc": "actor"},
+                },
+                "discerned_creature_can_see_through_image": True,
+                "discerned_noise_sounds_hollow": True,
+                "trigger_and_performance_resolution_not_automated": True,
+            },
+        }
+    ]
     freedom_of_movement = compendium.action("srd.freedom_of_movement")
     assert freedom_of_movement.requirements == {
         "spell_level": 4,

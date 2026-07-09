@@ -303,6 +303,90 @@
         ],
         "audit_label": "Creation"
       }
+    },
+    {
+      "id": "srd.spell.programmed_illusion",
+      "name": "Programmed Illusion",
+      "localization": {
+        "en": "Programmed Illusion",
+        "zh": "预置幻象",
+        "aliases": ["预置幻影"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "illusion",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.programmed_illusion",
+        "name": "Programmed Illusion",
+        "localization": {
+          "en": "Programmed Illusion",
+          "zh": "预置幻象",
+          "aliases": ["预置幻影"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "cube", "max_size_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "jade dust worth 25+ GP",
+            "consumed": false
+          },
+          "max_cube_size_ft": 30,
+          "scripted_performance_max_minutes": 5,
+          "trigger_range_ft": 30,
+          "dormant_after_performance_minutes": 10
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6, "gold": 0 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "programmed_illusion",
+            "scope": {
+              "target": "visible_phenomenon_within_range",
+              "range_ft": 120,
+              "shape": "cube",
+              "max_size_ft": 30
+            },
+            "duration": { "until": "until_dispelled" },
+            "metadata": {
+              "illusion_can_be_object_creature_or_visible_phenomenon": true,
+              "imperceptible_until_triggered": true,
+              "trigger_specified_on_cast": true,
+              "trigger_must_be_visual_or_audible_phenomenon": true,
+              "trigger_must_occur_within_ft_of_area": 30,
+              "behavior_and_sounds_scripted_on_cast": true,
+              "scripted_performance_max_minutes": 5,
+              "disappears_after_performance": true,
+              "dormant_after_performance_minutes": 10,
+              "can_activate_again_after_dormant_period": true,
+              "physical_interaction_reveals_illusion": true,
+              "things_can_pass_through_image": true,
+              "disbelieve_check": {
+                "action": "study",
+                "ability": "int",
+                "skill": "investigation",
+                "dc_from": { "spell_save_dc": "actor" }
+              },
+              "discerned_creature_can_see_through_image": true,
+              "discerned_noise_sounds_hollow": true,
+              "trigger_and_performance_resolution_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Programmed Illusion"
+      }
     }
   ]
 }

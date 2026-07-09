@@ -20747,6 +20747,81 @@ def test_creation_records_material_duration_and_upcast_cube(make_state) -> None:
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 7199
 
 
+def test_programmed_illusion_records_until_dispelled_triggered_illusion(
+    make_state,
+) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 11}
+    caster.spell_slots["6"] = 1
+    caster.gold = 0
+    inventory_before = dict(caster.inventory)
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.programmed_illusion",
+        actor_id="pc1",
+        targets=[],
+        params={"slot_level": 6},
+        idempotency_key="cast-programmed-illusion",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert caster.gold == 0
+    assert caster.inventory == inventory_before
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_6"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.programmed_illusion"
+    assert effect["effect_type"] == "programmed_illusion"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "visible_phenomenon_within_range",
+        "range_ft": 120,
+        "shape": "cube",
+        "max_size_ft": 30,
+    }
+    assert effect["duration"] == {"until": "until_dispelled"}
+    assert "tick_on" not in effect
+    assert effect["metadata"] == {
+        "illusion_can_be_object_creature_or_visible_phenomenon": True,
+        "imperceptible_until_triggered": True,
+        "trigger_specified_on_cast": True,
+        "trigger_must_be_visual_or_audible_phenomenon": True,
+        "trigger_must_occur_within_ft_of_area": 30,
+        "behavior_and_sounds_scripted_on_cast": True,
+        "scripted_performance_max_minutes": 5,
+        "disappears_after_performance": True,
+        "dormant_after_performance_minutes": 10,
+        "can_activate_again_after_dormant_period": True,
+        "physical_interaction_reveals_illusion": True,
+        "things_can_pass_through_image": True,
+        "disbelieve_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc_from": {"spell_save_dc": "actor"},
+        },
+        "discerned_creature_can_see_through_image": True,
+        "discerned_noise_sounds_hollow": True,
+        "trigger_and_performance_resolution_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "programmed_illusion"
+    assert world_effect_change["concentration"] is False
+    state_change_types = {change["type"] for change in result["state_changes"]}
+    assert state_change_types.isdisjoint({"attack_roll", "saving_throw", "damage", "condition"})
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.changed is False
+    assert state.world.active_effects[-1]["effect_id"] == effect["effect_id"]
+
+
 def test_creation_rejects_invalid_material_or_caster_before_cost(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]
