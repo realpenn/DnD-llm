@@ -103,6 +103,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.death_ward",
     "srd.devils_sight",
     "srd.defensive_tactics",
+    "srd.demiplane",
     "srd.dimension_door",
     "srd.disengage",
     "srd.disciple_of_life",

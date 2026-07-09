@@ -1033,6 +1033,86 @@
       }
     },
     {
+      "id": "srd.spell.demiplane",
+      "name": "Demiplane",
+      "localization": {
+        "en": "Demiplane",
+        "zh": "半位面术",
+        "aliases": ["半位面"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "conjuration",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.demiplane",
+        "name": "Demiplane",
+        "localization": {
+          "en": "Demiplane",
+          "zh": "半位面术",
+          "aliases": ["半位面"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["sorcerer", "warlock", "wizard"],
+          "components": ["S"],
+          "target_must_be_visible": true,
+          "target_surface": "flat_solid_surface",
+          "door_size": "Medium",
+          "demiplane_room_size_ft": 30,
+          "demiplane_material_options": ["wood", "stone"],
+          "demiplane_connection_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "demiplane_door",
+            "scope": {
+              "target": "flat_solid_surface_you_can_see",
+              "range_ft": 60,
+              "door_size": "Medium"
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "shadowy_medium_door": true,
+              "door_can_be_opened_and_closed": true,
+              "leads_to_demiplane": true,
+              "demiplane_empty_room": true,
+              "demiplane_room_dimensions_ft": {
+                "length": 30,
+                "width": 30,
+                "height": 30
+              },
+              "demiplane_material_options": ["wood", "stone"],
+              "door_vanishes_when_spell_ends": true,
+              "objects_inside_remain_there": true,
+              "creatures_inside_remain_unless_they_opt_to_be_shunted": true,
+              "shunted_creatures_land_prone": true,
+              "shunted_to_unoccupied_spaces_closest_to_former_door": true,
+              "can_create_new_demiplane": true,
+              "can_connect_to_demiplane_created_by_previous_casting": true,
+              "can_connect_to_another_creatures_demiplane_if_nature_and_contents_known": true,
+              "demiplane_connection_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Demiplane"
+      }
+    },
+    {
       "id": "srd.spell.tree_stride",
       "name": "Tree Stride",
       "localization": {

@@ -86,6 +86,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.forbiddance",
         "srd.cloudkill",
         "srd.teleportation_circle",
+        "srd.demiplane",
         "srd.dimension_door",
         "srd.faithful_hound",
         "srd.guardian_of_faith",
@@ -3201,6 +3202,65 @@ def test_compendium_loads_srd_actions() -> None:
                 "named_creature_not_controlled": True,
                 "named_creature_behavior_gm_determined": True,
                 "destination_resolution_not_automated": True,
+            },
+        }
+    ]
+    demiplane_spell = compendium.spell("srd.spell.demiplane")
+    assert demiplane_spell.level == 8
+    assert demiplane_spell.school == "conjuration"
+    assert demiplane_spell.classes == ["sorcerer", "warlock", "wizard"]
+    demiplane = compendium.action("srd.demiplane")
+    assert demiplane.requirements == {
+        "spell_level": 8,
+        "class_any": ["sorcerer", "warlock", "wizard"],
+    }
+    assert demiplane.properties == {
+        "spell_classes": ["sorcerer", "warlock", "wizard"],
+        "components": ["S"],
+        "target_must_be_visible": True,
+        "target_surface": "flat_solid_surface",
+        "door_size": "Medium",
+        "demiplane_room_size_ft": 30,
+        "demiplane_material_options": ["wood", "stone"],
+        "demiplane_connection_not_automated": True,
+        "spell_definition_id": "srd.spell.demiplane",
+        "spell_level": 8,
+    }
+    assert demiplane.cost.spell_slot_level == 8
+    assert demiplane.cost.gold == 0
+    assert demiplane.range == {"normal_ft": 60}
+    assert demiplane.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert demiplane.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "demiplane_door",
+            "scope": {
+                "target": "flat_solid_surface_you_can_see",
+                "range_ft": 60,
+                "door_size": "Medium",
+            },
+            "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "shadowy_medium_door": True,
+                "door_can_be_opened_and_closed": True,
+                "leads_to_demiplane": True,
+                "demiplane_empty_room": True,
+                "demiplane_room_dimensions_ft": {
+                    "length": 30,
+                    "width": 30,
+                    "height": 30,
+                },
+                "demiplane_material_options": ["wood", "stone"],
+                "door_vanishes_when_spell_ends": True,
+                "objects_inside_remain_there": True,
+                "creatures_inside_remain_unless_they_opt_to_be_shunted": True,
+                "shunted_creatures_land_prone": True,
+                "shunted_to_unoccupied_spaces_closest_to_former_door": True,
+                "can_create_new_demiplane": True,
+                "can_connect_to_demiplane_created_by_previous_casting": True,
+                "can_connect_to_another_creatures_demiplane_if_nature_and_contents_known": True,
+                "demiplane_connection_not_automated": True,
             },
         }
     ]
@@ -8016,6 +8076,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.creation",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
+        "srd.spell.demiplane",
         "srd.spell.etherealness",
         "srd.spell.gate",
     } <= set(compendium.spells)

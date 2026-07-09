@@ -23143,6 +23143,72 @@ def test_gate_spends_slot_and_records_concentration_planar_portal(make_state) ->
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_demiplane_spends_slot_and_records_shadowy_door(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 15}
+    caster.spell_slots["8"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.demiplane",
+        [],
+        8,
+        idempotency_key="cast-demiplane",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.demiplane"
+    assert effect["effect_type"] == "demiplane_door"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "flat_solid_surface_you_can_see",
+        "range_ft": 60,
+        "door_size": "Medium",
+    }
+    assert effect["duration"] == {"until": "duration_1_hour"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "shadowy_medium_door": True,
+        "door_can_be_opened_and_closed": True,
+        "leads_to_demiplane": True,
+        "demiplane_empty_room": True,
+        "demiplane_room_dimensions_ft": {
+            "length": 30,
+            "width": 30,
+            "height": 30,
+        },
+        "demiplane_material_options": ["wood", "stone"],
+        "door_vanishes_when_spell_ends": True,
+        "objects_inside_remain_there": True,
+        "creatures_inside_remain_unless_they_opt_to_be_shunted": True,
+        "shunted_creatures_land_prone": True,
+        "shunted_to_unoccupied_spaces_closest_to_former_door": True,
+        "can_create_new_demiplane": True,
+        "can_connect_to_demiplane_created_by_previous_casting": True,
+        "can_connect_to_another_creatures_demiplane_if_nature_and_contents_known": True,
+        "demiplane_connection_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "demiplane_door"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
 def test_arcane_eye_records_concentration_visual_sensor_world_effect(make_state) -> None:
     state = make_state()
     caster = state.characters["pc1"]
