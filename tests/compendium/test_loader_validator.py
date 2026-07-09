@@ -57,6 +57,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.phantasmal_killer",
         "srd.mislead",
         "srd.project_image",
+        "srd.weird",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
@@ -1569,6 +1570,52 @@ def test_compendium_loads_srd_actions() -> None:
                 "illusion_damage_ending_not_automated": True,
             },
         }
+    ]
+    weird_spell = compendium.spell("srd.spell.weird")
+    assert weird_spell.level == 9
+    assert weird_spell.school == "illusion"
+    assert weird_spell.classes == ["warlock", "wizard"]
+    weird = compendium.action("srd.weird")
+    assert weird.requirements == {
+        "spell_level": 9,
+        "class_any": ["warlock", "wizard"],
+    }
+    assert weird.properties == {
+        "spell_classes": ["warlock", "wizard"],
+        "components": ["V", "S"],
+        "target_type": "creature",
+        "sphere_radius_ft": 30,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.weird",
+        "spell_level": 9,
+    }
+    assert weird.cost.spell_slot_level == 9
+    assert weird.range == {"normal_ft": 120, "shape": "sphere", "radius_ft": 30}
+    assert weird.target_policy == {"min": 1, "max": 16, "harmful": True}
+    assert weird.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {"type": "damage", "dice": "10d10", "damage_type": "psychic", "save_half": True},
+        {
+            "type": "condition",
+            "condition": "frightened",
+            "requires_failed_save": True,
+            "duration": {
+                "until": "concentration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "target_turn_end",
+                    "failure_damage": {
+                        "dice": "5d10",
+                        "damage_type": "psychic",
+                    },
+                },
+            },
+            "tick_on": "target_turn_end",
+            "concentration": True,
+        },
     ]
     freedom_of_movement = compendium.action("srd.freedom_of_movement")
     assert freedom_of_movement.requirements == {
@@ -8560,6 +8607,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.creation",
         "srd.spell.mislead",
         "srd.spell.project_image",
+        "srd.spell.weird",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.demiplane",

@@ -16737,6 +16737,180 @@ def test_project_image_records_remote_intangible_illusion_without_consuming_mate
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_weird_failed_save_frightens_and_repeats_psychic_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.abilities["int"] = 20
+    caster.proficiency_bonus = 6
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 8}
+    target.hp_current = 200
+    target.hp_max = 200
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 60]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.weird",
+        ["goblin1"],
+        9,
+        idempotency_key="cast-weird-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 19
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "psychic"
+    assert damage_change["amount"] == 60
+    assert damage_change["applied"] == 60
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.weird"
+    assert effect["condition"] == "frightened"
+    assert effect["duration"] == {
+        "until": "concentration_1_minute",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 19,
+            "dc_source": "spell_save_dc:wizard",
+            "end_on_success": True,
+            "trigger": "target_turn_end",
+            "failure_damage": {"dice": "5d10", "damage_type": "psychic"},
+        },
+    }
+    assert effect["tick_on"] == "target_turn_end"
+    assert effect["concentration"] is True
+
+    lifecycle = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([1, 25]),
+    )
+
+    assert lifecycle.expired == []
+    assert lifecycle.ticked[0]["repeat_save"]["success"] is False
+    assert lifecycle.damage[0]["dice"] == "5d10"
+    assert lifecycle.damage[0]["amount"] == 25
+    assert lifecycle.damage[0]["applied"] == 25
+    assert target.hp_current == 115
+
+    ending = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    assert ending.expired[0]["source_action_id"] == "srd.weird"
+    assert ending.expired[0]["condition"] == "frightened"
+    assert ending.expired[0]["repeat_save"]["success"] is True
+    assert target.status_effects == []
+
+
+def test_weird_successful_save_takes_half_damage_without_frightened(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 17}
+    caster.abilities["cha"] = 20
+    caster.proficiency_bonus = 6
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    target.hp_current = 200
+    target.hp_max = 200
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 61]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.weird",
+        ["goblin1"],
+        9,
+        idempotency_key="cast-weird-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 19
+    assert save_node["dc_source"] == "spell_save_dc:warlock"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 30
+    assert damage_change["applied"] == 30
+    assert not any(
+        change.get("type") == "condition" and change.get("condition") == "frightened"
+        for change in result["state_changes"]
+    )
+    assert target.status_effects == []
+    assert target.hp_current == 170
+
+
+def test_weird_multi_target_only_failed_targets_are_frightened(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.abilities["int"] = 20
+    caster.proficiency_bonus = 6
+    caster.spell_slots["9"] = 1
+    failed_target = state.encounter.combatants["goblin1"]
+    failed_target.abilities = {"wis": 8}
+    failed_target.hp_current = 200
+    failed_target.hp_max = 200
+    successful_target = state.encounter.combatants["pc2"]
+    successful_target.abilities = {"wis": 10}
+    successful_target.hp_current = 200
+    successful_target.hp_max = 200
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 20, 60, 61]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.weird",
+        ["goblin1", "pc2"],
+        9,
+        idempotency_key="cast-weird-mixed-targets",
+    )
+
+    assert result["success"] is True
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [change["target_id"] for change in damage_changes] == ["goblin1", "pc2"]
+    assert [change["amount"] for change in damage_changes] == [60, 30]
+    assert failed_target.status_effects[-1]["source_action_id"] == "srd.weird"
+    assert failed_target.status_effects[-1]["condition"] == "frightened"
+    assert successful_target.status_effects == []
+    assert failed_target.hp_current == 140
+    assert successful_target.hp_current == 170
+
+
 def test_hallucinatory_terrain_records_timed_natural_terrain_illusion(
     make_state,
 ) -> None:

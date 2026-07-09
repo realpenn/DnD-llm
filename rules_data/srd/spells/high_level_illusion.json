@@ -544,6 +544,74 @@
         ],
         "audit_label": "Project Image"
       }
+    },
+    {
+      "id": "srd.spell.weird",
+      "name": "Weird",
+      "localization": {
+        "en": "Weird",
+        "zh": "怪影术",
+        "aliases": ["怪异术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "illusion",
+      "classes": ["warlock", "wizard"],
+      "action": {
+        "id": "srd.weird",
+        "name": "Weird",
+        "localization": {
+          "en": "Weird",
+          "zh": "怪影术",
+          "aliases": ["怪异术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "sphere", "radius_ft": 30 },
+        "target_policy": { "min": 1, "max": 16, "harmful": true },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["warlock", "wizard"],
+          "components": ["V", "S"],
+          "target_type": "creature",
+          "sphere_radius_ft": 30,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "10d10", "damage_type": "psychic", "save_half": true },
+          {
+            "type": "condition",
+            "condition": "frightened",
+            "requires_failed_save": true,
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end",
+                "failure_damage": {
+                  "dice": "5d10",
+                  "damage_type": "psychic"
+                }
+              }
+            },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Weird"
+      }
     }
   ]
 }
