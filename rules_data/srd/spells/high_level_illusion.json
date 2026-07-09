@@ -546,6 +546,87 @@
       }
     },
     {
+      "id": "srd.spell.mirage_arcane",
+      "name": "Mirage Arcane",
+      "localization": {
+        "en": "Mirage Arcane",
+        "zh": "海市蜃楼术",
+        "aliases": ["奥术蜃景"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "illusion",
+      "classes": ["bard", "druid", "wizard"],
+      "action": {
+        "id": "srd.mirage_arcane",
+        "name": "Mirage Arcane",
+        "localization": {
+          "en": "Mirage Arcane",
+          "zh": "海市蜃楼术",
+          "aliases": ["奥术蜃景"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "sight": true, "shape": "square", "max_side_miles": 1 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "druid", "wizard"],
+          "components": ["V", "S"],
+          "casting_time": { "minutes": 10 },
+          "range": "sight",
+          "max_square_side_miles": 1,
+          "no_saving_throw": true,
+          "no_damage": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "mirage_arcane_terrain",
+            "scope": {
+              "target": "terrain_area_in_sight",
+              "range": "sight",
+              "shape": "square",
+              "max_side_miles": 1
+            },
+            "duration": { "until": "duration_10_days" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "terrain_looks_sounds_smells_and_feels_like_other_terrain": true,
+              "sensory_elements": ["audible", "visual", "tactile", "olfactory"],
+              "examples": [
+                "open_field_or_road_to_swamp_hill_crevasse_or_other_rough_or_impassable_terrain",
+                "pond_to_grassy_meadow",
+                "precipice_to_gentle_slope",
+                "rock_strewn_gully_to_wide_smooth_road"
+              ],
+              "can_alter_appearance_of_structures": true,
+              "can_add_structures_where_none_are_present": true,
+              "does_not_disguise_conceal_or_add_creatures": true,
+              "can_turn_clear_ground_into_difficult_terrain": true,
+              "can_turn_difficult_terrain_into_clear_ground": true,
+              "can_impede_movement_through_area": true,
+              "removed_illusory_terrain_piece_disappears_immediately": true,
+              "truesight_sees_true_terrain_form": true,
+              "other_illusion_elements_remain_for_truesight_creatures": true,
+              "truesight_creatures_can_still_physically_interact_with_illusion": true,
+              "map_rewrite_structure_generation_and_pathing_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Mirage Arcane"
+      }
+    },
+    {
       "id": "srd.spell.weird",
       "name": "Weird",
       "localization": {

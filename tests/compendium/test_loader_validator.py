@@ -57,6 +57,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.phantasmal_killer",
         "srd.mislead",
         "srd.project_image",
+        "srd.mirage_arcane",
         "srd.weird",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
@@ -1568,6 +1569,65 @@ def test_compendium_loads_srd_actions() -> None:
                 "discerned_noise_sounds_hollow": True,
                 "remote_location_and_sensory_routing_not_automated": True,
                 "illusion_damage_ending_not_automated": True,
+            },
+        }
+    ]
+    mirage_arcane_spell = compendium.spell("srd.spell.mirage_arcane")
+    assert mirage_arcane_spell.level == 7
+    assert mirage_arcane_spell.school == "illusion"
+    assert mirage_arcane_spell.classes == ["bard", "druid", "wizard"]
+    mirage_arcane = compendium.action("srd.mirage_arcane")
+    assert mirage_arcane.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "druid", "wizard"],
+    }
+    assert mirage_arcane.properties == {
+        "spell_classes": ["bard", "druid", "wizard"],
+        "components": ["V", "S"],
+        "casting_time": {"minutes": 10},
+        "range": "sight",
+        "max_square_side_miles": 1,
+        "no_saving_throw": True,
+        "no_damage": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.mirage_arcane",
+        "spell_level": 7,
+    }
+    assert mirage_arcane.cost.spell_slot_level == 7
+    assert mirage_arcane.range == {"sight": True, "shape": "square", "max_side_miles": 1}
+    assert mirage_arcane.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert mirage_arcane.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "mirage_arcane_terrain",
+            "scope": {
+                "target": "terrain_area_in_sight",
+                "range": "sight",
+                "shape": "square",
+                "max_side_miles": 1,
+            },
+            "duration": {"until": "duration_10_days"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "terrain_looks_sounds_smells_and_feels_like_other_terrain": True,
+                "sensory_elements": ["audible", "visual", "tactile", "olfactory"],
+                "examples": [
+                    "open_field_or_road_to_swamp_hill_crevasse_or_other_rough_or_impassable_terrain",
+                    "pond_to_grassy_meadow",
+                    "precipice_to_gentle_slope",
+                    "rock_strewn_gully_to_wide_smooth_road",
+                ],
+                "can_alter_appearance_of_structures": True,
+                "can_add_structures_where_none_are_present": True,
+                "does_not_disguise_conceal_or_add_creatures": True,
+                "can_turn_clear_ground_into_difficult_terrain": True,
+                "can_turn_difficult_terrain_into_clear_ground": True,
+                "can_impede_movement_through_area": True,
+                "removed_illusory_terrain_piece_disappears_immediately": True,
+                "truesight_sees_true_terrain_form": True,
+                "other_illusion_elements_remain_for_truesight_creatures": True,
+                "truesight_creatures_can_still_physically_interact_with_illusion": True,
+                "map_rewrite_structure_generation_and_pathing_not_automated": True,
             },
         }
     ]
@@ -8607,6 +8667,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.creation",
         "srd.spell.mislead",
         "srd.spell.project_image",
+        "srd.spell.mirage_arcane",
         "srd.spell.weird",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",

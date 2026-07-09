@@ -16737,6 +16737,69 @@ def test_project_image_records_remote_intangible_illusion_without_consuming_mate
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_mirage_arcane_records_ten_day_multisensory_terrain_illusion(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 0
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mirage_arcane",
+        [],
+        7,
+        idempotency_key="cast-mirage-arcane",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 0
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_7"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.mirage_arcane"
+    assert effect["effect_type"] == "mirage_arcane_terrain"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "terrain_area_in_sight",
+        "range": "sight",
+        "shape": "square",
+        "max_side_miles": 1,
+    }
+    assert effect["duration"] == {"until": "duration_10_days"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "terrain_looks_sounds_smells_and_feels_like_other_terrain": True,
+        "sensory_elements": ["audible", "visual", "tactile", "olfactory"],
+        "examples": [
+            "open_field_or_road_to_swamp_hill_crevasse_or_other_rough_or_impassable_terrain",
+            "pond_to_grassy_meadow",
+            "precipice_to_gentle_slope",
+            "rock_strewn_gully_to_wide_smooth_road",
+        ],
+        "can_alter_appearance_of_structures": True,
+        "can_add_structures_where_none_are_present": True,
+        "does_not_disguise_conceal_or_add_creatures": True,
+        "can_turn_clear_ground_into_difficult_terrain": True,
+        "can_turn_difficult_terrain_into_clear_ground": True,
+        "can_impede_movement_through_area": True,
+        "removed_illusory_terrain_piece_disappears_immediately": True,
+        "truesight_sees_true_terrain_form": True,
+        "other_illusion_elements_remain_for_truesight_creatures": True,
+        "truesight_creatures_can_still_physically_interact_with_illusion": True,
+        "map_rewrite_structure_generation_and_pathing_not_automated": True,
+    }
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["source_action_id"] == "srd.mirage_arcane"
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 144000
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 143999
+
+
 def test_weird_failed_save_frightens_and_repeats_psychic_damage(
     make_state,
 ) -> None:
