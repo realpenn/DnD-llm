@@ -27,7 +27,11 @@ def roll_death_save(
         if feature_source is not None
         else False
     )
-    roll = roll_service.roll("1d20", advantage="advantage" if defy_death else None)
+    advantage_sources = ["srd.survivor"] if defy_death else []
+    for source in _passive_death_save_advantage_sources(entity, feature_source):
+        if source not in advantage_sources:
+            advantage_sources.append(source)
+    roll = roll_service.roll("1d20", advantage="advantage" if advantage_sources else None)
     natural = _kept_d20(roll.to_dict())
     survivor_counts_as_20 = (
         champion_survivor_death_save_counts_as_20(feature_source, natural=natural)
@@ -64,9 +68,32 @@ def roll_death_save(
         "after": _death_state(entity),
         "stable": entity.stable,
         "dead": entity.dead,
-        "advantage_sources": ["srd.survivor"] if defy_death else [],
+        "advantage_sources": advantage_sources,
         "defy_death_counts_as_20": survivor_counts_as_20,
     }
+
+
+def _passive_death_save_advantage_sources(
+    entity: Character | Combatant,
+    feature_source: Character | None,
+) -> list[str]:
+    sources: list[str] = []
+    candidates: list[Character | Combatant] = [entity]
+    if feature_source is not None and feature_source is not entity:
+        candidates.append(feature_source)
+    for candidate in candidates:
+        for effect in getattr(candidate, "status_effects", []):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("death_saves_advantage") is not True:
+                continue
+            source = modifiers.get("death_saves_advantage_source")
+            if not isinstance(source, str) or not source:
+                source = effect.get("source_action_id") or effect.get("effect_id")
+            if isinstance(source, str) and source not in sources:
+                sources.append(source)
+    return sources
 
 
 def _death_state(entity: Character | Combatant) -> dict[str, Any]:

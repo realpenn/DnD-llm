@@ -930,6 +930,30 @@ def test_death_save_rolls_deterministically_audits_and_syncs_character(make_stat
     assert audit.events[-1].dice_rolls[0]["expression"] == "1d20"
 
 
+def test_death_save_uses_passive_death_save_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].hp_current = 0
+    state.encounter.combatants["pc1"].hp_current = 0
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "beacon-death-save-test",
+            "source_action_id": "srd.beacon_of_hope",
+            "condition": None,
+            "passive_modifiers": {"death_saves_advantage": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    audit = AuditLog()
+    tools = EngineTools(state, compendium, audit)
+
+    result = tools.roll_death_save("pc1", idempotency_key="beacon-death-save")
+
+    assert result["roll"]["advantage"] == "advantage"
+    assert result["advantage_sources"] == ["srd.beacon_of_hope"]
+    assert audit.events[-1].dice_rolls[0]["advantage"] == "advantage"
+
+
 def test_champion_survivor_defy_death_advantage_and_18_to_20(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

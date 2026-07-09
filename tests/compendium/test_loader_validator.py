@@ -97,6 +97,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.divination",
         "srd.etherealness",
         "srd.find_the_path",
+        "srd.foresight",
         "srd.locate_creature",
         "srd.telepathic_bond",
         "srd.true_seeing",
@@ -3361,6 +3362,53 @@ def test_compendium_loads_srd_actions() -> None:
             "type": "passive_effect",
             "passive_modifiers": {"truesight_ft": 120},
             "duration": {"until": "duration_1_hour"},
+            "tick_on": "self_turn_end",
+        },
+    ]
+    foresight_spell = compendium.spell("srd.spell.foresight")
+    assert foresight_spell.level == 9
+    assert foresight_spell.school == "divination"
+    assert foresight_spell.classes == ["bard", "druid", "warlock", "wizard"]
+    foresight = compendium.action("srd.foresight")
+    assert foresight.requirements == {
+        "spell_level": 9,
+        "class_any": ["bard", "druid", "warlock", "wizard"],
+    }
+    assert foresight.properties == {
+        "spell_classes": ["bard", "druid", "warlock", "wizard"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"minutes": 1},
+        "material_component": {
+            "description": "a hummingbird feather",
+            "consumed": False,
+        },
+        "target_must_be_touched": True,
+        "requires_willing_target": True,
+        "ends_existing_same_spell_from_caster": True,
+        "spell_definition_id": "srd.spell.foresight",
+        "spell_level": 9,
+    }
+    assert foresight.cost.spell_slot_level == 9
+    assert foresight.cost.gold == 0
+    assert foresight.range == {"touch": True}
+    assert foresight.target_policy == {"min": 1, "max": 1, "harmful": False}
+    assert foresight.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "foresight": True,
+                "d20_tests_advantage": True,
+                "ability_check_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+                "saving_throw_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+                "death_saves_advantage": True,
+                "attack_roll_advantage": True,
+                "initiative_advantage": True,
+                "initiative_advantage_source": "srd.foresight",
+                "incoming_attacks_disadvantage": True,
+                "ends_existing_same_spell_from_caster": True,
+            },
+            "duration": {"until": "duration_8_hours"},
             "tick_on": "self_turn_end",
         },
     ]

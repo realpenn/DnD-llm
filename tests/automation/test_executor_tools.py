@@ -23818,6 +23818,172 @@ def test_true_seeing_spends_component_and_grants_timed_truesight(make_state) -> 
     )
 
 
+def test_foresight_requires_willing_target_and_grants_d20_test_protection(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 7
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="target must be willing"):
+        tools._execute_action(
+            action_id="srd.foresight",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 9},
+            idempotency_key="cast-foresight-unwilling",
+        )
+    assert caster.spell_slots["9"] == 1
+    assert state.encounter.combatants["pc2"].status_effects == []
+
+    result = tools._execute_action(
+        action_id="srd.foresight",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 9, "target_willing": True},
+        idempotency_key="cast-foresight",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert caster.gold == 7
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_9"]
+
+    expected_modifiers = {
+        "foresight": True,
+        "d20_tests_advantage": True,
+        "ability_check_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+        "saving_throw_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+        "death_saves_advantage": True,
+        "attack_roll_advantage": True,
+        "initiative_advantage": True,
+        "initiative_advantage_source": "srd.foresight",
+        "incoming_attacks_disadvantage": True,
+        "ends_existing_same_spell_from_caster": True,
+    }
+    effect = state.encounter.combatants["pc2"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.foresight"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == expected_modifiers
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+
+    wisdom_check = tools.roll_check(
+        "pc2",
+        "wis",
+        difficulty_tier="medium",
+        idempotency_key="foresight-wisdom-check",
+    )
+    dex_save = tools.roll_save(
+        "pc2",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="foresight-dex-save",
+    )
+    target_attack = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _weapon_attack_action(attack_bonus=0),
+        actor_id="pc2",
+        targets=["goblin1"],
+        idempotency_key="foresight-target-attack",
+    )
+    incoming_attack = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _weapon_attack_action(attack_bonus=0),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="foresight-incoming-attack",
+    )
+
+    assert wisdom_check["roll"]["advantage"] == "advantage"
+    assert wisdom_check["status_sources"][0]["modifier"] == "ability_check_advantage_abilities"
+    assert dex_save["roll"]["advantage"] == "advantage"
+    assert dex_save["status_sources"][0]["modifier"] == "saving_throw_advantage_abilities"
+    target_attack_node = target_attack.node_results["automation[1]"]
+    assert target_attack_node["status_advantage"] == "advantage"
+    assert target_attack_node["status_sources"][0]["modifier"] == "attack_roll_advantage"
+    incoming_attack_node = incoming_attack.node_results["automation[1]"]
+    assert incoming_attack_node["status_advantage"] == "disadvantage"
+    assert incoming_attack_node["status_sources"][0]["modifier"] == (
+        "incoming_attacks_disadvantage"
+    )
+    assert incoming_attack_node["status_sources"][0]["source_action_id"] == "srd.foresight"
+    state.encounter.combatants["pc2"].hp_current = 0
+    state.characters["pc2"].hp_current = 0
+    death_save = tools.roll_death_save("pc2", idempotency_key="foresight-death-save")
+    assert death_save["roll"]["advantage"] == "advantage"
+    assert death_save["advantage_sources"] == ["srd.foresight"]
+
+    passive_change = next(
+        change for change in result["state_changes"] if change["type"] == "passive_effect"
+    )
+    assert passive_change["target_id"] == "pc2"
+    assert passive_change["passive_modifiers"] == expected_modifiers
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+
+
+def test_foresight_recast_by_same_caster_ends_existing_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["9"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    first = tools._execute_action(
+        action_id="srd.foresight",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 9, "target_willing": True},
+        idempotency_key="cast-foresight-first",
+    )
+    first_effect_id = next(
+        change for change in first["state_changes"] if change["type"] == "passive_effect"
+    )["effect_id"]
+    tools.economy.set("pc1", "action", 1)
+    second = tools._execute_action(
+        action_id="srd.foresight",
+        actor_id="pc1",
+        targets=["pc1"],
+        params={"slot_level": 9, "target_willing": True},
+        idempotency_key="cast-foresight-second",
+    )
+
+    assert first["success"] is True
+    assert second["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert not any(
+        effect.get("source_action_id") == "srd.foresight"
+        for effect in state.encounter.combatants["pc2"].status_effects
+    )
+    pc1_effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert pc1_effect["source_action_id"] == "srd.foresight"
+    expired = next(
+        change for change in second["state_changes"] if change["type"] == "effect_expired"
+    )
+    assert expired["trigger"] == "same_spell_recast"
+    assert expired["source_action_id"] == "srd.foresight"
+    assert expired["removed"] == [
+        {
+            "owner_type": "combatant",
+            "owner_id": "pc2",
+            "effect_id": first_effect_id,
+            "source_action_id": "srd.foresight",
+            "target_id": "pc2",
+        }
+    ]
+
+
 def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
     make_state,
 ) -> None:

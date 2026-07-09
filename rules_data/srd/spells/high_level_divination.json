@@ -695,6 +695,74 @@
         ],
         "audit_label": "True Seeing"
       }
+    },
+    {
+      "id": "srd.spell.foresight",
+      "name": "Foresight",
+      "localization": {
+        "en": "Foresight",
+        "zh": "预知术",
+        "aliases": ["先见之明"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "divination",
+      "classes": ["bard", "druid", "warlock", "wizard"],
+      "action": {
+        "id": "srd.foresight",
+        "name": "Foresight",
+        "localization": {
+          "en": "Foresight",
+          "zh": "预知术",
+          "aliases": ["先见之明"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["bard", "druid", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "druid", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "a hummingbird feather",
+            "consumed": false
+          },
+          "target_must_be_touched": true,
+          "requires_willing_target": true,
+          "ends_existing_same_spell_from_caster": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "foresight": true,
+              "d20_tests_advantage": true,
+              "ability_check_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+              "saving_throw_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+              "death_saves_advantage": true,
+              "attack_roll_advantage": true,
+              "initiative_advantage": true,
+              "initiative_advantage_source": "srd.foresight",
+              "incoming_attacks_disadvantage": true,
+              "ends_existing_same_spell_from_caster": true
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Foresight"
+      }
     }
   ]
 }

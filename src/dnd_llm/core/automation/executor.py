@@ -2353,6 +2353,22 @@ class AutomationExecutor:
         self._clear_existing_concentration_if_needed(
             ctx, concentration or clears_concentration, path
         )
+        if passive_modifiers.get("ends_existing_same_spell_from_caster") is True:
+            removed = self._clear_existing_effects_from_same_caster_action(
+                ctx.actor_id,
+                ctx.action.id,
+            )
+            if removed:
+                ctx.result.state_changes.append(
+                    {
+                        "type": "effect_expired",
+                        "actor_id": ctx.actor_id,
+                        "trigger": "same_spell_recast",
+                        "source_action_id": ctx.action.id,
+                        "removed": removed,
+                        "path": path,
+                    }
+                )
         for target_id in ctx.targets:
             if self._skip_target_for_save_gate(ctx, node, target_id):
                 continue
@@ -9028,6 +9044,7 @@ class AutomationExecutor:
         disadvantage_sources.extend(self._condition_sources(target, {"invisible"}))
         if distance_ft is not None and distance_ft > 5:
             disadvantage_sources.extend(self._condition_sources(target, {"prone"}))
+        disadvantage_sources.extend(self._incoming_attack_disadvantage_sources(target))
         disadvantage_sources.extend(self._strong_wind_ranged_weapon_sources(actor, action))
         return _merge_advantage(
             None,
@@ -9475,6 +9492,27 @@ class AutomationExecutor:
                     "effect_id": effect.get("effect_id"),
                     "source_action_id": effect.get("source_action_id"),
                     "modifier": "incoming_attack_advantage",
+                }
+            )
+        return sources
+
+    def _incoming_attack_disadvantage_sources(
+        self,
+        target: Character | Monster | Combatant,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(target):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            if modifiers.get("incoming_attacks_disadvantage") is not True:
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "incoming_attacks_disadvantage",
                 }
             )
         return sources
@@ -12224,6 +12262,62 @@ class AutomationExecutor:
         retained_world_effects: list[dict[str, Any]] = []
         for effect in self.state.world.active_effects:
             if self._effect_is_actor_concentration(effect, actor_id):
+                removed.append(
+                    {
+                        "owner_type": "world",
+                        "owner_id": "world",
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                    }
+                )
+            else:
+                retained_world_effects.append(effect)
+        self.state.world.active_effects[:] = retained_world_effects
+        return removed
+
+    def _clear_existing_effects_from_same_caster_action(
+        self,
+        actor_id: str,
+        action_id: str,
+    ) -> list[dict[str, Any]]:
+        removed: list[dict[str, Any]] = []
+        effect_lists: list[tuple[str, str, list[dict[str, Any]]]] = []
+        effect_lists.extend(
+            ("character", owner_id, actor.status_effects)
+            for owner_id, actor in self.state.characters.items()
+        )
+        effect_lists.extend(
+            ("monster", owner_id, actor.status_effects)
+            for owner_id, actor in self.state.monsters.items()
+        )
+        if self.state.encounter is not None:
+            effect_lists.extend(
+                ("combatant", combatant_id, combatant.status_effects)
+                for combatant_id, combatant in self.state.encounter.combatants.items()
+            )
+        for owner_type, owner_id, effects in effect_lists:
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if (
+                    effect.get("source_action_id") == action_id
+                    and effect.get("applied_by") == actor_id
+                ):
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "source_action_id": effect.get("source_action_id"),
+                            "target_id": effect.get("target_id"),
+                        }
+                    )
+                else:
+                    retained.append(effect)
+            effects[:] = retained
+
+        retained_world_effects: list[dict[str, Any]] = []
+        for effect in self.state.world.active_effects:
+            if effect.get("source_action_id") == action_id and effect.get("applied_by") == actor_id:
                 removed.append(
                     {
                         "owner_type": "world",

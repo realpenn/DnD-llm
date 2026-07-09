@@ -495,6 +495,29 @@ def test_roll_initiative_applies_barbarian_feral_instinct_advantage(make_state) 
     assert any(roll["advantage"] == "advantage" for roll in audit.events[-1].dice_rolls)
 
 
+def test_roll_initiative_applies_foresight_d20_test_advantage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "foresight-test",
+            "source_action_id": "srd.foresight",
+            "condition": None,
+            "passive_modifiers": {
+                "initiative_advantage": True,
+                "initiative_advantage_source": "srd.foresight",
+            },
+        }
+    )
+    audit = AuditLog()
+
+    roll_initiative(state, audit)
+
+    groups = {group["group_key"]: group for group in audit.events[-1].tool_result["groups"]}
+    assert groups["combatant:pc1"]["initiative_advantage_sources"] == ["srd.foresight"]
+    assert any(roll["advantage"] == "advantage" for roll in audit.events[-1].dice_rolls)
+
+
 def test_roll_initiative_adds_thief_reflexes_second_first_round_turn(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
