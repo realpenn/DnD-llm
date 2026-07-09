@@ -4935,6 +4935,42 @@
             "audit_label": "Conjure Woodland Beings: Disengage"
         },
         {
+            "id": "srd.maze_escape",
+            "name": "Maze Escape",
+            "localization": {
+                "en": "Maze Escape",
+                "zh": "迷宫术：脱离",
+                "aliases": ["Study", "Study action", "逃离迷宫", "脱离迷宫术", "研习"]
+            },
+            "source": "SRD 5.2.1 Chapter 7: Spells: Maze",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "action",
+            "range": {"self": true},
+            "target_policy": {"min": 0, "max": 0, "self": true, "harmful": false},
+            "requirements": {},
+            "properties": {
+                "can_be_used_out_of_play": true,
+                "requires_actor_effect_source_action_id": "srd.maze",
+                "spell_definition_id": "srd.spell.maze",
+                "spell_level": 8,
+                "study_action": true,
+                "escape_check": {"ability": "int", "skill": "investigation", "dc": 20}
+            },
+            "friendly_fire_policy": "raw",
+            "cost": {},
+            "automation": [
+                {
+                    "type": "ability_check",
+                    "ability": "int",
+                    "skill": "investigation",
+                    "difficulty_tier": "hard"
+                },
+                {"type": "maze_escape", "source_action_id": "srd.maze"}
+            ],
+            "audit_label": "Maze Escape"
+        },
+        {
             "id": "srd.dash",
             "name": "Dash",
             "localization": {"en": "Dash", "zh": "疾走", "aliases": ["冲刺", "快跑"]},

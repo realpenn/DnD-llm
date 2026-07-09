@@ -182,6 +182,13 @@ class ActionResolver:
                 reason=active_effect_error,
                 action_id=action.id,
             )
+        actor_effect_error = self._actor_effect_requirement_error(draft.actor_id, action)
+        if actor_effect_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=actor_effect_error,
+                action_id=action.id,
+            )
         actor_out_of_play_error = self._actor_out_of_play_error(actor, action)
         if actor_out_of_play_error is not None:
             return ResolverResult(
@@ -2349,6 +2356,22 @@ class ActionResolver:
         return any(matches(effect) for effect in self._status_effects_for(actor)) or any(
             matches(effect) for effect in self.state.world.active_effects
         )
+
+    def _actor_effect_requirement_error(
+        self,
+        actor_id: str,
+        action: ActionDefinition,
+    ) -> str | None:
+        source_action_id = action.properties.get("requires_actor_effect_source_action_id")
+        if not isinstance(source_action_id, str) or not source_action_id:
+            return None
+        actor = self.state.entity_for_actor(actor_id)
+        if any(
+            effect.get("source_action_id") == source_action_id
+            for effect in self._status_effects_for(actor)
+        ):
+            return None
+        return f"{action.id} requires actor effect from {source_action_id}"
 
     def _active_conjure_minor_elementals_effect(self, actor_id: str) -> dict[str, Any] | None:
         actor_aliases = self._entity_aliases(actor_id)

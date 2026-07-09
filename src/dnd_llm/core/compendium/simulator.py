@@ -384,6 +384,26 @@ def _simulation_state(action: ActionDefinition | str) -> GameState:
                     "audit": {"simulation": True},
                 }
             )
+        actor_source_action_id = action.properties.get("requires_actor_effect_source_action_id")
+        if isinstance(actor_source_action_id, str) and actor_source_action_id:
+            actor.status_effects.append(
+                {
+                    "effect_id": f"simulation-actor-effect-{actor_source_action_id}",
+                    "source_ref": "simulation",
+                    "source_action_id": actor_source_action_id,
+                    "target_id": "pc_actor",
+                    "applied_by": "npc_enemy",
+                    "condition": None,
+                    "passive_modifiers": {
+                        "out_of_play": True,
+                        "simulation": True,
+                    },
+                    "duration": {"until": "simulation"},
+                    "tick_on": "self_turn_end",
+                    "concentration": True,
+                    "audit": {"simulation": True},
+                }
+            )
     return state
 
 

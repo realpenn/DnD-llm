@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 import pytest
 
@@ -23207,6 +23208,210 @@ def test_demiplane_spends_slot_and_records_shadowy_door(make_state) -> None:
     lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
+def _maze_state_and_tools(
+    make_state,
+    rolls: list[int],
+) -> tuple[Any, Any, Any, Any, EngineTools, dict[str, Any]]:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    target = state.encounter.combatants["goblin1"]
+    caster.class_levels = {"wizard": 15}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target.abilities = {
+        "str": 10,
+        "dex": 10,
+        "con": 10,
+        "int": 10,
+        "wis": 10,
+        "cha": 10,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService(list(rolls)),
+    )
+
+    cast_result = tools.cast_spell(
+        "pc1",
+        "srd.maze",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-maze",
+    )
+    return state, caster, target, compendium, tools, cast_result
+
+
+def test_maze_spends_slot_and_banishes_without_save_damage_or_condition(make_state) -> None:
+    state, caster, target, _, _, result = _maze_state_and_tools(make_state, [])
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    cost_change = next(change for change in result["state_changes"] if change["type"] == "cost")
+    assert cost_change["resource"] == "spell_slot_8"
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert not any(change["type"] == "condition" for change in result["state_changes"])
+    assert all(effect.get("condition") != "incapacitated" for effect in target.status_effects)
+
+    effect = next(
+        effect for effect in target.status_effects if effect["source_action_id"] == "srd.maze"
+    )
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"] == {
+        "maze": True,
+        "out_of_play": True,
+        "banished_to_labyrinthine_demiplane": True,
+        "remains_until_duration_or_escape": True,
+        "escape_action_id": "srd.maze_escape",
+        "escape_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc": 20,
+        },
+        "returns_when_spell_ends": True,
+        "returns_to_space_left_or_nearest_unoccupied": True,
+    }
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
+def test_maze_escape_study_failure_keeps_effect_and_success_ends_spell(make_state) -> None:
+    _, _, failed_target, _, failed_tools, _ = _maze_state_and_tools(make_state, [19])
+
+    failed = failed_tools.perform_action(
+        "goblin1",
+        "srd.maze_escape",
+        [],
+        idempotency_key="maze-escape-fail",
+    )
+
+    failed_check = failed["node_results"]["automation[0]"]
+    assert failed_check["dc"] == 20
+    assert failed_check["dc_source"] == "difficulty_tier:hard"
+    assert failed_check["skill"] == "investigation"
+    assert failed_check["total"] == 19
+    assert failed_check["success"] is False
+    assert failed["node_results"]["automation[1]"] == {
+        "type": "maze_escape",
+        "actor_id": "goblin1",
+        "source_action_id": "srd.maze",
+        "success": False,
+        "removed": [],
+        "path": "automation[1]",
+    }
+    assert any(effect["source_action_id"] == "srd.maze" for effect in failed_target.status_effects)
+
+    _, _, escaped_target, _, escaped_tools, _ = _maze_state_and_tools(make_state, [20])
+    escaped_effect_id = next(
+        effect["effect_id"]
+        for effect in escaped_target.status_effects
+        if effect["source_action_id"] == "srd.maze"
+    )
+
+    escaped = escaped_tools.perform_action(
+        "goblin1",
+        "srd.maze_escape",
+        [],
+        idempotency_key="maze-escape-success",
+    )
+
+    success_check = escaped["node_results"]["automation[0]"]
+    assert success_check["dc"] == 20
+    assert success_check["total"] == 20
+    assert success_check["success"] is True
+    escape_change = escaped["node_results"]["automation[1]"]
+    assert escape_change["success"] is True
+    assert escape_change["source_action_id"] == "srd.maze"
+    assert escape_change["removed"] == [
+        {
+            "owner_type": "combatant",
+            "owner_id": "goblin1",
+            "effect_id": escaped_effect_id,
+            "source_action_id": "srd.maze",
+            "condition": None,
+        }
+    ]
+    assert not any(effect["source_action_id"] == "srd.maze" for effect in escaped_target.status_effects)
+
+
+def test_maze_out_of_play_blocks_other_actions_but_allows_escape(make_state) -> None:
+    state, _, _, compendium, _, _ = _maze_state_and_tools(make_state, [20])
+
+    executor = AutomationExecutor(state, RollService(state), AuditLog())
+    with pytest.raises(AutomationError, match="actor is out of play due to srd.maze"):
+        executor.execute(
+            _damage_action(1),
+            actor_id="goblin1",
+            targets=["pc1"],
+            idempotency_key="maze-actor-cannot-act",
+        )
+    with pytest.raises(AutomationError, match="target is out of play due to srd.maze"):
+        executor.execute(
+            _damage_action(1),
+            actor_id="pc1",
+            targets=["goblin1"],
+            idempotency_key="maze-target-cannot-be-targeted",
+        )
+
+    assert state.encounter is not None
+    state.encounter.action_budgets = {}
+    resolver = ActionResolver(state, compendium.actions)
+    escape_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="study",
+            target_ids=[],
+        )
+    )
+    actor_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="shortsword",
+            target_ids=["pc1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    target_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="shortsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert escape_result.status == "accepted"
+    assert escape_result.action_id == "srd.maze_escape"
+    assert actor_result.status == "rejected"
+    assert actor_result.reason == "actor is out of play due to srd.maze"
+    assert target_result.status == "rejected"
+    assert target_result.reason == "target is out of play due to srd.maze"
+
+    clear_state = make_state()
+    clear_compendium = CompendiumLoader("rules_data").load()
+    clear_resolver = ActionResolver(clear_state, clear_compendium.actions)
+    no_effect = clear_resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="study",
+            target_ids=[],
+        )
+    )
+    assert no_effect.status == "rejected"
+    assert no_effect.reason == "srd.maze_escape requires actor effect from srd.maze"
 
 
 def test_arcane_eye_records_concentration_visual_sensor_world_effect(make_state) -> None:

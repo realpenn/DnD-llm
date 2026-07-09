@@ -87,6 +87,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.cloudkill",
         "srd.teleportation_circle",
         "srd.demiplane",
+        "srd.maze",
+        "srd.maze_escape",
         "srd.dimension_door",
         "srd.faithful_hound",
         "srd.guardian_of_faith",
@@ -3263,6 +3265,96 @@ def test_compendium_loads_srd_actions() -> None:
                 "demiplane_connection_not_automated": True,
             },
         }
+    ]
+    maze_spell = compendium.spell("srd.spell.maze")
+    assert maze_spell.level == 8
+    assert maze_spell.school == "conjuration"
+    assert maze_spell.classes == ["wizard"]
+    maze = compendium.action("srd.maze")
+    assert maze.requirements == {
+        "spell_level": 8,
+        "class_any": ["wizard"],
+    }
+    assert maze.properties == {
+        "spell_classes": ["wizard"],
+        "components": ["V", "S"],
+        "target_must_be_visible": True,
+        "target_must_be_creature": True,
+        "escape_action_id": "srd.maze_escape",
+        "escape_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc": 20,
+        },
+        "banished_to_labyrinthine_demiplane": True,
+        "no_initial_saving_throw": True,
+        "no_incapacitated_condition_in_srd_5_2_1": True,
+        "spell_definition_id": "srd.spell.maze",
+        "spell_level": 8,
+    }
+    assert maze.cost.spell_slot_level == 8
+    assert maze.cost.gold == 0
+    assert maze.range == {"normal_ft": 60}
+    assert maze.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert maze.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "passive_effect",
+            "passive_modifiers": {
+                "maze": True,
+                "out_of_play": True,
+                "banished_to_labyrinthine_demiplane": True,
+                "remains_until_duration_or_escape": True,
+                "escape_action_id": "srd.maze_escape",
+                "escape_check": {
+                    "action": "study",
+                    "ability": "int",
+                    "skill": "investigation",
+                    "dc": 20,
+                },
+                "returns_when_spell_ends": True,
+                "returns_to_space_left_or_nearest_unoccupied": True,
+            },
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+        },
+    ]
+    maze_escape = compendium.action("srd.maze_escape")
+    assert maze_escape.action_type == "base_action"
+    assert maze_escape.action_economy == "action"
+    assert maze_escape.localization["aliases"] == [
+        "Study",
+        "Study action",
+        "逃离迷宫",
+        "脱离迷宫术",
+        "研习",
+    ]
+    assert maze_escape.range == {"self": True}
+    assert maze_escape.target_policy == {
+        "min": 0,
+        "max": 0,
+        "self": True,
+        "harmful": False,
+    }
+    assert maze_escape.properties == {
+        "can_be_used_out_of_play": True,
+        "requires_actor_effect_source_action_id": "srd.maze",
+        "spell_definition_id": "srd.spell.maze",
+        "spell_level": 8,
+        "study_action": True,
+        "escape_check": {"ability": "int", "skill": "investigation", "dc": 20},
+    }
+    assert maze_escape.cost.spell_slot_level is None
+    assert maze_escape.automation == [
+        {
+            "type": "ability_check",
+            "ability": "int",
+            "skill": "investigation",
+            "difficulty_tier": "hard",
+        },
+        {"type": "maze_escape", "source_action_id": "srd.maze"},
     ]
     arcane_eye = compendium.action("srd.arcane_eye")
     assert arcane_eye.requirements == {
@@ -8077,6 +8169,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.demiplane",
+        "srd.spell.maze",
         "srd.spell.etherealness",
         "srd.spell.gate",
     } <= set(compendium.spells)

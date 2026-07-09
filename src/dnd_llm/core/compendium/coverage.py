@@ -196,6 +196,8 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.locate_creature",
     "srd.longsword_attack",
     "srd.magical_cunning",
+    "srd.maze",
+    "srd.maze_escape",
     "srd.master_of_myriad_forms",
     "srd.master_of_myriad_forms_alter_self",
     "srd.mind_blank",

@@ -1113,6 +1113,82 @@
       }
     },
     {
+      "id": "srd.spell.maze",
+      "name": "Maze",
+      "localization": {
+        "en": "Maze",
+        "zh": "迷宫术",
+        "aliases": ["迷宫"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.maze",
+        "name": "Maze",
+        "localization": {
+          "en": "Maze",
+          "zh": "迷宫术",
+          "aliases": ["迷宫"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "spell_classes": ["wizard"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_must_be_creature": true,
+          "escape_action_id": "srd.maze_escape",
+          "escape_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc": 20
+          },
+          "banished_to_labyrinthine_demiplane": true,
+          "no_initial_saving_throw": true,
+          "no_incapacitated_condition_in_srd_5_2_1": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "maze": true,
+              "out_of_play": true,
+              "banished_to_labyrinthine_demiplane": true,
+              "remains_until_duration_or_escape": true,
+              "escape_action_id": "srd.maze_escape",
+              "escape_check": {
+                "action": "study",
+                "ability": "int",
+                "skill": "investigation",
+                "dc": 20
+              },
+              "returns_when_spell_ends": true,
+              "returns_to_space_left_or_nearest_unoccupied": true
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Maze"
+      }
+    },
+    {
       "id": "srd.spell.tree_stride",
       "name": "Tree Stride",
       "localization": {

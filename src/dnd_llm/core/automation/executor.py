@@ -491,6 +491,7 @@ class AutomationExecutor:
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
         self._validate_active_effect_requirement(action, actor_id)
+        self._validate_actor_effect_requirement(action, actor_id)
         self._validate_action_surge_preconditions(action, actor_id)
         self._validate_actor_not_out_of_play(action, actor_id)
         self._validate_allowed_action_effects(action, actor_id)
@@ -613,6 +614,8 @@ class AutomationExecutor:
             self._node_saving_throw(ctx, node, path)
         elif node_type == "ability_check":
             self._node_ability_check(ctx, node, path)
+        elif node_type == "maze_escape":
+            self._node_maze_escape(ctx, node, path)
         elif node_type == "damage":
             self._node_damage(ctx, node, path)
         elif node_type == "instant_death":
@@ -1360,6 +1363,41 @@ class AutomationExecutor:
                     path=path,
                 )
             )
+
+    def _node_maze_escape(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        if ctx.ability_success is None:
+            raise AutomationError("Maze escape requires a preceding ability check")
+        source_action_id = str(node.get("source_action_id", "srd.maze"))
+        removed: list[dict[str, Any]] = []
+        if ctx.ability_success:
+            for owner_type, owner_id, effects in self._actor_effect_lists(ctx.actor_id):
+                retained: list[dict[str, Any]] = []
+                for effect in effects:
+                    if effect.get("source_action_id") == source_action_id:
+                        removed.append(
+                            {
+                                "owner_type": owner_type,
+                                "owner_id": owner_id,
+                                "effect_id": effect.get("effect_id"),
+                                "source_action_id": effect.get("source_action_id"),
+                                "condition": effect.get("condition"),
+                            }
+                        )
+                        continue
+                    retained.append(effect)
+                effects[:] = retained
+        if ctx.ability_success and not removed:
+            raise AutomationError(f"{ctx.actor_id} is not affected by {source_action_id}")
+        change = {
+            "type": "maze_escape",
+            "actor_id": ctx.actor_id,
+            "source_action_id": source_action_id,
+            "success": ctx.ability_success,
+            "removed": removed,
+            "path": path,
+        }
+        ctx.result.state_changes.append(change)
+        ctx.result.node_results[path] = change
 
     def _node_restore_all_hit_points(self, ctx: _Context, path: str) -> None:
         blessed_healer_triggered = False
@@ -14918,6 +14956,22 @@ class AutomationExecutor:
             for _, _, effects in self._actor_effect_lists(actor_id)
             for effect in effects
         ) or any(matches(effect) for effect in self.state.world.active_effects)
+
+    def _validate_actor_effect_requirement(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+    ) -> None:
+        source_action_id = action.properties.get("requires_actor_effect_source_action_id")
+        if not isinstance(source_action_id, str) or not source_action_id:
+            return
+        if any(
+            effect.get("source_action_id") == source_action_id
+            for _, _, effects in self._actor_effect_lists(actor_id)
+            for effect in effects
+        ):
+            return
+        raise AutomationError(f"{action.id} requires actor effect from {source_action_id}")
 
     @staticmethod
     def _validate_one_with_shadows_lighting(
