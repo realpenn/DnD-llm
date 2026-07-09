@@ -20319,6 +20319,156 @@ def test_dominate_person_upcast_extends_concentration_duration(make_state) -> No
         }
 
 
+def test_dominate_monster_charms_any_creature_and_repeats_save_on_damage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 15}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "fiend"
+    target.abilities["wis"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.dominate_monster",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-dominate-monster-fail",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["dc_source"] == "spell_save_dc:warlock"
+    assert save_node["success"] is False
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.dominate_monster"
+    assert effect["applied_by"] == "pc1"
+    assert effect["condition"] == "charmed"
+    assert effect["duration"] == {
+        "until": "concentration_1_hour",
+        "repeat_save": {
+            "ability": "wis",
+            "dc": 17,
+            "dc_source": "spell_save_dc:warlock",
+            "end_on_success": True,
+            "trigger": "damage",
+        },
+    }
+    assert effect["passive_modifiers"] == {
+        "dominate_monster": True,
+        "telepathic_link_same_plane": True,
+        "commands_no_action_on_caster_turn": True,
+        "target_obeys_commands_best_ability": True,
+        "target_self_protects_without_new_direction": True,
+        "can_command_target_reaction_by_spending_caster_reaction": True,
+        "command_ai_not_automated": True,
+        "reaction_command_not_automated": True,
+    }
+    assert effect["tick_on"] == "damage"
+    assert effect["concentration"] is True
+
+    failed_repeat = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1]),
+        AuditLog(),
+    ).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="pc2",
+        targets=["goblin1"],
+        idempotency_key="ally-damages-dominated-monster-repeat-fails",
+    )
+
+    repeat_save = next(
+        change for change in failed_repeat.state_changes if change["type"] == "effect_repeat_save"
+    )
+    assert repeat_save["trigger"] == "damage"
+    assert repeat_save["repeat_save"]["dc"] == 17
+    assert repeat_save["repeat_save"]["success"] is False
+    assert any(
+        active_effect.get("source_action_id") == "srd.dominate_monster"
+        for active_effect in target.status_effects
+    )
+
+    successful_repeat = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20]),
+        AuditLog(),
+    ).execute(
+        _damage_action(1, damage_type="slashing"),
+        actor_id="pc2",
+        targets=["goblin1"],
+        idempotency_key="ally-damages-dominated-monster-repeat-succeeds",
+    )
+
+    expiry = next(
+        change
+        for change in successful_repeat.state_changes
+        if change["type"] == "effect_expired"
+        and change.get("reason") == "repeat_save_success"
+    )
+    assert expiry["trigger"] == "damage"
+    assert expiry["removed"][0]["source_action_id"] == "srd.dominate_monster"
+    assert expiry["removed"][0]["repeat_save"]["success"] is True
+    assert target.status_effects == []
+
+
+def test_dominate_monster_ninth_level_slot_extends_concentration_duration(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"sorcerer": 17}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 6
+    caster.spell_slots["8"] = 0
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "construct"
+    target.abilities["wis"] = 10
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.dominate_monster",
+        ["goblin1"],
+        9,
+        idempotency_key="cast-dominate-monster-upcast-9",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    effect = target.status_effects[-1]
+    assert effect["duration"]["until"] == "concentration_8_hours"
+    assert effect["duration"]["repeat_save"] == {
+        "ability": "wis",
+        "dc": 18,
+        "dc_source": "spell_save_dc:sorcerer",
+        "end_on_success": True,
+        "trigger": "damage",
+    }
+
+
 def test_compulsion_charms_failed_target_and_records_movement_semantics(
     make_state,
 ) -> None:

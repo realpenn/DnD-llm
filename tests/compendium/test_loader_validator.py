@@ -75,6 +75,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.conjure_woodland_beings_disengage",
         "srd.creation",
         "srd.dominate_beast",
+        "srd.dominate_monster",
         "srd.dominate_person",
         "srd.compulsion",
         "srd.hold_monster",
@@ -1985,6 +1986,67 @@ def test_compendium_loads_srd_actions() -> None:
                         "8": "concentration_8_hours",
                         "9": "concentration_8_hours",
                     },
+                },
+            },
+            "tick_on": "damage",
+            "concentration": True,
+        },
+    ]
+    dominate_monster_spell = compendium.spell("srd.spell.dominate_monster")
+    assert dominate_monster_spell.level == 8
+    assert dominate_monster_spell.school == "enchantment"
+    assert dominate_monster_spell.classes == ["bard", "sorcerer", "warlock", "wizard"]
+    dominate_monster = compendium.action("srd.dominate_monster")
+    assert dominate_monster.requirements == {
+        "spell_level": 8,
+        "class_any": ["bard", "sorcerer", "warlock", "wizard"],
+    }
+    assert dominate_monster.properties == {
+        "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+        "components": ["V", "S"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "saving_throw_advantage_if_caster_or_allies_fighting_target": True,
+        "telepathic_link_same_plane": True,
+        "commands_no_action_on_caster_turn": True,
+        "target_obeys_commands_best_ability": True,
+        "target_self_protects_without_new_direction": True,
+        "can_command_target_reaction_by_spending_caster_reaction": True,
+        "command_ai_not_automated": True,
+        "reaction_command_not_automated": True,
+        "spell_definition_id": "srd.spell.dominate_monster",
+        "spell_level": 8,
+    }
+    assert dominate_monster.range == {"normal_ft": 60}
+    assert dominate_monster.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert dominate_monster.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "wis", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "dominate_monster": True,
+                "telepathic_link_same_plane": True,
+                "commands_no_action_on_caster_turn": True,
+                "target_obeys_commands_best_ability": True,
+                "target_self_protects_without_new_direction": True,
+                "can_command_target_reaction_by_spending_caster_reaction": True,
+                "command_ai_not_automated": True,
+                "reaction_command_not_automated": True,
+            },
+            "duration": {
+                "until": "concentration_1_hour",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "end_on_success": True,
+                    "trigger": "damage",
+                },
+                "duration_from_slot": {
+                    "base_spell_slot_level": 8,
+                    "by_slot_level": {"9": "concentration_8_hours"},
                 },
             },
             "tick_on": "damage",
