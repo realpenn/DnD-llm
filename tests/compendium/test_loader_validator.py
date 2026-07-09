@@ -55,6 +55,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.greater_invisibility",
         "srd.hallucinatory_terrain",
         "srd.phantasmal_killer",
+        "srd.mislead",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
@@ -1390,6 +1391,57 @@ def test_compendium_loads_srd_actions() -> None:
                 }
             },
         }
+    ]
+    mislead_spell = compendium.spell("srd.spell.mislead")
+    assert mislead_spell.level == 5
+    assert mislead_spell.school == "illusion"
+    assert mislead_spell.classes == ["bard", "warlock", "wizard"]
+    mislead = compendium.action("srd.mislead")
+    assert mislead.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "warlock", "wizard"],
+    }
+    assert mislead.properties == {
+        "spell_classes": ["bard", "warlock", "wizard"],
+        "components": ["S"],
+        "invisibility_ends_on_attack_damage_or_spell": True,
+        "illusory_double_persists_after_invisibility_ends": True,
+        "illusory_double_move_action_economy": "magic_action",
+        "illusory_double_move_multiplier_of_speed": 2,
+        "spell_definition_id": "srd.spell.mislead",
+        "spell_level": 5,
+    }
+    assert mislead.cost.spell_slot_level == 5
+    assert mislead.range == {"self": True}
+    assert mislead.target_policy == {"min": 1, "max": 1, "self": True, "harmful": False}
+    assert mislead.automation == [
+        {"type": "target", "mode": "self"},
+        {
+            "type": "condition",
+            "condition": "invisible",
+            "duration": {"until": "duration_1_hour_or_attack_damage_spell"},
+            "tick_on": "target_action",
+            "concentration": True,
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "mislead_illusory_double",
+            "scope": {"target": "self_space"},
+            "duration": {"until": "concentration_1_hour"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "appears_where_caster_stands": True,
+                "lasts_for_spell_duration": True,
+                "persists_after_invisibility_ends": True,
+                "move_action_economy": "magic_action",
+                "move_distance_multiplier_of_speed": 2,
+                "can_gesture_speak_and_behave_as_caster_chooses": True,
+                "intangible": True,
+                "invulnerable": True,
+                "caster_can_see_and_hear_through_double": True,
+                "double_movement_and_sensory_routing_not_automated": True,
+            },
+        },
     ]
     programmed_illusion_spell = compendium.spell("srd.spell.programmed_illusion")
     assert programmed_illusion_spell.level == 6
@@ -8442,6 +8494,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.conjure_woodland_beings",
         "srd.spell.incendiary_cloud",
         "srd.spell.creation",
+        "srd.spell.mislead",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",
         "srd.spell.demiplane",

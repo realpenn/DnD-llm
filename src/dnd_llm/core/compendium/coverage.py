@@ -206,6 +206,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.mask_of_many_faces",
     "srd.mask_of_many_faces_disguise_self",
     "srd.memorize_spell",
+    "srd.mislead",
     "srd.misty_visions",
     "srd.misty_visions_silent_image",
     "srd.martial_arts_bonus_unarmed_strike",

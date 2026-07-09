@@ -305,6 +305,79 @@
       }
     },
     {
+      "id": "srd.spell.mislead",
+      "name": "Mislead",
+      "localization": {
+        "en": "Mislead",
+        "zh": "误导术",
+        "aliases": ["误导"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "illusion",
+      "classes": ["bard", "warlock", "wizard"],
+      "action": {
+        "id": "srd.mislead",
+        "name": "Mislead",
+        "localization": {
+          "en": "Mislead",
+          "zh": "误导术",
+          "aliases": ["误导"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "warlock", "wizard"],
+          "components": ["S"],
+          "invisibility_ends_on_attack_damage_or_spell": true,
+          "illusory_double_persists_after_invisibility_ends": true,
+          "illusory_double_move_action_economy": "magic_action",
+          "illusory_double_move_multiplier_of_speed": 2
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "condition",
+            "condition": "invisible",
+            "duration": { "until": "duration_1_hour_or_attack_damage_spell" },
+            "tick_on": "target_action",
+            "concentration": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "mislead_illusory_double",
+            "scope": { "target": "self_space" },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "appears_where_caster_stands": true,
+              "lasts_for_spell_duration": true,
+              "persists_after_invisibility_ends": true,
+              "move_action_economy": "magic_action",
+              "move_distance_multiplier_of_speed": 2,
+              "can_gesture_speak_and_behave_as_caster_chooses": true,
+              "intangible": true,
+              "invulnerable": true,
+              "caster_can_see_and_hear_through_double": true,
+              "double_movement_and_sensory_routing_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Mislead"
+      }
+    },
+    {
       "id": "srd.spell.programmed_illusion",
       "name": "Programmed Illusion",
       "localization": {

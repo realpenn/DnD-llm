@@ -16597,6 +16597,78 @@ def test_greater_invisibility_applies_concentration_invisible_without_attack_bre
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_mislead_applies_invisibility_and_persistent_illusory_double(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.mislead",
+        ["pc1"],
+        5,
+        idempotency_key="cast-mislead",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    assert effect["source_action_id"] == "srd.mislead"
+    assert effect["condition"] == "invisible"
+    assert effect["duration"] == {"until": "duration_1_hour_or_attack_damage_spell"}
+    assert effect["tick_on"] == "target_action"
+    assert effect["concentration"] is True
+
+    double = state.world.active_effects[-1]
+    assert double["source_action_id"] == "srd.mislead"
+    assert double["effect_type"] == "mislead_illusory_double"
+    assert double["concentration"] is True
+    assert double["duration"] == {"until": "concentration_1_hour"}
+    assert double["tick_on"] == "self_turn_end"
+    assert double["metadata"] == {
+        "appears_where_caster_stands": True,
+        "lasts_for_spell_duration": True,
+        "persists_after_invisibility_ends": True,
+        "move_action_economy": "magic_action",
+        "move_distance_multiplier_of_speed": 2,
+        "can_gesture_speak_and_behave_as_caster_chooses": True,
+        "intangible": True,
+        "invulnerable": True,
+        "caster_can_see_and_hear_through_double": True,
+        "double_movement_and_sensory_routing_not_automated": True,
+    }
+
+    attack = AutomationExecutor(state, _FixedSingleDieRollService([20, 1, 1]), AuditLog()).execute(
+        _weapon_attack_action(),
+        actor_id="pc1",
+        targets=["goblin1"],
+        idempotency_key="mislead-attack-breaks-invisibility",
+    )
+
+    assert attack.success is True
+    assert not any(
+        active.get("source_action_id") == "srd.mislead"
+        and active.get("condition") == "invisible"
+        for active in state.encounter.combatants["pc1"].status_effects
+    )
+    expiry = next(change for change in attack.state_changes if change["type"] == "effect_expired")
+    assert expiry["trigger"] == "attack"
+    assert expiry["removed"][0]["source_action_id"] == "srd.mislead"
+    assert expiry["removed"][0]["condition"] == "invisible"
+    assert state.world.active_effects[-1]["effect_type"] == "mislead_illusory_double"
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["source_action_id"] == "srd.mislead"
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 600
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 599
+
+
 def test_hallucinatory_terrain_records_timed_natural_terrain_illusion(
     make_state,
 ) -> None:
