@@ -86,6 +86,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.globe_of_invulnerability",
         "srd.forbiddance",
         "srd.cloudkill",
+        "srd.incendiary_cloud",
         "srd.teleportation_circle",
         "srd.demiplane",
         "srd.maze",
@@ -2621,6 +2622,60 @@ def test_compendium_loads_srd_actions() -> None:
                     "damage": "5d8 poison",
                     "higher_level_damage_increase": "1d8 per slot above 5",
                 },
+            },
+        },
+    ]
+    incendiary_cloud_spell = compendium.spell("srd.spell.incendiary_cloud")
+    assert incendiary_cloud_spell.level == 8
+    assert incendiary_cloud_spell.school == "conjuration"
+    assert incendiary_cloud_spell.classes == ["druid", "sorcerer", "wizard"]
+    incendiary_cloud = compendium.action("srd.incendiary_cloud")
+    assert incendiary_cloud.requirements == {
+        "spell_level": 8,
+        "class_any": ["druid", "sorcerer", "wizard"],
+    }
+    assert incendiary_cloud.properties == {
+        "components": ["V", "S"],
+        "spell_classes": ["druid", "sorcerer", "wizard"],
+        "spell_definition_id": "srd.spell.incendiary_cloud",
+        "spell_level": 8,
+    }
+    assert incendiary_cloud.cost.spell_slot_level == 8
+    assert incendiary_cloud.range == {"normal_ft": 150, "shape": "sphere", "radius_ft": 20}
+    assert incendiary_cloud.target_policy == {"min": 1, "max": 12, "harmful": True}
+    assert incendiary_cloud.automation == [
+        {"type": "target", "mode": "area"},
+        {"type": "saving_throw", "ability": "dex", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "damage",
+            "dice": "10d8",
+            "damage_type": "fire",
+            "save_half": True,
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "incendiary_cloud",
+            "scope": {"shape": "sphere", "radius_ft": 20, "range_ft": 150},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "heavily_obscured": True,
+                "dispersed_by_strong_wind": True,
+                "moves_away_from_caster_ft_at_start_of_turn": 10,
+                "caster_chooses_movement_direction": True,
+                "repeat_save_triggers": [
+                    "sphere_moves_into_space",
+                    "creature_enters_area",
+                    "creature_ends_turn_in_area",
+                ],
+                "repeat_save_once_per_turn": True,
+                "repeat_save": {
+                    "ability": "dex",
+                    "dc_from": {"spell_save_dc": "actor"},
+                    "damage": "10d8 fire",
+                    "save_half": True,
+                },
+                "area_trigger_and_cloud_movement_not_automated": True,
             },
         },
     ]
@@ -8385,6 +8440,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.compulsion",
         "srd.spell.conjure_minor_elementals",
         "srd.spell.conjure_woodland_beings",
+        "srd.spell.incendiary_cloud",
         "srd.spell.creation",
         "srd.spell.guardian_of_faith",
         "srd.spell.black_tentacles",

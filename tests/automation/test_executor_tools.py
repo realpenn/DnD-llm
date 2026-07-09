@@ -22146,6 +22146,126 @@ def test_cloudkill_upcast_spends_requested_slot_and_adds_damage_die(make_state) 
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "6d8"]
 
 
+def test_incendiary_cloud_uses_actor_spell_dc_deals_fire_and_records_cloud(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.abilities["int"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.incendiary_cloud",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-incendiary-cloud",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == "spell_save_dc:wizard"
+    assert save_node["success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "fire"
+    assert damage_change["amount"] == 8
+    assert damage_change["applied"] == 8
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "10d8"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.incendiary_cloud"
+    assert effect["effect_type"] == "incendiary_cloud"
+    assert effect["concentration"] is True
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["scope"] == {"shape": "sphere", "radius_ft": 20, "range_ft": 150}
+    assert effect["metadata"] == {
+        "heavily_obscured": True,
+        "dispersed_by_strong_wind": True,
+        "moves_away_from_caster_ft_at_start_of_turn": 10,
+        "caster_chooses_movement_direction": True,
+        "repeat_save_triggers": [
+            "sphere_moves_into_space",
+            "creature_enters_area",
+            "creature_ends_turn_in_area",
+        ],
+        "repeat_save_once_per_turn": True,
+        "repeat_save": {
+            "ability": "dex",
+            "dc_from": {"spell_save_dc": "actor"},
+            "damage": "10d8 fire",
+            "save_half": True,
+        },
+        "area_trigger_and_cloud_movement_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "incendiary_cloud"
+    assert world_effect_change["concentration"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 10
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
+
+
+def test_incendiary_cloud_successful_save_takes_half_fire_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 8]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.incendiary_cloud",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-incendiary-cloud-success",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 18
+    assert save_node["dc_source"] == "spell_save_dc:druid"
+    assert save_node["success"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == "fire"
+    assert damage_change["amount"] == 4
+    assert damage_change["applied"] == 4
+    assert target.hp_current == 76
+
+
 def test_insect_plague_uses_actor_spell_dc_deals_piercing_and_records_swarm(
     make_state,
 ) -> None:

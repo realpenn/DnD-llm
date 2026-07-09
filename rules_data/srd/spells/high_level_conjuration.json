@@ -64,6 +64,81 @@
       }
     },
     {
+      "id": "srd.spell.incendiary_cloud",
+      "name": "Incendiary Cloud",
+      "localization": {
+        "en": "Incendiary Cloud",
+        "zh": "焚云术",
+        "aliases": ["燃云术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "conjuration",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.incendiary_cloud",
+        "name": "Incendiary Cloud",
+        "localization": {
+          "en": "Incendiary Cloud",
+          "zh": "焚云术",
+          "aliases": ["燃云术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "components": ["V", "S"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "10d8",
+            "damage_type": "fire",
+            "save_half": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "incendiary_cloud",
+            "scope": { "shape": "sphere", "radius_ft": 20, "range_ft": 150 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "heavily_obscured": true,
+              "dispersed_by_strong_wind": true,
+              "moves_away_from_caster_ft_at_start_of_turn": 10,
+              "caster_chooses_movement_direction": true,
+              "repeat_save_triggers": [
+                "sphere_moves_into_space",
+                "creature_enters_area",
+                "creature_ends_turn_in_area"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "10d8 fire",
+                "save_half": true
+              },
+              "area_trigger_and_cloud_movement_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Incendiary Cloud"
+      }
+    },
+    {
       "id": "srd.spell.teleportation_circle",
       "name": "Teleportation Circle",
       "localization": {
