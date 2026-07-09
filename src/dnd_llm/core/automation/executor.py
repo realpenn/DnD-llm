@@ -409,6 +409,7 @@ class _Context:
     superior_hunters_prey_applied: bool = False
     improved_blessed_strikes_potent_spellcasting_applied: bool = False
     quivering_palm_applied: bool = False
+    healing_pool_targets: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -533,6 +534,7 @@ class AutomationExecutor:
         self._validate_heightened_focus_preconditions(action, actor_id, targets or [], params)
         self._validate_fleet_step_preconditions(action, actor_id, params)
         self._validate_preserve_life_preconditions(action, actor_id, targets or [], params)
+        self._validate_healing_pool_preconditions(action, targets or [], params)
         self._validate_cutting_words_preconditions(action, params)
         self._validate_countercharm_preconditions(action, targets or [], params)
         self._validate_lands_aid_preconditions(action, targets or [], params)
@@ -619,6 +621,8 @@ class AutomationExecutor:
             self._node_restore_all_hit_points(ctx, path)
         elif node_type == "healing":
             self._node_healing(ctx, node, path)
+        elif node_type == "healing_pool":
+            self._node_healing_pool(ctx, node, path)
         elif node_type == "cutting_words":
             self._node_cutting_words(ctx, path)
         elif node_type == "hunter_lore":
@@ -1847,6 +1851,56 @@ class AutomationExecutor:
                 }
             )
 
+    def _node_healing_pool(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        allocations = self._healing_pool_allocations(ctx.action, ctx.targets, ctx.params)
+        max_points = int(node["max_points"])
+        param_name = str(node.get("points_param", "healing_points"))
+        blessed_healer_triggered = False
+        for target_id in ctx.targets:
+            target = self._entity(target_id)
+            before = int(getattr(target, "hp_current"))
+            hp_max = int(getattr(target, "hp_max"))
+            amount = allocations[target_id]
+            disciple_bonus = self._disciple_of_life_bonus(ctx)
+            total_amount = amount + disciple_bonus
+            applied = self._apply_healing(target_id, total_amount)
+            ctx.healing_pool_targets.add(target_id)
+            if target_id != ctx.actor_id and applied > 0:
+                blessed_healer_triggered = True
+            change: dict[str, Any] = {
+                "type": "healing",
+                "target_id": target_id,
+                "amount": total_amount,
+                "applied": applied,
+                "healing_pool": True,
+                "healing_pool_allocation": amount,
+                "healing_pool_max_points": max_points,
+                "healing_pool_points_param": param_name,
+                "hp_before": before,
+                "hp_max": hp_max,
+                "path": path,
+                "source_action_id": ctx.action.id,
+            }
+            if disciple_bonus:
+                change["disciple_of_life_bonus"] = disciple_bonus
+                change["disciple_of_life_source"] = "srd.disciple_of_life"
+            ctx.result.state_changes.append(change)
+        if blessed_healer_triggered:
+            blessed_bonus = self._blessed_healer_bonus(ctx)
+            if blessed_bonus:
+                applied = self._apply_healing(ctx.actor_id, blessed_bonus)
+                ctx.result.state_changes.append(
+                    {
+                        "type": "healing",
+                        "target_id": ctx.actor_id,
+                        "amount": blessed_bonus,
+                        "applied": applied,
+                        "blessed_healer_bonus": blessed_bonus,
+                        "blessed_healer_source": BLESSED_HEALER_ACTION_ID,
+                        "path": path,
+                    }
+                )
+
     def _node_temp_hp(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         for target_id in ctx.targets:
             amount, rolls = self._roll_amount(ctx, node)
@@ -2029,7 +2083,12 @@ class AutomationExecutor:
     def _node_remove_condition(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         conditions = [str(condition) for condition in node.get("conditions", [])]
         effect_markers = [str(marker) for marker in node.get("effect_markers", [])]
-        for target_id in ctx.targets:
+        target_ids = (
+            [target_id for target_id in ctx.targets if target_id in ctx.healing_pool_targets]
+            if node.get("targets_from") == "healing_pool"
+            else ctx.targets
+        )
+        for target_id in target_ids:
             removed: dict[str, int] = {}
             removed_markers: dict[str, int] = {}
             removed_owners: list[dict[str, Any]] = []
@@ -14411,6 +14470,47 @@ class AutomationExecutor:
             return
         self._preserve_life_allocations(action, actor_id, targets, params)
 
+    def _validate_healing_pool_preconditions(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if self._healing_pool_node(action) is None:
+            return
+        self._healing_pool_allocations(action, targets, params)
+
+    def _healing_pool_allocations(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> dict[str, int]:
+        node = self._healing_pool_node(action)
+        if node is None:
+            return {}
+        param_name = str(node.get("points_param", "healing_points"))
+        raw_points = params.get(param_name)
+        if raw_points is None:
+            raise AutomationError(f"missing required parameter {param_name}")
+        allocations = self._parse_target_point_allocations(
+            raw_points,
+            targets,
+            param_name,
+            target_mismatch_error="Preserve Life points must be assigned to exactly the targets",
+            positive_error="Preserve Life points must be positive",
+        )
+        max_points = int(node["max_points"])
+        total = sum(allocations.values())
+        if total > max_points:
+            raise AutomationError(f"{param_name} exceed available healing pool")
+        for target_id in allocations:
+            try:
+                self._entity(target_id)
+            except KeyError as exc:
+                raise AutomationError(f"unknown target {target_id}") from exc
+        return allocations
+
     def _preserve_life_allocations(
         self,
         action: ActionDefinition,
@@ -14425,7 +14525,7 @@ class AutomationExecutor:
         raw_points = params.get(param_name)
         if raw_points is None:
             raise AutomationError(f"missing required parameter {param_name}")
-        allocations = self._parse_preserve_life_points(raw_points, targets, param_name)
+        allocations = self._parse_target_point_allocations(raw_points, targets, param_name)
         owner = self._resource_owner(actor_id)
         if not isinstance(owner, Character):
             raise AutomationError("Preserve Life requires a character")
@@ -14453,11 +14553,14 @@ class AutomationExecutor:
                 raise AutomationError("Preserve Life target is out of range")
         return allocations
 
-    def _parse_preserve_life_points(
+    def _parse_target_point_allocations(
         self,
         raw_points: Any,
         targets: list[str],
         param_name: str,
+        *,
+        target_mismatch_error: str | None = None,
+        positive_error: str | None = None,
     ) -> dict[str, int]:
         if isinstance(raw_points, int) and not isinstance(raw_points, bool) and len(targets) == 1:
             allocations = {targets[0]: raw_points}
@@ -14471,10 +14574,13 @@ class AutomationExecutor:
         target_set = set(targets)
         allocation_set = set(allocations)
         if allocation_set != target_set:
-            raise AutomationError("Preserve Life points must be assigned to exactly the targets")
+            raise AutomationError(
+                target_mismatch_error
+                or f"{param_name} must be assigned to exactly the targets"
+            )
         for amount in allocations.values():
             if amount <= 0:
-                raise AutomationError("Preserve Life points must be positive")
+                raise AutomationError(positive_error or f"{param_name} must be positive")
         return allocations
 
     def _validate_lands_aid_preconditions(
@@ -14548,6 +14654,16 @@ class AutomationExecutor:
                 node
                 for node in self._automation_nodes(action.automation)
                 if node.get("type") == "preserve_life_healing"
+            ),
+            None,
+        )
+
+    def _healing_pool_node(self, action: ActionDefinition) -> dict[str, Any] | None:
+        return next(
+            (
+                node
+                for node in self._automation_nodes(action.automation)
+                if node.get("type") == "healing_pool"
             ),
             None,
         )

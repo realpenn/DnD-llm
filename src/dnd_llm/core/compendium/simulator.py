@@ -417,6 +417,11 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
         choices = action.properties.get("greater_restoration_choices", [])
         if isinstance(choices, list) and choices:
             params["greater_restoration_choice"] = str(choices[0])
+    for node in action.automation:
+        if node.get("type") == "healing_pool":
+            param_name = str(node.get("points_param", "healing_points"))
+            targets = _targets_for_action(action.target_policy)
+            params[param_name] = {target_id: 1 for target_id in targets}
     return params
 
 

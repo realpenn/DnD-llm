@@ -165,6 +165,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.gift_of_the_depths_water_breathing",
     "srd.glibness",
     "srd.hallucinatory_terrain",
+    "srd.mass_heal",
     "srd.phantasmal_killer",
     "srd.power_word_heal",
     "srd.power_word_kill",

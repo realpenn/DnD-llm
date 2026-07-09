@@ -844,6 +844,65 @@
         ],
         "audit_label": "Mind Blank"
       }
+    },
+    {
+      "id": "srd.spell.mass_heal",
+      "name": "Mass Heal",
+      "localization": {
+        "en": "Mass Heal",
+        "zh": "群体医疗术",
+        "aliases": ["群体医疗"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.mass_heal",
+        "name": "Mass Heal",
+        "localization": {
+          "en": "Mass Heal",
+          "zh": "群体医疗术",
+          "aliases": ["群体医疗"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "healing_pool": 700,
+          "healing_pool_points_param": "mass_heal_points",
+          "removed_conditions": ["blinded", "deafened", "poisoned"],
+          "no_construct_or_undead_exclusion_in_srd_5_2_1": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "healing_pool",
+            "max_points": 700,
+            "points_param": "mass_heal_points"
+          },
+          {
+            "type": "remove_condition",
+            "conditions": ["blinded", "deafened", "poisoned"],
+            "targets_from": "healing_pool"
+          }
+        ],
+        "audit_label": "Mass Heal"
+      }
     }
   ]
 }

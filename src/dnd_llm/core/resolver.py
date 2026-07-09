@@ -408,6 +408,9 @@ class ActionResolver:
         preserve_life_check = self._check_preserve_life(draft, actor, action)
         if preserve_life_check is not None:
             return preserve_life_check
+        healing_pool_check = self._check_healing_pool(draft, action)
+        if healing_pool_check is not None:
+            return healing_pool_check
         return ResolverResult(status="accepted", reason="accepted", action_id=action.id)
 
     def _resolve_action(self, draft: PlayerActionDraft) -> ActionDefinition | None:
@@ -3040,6 +3043,45 @@ class ActionResolver:
             return None
         return ResolverResult(status="rejected", reason=error, action_id=action.id)
 
+    def _check_healing_pool(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> ResolverResult | None:
+        if self._healing_pool_node(action) is None:
+            return None
+        error = self._healing_pool_error(draft, action)
+        if error is None:
+            return None
+        return ResolverResult(status="rejected", reason=error, action_id=action.id)
+
+    def _healing_pool_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        node = self._healing_pool_node(action)
+        if node is None:
+            return None
+        param_name = str(node.get("points_param", "healing_points"))
+        try:
+            allocations = self._parse_target_point_allocations(
+                draft.params.get(param_name),
+                draft.target_ids,
+                param_name,
+            )
+        except ValueError as exc:
+            return str(exc)
+        max_points = int(node.get("max_points", 0))
+        if sum(allocations.values()) > max_points:
+            return f"{param_name} exceed available healing pool"
+        for target_id in allocations:
+            try:
+                self.state.entity_for_actor(target_id)
+            except KeyError:
+                return f"unknown target {target_id}"
+        return None
+
     def _preserve_life_error(
         self,
         draft: PlayerActionDraft,
@@ -3051,10 +3093,12 @@ class ActionResolver:
             return None
         param_name = str(node.get("points_param", "preserve_life_points"))
         try:
-            allocations = self._parse_preserve_life_points(
+            allocations = self._parse_target_point_allocations(
                 draft.params.get(param_name),
                 draft.target_ids,
                 param_name,
+                target_mismatch_error="Preserve Life points must be assigned to exactly the targets",
+                positive_error="Preserve Life points must be positive",
             )
         except ValueError as exc:
             return str(exc)
@@ -3079,11 +3123,14 @@ class ActionResolver:
                 return "Preserve Life cannot heal a target above half HP"
         return None
 
-    def _parse_preserve_life_points(
+    def _parse_target_point_allocations(
         self,
         raw_points: Any,
         targets: list[str],
         param_name: str,
+        *,
+        target_mismatch_error: str | None = None,
+        positive_error: str | None = None,
     ) -> dict[str, int]:
         if raw_points is None:
             raise ValueError(f"missing required parameter {param_name}")
@@ -3097,10 +3144,13 @@ class ActionResolver:
         else:
             raise ValueError(f"parameter {param_name} must be a target-to-points map")
         if set(allocations) != set(targets):
-            raise ValueError("Preserve Life points must be assigned to exactly the targets")
+            raise ValueError(
+                target_mismatch_error
+                or f"{param_name} must be assigned to exactly the targets"
+            )
         for amount in allocations.values():
             if amount <= 0:
-                raise ValueError("Preserve Life points must be positive")
+                raise ValueError(positive_error or f"{param_name} must be positive")
         return allocations
 
     @staticmethod
@@ -3121,6 +3171,16 @@ class ActionResolver:
                 node
                 for node in self._automation_nodes(action.automation)
                 if node.get("type") == "preserve_life_healing"
+            ),
+            None,
+        )
+
+    def _healing_pool_node(self, action: ActionDefinition) -> dict[str, Any] | None:
+        return next(
+            (
+                node
+                for node in self._automation_nodes(action.automation)
+                if node.get("type") == "healing_pool"
             ),
             None,
         )

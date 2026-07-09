@@ -11,6 +11,7 @@ NODE_TYPES = {
     "instant_death",
     "restore_all_hit_points",
     "healing",
+    "healing_pool",
     "temp_hp",
     "condition",
     "cutting_words",
@@ -48,6 +49,7 @@ STATE_CHANGING_NODE_TYPES = {
     "instant_death",
     "restore_all_hit_points",
     "healing",
+    "healing_pool",
     "temp_hp",
     "condition",
     "remove_condition",
@@ -296,6 +298,13 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
                 f"{path}: optional_reaction_remove_condition.param "
                 "must be a non-empty string"
             )
+    if node_type == "healing_pool":
+        points_param = node.get("points_param", "healing_points")
+        max_points = node.get("max_points")
+        if not isinstance(points_param, str) or not points_param:
+            errors.append(f"{path}: healing_pool points_param must be a string")
+        if not isinstance(max_points, int) or isinstance(max_points, bool) or max_points < 1:
+            errors.append(f"{path}: healing_pool max_points must be a positive integer")
     if node_type in {"damage", "healing", "temp_hp"} and "minimum_amount" in node:
         minimum_amount = node["minimum_amount"]
         if (
@@ -377,6 +386,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
     if node_type == "remove_condition":
         conditions = node.get("conditions")
         effect_markers = node.get("effect_markers")
+        targets_from = node.get("targets_from")
         has_conditions = isinstance(conditions, list) and bool(conditions)
         has_effect_markers = isinstance(effect_markers, list) and bool(effect_markers)
         if not has_conditions and not has_effect_markers:
@@ -385,6 +395,8 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.append(f"{path}: remove_condition conditions must be a list")
         if effect_markers is not None and not isinstance(effect_markers, list):
             errors.append(f"{path}: remove_condition effect_markers must be a list")
+        if targets_from is not None and targets_from != "healing_pool":
+            errors.append(f"{path}: remove_condition targets_from is unsupported")
     if node_type == "greater_restoration":
         choices = node.get("choices")
         if not isinstance(choices, list) or not choices:

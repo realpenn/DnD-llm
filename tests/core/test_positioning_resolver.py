@@ -285,6 +285,51 @@ def test_resolver_rejects_preserve_life_out_of_range(make_state) -> None:
     assert result.reason == "target out of range"
 
 
+def test_resolver_checks_mass_heal_point_pool(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"cleric": 17}
+    state.characters["pc1"].actions.append("srd.mass_heal")
+    state.characters["pc1"].spell_slots["9"] = 1
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 500
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mass heal",
+            target_ids=["pc2"],
+            candidate_action_id="srd.mass_heal",
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 499}},
+        )
+    )
+    over_allocated = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mass heal",
+            target_ids=["pc2"],
+            candidate_action_id="srd.mass_heal",
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 701}},
+        )
+    )
+    wrong_targets = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mass heal",
+            target_ids=["pc2", "goblin1"],
+            candidate_action_id="srd.mass_heal",
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 499}},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert over_allocated.status == "rejected"
+    assert over_allocated.reason == "mass_heal_points exceed available healing pool"
+    assert wrong_targets.status == "rejected"
+    assert wrong_targets.reason == "mass_heal_points must be assigned to exactly the targets"
+
+
 def test_resolver_blocks_pvp_by_default(make_state) -> None:
     state = make_state()
     compendium = CompendiumLoader("rules_data").load()

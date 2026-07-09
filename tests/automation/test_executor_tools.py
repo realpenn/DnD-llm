@@ -19217,6 +19217,102 @@ def test_heal_upcast_increases_healing_by_10_per_slot_above_six(make_state) -> N
     assert target.hp_current == 84
 
 
+def test_mass_heal_distributes_700_hp_and_removes_srd_conditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["9"] = 1
+    ally = state.encounter.combatants["pc2"]
+    ally.hp_current = 10
+    ally.hp_max = 500
+    ally.status_effects = [
+        {"effect_id": "blind", "condition": "blinded"},
+        {"effect_id": "deaf", "condition": "deafened"},
+        {"effect_id": "poison", "condition": "poisoned"},
+        {"effect_id": "fright", "condition": "frightened"},
+    ]
+    undead = state.encounter.combatants["goblin1"]
+    undead.creature_type = "undead"
+    undead.hp_current = 1
+    undead.hp_max = 400
+    undead.status_effects = [
+        {"effect_id": "blind-undead", "condition": "blinded"},
+        {"effect_id": "poison-undead", "condition": "poisoned"},
+        {"effect_id": "stun-undead", "condition": "stunned"},
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.mass_heal",
+        actor_id="pc1",
+        targets=["pc2", "goblin1"],
+        params={"slot_level": 9, "mass_heal_points": {"pc2": 490, "goblin1": 210}},
+        idempotency_key="cast-mass-heal",
+    )
+
+    assert result["success"] is True
+    assert result["dice_rolls"] == []
+    assert caster.spell_slots["9"] == 0
+    healing_changes = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "healing" and change.get("healing_pool") is True
+    ]
+    assert [change["target_id"] for change in healing_changes] == ["pc2", "goblin1"]
+    assert [change["healing_pool_allocation"] for change in healing_changes] == [490, 210]
+    assert [change["applied"] for change in healing_changes] == [490, 210]
+    assert all(change["healing_pool_max_points"] == 700 for change in healing_changes)
+    assert all(
+        change["healing_pool_points_param"] == "mass_heal_points"
+        for change in healing_changes
+    )
+    assert ally.hp_current == 500
+    assert undead.hp_current == 211
+
+    remove_changes = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "remove_condition" and change["path"] == "automation[2]"
+    ]
+    assert [change["target_id"] for change in remove_changes] == ["pc2", "goblin1"]
+    assert remove_changes[0]["removed"] == {
+        "blinded": 1,
+        "deafened": 1,
+        "poisoned": 1,
+    }
+    assert remove_changes[1]["removed"] == {"blinded": 1, "poisoned": 1}
+    assert {effect["condition"] for effect in ally.status_effects} == {"frightened"}
+    assert {effect["condition"] for effect in undead.status_effects} == {"stunned"}
+
+
+def test_mass_heal_rejects_over_allocated_pool_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 17}
+    caster.spell_slots["9"] = 1
+    target = state.encounter.combatants["pc2"]
+    target.hp_current = 1
+    target.hp_max = 500
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="mass_heal_points exceed available healing pool"):
+        tools._execute_action(
+            action_id="srd.mass_heal",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 701}},
+            idempotency_key="cast-mass-heal-over-allocated",
+        )
+
+    assert caster.spell_slots["9"] == 1
+    assert state.encounter.action_budgets == {}
+    assert target.hp_current == 1
+
+
 def test_hold_monster_uses_actor_spell_dc_and_repeat_save_duration(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

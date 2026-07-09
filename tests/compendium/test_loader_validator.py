@@ -100,6 +100,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.find_the_path",
         "srd.foresight",
         "srd.locate_creature",
+        "srd.mass_heal",
         "srd.power_word_heal",
         "srd.power_word_kill",
         "srd.power_word_stun",
@@ -1776,6 +1777,40 @@ def test_compendium_loads_srd_actions() -> None:
             "extra_amount_per_slot_above": 10,
         },
         {"type": "remove_condition", "conditions": ["blinded", "deafened", "poisoned"]},
+    ]
+    mass_heal_spell = compendium.spell("srd.spell.mass_heal")
+    assert mass_heal_spell.level == 9
+    assert mass_heal_spell.school == "abjuration"
+    assert mass_heal_spell.classes == ["cleric"]
+    mass_heal = compendium.action("srd.mass_heal")
+    assert mass_heal.requirements == {"spell_level": 9, "class_any": ["cleric"]}
+    assert mass_heal.properties == {
+        "spell_classes": ["cleric"],
+        "components": ["V", "S"],
+        "target_must_be_visible": True,
+        "target_type": "creature",
+        "healing_pool": 700,
+        "healing_pool_points_param": "mass_heal_points",
+        "removed_conditions": ["blinded", "deafened", "poisoned"],
+        "no_construct_or_undead_exclusion_in_srd_5_2_1": True,
+        "spell_definition_id": "srd.spell.mass_heal",
+        "spell_level": 9,
+    }
+    assert mass_heal.cost.spell_slot_level == 9
+    assert mass_heal.range == {"normal_ft": 60}
+    assert mass_heal.target_policy == {"min": 1, "harmful": False}
+    assert mass_heal.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "healing_pool",
+            "max_points": 700,
+            "points_param": "mass_heal_points",
+        },
+        {
+            "type": "remove_condition",
+            "conditions": ["blinded", "deafened", "poisoned"],
+            "targets_from": "healing_pool",
+        },
     ]
     charm_monster = compendium.action("srd.charm_monster")
     assert charm_monster.requirements == {
