@@ -68,6 +68,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.mirage_arcane",
         "srd.weird",
         "srd.regenerate",
+        "srd.time_stop",
         "srd.freedom_of_movement",
         "srd.private_sanctum",
         "srd.resilient_sphere",
@@ -5377,6 +5378,60 @@ def test_compendium_loads_srd_actions() -> None:
             "tick_on": "target_turn_start",
         },
     ]
+    time_stop_spell = compendium.spell("srd.spell.time_stop")
+    assert time_stop_spell.level == 9
+    assert time_stop_spell.school == "transmutation"
+    assert time_stop_spell.classes == ["sorcerer", "wizard"]
+    time_stop = compendium.action("srd.time_stop")
+    assert time_stop.requirements == {
+        "spell_level": 9,
+        "class_any": ["sorcerer", "wizard"],
+    }
+    assert time_stop.properties == {
+        "spell_classes": ["sorcerer", "wizard"],
+        "components": ["V"],
+        "extra_turns_roll": "1d4+1",
+        "extra_turns_are_consecutive": True,
+        "time_passes_for_other_creatures": False,
+        "caster_can_use_actions_and_move_normally": True,
+        "ends_if_action_or_created_effect_affects_other_creature": True,
+        "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": True,
+        "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_attack_roll": True,
+        "no_concentration": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.time_stop",
+        "spell_level": 9,
+    }
+    assert time_stop.cost.spell_slot_level == 9
+    assert time_stop.cost.gold == 0
+    assert time_stop.range == {"self": True}
+    assert time_stop.target_policy == {"min": 0, "max": 0, "harmful": False}
+    assert time_stop.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "time_stop_window",
+            "scope": {"target": "self"},
+            "duration": {"until": "duration_1d4_plus_1_turns"},
+            "duration_roll": {"dice": "1d4+1", "unit": "turns", "ticks_per_unit": 1},
+            "tick_on": "self_turn_start",
+            "metadata": {
+                "time_stop": True,
+                "extra_turns_roll": "1d4+1",
+                "extra_turns_are_consecutive": True,
+                "time_passes_for_other_creatures": False,
+                "caster_can_use_actions_and_move_normally": True,
+                "ends_if_action_or_created_effect_affects_other_creature": True,
+                "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": True,
+                "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+                "turn_scheduler_not_automated": True,
+                "effect_target_detection_not_automated": True,
+                "cast_location_distance_tracking_not_automated": True,
+            },
+        }
+    ]
     wind_walk = compendium.action("srd.wind_walk")
     assert wind_walk.requirements == {
         "spell_level": 6,
@@ -9611,6 +9666,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.gate",
         "srd.spell.control_weather",
         "srd.spell.regenerate",
+        "srd.spell.time_stop",
         "srd.spell.reverse_gravity",
         "srd.spell.sequester",
     } <= set(compendium.spells)

@@ -730,6 +730,81 @@
         ],
         "audit_label": "Regenerate"
       }
+    },
+    {
+      "id": "srd.spell.time_stop",
+      "name": "Time Stop",
+      "localization": {
+        "en": "Time Stop",
+        "zh": "时间停止",
+        "aliases": ["时间暂停", "时停"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.time_stop",
+        "name": "Time Stop",
+        "localization": {
+          "en": "Time Stop",
+          "zh": "时间停止",
+          "aliases": ["时间暂停", "时停"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["sorcerer", "wizard"],
+          "components": ["V"],
+          "extra_turns_roll": "1d4+1",
+          "extra_turns_are_consecutive": true,
+          "time_passes_for_other_creatures": false,
+          "caster_can_use_actions_and_move_normally": true,
+          "ends_if_action_or_created_effect_affects_other_creature": true,
+          "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": true,
+          "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_concentration": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "time_stop_window",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_1d4_plus_1_turns" },
+            "duration_roll": { "dice": "1d4+1", "unit": "turns", "ticks_per_unit": 1 },
+            "tick_on": "self_turn_start",
+            "metadata": {
+              "time_stop": true,
+              "extra_turns_roll": "1d4+1",
+              "extra_turns_are_consecutive": true,
+              "time_passes_for_other_creatures": false,
+              "caster_can_use_actions_and_move_normally": true,
+              "ends_if_action_or_created_effect_affects_other_creature": true,
+              "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": true,
+              "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+              "turn_scheduler_not_automated": true,
+              "effect_target_detection_not_automated": true,
+              "cast_location_distance_tracking_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Time Stop"
+      }
     }
   ]
 }

@@ -28760,6 +28760,88 @@ def test_regenerate_upcast_spends_higher_slot_without_extra_healing(make_state) 
     }
 
 
+def test_time_stop_spends_slot_and_records_time_stop_window(make_state) -> None:
+    state = make_state()
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["9"] = 1
+    caster.gold = 123
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([2]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.time_stop",
+        [],
+        9,
+        idempotency_key="cast-time-stop",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    assert caster.gold == 123
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d4+1"]
+    assert result["dice_rolls"][0]["total"] == 3
+    assert not any(
+        change["type"] in {"damage", "saving_throw", "attack_roll", "condition"}
+        for change in result["state_changes"]
+    )
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "time_stop_window"
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.time_stop"
+    assert effect["applied_by"] == "pc1"
+    assert effect["effect_type"] == "time_stop_window"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "self"}
+    assert effect["duration"] == {
+        "until": "duration_1d4_plus_1_turns",
+        "duration_roll": {
+            "dice": "1d4+1",
+            "unit": "turns",
+            "roll_id": "fixed-0",
+            "rolled": 3,
+            "ticks_per_unit": 1,
+        },
+        "remaining_ticks": 3,
+    }
+    assert effect["tick_on"] == "self_turn_start"
+    assert effect["metadata"] == {
+        "time_stop": True,
+        "extra_turns_roll": "1d4+1",
+        "extra_turns_are_consecutive": True,
+        "time_passes_for_other_creatures": False,
+        "caster_can_use_actions_and_move_normally": True,
+        "ends_if_action_or_created_effect_affects_other_creature": True,
+        "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": True,
+        "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+        "turn_scheduler_not_automated": True,
+        "effect_target_detection_not_automated": True,
+        "cast_location_distance_tracking_not_automated": True,
+    }
+
+    first_tick = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert first_tick.ticked[0]["remaining_ticks_before"] == 3
+    assert first_tick.ticked[0]["remaining_ticks_after"] == 2
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 2
+
+    second_tick = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert second_tick.ticked[0]["remaining_ticks_before"] == 2
+    assert second_tick.ticked[0]["remaining_ticks_after"] == 1
+    assert state.world.active_effects[-1]["duration"]["remaining_ticks"] == 1
+
+    third_tick = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert third_tick.expired[0]["source_action_id"] == "srd.time_stop"
+    assert state.world.active_effects == []
+
+
 def test_wind_walk_applies_cloud_form_and_allows_only_dash(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

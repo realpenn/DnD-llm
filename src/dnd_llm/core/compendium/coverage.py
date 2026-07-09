@@ -83,6 +83,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.control_weather",
     "srd.telepathic_bond",
     "srd.teleport",
+    "srd.time_stop",
     "srd.conjure_minor_elementals",
     "srd.compulsion",
     "srd.confusion",

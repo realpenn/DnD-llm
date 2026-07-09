@@ -207,6 +207,29 @@ def _validate_repeat_save_failure_damage(value: Any, path: str) -> list[str]:
     return errors
 
 
+def _validate_duration_roll(node: dict[str, Any], path: str) -> list[str]:
+    duration_roll = node.get("duration_roll")
+    if duration_roll is None:
+        return []
+    errors: list[str] = []
+    if not isinstance(duration_roll, dict):
+        return [f"{path}: duration_roll must be an object"]
+    dice = duration_roll.get("dice")
+    unit = duration_roll.get("unit")
+    ticks_per_unit = duration_roll.get("ticks_per_unit")
+    if not isinstance(dice, str) or not dice:
+        errors.append(f"{path}: duration_roll.dice must be a die expression")
+    if not isinstance(unit, str) or not unit:
+        errors.append(f"{path}: duration_roll.unit must be a string")
+    if (
+        not isinstance(ticks_per_unit, int)
+        or isinstance(ticks_per_unit, bool)
+        or ticks_per_unit <= 0
+    ):
+        errors.append(f"{path}: duration_roll.ticks_per_unit must be positive")
+    return errors
+
+
 def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
     errors: list[str] = []
     node_type = node.get("type")
@@ -544,24 +567,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.extend(_validate_duration_from_slot(duration, path))
             errors.extend(_validate_duration_from_param(duration, path))
             errors.extend(_validate_repeat_save(duration, path))
-        duration_roll = node.get("duration_roll")
-        if duration_roll is not None:
-            if not isinstance(duration_roll, dict):
-                errors.append(f"{path}: duration_roll must be an object")
-            else:
-                dice = duration_roll.get("dice")
-                unit = duration_roll.get("unit")
-                ticks_per_unit = duration_roll.get("ticks_per_unit")
-                if not isinstance(dice, str) or not dice:
-                    errors.append(f"{path}: duration_roll.dice must be a die expression")
-                if not isinstance(unit, str) or not unit:
-                    errors.append(f"{path}: duration_roll.unit must be a string")
-                if (
-                    not isinstance(ticks_per_unit, int)
-                    or isinstance(ticks_per_unit, bool)
-                    or ticks_per_unit <= 0
-                ):
-                    errors.append(f"{path}: duration_roll.ticks_per_unit must be positive")
+        errors.extend(_validate_duration_roll(node, path))
     if node_type == "world_effect" and not node.get("effect_type"):
         errors.append(f"{path}: world_effect requires effect_type")
     if node_type == "world_effect":
@@ -569,6 +575,7 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         if isinstance(duration, dict):
             errors.extend(_validate_duration_from_slot(duration, path))
             errors.extend(_validate_duration_from_param(duration, path))
+        errors.extend(_validate_duration_roll(node, path))
     if node_type == "world_effect" and "metadata_from_slot" in node:
         metadata_from_slot = node["metadata_from_slot"]
         if not isinstance(metadata_from_slot, dict):
