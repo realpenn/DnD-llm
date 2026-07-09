@@ -18634,6 +18634,130 @@ def test_reverse_gravity_successful_save_records_cylinder_without_target_effect(
     assert state.world.active_effects[-1]["effect_type"] == "reverse_gravity_cylinder"
 
 
+def test_clone_consumes_diamond_and_records_inert_clone_vessel(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.spell_slots["8"] = 1
+    caster.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.clone",
+        [],
+        8,
+        idempotency_key="cast-clone",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    assert caster.gold == 0
+    cost_resources = [
+        change["resource"] for change in result["state_changes"] if change["type"] == "cost"
+    ]
+    assert cost_resources == ["spell_slot_8", "gold"]
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.clone"
+    assert effect["effect_type"] == "clone_vessel"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {
+        "target": "touched_creature_or_flesh",
+        "range": "touch",
+        "vessel": "sealable_vessel",
+    }
+    assert effect["duration"] == {"until": "instant"}
+    assert effect["metadata"] == {
+        "target_can_be_creature_or_at_least_1_cubic_inch_flesh": True,
+        "duplicate_forms_inside_casting_vessel": True,
+        "clone_starts_inert": True,
+        "maturation_days": 120,
+        "caster_chooses_same_age_or_younger_finished_clone": True,
+        "finished_clone_remains_inert_indefinitely_while_vessel_undisturbed": True,
+        "non_consumed_vessel_requirement_not_automated": True,
+        "soul_transfers_if_original_dies_after_clone_finishes_forming": True,
+        "soul_must_be_free_and_willing_to_return": True,
+        "clone_physically_identical_to_original": True,
+        "clone_has_same_personality_memories_and_abilities": True,
+        "clone_has_none_of_original_equipment": True,
+        "original_remains_become_inert_and_cannot_be_revived_while_soul_elsewhere": True,
+        "clone_maturation_scheduler_not_automated": True,
+        "death_and_soul_transfer_listener_not_automated": True,
+        "creature_duplication_not_automated": True,
+        "equipment_transfer_not_automated": True,
+        "vessel_disturbance_tracking_not_automated": True,
+    }
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "clone_vessel"
+    assert world_effect_change["concentration"] is False
+
+
+def test_clone_requires_consumed_diamond_gold_before_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 15}
+    caster.spell_slots["8"] = 1
+    caster.gold = 999
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools.cast_spell(
+            "pc1",
+            "srd.clone",
+            [],
+            8,
+            idempotency_key="cast-clone-insufficient-diamond",
+        )
+
+    assert caster.spell_slots["8"] == 1
+    assert caster.gold == 999
+    assert state.world.active_effects == []
+
+
+def test_clone_upcast_spends_higher_slot_without_extra_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["8"] = 0
+    caster.spell_slots["9"] = 1
+    caster.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.clone",
+        [],
+        9,
+        idempotency_key="cast-clone-upcast",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    assert caster.spell_slots["9"] == 0
+    assert caster.gold == 0
+    cost_change = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "cost" and change["resource"] == "spell_slot_9"
+    )
+    assert cost_change["base_spell_slot_level"] == 8
+    assert cost_change["spell_slot_level"] == 9
+    assert [roll["expression"] for roll in result["dice_rolls"]] == []
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert state.world.active_effects[-1]["metadata"]["maturation_days"] == 120
+
+
 def test_sequester_consumes_slot_and_gem_dust_records_suspended_animation(
     make_state,
 ) -> None:

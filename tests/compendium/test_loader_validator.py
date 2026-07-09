@@ -52,6 +52,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.meteor_swarm",
         "srd.flame_strike",
         "srd.circle_of_death",
+        "srd.clone",
         "srd.disintegrate",
         "srd.heal",
         "srd.harm",
@@ -818,6 +819,80 @@ def test_compendium_loads_srd_actions() -> None:
                 "with one of Eyebite's SRD effects."
             ),
         },
+    ]
+    clone_spell = compendium.spell("srd.spell.clone")
+    assert clone_spell.level == 8
+    assert clone_spell.school == "necromancy"
+    assert clone_spell.classes == ["wizard"]
+    clone = compendium.action("srd.clone")
+    assert clone.requirements == {
+        "spell_level": 8,
+        "class_any": ["wizard"],
+    }
+    assert clone.properties == {
+        "spell_classes": ["wizard"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"hours": 1},
+        "material_component": {
+            "description": (
+                "a diamond worth 1,000+ GP, which the spell consumes, and a sealable "
+                "vessel worth 2,000+ GP that is large enough to hold the creature being "
+                "cloned"
+            ),
+            "consumed": True,
+            "consumed_gold": 1000,
+            "non_consumed_components": [
+                (
+                    "sealable vessel worth 2,000+ GP large enough to hold the creature "
+                    "being cloned"
+                ),
+            ],
+        },
+        "non_consumed_material_component_value_gp": 2000,
+        "non_consumed_vessel_requirement_not_automated": True,
+        "target_can_be_creature_or_flesh": True,
+        "minimum_flesh_cubic_inches": 1,
+        "no_damage": True,
+        "no_saving_throw": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.clone",
+        "spell_level": 8,
+    }
+    assert clone.cost.spell_slot_level == 8
+    assert clone.cost.gold == 1000
+    assert clone.range == {"touch": True}
+    assert clone.target_policy == {"min": 0, "max": 1, "harmful": False}
+    assert clone.automation == [
+        {
+            "type": "world_effect",
+            "effect_type": "clone_vessel",
+            "scope": {
+                "target": "touched_creature_or_flesh",
+                "range": "touch",
+                "vessel": "sealable_vessel",
+            },
+            "duration": {"until": "instant"},
+            "metadata": {
+                "target_can_be_creature_or_at_least_1_cubic_inch_flesh": True,
+                "duplicate_forms_inside_casting_vessel": True,
+                "clone_starts_inert": True,
+                "maturation_days": 120,
+                "caster_chooses_same_age_or_younger_finished_clone": True,
+                "finished_clone_remains_inert_indefinitely_while_vessel_undisturbed": True,
+                "non_consumed_vessel_requirement_not_automated": True,
+                "soul_transfers_if_original_dies_after_clone_finishes_forming": True,
+                "soul_must_be_free_and_willing_to_return": True,
+                "clone_physically_identical_to_original": True,
+                "clone_has_same_personality_memories_and_abilities": True,
+                "clone_has_none_of_original_equipment": True,
+                "original_remains_become_inert_and_cannot_be_revived_while_soul_elsewhere": True,
+                "clone_maturation_scheduler_not_automated": True,
+                "death_and_soul_transfer_listener_not_automated": True,
+                "creature_duplication_not_automated": True,
+                "equipment_transfer_not_automated": True,
+                "vessel_disturbance_tracking_not_automated": True,
+            },
+        }
     ]
     chain_lightning = compendium.action("srd.chain_lightning")
     assert chain_lightning.requirements == {
@@ -9127,6 +9202,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.heal",
         "srd.spell.harm",
         "srd.spell.finger_of_death",
+        "srd.spell.clone",
         "srd.spell.antimagic_field",
         "srd.spell.charm_monster",
         "srd.spell.commune",
