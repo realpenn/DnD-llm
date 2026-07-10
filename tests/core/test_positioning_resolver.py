@@ -1061,6 +1061,144 @@ def test_resolver_validates_creation_material_and_class(make_state) -> None:
     assert rejected_class.reason == "requires one of sorcerer, wizard"
 
 
+def test_resolver_checks_dream_context(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.dream")
+    character.prepared_spells.append("srd.spell.dream")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_same_plane = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="托梦术",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_messenger_willing_touched": True,
+            },
+        )
+    )
+    missing_messenger = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="托梦术",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+            },
+        )
+    )
+    accepted_plain = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="托梦术",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+            },
+        )
+    )
+    missing_target = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_target_asleep": True,
+                "dream_message_10_words_or_less": True,
+            },
+        )
+    )
+    missing_asleep = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_message_10_words_or_less": True,
+            },
+        )
+    )
+    missing_message_limit = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_target_asleep": True,
+            },
+        )
+    )
+    accepted_terrifying = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_target_asleep": True,
+                "dream_message_10_words_or_less": True,
+            },
+        )
+    )
+
+    assert missing_same_plane.status == "rejected"
+    assert (
+        missing_same_plane.reason
+        == "Dream requires a known target on the same plane of existence"
+    )
+    assert missing_messenger.status == "rejected"
+    assert missing_messenger.reason == (
+        "Dream requires the messenger to be the caster or willing touched creature"
+    )
+    assert accepted_plain.status == "accepted"
+    assert accepted_plain.action_id == "srd.dream"
+    assert missing_target.status == "rejected"
+    assert missing_target.reason == (
+        "Terrifying Dream requires the sleeping target as an explicit target"
+    )
+    assert missing_asleep.status == "rejected"
+    assert (
+        missing_asleep.reason
+        == "Terrifying Dream can resolve immediately only if the target is asleep"
+    )
+    assert missing_message_limit.status == "rejected"
+    assert missing_message_limit.reason == (
+        "Terrifying Dream message must be no more than ten words"
+    )
+    assert accepted_terrifying.status == "accepted"
+    assert accepted_terrifying.action_id == "srd.dream"
+
+
 def test_resolver_validates_hallow_extra_effect_choices(make_state) -> None:
     state = make_state()
     character = state.characters["pc1"]

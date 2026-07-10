@@ -16598,6 +16598,259 @@ def test_greater_invisibility_applies_concentration_invisible_without_attack_bre
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def _dream_params(**overrides: Any) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        "slot_level": 5,
+        "dream_target_same_plane": True,
+        "dream_messenger_willing_touched": True,
+    }
+    params.update(overrides)
+    return params
+
+
+def test_dream_records_trance_without_automating_dream_script(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools._execute_action(
+        action_id="srd.dream",
+        actor_id="pc1",
+        targets=[],
+        params=_dream_params(),
+        idempotency_key="cast-dream",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert result["dice_rolls"] == []
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.dream"
+    assert effect["effect_type"] == "dream_messenger_trance"
+    assert effect["duration"] == {"until": "duration_8_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "target_known_creature": True,
+        "target_same_plane_required": True,
+        "target_same_plane_param": "dream_target_same_plane",
+        "messenger_is_caster_or_willing_touched_creature": True,
+        "messenger_willing_touched_param": "dream_messenger_willing_touched",
+        "messenger_in_trance": True,
+        "messenger_incapacitated": True,
+        "messenger_speed_ft": 0,
+        "target_asleep_param": "dream_target_asleep",
+        "if_target_awake_messenger_can_end_or_wait": True,
+        "messenger_appears_in_dream_if_target_asleep": True,
+        "can_converse_while_target_remains_asleep": True,
+        "messenger_can_shape_dream_environment": True,
+        "messenger_can_end_trance_at_any_time": True,
+        "target_recalls_dream_perfectly_on_waking": True,
+        "terrifying_param": "dream_terrifying",
+        "terrifying_message": None,
+        "terrifying_message_max_words": 10,
+        "terrifying_save": {
+            "ability": "wis",
+            "dc_from": {"spell_save_dc": "actor"},
+        },
+        "failed_terrifying_save_no_rest_benefit": True,
+        "failed_terrifying_save_wake_damage": "3d6 psychic",
+        "wake_damage_and_awake_waiting_not_automated": True,
+    }
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["source_action_id"] == "srd.dream"
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
+
+
+def test_dream_terrifying_failed_save_marks_no_rest_benefit(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 9}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.dream",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params=_dream_params(
+            dream_terrifying=True,
+            dream_target_asleep=True,
+            dream_message_10_words_or_less=True,
+            dream_message="Wake afraid.",
+        ),
+        idempotency_key="cast-terrifying-dream",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["5"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    save_node = result["node_results"]["automation[2].if_true[0]"]
+    assert save_node["dc"] == 16
+    assert save_node["dc_source"] == "spell_save_dc:bard"
+    assert save_node["success"] is False
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.dream"
+    assert effect["condition"] is None
+    assert effect["duration"] == {"until": "long_rest"}
+    assert effect["tick_on"] == "long_rest"
+    assert effect["passive_modifiers"] == {
+        "dream_terrifying": True,
+        "no_benefit_from_current_rest": True,
+        "pending_wake_damage": {
+            "dice": "3d6",
+            "damage_type": "psychic",
+        },
+        "wake_damage_not_automated": True,
+    }
+    dream = state.world.active_effects[-1]
+    assert dream["metadata"]["terrifying_message"] == "Wake afraid."
+
+
+def test_dream_terrifying_successful_save_avoids_marker(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"warlock": 9}
+    caster.abilities["cha"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["5"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"wis": 10}
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.dream",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params=_dream_params(
+            dream_terrifying=True,
+            dream_target_asleep=True,
+            dream_message_10_words_or_less=True,
+            dream_message="Wake afraid.",
+        ),
+        idempotency_key="cast-terrifying-dream-success",
+    )
+
+    assert result["success"] is True
+    assert result["node_results"]["automation[2].if_true[0]"]["success"] is True
+    assert not any(change["type"] == "passive_effect" for change in result["state_changes"])
+    assert target.status_effects == []
+
+
+def test_dream_rejects_missing_context_before_spending_spell_slot(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 9}
+    caster.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Dream requires a known target on the same plane of existence",
+    ):
+        tools._execute_action(
+            action_id="srd.dream",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 5, "dream_messenger_willing_touched": True},
+            idempotency_key="dream-missing-same-plane",
+        )
+
+    assert caster.spell_slots["5"] == 1
+
+    with pytest.raises(
+        AutomationError,
+        match="Dream requires the messenger to be the caster or willing touched creature",
+    ):
+        tools._execute_action(
+            action_id="srd.dream",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 5, "dream_target_same_plane": True},
+            idempotency_key="dream-missing-messenger",
+        )
+
+    assert caster.spell_slots["5"] == 1
+
+    with pytest.raises(
+        AutomationError,
+        match="Terrifying Dream requires the sleeping target as an explicit target",
+    ):
+        tools._execute_action(
+            action_id="srd.dream",
+            actor_id="pc1",
+            targets=[],
+            params=_dream_params(
+                dream_terrifying=True,
+                dream_target_asleep=True,
+                dream_message_10_words_or_less=True,
+            ),
+            idempotency_key="dream-terrifying-missing-target",
+        )
+
+    assert caster.spell_slots["5"] == 1
+
+    with pytest.raises(
+        AutomationError,
+        match="Terrifying Dream can resolve immediately only if the target is asleep",
+    ):
+        tools._execute_action(
+            action_id="srd.dream",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params=_dream_params(
+                dream_terrifying=True,
+                dream_message_10_words_or_less=True,
+            ),
+            idempotency_key="dream-missing-asleep",
+        )
+
+    assert caster.spell_slots["5"] == 1
+
+    with pytest.raises(
+        AutomationError,
+        match="Terrifying Dream message must be no more than ten words",
+    ):
+        tools._execute_action(
+            action_id="srd.dream",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params=_dream_params(
+                dream_terrifying=True,
+                dream_target_asleep=True,
+            ),
+            idempotency_key="dream-missing-message-limit",
+        )
+
+    assert caster.spell_slots["5"] == 1
+
+
 def test_mislead_applies_invisibility_and_persistent_illusory_double(
     make_state,
 ) -> None:

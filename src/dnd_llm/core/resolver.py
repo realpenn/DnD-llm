@@ -48,6 +48,7 @@ RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
 )
 RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 RESOLVER_CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
+RESOLVER_DREAM_ACTION_ID = "srd.dream"
 RESOLVER_EYEBITE_EFFECT_PARAM = "eyebite_effect"
 RESOLVER_EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 RESOLVER_EYEBITE_SUCCESS_MARKER = "eyebite_save_success"
@@ -315,6 +316,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=conjure_fey_error,
+                action_id=action.id,
+            )
+        dream_error = self._dream_context_error(draft, action)
+        if dream_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=dream_error,
                 action_id=action.id,
             )
         allowed_list_error = self._allowed_list_params_error(draft, action)
@@ -709,6 +717,34 @@ class ActionResolver:
             and draft.params.get(target_within_param) is not True
         ):
             return "Conjure Fey attack target must be within 5 feet of the spirit"
+        return None
+
+    @staticmethod
+    def _dream_context_error(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.id != RESOLVER_DREAM_ACTION_ID:
+            return None
+        same_plane_param = action.properties.get("dream_target_same_plane_param")
+        if isinstance(same_plane_param, str) and draft.params.get(same_plane_param) is not True:
+            return "Dream requires a known target on the same plane of existence"
+        messenger_param = action.properties.get("dream_messenger_willing_touched_param")
+        if isinstance(messenger_param, str) and draft.params.get(messenger_param) is not True:
+            return "Dream requires the messenger to be the caster or willing touched creature"
+        terrifying_param = str(
+            action.properties.get("dream_terrifying_param", "dream_terrifying")
+        )
+        if draft.params.get(terrifying_param) is not True:
+            return None
+        if not draft.target_ids:
+            return "Terrifying Dream requires the sleeping target as an explicit target"
+        asleep_param = action.properties.get("dream_target_asleep_param")
+        if isinstance(asleep_param, str) and draft.params.get(asleep_param) is not True:
+            return "Terrifying Dream can resolve immediately only if the target is asleep"
+        message_param = action.properties.get("dream_message_10_words_or_less_param")
+        if isinstance(message_param, str) and draft.params.get(message_param) is not True:
+            return "Terrifying Dream message must be no more than ten words"
         return None
 
     @staticmethod

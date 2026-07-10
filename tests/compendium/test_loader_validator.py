@@ -62,6 +62,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.greater_invisibility",
         "srd.hallucinatory_terrain",
         "srd.phantasmal_killer",
+        "srd.dream",
         "srd.mislead",
         "srd.seeming",
         "srd.project_image",
@@ -1825,6 +1826,106 @@ def test_compendium_loads_srd_actions() -> None:
                 }
             },
         }
+    ]
+    dream_spell = compendium.spell("srd.spell.dream")
+    assert dream_spell.level == 5
+    assert dream_spell.school == "illusion"
+    assert dream_spell.classes == ["bard", "warlock", "wizard"]
+    dream = compendium.action("srd.dream")
+    assert dream.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "warlock", "wizard"],
+    }
+    assert dream.properties == {
+        "spell_classes": ["bard", "warlock", "wizard"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"minutes": 1},
+        "material_component": {
+            "description": "a handful of sand",
+            "consumed": False,
+        },
+        "dream_target_same_plane_param": "dream_target_same_plane",
+        "dream_messenger_willing_touched_param": "dream_messenger_willing_touched",
+        "dream_terrifying_param": "dream_terrifying",
+        "dream_target_asleep_param": "dream_target_asleep",
+        "dream_message_10_words_or_less_param": "dream_message_10_words_or_less",
+        "dream_message_param": "dream_message",
+        "target_known_creature": True,
+        "duration_hours": 8,
+        "spell_definition_id": "srd.spell.dream",
+        "spell_level": 5,
+    }
+    assert dream.cost.spell_slot_level == 5
+    assert dream.cost.gold == 0
+    assert dream.range == {"special": "known_creature_on_same_plane"}
+    assert dream.target_policy == {"min": 0, "max": 1, "harmful": True}
+    assert dream.automation == [
+        {"type": "target", "mode": "explicit", "optional": True},
+        {
+            "type": "world_effect",
+            "effect_type": "dream_messenger_trance",
+            "scope": {
+                "target": "known_creature_on_same_plane",
+                "range": "special",
+            },
+            "duration": {"until": "duration_8_hours"},
+            "tick_on": "self_turn_end",
+            "metadata": {
+                "target_known_creature": True,
+                "target_same_plane_required": True,
+                "target_same_plane_param": "dream_target_same_plane",
+                "messenger_is_caster_or_willing_touched_creature": True,
+                "messenger_willing_touched_param": "dream_messenger_willing_touched",
+                "messenger_in_trance": True,
+                "messenger_incapacitated": True,
+                "messenger_speed_ft": 0,
+                "target_asleep_param": "dream_target_asleep",
+                "if_target_awake_messenger_can_end_or_wait": True,
+                "messenger_appears_in_dream_if_target_asleep": True,
+                "can_converse_while_target_remains_asleep": True,
+                "messenger_can_shape_dream_environment": True,
+                "messenger_can_end_trance_at_any_time": True,
+                "target_recalls_dream_perfectly_on_waking": True,
+                "terrifying_param": "dream_terrifying",
+                "terrifying_message": {"optional_param": "dream_message"},
+                "terrifying_message_max_words": 10,
+                "terrifying_save": {
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                },
+                "failed_terrifying_save_no_rest_benefit": True,
+                "failed_terrifying_save_wake_damage": "3d6 psychic",
+                "wake_damage_and_awake_waiting_not_automated": True,
+            },
+        },
+        {
+            "type": "branch",
+            "condition": "param_true",
+            "param": "dream_terrifying",
+            "if_true": [
+                {
+                    "type": "saving_throw",
+                    "ability": "wis",
+                    "dc_from": {"spell_save_dc": "actor"},
+                },
+                {
+                    "type": "passive_effect",
+                    "requires_failed_save": True,
+                    "passive_modifiers": {
+                        "dream_terrifying": True,
+                        "no_benefit_from_current_rest": True,
+                        "pending_wake_damage": {
+                            "dice": "3d6",
+                            "damage_type": "psychic",
+                        },
+                        "wake_damage_not_automated": True,
+                    },
+                    "duration": {"until": "long_rest"},
+                    "tick_on": "long_rest",
+                },
+            ],
+            "if_false": [],
+        },
     ]
     mislead_spell = compendium.spell("srd.spell.mislead")
     assert mislead_spell.level == 5
@@ -9983,6 +10084,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.conjure_woodland_beings",
         "srd.spell.incendiary_cloud",
         "srd.spell.creation",
+        "srd.spell.dream",
         "srd.spell.mislead",
         "srd.spell.seeming",
         "srd.spell.hallow",

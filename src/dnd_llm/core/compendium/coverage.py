@@ -98,6 +98,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.countercharm",
     "srd.cure_wounds",
     "srd.cunning_strike",
+    "srd.dream",
     "srd.cunning_action_dash",
     "srd.cunning_action_disengage",
     "srd.cunning_action_hide",

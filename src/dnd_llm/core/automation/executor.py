@@ -175,6 +175,7 @@ CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_ty
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "lightning"})
 CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
+DREAM_ACTION_ID = "srd.dream"
 EYEBITE_EFFECT_PARAM = "eyebite_effect"
 EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 EYEBITE_SOURCE_ACTION_ID = "srd.eyebite"
@@ -608,6 +609,7 @@ class AutomationExecutor:
         self._validate_thirsting_blade_preconditions(action, actor_id, params)
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
         self._validate_conjure_fey_preconditions(action, targets or [], params)
+        self._validate_dream_preconditions(action, targets or [], params)
         self._validate_conjure_minor_elementals_damage_type(
             action,
             actor_id,
@@ -5627,6 +5629,11 @@ class AutomationExecutor:
             return any(ctx.save_successes.values())
         if condition == "ability_success":
             return bool(ctx.ability_success)
+        if condition == "param_true":
+            param_name = node.get("param")
+            if not isinstance(param_name, str) or not param_name:
+                raise AutomationError("param_true branch requires param")
+            return ctx.params.get(param_name) is True
         if condition == "target_hp_at_or_below":
             if len(ctx.targets) != 1:
                 raise AutomationError("target_hp_at_or_below branch requires exactly one target")
@@ -11806,6 +11813,40 @@ class AutomationExecutor:
             and params.get(target_within_param) is not True
         ):
             raise AutomationError("Conjure Fey attack target must be within 5 feet of the spirit")
+
+    @staticmethod
+    def _validate_dream_preconditions(
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if action.id != DREAM_ACTION_ID:
+            return
+        same_plane_param = action.properties.get("dream_target_same_plane_param")
+        if isinstance(same_plane_param, str) and params.get(same_plane_param) is not True:
+            raise AutomationError("Dream requires a known target on the same plane of existence")
+        messenger_param = action.properties.get("dream_messenger_willing_touched_param")
+        if isinstance(messenger_param, str) and params.get(messenger_param) is not True:
+            raise AutomationError(
+                "Dream requires the messenger to be the caster or willing touched creature"
+            )
+        terrifying_param = str(
+            action.properties.get("dream_terrifying_param", "dream_terrifying")
+        )
+        if params.get(terrifying_param) is not True:
+            return
+        if not targets:
+            raise AutomationError(
+                "Terrifying Dream requires the sleeping target as an explicit target"
+            )
+        asleep_param = action.properties.get("dream_target_asleep_param")
+        if isinstance(asleep_param, str) and params.get(asleep_param) is not True:
+            raise AutomationError(
+                "Terrifying Dream can resolve immediately only if the target is asleep"
+            )
+        message_param = action.properties.get("dream_message_10_words_or_less_param")
+        if isinstance(message_param, str) and params.get(message_param) is not True:
+            raise AutomationError("Terrifying Dream message must be no more than ten words")
 
     @staticmethod
     def _validate_allowed_creature_types_param(

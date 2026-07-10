@@ -239,6 +239,10 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         errors.append(f"{path}: unsupported node type {node_type!r}")
         return errors
     if node_type == "branch":
+        if node.get("condition") == "param_true":
+            param = node.get("param")
+            if not isinstance(param, str) or not param:
+                errors.append(f"{path}: param_true branch requires param")
         for branch_name in ("if_true", "if_false"):
             branch = node.get(branch_name, [])
             if not isinstance(branch, list):
