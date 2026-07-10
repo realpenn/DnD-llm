@@ -1,6 +1,123 @@
 {
   "items": [
     {
+      "id": "srd.spell.earthquake",
+      "name": "Earthquake",
+      "localization": {
+        "en": "Earthquake",
+        "zh": "地震术",
+        "aliases": ["地震"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "sorcerer"],
+      "action": {
+        "id": "srd.earthquake",
+        "name": "Earthquake",
+        "localization": {
+          "en": "Earthquake",
+          "zh": "地震术",
+          "aliases": ["地震"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 500, "shape": "circle", "radius_ft": 100 },
+        "target_policy": { "min": 0, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "druid", "sorcerer"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a fractured rock",
+            "consumed": false
+          },
+          "area_shape": "circle",
+          "area_radius_ft": 100,
+          "ground_target_required": true,
+          "ground_creatures_only": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          {
+            "type": "saving_throw",
+            "ability": "dex",
+            "dc_from": { "spell_save_dc": "actor" },
+            "break_target_concentration_on_failed": true
+          },
+          {
+            "type": "condition",
+            "condition": "prone",
+            "requires_failed_save": true,
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "earthquake",
+            "scope": { "shape": "circle", "radius_ft": 100, "range_ft": 500 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "ground_is_difficult_terrain": true,
+              "ground_creatures_make_save": true,
+              "save_ability": "dex",
+              "save_triggers": ["spell_cast", "caster_turn_end"],
+              "failed_save_applies_prone": true,
+              "failed_save_breaks_target_concentration": true,
+              "fissures": {
+                "count": "1d6",
+                "created_at": "end_of_casting_turn",
+                "locations_chosen_by_caster": true,
+                "cannot_be_under_structures": true,
+                "depth": "1d10x10 feet",
+                "width_ft": 10,
+                "extends_from_one_area_edge_to_another": true,
+                "creature_in_fissure_space_makes_dex_save": true,
+                "failed_save_falls_in": true,
+                "successful_save_moves_with_fissure_edge": true
+              },
+              "structures": {
+                "must_contact_ground": true,
+                "damage": 50,
+                "damage_type": "bludgeoning",
+                "damage_triggers": ["spell_cast", "caster_turn_end"],
+                "drops_to_zero_hit_points_collapses": true
+              },
+              "collapse": {
+                "affected_distance_from_structure": "half_structure_height",
+                "save_ability": "dex",
+                "failed_save_damage": "12d6",
+                "failed_save_damage_type": "bludgeoning",
+                "failed_save_applies_prone": true,
+                "failed_save_applies_buried": true,
+                "escape_action": "Strength (Athletics)",
+                "escape_dc": 20,
+                "successful_save_takes_half_damage": true
+              },
+              "area_query_not_automated": true,
+              "grounded_creature_filter_not_automated": true,
+              "caster_turn_end_repeat_save_not_automated": true,
+              "fissure_geometry_and_fall_resolution_not_automated": true,
+              "structure_registry_hit_points_and_collapse_not_automated": true,
+              "buried_condition_and_escape_action_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Earthquake"
+      }
+    },
+    {
       "id": "srd.spell.stone_shape",
       "name": "Stone Shape",
       "localization": {

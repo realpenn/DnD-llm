@@ -1112,6 +1112,7 @@ class AutomationExecutor:
             ):
                 ctx.save_successes[target_id] = False
                 ctx.save_abilities[target_id] = ability.lower()
+                self._clear_target_concentration_on_failed_save(ctx, node, target_id, path)
                 ctx.result.node_results[path] = {
                     "target_id": target_id,
                     "ability": ability,
@@ -1141,6 +1142,7 @@ class AutomationExecutor:
                     raise AutomationError("Countercharm requires a rolled failed saving throw")
                 ctx.save_successes[target_id] = False
                 ctx.save_abilities[target_id] = ability.lower()
+                self._clear_target_concentration_on_failed_save(ctx, node, target_id, path)
                 ctx.result.node_results[path] = {
                     "target_id": target_id,
                     "ability": ability,
@@ -1250,6 +1252,7 @@ class AutomationExecutor:
                 success = bool(countercharm_result["success"])
             ctx.save_successes[target_id] = success
             ctx.save_abilities[target_id] = ability.lower()
+            self._clear_target_concentration_on_failed_save(ctx, node, target_id, path)
             ctx.result.node_results[path] = {
                 "target_id": target_id,
                 "ability": ability,
@@ -11487,6 +11490,29 @@ class AutomationExecutor:
                     "type": "concentration_cleared",
                     "actor_id": ctx.actor_id,
                     "removed": removed,
+                    "path": path,
+                }
+            )
+
+    def _clear_target_concentration_on_failed_save(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        target_id: str,
+        path: str,
+    ) -> None:
+        if node.get("break_target_concentration_on_failed") is not True:
+            return
+        if ctx.save_successes.get(target_id) is not False:
+            return
+        removed = self._clear_existing_concentration(target_id)
+        if removed:
+            ctx.result.state_changes.append(
+                {
+                    "type": "concentration_cleared",
+                    "actor_id": target_id,
+                    "removed": removed,
+                    "reason": "failed_saving_throw",
                     "path": path,
                 }
             )

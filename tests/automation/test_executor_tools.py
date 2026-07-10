@@ -18844,6 +18844,158 @@ def test_reverse_gravity_failed_save_records_upward_fall_and_cylinder(
     assert {entry["remaining_ticks_after"] for entry in ticks} == {9}
 
 
+def test_earthquake_failed_save_prones_target_breaks_concentration_and_records_area(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.status_effects.append(
+        {
+            "effect_id": "goblin-concentration",
+            "source_action_id": "test.concentration",
+            "applied_by": "goblin1",
+            "concentration": True,
+            "passive_modifiers": {"test_concentration": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.earthquake",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-earthquake-failed-save",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["8"] == 0
+    save_node = result["node_results"]["automation[1]"]
+    assert save_node["dc"] == 17
+    assert save_node["success"] is False
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
+    cleared = [
+        change
+        for change in result["state_changes"]
+        if change["type"] == "concentration_cleared"
+        and change.get("reason") == "failed_saving_throw"
+    ]
+    assert cleared[0]["actor_id"] == "goblin1"
+    assert cleared[0]["removed"][0]["source_action_id"] == "test.concentration"
+
+    prone = target.status_effects[-1]
+    assert prone["source_action_id"] == "srd.earthquake"
+    assert prone["condition"] == "prone"
+    assert prone["duration"] == {"until": "concentration_1_minute"}
+    assert prone["tick_on"] == "self_turn_end"
+    assert prone["concentration"] is True
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.earthquake"
+    assert effect["effect_type"] == "earthquake"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {"shape": "circle", "radius_ft": 100, "range_ft": 500}
+    assert effect["duration"] == {"until": "concentration_1_minute"}
+    assert effect["tick_on"] == "self_turn_end"
+    metadata = effect["metadata"]
+    assert metadata["ground_is_difficult_terrain"] is True
+    assert metadata["save_triggers"] == ["spell_cast", "caster_turn_end"]
+    assert metadata["fissures"] == {
+        "count": "1d6",
+        "created_at": "end_of_casting_turn",
+        "locations_chosen_by_caster": True,
+        "cannot_be_under_structures": True,
+        "depth": "1d10x10 feet",
+        "width_ft": 10,
+        "extends_from_one_area_edge_to_another": True,
+        "creature_in_fissure_space_makes_dex_save": True,
+        "failed_save_falls_in": True,
+        "successful_save_moves_with_fissure_edge": True,
+    }
+    assert metadata["structures"] == {
+        "must_contact_ground": True,
+        "damage": 50,
+        "damage_type": "bludgeoning",
+        "damage_triggers": ["spell_cast", "caster_turn_end"],
+        "drops_to_zero_hit_points_collapses": True,
+    }
+    assert metadata["collapse"]["failed_save_damage"] == "12d6"
+    assert metadata["collapse"]["escape_dc"] == 20
+    assert metadata["area_query_not_automated"] is True
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    earthquake_ticks = [
+        entry
+        for entry in lifecycle.ticked
+        if entry["source_action_id"] == "srd.earthquake"
+    ]
+    assert len(earthquake_ticks) == 2
+    assert {entry["remaining_ticks_before"] for entry in earthquake_ticks} == {10}
+    assert {entry["remaining_ticks_after"] for entry in earthquake_ticks} == {9}
+
+
+def test_earthquake_successful_save_keeps_target_concentration_and_avoids_prone(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 15}
+    caster.abilities["wis"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.status_effects.append(
+        {
+            "effect_id": "goblin-concentration",
+            "source_action_id": "test.concentration",
+            "applied_by": "goblin1",
+            "concentration": True,
+            "passive_modifiers": {"test_concentration": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.earthquake",
+        ["goblin1"],
+        8,
+        idempotency_key="cast-earthquake-successful-save",
+    )
+
+    assert result["success"] is True
+    assert result["node_results"]["automation[1]"]["success"] is True
+    assert not any(
+        change.get("reason") == "failed_saving_throw"
+        for change in result["state_changes"]
+        if change["type"] == "concentration_cleared"
+    )
+    assert target.status_effects[0]["source_action_id"] == "test.concentration"
+    assert not any(effect.get("condition") == "prone" for effect in target.status_effects)
+    assert state.world.active_effects[-1]["effect_type"] == "earthquake"
+
+
 def test_reverse_gravity_successful_save_records_cylinder_without_target_effect(
     make_state,
 ) -> None:

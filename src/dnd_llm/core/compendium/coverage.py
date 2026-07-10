@@ -99,6 +99,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.cure_wounds",
     "srd.cunning_strike",
     "srd.dream",
+    "srd.earthquake",
     "srd.cunning_action_dash",
     "srd.cunning_action_disengage",
     "srd.cunning_action_hide",
