@@ -1270,6 +1270,215 @@
       }
     },
     {
+      "id": "srd.spell.prismatic_wall",
+      "name": "Prismatic Wall",
+      "localization": {
+        "en": "Prismatic Wall",
+        "zh": "棱彩墙",
+        "aliases": ["虹彩墙"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "abjuration",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.prismatic_wall",
+        "name": "Prismatic Wall",
+        "localization": {
+          "en": "Prismatic Wall",
+          "zh": "棱彩墙",
+          "aliases": ["虹彩墙"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "components": ["V", "S"],
+          "shape_options": ["wall", "globe"],
+          "no_higher_level_spell_slot_effect": true,
+          "spell_definition_id": "srd.spell.prismatic_wall",
+          "spell_level": 9
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "prismatic_wall",
+            "scope": { "target": "point", "range_ft": 60 },
+            "duration": { "until": "duration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "spell_save_dc": { "spell_save_dc": "actor" },
+              "opaque": true,
+              "shape_options": ["wall", "globe"],
+              "vertical_wall": true,
+              "wall_max_length_ft": 90,
+              "wall_max_height_ft": 30,
+              "wall_thickness_inches": 1,
+              "globe_max_diameter_ft": 30,
+              "bright_light_radius_ft": 100,
+              "dim_light_additional_ft": 100,
+              "if_positioned_in_creature_space": "spell_ends_instantly_without_effect",
+              "caster_and_designated_creatures_can_pass_through_and_be_near_without_harm": true,
+              "designated_creatures_selected_on_cast": true,
+              "other_creature_near_wall_trigger_distance_ft": 20,
+              "other_creature_near_wall_triggers": [
+                "creature_moves_within_20_ft_of_wall",
+                "creature_starts_turn_within_20_ft_of_wall"
+              ],
+              "near_wall_save": {
+                "ability": "con",
+                "dc_from": { "spell_save_dc": "actor" },
+                "on_failed": {
+                  "condition": "blinded",
+                  "duration": { "until": "duration_1_minute" }
+                }
+              },
+              "seven_layers": true,
+              "reaches_into_or_passes_through_one_layer_at_a_time": true,
+              "passes_through_all_layers_in_order": true,
+              "layer_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "on_failed": "apply_layer_effects"
+              },
+              "wall_ac": 10,
+              "layer_destruction_order": [
+                "red",
+                "orange",
+                "yellow",
+                "green",
+                "blue",
+                "indigo",
+                "violet"
+              ],
+              "destroyed_layer_is_gone_for_duration": true,
+              "antimagic_field_has_no_effect": true,
+              "dispel_magic_affects_only_violet_layer": true,
+              "layers": [
+                {
+                  "order": 1,
+                  "color": "red",
+                  "failed_save": { "damage": "12d6", "damage_type": "fire" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "nonmagical_ranged_attacks_cannot_pass_through": true,
+                    "destroyed_if_takes_damage": {
+                      "damage_type": "cold",
+                      "minimum_damage": 25
+                    }
+                  }
+                },
+                {
+                  "order": 2,
+                  "color": "orange",
+                  "failed_save": { "damage": "12d6", "damage_type": "acid" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "magical_ranged_attacks_cannot_pass_through": true,
+                    "destroyed_by_strong_wind": true,
+                    "strong_wind_example": "Gust of Wind"
+                  }
+                },
+                {
+                  "order": 3,
+                  "color": "yellow",
+                  "failed_save": { "damage": "12d6", "damage_type": "lightning" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "destroyed_if_takes_damage": {
+                      "damage_type": "force",
+                      "minimum_damage": 60
+                    }
+                  }
+                },
+                {
+                  "order": 4,
+                  "color": "green",
+                  "failed_save": { "damage": "12d6", "damage_type": "poison" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "destroyed_by_passwall_or_equal_or_higher_level_portal_spell_on_solid_surface": true
+                  }
+                },
+                {
+                  "order": 5,
+                  "color": "blue",
+                  "failed_save": { "damage": "12d6", "damage_type": "cold" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "destroyed_if_takes_damage": {
+                      "damage_type": "fire",
+                      "minimum_damage": 25
+                    }
+                  }
+                },
+                {
+                  "order": 6,
+                  "color": "indigo",
+                  "failed_save": {
+                    "condition": "restrained",
+                    "repeat_save": {
+                      "ability": "con",
+                      "trigger": "end_of_each_turn",
+                      "successes_needed": 3,
+                      "failures_needed": 3,
+                      "successes_end_condition": true,
+                      "successes_and_failures_need_not_be_consecutive": true,
+                      "three_failures_condition": "petrified",
+                      "petrified_until_freed_by_effect_like": "Greater Restoration"
+                    }
+                  },
+                  "additional_effects": {
+                    "spells_cannot_be_cast_through": true,
+                    "destroyed_by_bright_light_shed_by_daylight": true
+                  }
+                },
+                {
+                  "order": 7,
+                  "color": "violet",
+                  "failed_save": {
+                    "condition": "blinded",
+                    "repeat_save": {
+                      "ability": "wis",
+                      "trigger": "start_of_caster_next_turn",
+                      "on_success": "blinded_ends",
+                      "on_failure": {
+                        "blinded_ends": true,
+                        "teleport_to_another_plane": true,
+                        "plane_chosen_by": "GM"
+                      }
+                    }
+                  },
+                  "additional_effects": {
+                    "destroyed_by": "Dispel Magic"
+                  }
+                }
+              ],
+              "wall_position_and_shape_resolution_not_automated": true,
+              "occupied_space_cast_failure_not_automated": true,
+              "designated_creature_selection_not_automated": true,
+              "near_wall_trigger_and_save_not_automated": true,
+              "layer_traversal_and_dex_saves_not_automated": true,
+              "layer_destruction_and_ac_resolution_not_automated": true,
+              "indigo_and_violet_repeat_save_resolution_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Prismatic Wall"
+      }
+    },
+    {
       "id": "srd.spell.mass_heal",
       "name": "Mass Heal",
       "localization": {

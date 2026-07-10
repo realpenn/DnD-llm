@@ -187,6 +187,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.power_word_heal",
     "srd.power_word_kill",
     "srd.power_word_stun",
+    "srd.prismatic_wall",
     "srd.help",
     "srd.heightened_focus",
     "srd.hide",

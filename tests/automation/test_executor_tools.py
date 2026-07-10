@@ -29977,6 +29977,98 @@ def test_wall_of_force_spends_slot_and_records_concentration_barrier(make_state)
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
 
 
+def test_prismatic_wall_spends_slot_and_records_seven_layer_world_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["9"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.prismatic_wall",
+        [],
+        9,
+        idempotency_key="cast-prismatic-wall",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["9"] == 0
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.prismatic_wall"
+    assert effect["effect_type"] == "prismatic_wall"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "point", "range_ft": 60}
+    assert effect["duration"] == {"until": "duration_10_minutes"}
+    assert effect["tick_on"] == "self_turn_end"
+
+    metadata = effect["metadata"]
+    assert metadata["shape_options"] == ["wall", "globe"]
+    assert metadata["wall_max_length_ft"] == 90
+    assert metadata["wall_max_height_ft"] == 30
+    assert metadata["wall_thickness_inches"] == 1
+    assert metadata["globe_max_diameter_ft"] == 30
+    assert metadata["bright_light_radius_ft"] == 100
+    assert metadata["dim_light_additional_ft"] == 100
+    assert metadata["wall_ac"] == 10
+    assert metadata["layer_destruction_order"] == [
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "blue",
+        "indigo",
+        "violet",
+    ]
+    assert metadata["near_wall_save"] == {
+        "ability": "con",
+        "dc_from": {"spell_save_dc": "actor"},
+        "on_failed": {
+            "condition": "blinded",
+            "duration": {"until": "duration_1_minute"},
+        },
+    }
+    assert metadata["layers"][0] == {
+        "order": 1,
+        "color": "red",
+        "failed_save": {"damage": "12d6", "damage_type": "fire"},
+        "successful_save": {"damage": "half"},
+        "additional_effects": {
+            "nonmagical_ranged_attacks_cannot_pass_through": True,
+            "destroyed_if_takes_damage": {
+                "damage_type": "cold",
+                "minimum_damage": 25,
+            },
+        },
+    }
+    assert metadata["layers"][5]["failed_save"]["repeat_save"] == {
+        "ability": "con",
+        "trigger": "end_of_each_turn",
+        "successes_needed": 3,
+        "failures_needed": 3,
+        "successes_end_condition": True,
+        "successes_and_failures_need_not_be_consecutive": True,
+        "three_failures_condition": "petrified",
+        "petrified_until_freed_by_effect_like": "Greater Restoration",
+    }
+    assert metadata["layers"][6]["failed_save"]["repeat_save"] == {
+        "ability": "wis",
+        "trigger": "start_of_caster_next_turn",
+        "on_success": "blinded_ends",
+        "on_failure": {
+            "blinded_ends": True,
+            "teleport_to_another_plane": True,
+            "plane_chosen_by": "GM",
+        },
+    }
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 100
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 99
+
+
 def test_forcecage_consumes_ruby_dust_and_records_concentration_prison(
     make_state,
 ) -> None:
