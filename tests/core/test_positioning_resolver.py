@@ -4671,6 +4671,69 @@ def test_resolver_checks_planar_binding_context_and_target_type(make_state) -> N
     assert invalid_target_type.reason == "target must be celestial, elemental, fey, fiend"
 
 
+def test_resolver_checks_simulacrum_context_and_target_type(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 13}
+    character.actions.append("srd.simulacrum")
+    character.prepared_spells.append("srd.spell.simulacrum")
+    character.spell_slots["7"] = 1
+    character.gold = 1500
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "humanoid"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_context = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="拟像术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.simulacrum",
+            params={"slot_level": 7},
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="拟像术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.simulacrum",
+            params={
+                "slot_level": 7,
+                "simulacrum_target_within_10_ft_entire_casting": True,
+                "simulacrum_same_size_ice_or_snow_pile": True,
+                "simulacrum_completion_touch": True,
+            },
+        )
+    )
+    target.creature_type = "fiend"
+    invalid_target_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="拟像术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.simulacrum",
+            params={
+                "slot_level": 7,
+                "simulacrum_target_within_10_ft_entire_casting": True,
+                "simulacrum_same_size_ice_or_snow_pile": True,
+                "simulacrum_completion_touch": True,
+            },
+        )
+    )
+
+    assert missing_context.status == "rejected"
+    assert missing_context.reason == (
+        "Simulacrum target must remain within 10 feet for the entire 12-hour casting"
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.simulacrum"
+    assert invalid_target_type.status == "rejected"
+    assert invalid_target_type.reason == "target must be beast, humanoid"
+
+
 def test_resolver_checks_holy_aura_chosen_creatures_are_in_emanation(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

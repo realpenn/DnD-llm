@@ -178,6 +178,7 @@ CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 DREAM_ACTION_ID = "srd.dream"
 PLANAR_BINDING_ACTION_ID = "srd.planar_binding"
+SIMULACRUM_ACTION_ID = "srd.simulacrum"
 EYEBITE_EFFECT_PARAM = "eyebite_effect"
 EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 EYEBITE_SOURCE_ACTION_ID = "srd.eyebite"
@@ -613,6 +614,7 @@ class AutomationExecutor:
         self._validate_conjure_fey_preconditions(action, targets or [], params)
         self._validate_dream_preconditions(action, targets or [], params)
         self._validate_planar_binding_preconditions(action, params)
+        self._validate_simulacrum_preconditions(action, params)
         self._validate_holy_aura_targets(action, actor_id, targets or [])
         self._validate_conjure_minor_elementals_damage_type(
             action,
@@ -4574,6 +4576,29 @@ class AutomationExecutor:
         metadata = self._resolved_world_metadata(ctx, dict(node.get("metadata", {})))
         metadata.update(self._slot_scaled_metadata(ctx, node))
         metadata.update(self._investment_of_chain_master_familiar_metadata(ctx, node))
+        replace_existing_effect_type = node.get("replace_existing_effect_type")
+        if isinstance(replace_existing_effect_type, str) and replace_existing_effect_type:
+            removed_effects = [
+                effect
+                for effect in self.state.world.active_effects
+                if effect.get("effect_type") == replace_existing_effect_type
+                and effect.get("applied_by") == ctx.actor_id
+            ]
+            if removed_effects:
+                removed_ids = [str(effect.get("effect_id")) for effect in removed_effects]
+                self.state.world.active_effects[:] = [
+                    effect
+                    for effect in self.state.world.active_effects
+                    if effect not in removed_effects
+                ]
+                ctx.result.state_changes.append(
+                    {
+                        "type": "world_effects_replaced",
+                        "effect_type": replace_existing_effect_type,
+                        "removed_effect_ids": removed_ids,
+                        "path": path,
+                    }
+                )
         effect = {
             "effect_id": f"world-effect-{self.state.event_counter}-{len(self.state.world.active_effects)}",
             "source_ref": ctx.action.source,
@@ -12020,6 +12045,32 @@ class AutomationExecutor:
             raise AutomationError("Planar Binding source spell effect is not active")
         if not all(self._effect_has_spell_source(effect) for _, _, effect in matching_effects):
             raise AutomationError("Planar Binding source effect must be a spell effect")
+
+    @staticmethod
+    def _validate_simulacrum_preconditions(
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        if action.id != SIMULACRUM_ACTION_ID:
+            return
+        requirements = (
+            (
+                "target_within_range_entire_casting_param",
+                "Simulacrum target must remain within 10 feet for the entire 12-hour casting",
+            ),
+            (
+                "same_size_ice_or_snow_pile_param",
+                "Simulacrum requires a same-size ice or snow pile",
+            ),
+            (
+                "completion_touch_param",
+                "Simulacrum requires touching the original target and ice or snow pile at completion",
+            ),
+        )
+        for property_name, message in requirements:
+            param_name = action.properties.get(property_name)
+            if isinstance(param_name, str) and params.get(param_name) is not True:
+                raise AutomationError(message)
 
     def _validate_holy_aura_targets(
         self,

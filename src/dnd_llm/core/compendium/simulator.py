@@ -469,6 +469,7 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
     _add_conjure_fey_params(params, action)
     _add_dream_params(params, action)
     _add_planar_binding_params(params, action)
+    _add_simulacrum_params(params, action)
     _add_eyebite_params(params, action)
     if action.id == "srd.hallow":
         params["hallow_extra_effect_creature_types"] = ["aberration"]
@@ -533,6 +534,19 @@ def _add_planar_binding_params(params: dict[str, Any], action: ActionDefinition)
     )
     if isinstance(range_param, str) and range_param:
         params[range_param] = True
+
+
+def _add_simulacrum_params(params: dict[str, Any], action: ActionDefinition) -> None:
+    if action.id != "srd.simulacrum":
+        return
+    for property_name in (
+        "target_within_range_entire_casting_param",
+        "same_size_ice_or_snow_pile_param",
+        "completion_touch_param",
+    ):
+        param_name = action.properties.get(property_name)
+        if isinstance(param_name, str) and param_name:
+            params[param_name] = True
 
 
 def _add_shapechange_params(params: dict[str, Any], action: ActionDefinition) -> None:

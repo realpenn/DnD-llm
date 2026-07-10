@@ -51,6 +51,7 @@ RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 RESOLVER_CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 RESOLVER_DREAM_ACTION_ID = "srd.dream"
 RESOLVER_PLANAR_BINDING_ACTION_ID = "srd.planar_binding"
+RESOLVER_SIMULACRUM_ACTION_ID = "srd.simulacrum"
 RESOLVER_EYEBITE_EFFECT_PARAM = "eyebite_effect"
 RESOLVER_EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 RESOLVER_EYEBITE_SUCCESS_MARKER = "eyebite_save_success"
@@ -332,6 +333,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=planar_binding_error,
+                action_id=action.id,
+            )
+        simulacrum_error = self._simulacrum_context_error(draft, action)
+        if simulacrum_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=simulacrum_error,
                 action_id=action.id,
             )
         holy_aura_error = self._holy_aura_target_error(draft, action)
@@ -793,6 +801,33 @@ class ActionResolver:
             return "Planar Binding source spell effect is not active"
         if not all(self._effect_has_spell_source(effect) for effect in matching_effects):
             return "Planar Binding source effect must be a spell effect"
+        return None
+
+    @staticmethod
+    def _simulacrum_context_error(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.id != RESOLVER_SIMULACRUM_ACTION_ID:
+            return None
+        requirements = (
+            (
+                "target_within_range_entire_casting_param",
+                "Simulacrum target must remain within 10 feet for the entire 12-hour casting",
+            ),
+            (
+                "same_size_ice_or_snow_pile_param",
+                "Simulacrum requires a same-size ice or snow pile",
+            ),
+            (
+                "completion_touch_param",
+                "Simulacrum requires touching the original target and ice or snow pile at completion",
+            ),
+        )
+        for property_name, message in requirements:
+            param_name = action.properties.get(property_name)
+            if isinstance(param_name, str) and draft.params.get(param_name) is not True:
+                return message
         return None
 
     def _active_effects_with_id(self, effect_id: str) -> list[dict[str, Any]]:

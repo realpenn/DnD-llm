@@ -264,6 +264,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.banishment",
     "srd.reverse_gravity",
     "srd.sequester",
+    "srd.simulacrum",
     "srd.shapechange",
     "srd.shapechange_change_form",
     "srd.tireless",

@@ -17209,6 +17209,94 @@ def test_mirage_arcane_records_ten_day_multisensory_terrain_illusion(make_state)
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 143999
 
 
+def test_simulacrum_validates_context_spends_cost_and_replaces_old_copy(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    caster.gold = 1500
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "humanoid"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    params = {
+        "slot_level": 7,
+        "simulacrum_target_within_10_ft_entire_casting": True,
+        "simulacrum_same_size_ice_or_snow_pile": True,
+        "simulacrum_completion_touch": True,
+    }
+
+    with pytest.raises(AutomationError, match="same-size ice or snow pile"):
+        tools._execute_action(
+            action_id="srd.simulacrum",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={
+                "slot_level": 7,
+                "simulacrum_target_within_10_ft_entire_casting": True,
+            },
+            idempotency_key="simulacrum-missing-pile",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 1500
+
+    first = tools._execute_action(
+        action_id="srd.simulacrum",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params=params,
+        idempotency_key="simulacrum-first",
+    )
+
+    assert first["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 0
+    first_effect = state.world.active_effects[-1]
+    assert first_effect["source_action_id"] == "srd.simulacrum"
+    assert first_effect["effect_type"] == "simulacrum"
+    assert first_effect["scope"] == {
+        "target": "explicit",
+        "target_type": "beast_or_humanoid",
+        "range_ft": 10,
+        "requires_target_within_range_for_entire_casting": True,
+        "target_ids": ["goblin1"],
+        "target_id": "goblin1",
+    }
+    assert first_effect["duration"] == {"until": "until_dispelled"}
+    assert "tick_on" not in first_effect
+    assert first_effect["metadata"]["original_target_ids"] == ["goblin1"]
+    assert first_effect["metadata"]["creature_type"] == "construct"
+    assert first_effect["metadata"]["hit_point_maximum_fraction"] == 0.5
+    assert first_effect["metadata"]["damage_recovery"] == {
+        "only_during_caster_long_rest": True,
+        "components_gp_per_hit_point_restored": 100,
+        "must_remain_within_ft_of_caster": 5,
+    }
+
+    caster.spell_slots["7"] = 1
+    caster.gold = 1500
+    tools.economy.reset_turn_start("pc1")
+    second = tools._execute_action(
+        action_id="srd.simulacrum",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params=params,
+        idempotency_key="simulacrum-second",
+    )
+
+    assert second["success"] is True
+    assert len(state.world.active_effects) == 1
+    assert state.world.active_effects[0]["effect_id"] != first_effect["effect_id"]
+    replaced = next(
+        change for change in second["state_changes"] if change["type"] == "world_effects_replaced"
+    )
+    assert replaced["effect_type"] == "simulacrum"
+    assert replaced["removed_effect_ids"] == [first_effect["effect_id"]]
+
+
 def test_weird_failed_save_frightens_and_repeats_psychic_damage(
     make_state,
 ) -> None:
