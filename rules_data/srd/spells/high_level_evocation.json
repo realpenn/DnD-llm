@@ -982,6 +982,129 @@
         ],
         "audit_label": "Meteor Swarm"
       }
+    },
+    {
+      "id": "srd.spell.prismatic_spray",
+      "name": "Prismatic Spray",
+      "localization": { "en": "Prismatic Spray", "zh": "棱彩喷射", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "evocation",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.prismatic_spray",
+        "name": "Prismatic Spray",
+        "localization": { "en": "Prismatic Spray", "zh": "棱彩喷射", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "cone", "length_ft": 60 },
+        "target_policy": { "min": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "components": ["V", "S"],
+          "duration": "instantaneous",
+          "metadata": {
+            "per_target_color_roll": "1d8",
+            "per_target_color_roll_independent": true,
+            "prismatic_rays": [
+              {
+                "roll": 1,
+                "color": "red",
+                "failed_save": { "damage": "12d6", "damage_type": "fire" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 2,
+                "color": "orange",
+                "failed_save": { "damage": "12d6", "damage_type": "acid" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 3,
+                "color": "yellow",
+                "failed_save": { "damage": "12d6", "damage_type": "lightning" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 4,
+                "color": "green",
+                "failed_save": { "damage": "12d6", "damage_type": "poison" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 5,
+                "color": "blue",
+                "failed_save": { "damage": "12d6", "damage_type": "cold" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 6,
+                "color": "indigo",
+                "failed_save": {
+                  "condition": "restrained",
+                  "repeat_save": {
+                    "ability": "con",
+                    "trigger": "end_of_each_turn",
+                    "successes_needed": 3,
+                    "failures_needed": 3,
+                    "successes_end_condition": true,
+                    "successes_and_failures_need_not_be_consecutive": true,
+                    "three_failures_condition": "petrified",
+                    "petrified_until_freed_by_effect_like": "Greater Restoration"
+                  }
+                }
+              },
+              {
+                "roll": 7,
+                "color": "violet",
+                "failed_save": {
+                  "condition": "blinded",
+                  "repeat_save": {
+                    "ability": "wis",
+                    "trigger": "start_of_caster_next_turn",
+                    "on_success": "blinded_ends",
+                    "on_failure": {
+                      "blinded_ends": true,
+                      "teleport_to_another_plane": true,
+                      "plane_chosen_by": "GM"
+                    }
+                  }
+                }
+              },
+              {
+                "roll": 8,
+                "color": "special",
+                "rays": 2,
+                "roll_count": 2,
+                "reroll_results": [8]
+              }
+            ],
+            "automated_results": [1, 2, 3, 4, 5],
+            "not_automated_results": [6, 7, 8],
+            "special_two_ray_resolution_not_automated": true,
+            "indigo_repeat_save_counter_not_automated": true,
+            "violet_repeat_save_and_planar_teleport_not_automated": true
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "text_result",
+            "text": "For each target, roll 1d8 independently. Results 1-5 resolve their corresponding ray and damage automatically; results 6-8 remain explicitly marked as not automated, including the Special two-ray rerolls and Indigo/Violet follow-up effects."
+          }
+        ],
+        "audit_label": "Prismatic Spray"
+      }
     }
   ]
 }

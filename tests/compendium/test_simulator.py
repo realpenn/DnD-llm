@@ -26,6 +26,33 @@ def test_dash_simulation_adds_movement_budget() -> None:
     assert budget["movement"] == 60
 
 
+def test_prismatic_spray_simulation_resolves_automated_ray_subset() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    report = CompendiumSimulator(compendium).simulate_action("srd.prismatic_spray")
+
+    assert report.ok is True
+    assert report.result is not None
+    spray_results = next(
+        value
+        for value in report.result["node_results"].values()
+        if isinstance(value, list)
+    )
+    assert len(spray_results) == 1
+    assert spray_results[0]["target_id"] == "npc_enemy"
+    assert spray_results[0]["color_roll"] in range(1, 9)
+    if spray_results[0]["color_roll"] in range(1, 6):
+        assert spray_results[0]["automated"] is True
+        assert spray_results[0]["damage_type"] in {
+            "fire",
+            "acid",
+            "lightning",
+            "poison",
+            "cold",
+        }
+    else:
+        assert spray_results[0]["automation_status"] == "not_automated"
+
+
 def test_extra_attack_marker_does_not_spend_action_budget() -> None:
     compendium = CompendiumLoader("rules_data").load()
     report = CompendiumSimulator(compendium).simulate_action("srd.extra_attack")

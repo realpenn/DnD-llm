@@ -136,6 +136,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.power_word_heal",
         "srd.power_word_kill",
         "srd.power_word_stun",
+        "srd.prismatic_spray",
         "srd.telepathic_bond",
         "srd.true_seeing",
         "srd.passwall",
@@ -152,6 +153,14 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.wall_of_ice",
         "srd.wall_of_thorns",
     } <= set(compendium.actions)
+    prismatic_spray = compendium.action("srd.prismatic_spray")
+    assert prismatic_spray.target_policy == {"min": 1, "harmful": True}
+    assert prismatic_spray.requirements == {
+        "spell_level": 7,
+        "class_any": ["bard", "sorcerer", "wizard"],
+    }
+    assert prismatic_spray.properties["metadata"]["automated_results"] == [1, 2, 3, 4, 5]
+    assert prismatic_spray.properties["metadata"]["not_automated_results"] == [6, 7, 8]
     assert "srd.monster_melee_attack" not in compendium.actions
     assert "srd.action_surge" in compendium.actions
     assert compendium.action("srd.action_surge").cost.resources == {"srd.resource.action_surge": 1}

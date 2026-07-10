@@ -163,11 +163,11 @@ def test_prismatic_spray_marks_indigo_violet_and_special_as_not_automated(make_s
     ]
     result = AutomationExecutor(
         state,
-        _FixedSingleDieRollService([1, 1, 1, 6, 7, 8]),
+        _FixedSingleDieRollService([1, 6, 1, 7, 1, 8]),
         AuditLog(),
     ).execute(action, actor_id="pc1", targets=target_ids, idempotency_key="prismatic-unautomated")
 
-    spray_results = result.node_results["automation[3]"]
+    spray_results = result.node_results["automation[1]"]
     assert [entry["color_roll"] for entry in spray_results] == [6, 7, 8]
     assert [entry["automation_status"] for entry in spray_results] == [
         "not_automated",
