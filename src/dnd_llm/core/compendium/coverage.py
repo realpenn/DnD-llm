@@ -302,6 +302,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.sunbeam",
     "srd.sunbeam_radiant_line",
     "srd.sunburst",
+    "srd.symbol",
     "srd.step_of_the_wind",
     "srd.step_of_the_wind_focus",
     "srd.thieves_cant",

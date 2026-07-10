@@ -23754,6 +23754,128 @@ def test_forbiddance_spends_slot_records_ward_and_does_not_consume_ruby_dust(
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
 
+def test_symbol_validates_effect_before_cost_and_records_srd_ward(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots["7"] = 1
+    caster.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="missing required parameter symbol_effect"):
+        tools._execute_action(
+            action_id="srd.symbol",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 7},
+            idempotency_key="symbol-missing-effect",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 1000
+
+    with pytest.raises(AutomationError, match="symbol_effect must contain only"):
+        tools._execute_action(
+            action_id="srd.symbol",
+            actor_id="pc1",
+            targets=[],
+            params={"slot_level": 7, "symbol_effect": ["wish"]},
+            idempotency_key="symbol-invalid-effect",
+        )
+    assert caster.spell_slots["7"] == 1
+    assert caster.gold == 1000
+
+    result = tools._execute_action(
+        action_id="srd.symbol",
+        actor_id="pc1",
+        targets=[],
+        params={"slot_level": 7, "symbol_effect": ["Death"]},
+        idempotency_key="symbol-death-effect",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 0
+    cost_changes = [change for change in result["state_changes"] if change["type"] == "cost"]
+    assert [change["resource"] for change in cost_changes] == ["spell_slot_7", "gold"]
+
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.symbol"
+    assert effect["effect_type"] == "symbol_ward"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "surface_or_closable_object"}
+    assert effect["duration"] == {"until": "triggered_or_dispelled"}
+    assert "tick_on" not in effect
+    metadata = effect["metadata"]
+    assert metadata["selected_effect"] == ["death"]
+    assert metadata["activation"] == {
+        "scope": {"shape": "sphere", "radius_ft": 60},
+        "light": "dim",
+        "duration": {"until": "duration_10_minutes"},
+        "targets": [
+            "creature_in_sphere_when_glyph_activates",
+            "creature_enters_sphere_first_time_on_turn",
+            "creature_ends_turn_in_sphere",
+        ],
+        "targeted_once_per_turn": True,
+    }
+    assert metadata["effects"] == [
+        {
+            "name": "death",
+            "saving_throw": {"ability": "con"},
+            "on_failed": {"damage": "10d10", "damage_type": "necrotic"},
+            "on_success": {"damage": "half"},
+        },
+        {
+            "name": "discord",
+            "saving_throw": {"ability": "wis"},
+            "on_failed": {
+                "conditions": ["incapacitated"],
+                "disadvantage": ["attack_rolls", "ability_checks"],
+                "duration": {"until": "duration_1_minute"},
+                "communication": "incapable_of_meaningful_communication",
+            },
+        },
+        {
+            "name": "fear",
+            "saving_throw": {"ability": "wis"},
+            "on_failed": {
+                "condition": "frightened",
+                "duration": {"until": "duration_1_minute"},
+                "must_move_at_least_ft_away_from_glyph_each_turn_if_able": 30,
+            },
+        },
+        {
+            "name": "pain",
+            "saving_throw": {"ability": "con"},
+            "on_failed": {
+                "condition": "incapacitated",
+                "duration": {"until": "duration_1_minute"},
+            },
+        },
+        {
+            "name": "sleep",
+            "saving_throw": {"ability": "wis"},
+            "on_failed": {
+                "condition": "unconscious",
+                "duration": {"until": "duration_10_minutes"},
+                "wakes_on": ["taking_damage", "creature_uses_action_to_shake_awake"],
+            },
+        },
+        {
+            "name": "stunning",
+            "saving_throw": {"ability": "wis"},
+            "on_failed": {
+                "condition": "stunned",
+                "duration": {"until": "duration_1_minute"},
+            },
+        },
+    ]
+
+
 def test_hallow_spends_slot_consumes_incense_and_records_ward(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
