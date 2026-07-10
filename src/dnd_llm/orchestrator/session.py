@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -35,6 +36,7 @@ from .turn import advance_turn as advance_encounter_turn
 from .turn import roll_initiative
 
 GENERATED_TACTICAL_GRAPHS_FLAG = "generated_tactical_graphs"
+SESSION_IDEMPOTENCY_FLAG = "session_idempotency_results"
 FLEET_STEP_ACTION_ID = "srd.fleet_step"
 FLEET_STEP_CONDITION = "fleet_step_available"
 TimeoutTakeoverPlanner = Callable[[str, int, str], PlayerActionDraft | None]
@@ -45,6 +47,21 @@ MonsterTurnPlanner = Callable[[str, int, str], PlayerActionDraft | None]
 class SessionResult:
     accepted: bool
     payload: dict[str, Any]
+
+
+def _serialize_session_result(result: object) -> object:
+    if not isinstance(result, SessionResult):
+        raise TypeError("session idempotency results must be SessionResult instances")
+    return {"accepted": result.accepted, "payload": result.payload}
+
+
+def _deserialize_session_result(value: object) -> object:
+    if not isinstance(value, dict):
+        raise TypeError("invalid persisted session result")
+    payload = value.get("payload")
+    if not isinstance(payload, dict):
+        raise TypeError("invalid persisted session result payload")
+    return SessionResult(accepted=bool(value.get("accepted", False)), payload=payload)
 
 
 class GameSession:
@@ -70,12 +87,27 @@ class GameSession:
             state.encounter.action_budgets if state.encounter is not None else None
         )
         self.tools = EngineTools(state, compendium, audit_log, self.roll_service, self.economy)
-        self.queue: EventQueue[SessionResult] = EventQueue()
+        idempotency_results = state.world.flags.get(SESSION_IDEMPOTENCY_FLAG)
+        if not isinstance(idempotency_results, dict):
+            idempotency_results = {}
+            state.world.flags[SESSION_IDEMPOTENCY_FLAG] = idempotency_results
+        self.queue: EventQueue[SessionResult] = EventQueue(
+            persistent_store=idempotency_results,
+            serializer=_serialize_session_result,
+            deserializer=_deserialize_session_result,
+        )
         self.tactics = tactics or MonsterTacticsLibrary()
         self.reactions = reactions or ReactionManager()
         self.timeout = timeout or TimeoutController()
         self.timeout_takeover_planner = timeout_takeover_planner
         self.monster_turn_planner = monster_turn_planner
+        self._current_time: int | None = None
+
+    def set_current_time(self, now: int) -> None:
+        self._current_time = now
+
+    def _interaction_now(self) -> int:
+        return self._current_time if self._current_time is not None else int(time.time())
 
     def context_for(self, actor_id: str | None, *, query: str = "") -> ContextSlice:
         return build_context_slice(
@@ -345,7 +377,11 @@ class GameSession:
             event.idempotency_key,
             allow_reactions=True,
         )
-        self._advance_after_action_if_ready(result, f"{event.idempotency_key}:advance", now=None)
+        self._advance_after_action_if_ready(
+            result,
+            f"{event.idempotency_key}:advance",
+            now=self._interaction_now(),
+        )
         return SessionResult(accepted=True, payload=result)
 
     def _handle_session_event(self, event: QueuedEvent) -> SessionResult:
@@ -388,6 +424,7 @@ class GameSession:
                         self.state.encounter.combatants[current],
                     ),
                 )
+                self.timeout.mark_turn_start(current, self._interaction_now())
             result = {
                 "encounter_id": self.state.encounter.id,
                 "zone_id": zone_id,
@@ -417,7 +454,10 @@ class GameSession:
         if event_type == "exit_cutscene":
             return self._handle_exit_cutscene(event.idempotency_key)
         if event_type == "advance_turn":
-            return self._advance_turn_unqueued(event.idempotency_key, now=None)
+            return self._advance_turn_unqueued(
+                event.idempotency_key,
+                now=self._interaction_now(),
+            )
         if event_type == "monster_turn":
             return self._handle_monster_turn(event.idempotency_key)
         if event_type == "timeout_takeover":
@@ -721,7 +761,7 @@ class GameSession:
                     self._advance_after_action_if_ready(
                         planned_result.payload,
                         f"{idempotency_key}:advance",
-                        now=None,
+                        now=self._interaction_now(),
                     )
                     return planned_result
                 self.audit_log.append(
@@ -758,7 +798,9 @@ class GameSession:
         )
         if result.accepted:
             self._advance_after_action_if_ready(
-                result.payload, f"{idempotency_key}:advance", now=None
+                result.payload,
+                f"{idempotency_key}:advance",
+                now=self._interaction_now(),
             )
         return result
 
@@ -1012,7 +1054,7 @@ class GameSession:
                 moving_actor_id=moving_actor_id,
                 trigger_actor_ids=triggers,
                 group_id=idempotency_key,
-                now=self.state.event_counter,
+                now=self._interaction_now(),
             )
             if windows:
                 result["reaction_windows"] = [window.to_dict() for window in windows]

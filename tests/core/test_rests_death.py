@@ -902,7 +902,7 @@ def test_long_rest_uses_multiclass_spellcaster_level(make_state) -> None:
         "1": 4,
         "2": 3,
         "3": 3,
-        "4": 1,
+        "4": 2,
     }
 
 

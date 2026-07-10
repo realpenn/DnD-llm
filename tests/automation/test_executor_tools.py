@@ -911,12 +911,29 @@ def test_second_wind_spends_class_resource_and_heals_by_fighter_level(make_state
     assert result["success"] is True
     assert state.characters["pc1"].resources["srd.resource.second_wind"] == 1
     assert state.encounter.combatants["pc1"].hp_current == 12
+    assert state.characters["pc1"].hp_current == 12
     healing_change = next(
         change for change in result["state_changes"] if change["type"] == "healing"
     )
     assert healing_change["amount"] == 11
     assert healing_change["applied"] == 11
     assert result["dice_rolls"][0]["expression"] == "1d10"
+
+
+def test_damage_to_linked_combatant_syncs_character_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+
+    result = AutomationExecutor(state, RollService(state), AuditLog()).execute(
+        _fixed_damage_action("test.linked_damage", amount=1),
+        actor_id="pc1",
+        targets=["pc2"],
+        idempotency_key="linked-damage",
+    )
+
+    assert result.success is True
+    assert state.encounter.combatants["pc2"].hp_current == 3
+    assert state.characters["pc2"].hp_current == 3
 
 
 def test_second_wind_tactical_shift_moves_half_speed_without_opportunity_attack(
@@ -10097,20 +10114,29 @@ def test_berserker_frenzy_requires_berserker_subclass(make_state) -> None:
     assert "frenzy_bonus" not in damage_change
 
 
-def test_award_accepts_only_gold_or_loaded_srd_items(make_state) -> None:
+def test_award_accepts_campaign_rewards_or_loaded_srd_items(make_state) -> None:
     state = make_state()
+    state.world.flags["campaign_rewards"] = {
+        "test.reward": {"gold": 5, "experience": 0, "items": []}
+    }
     compendium = CompendiumLoader("rules_data").load()
     audit = AuditLog()
     tools = EngineTools(state, compendium, audit)
 
-    gold = tools.award(["pc1"], "gold:5", idempotency_key="award-gold")
+    gold = tools.award(["pc1"], "test.reward", idempotency_key="award-campaign-reward")
     item = tools.award(
         ["pc1"],
         "item:srd.potion_of_healing",
         idempotency_key="award-srd-item",
     )
 
-    assert gold["reward"] == {"kind": "gold", "amount": 5}
+    assert gold["reward"] == {
+        "kind": "campaign_reward",
+        "reward_id": "test.reward",
+        "gold": 5,
+        "experience": 0,
+        "items": [],
+    }
     assert state.characters["pc1"].gold == 5
     assert item["reward"] == {
         "kind": "item",
@@ -10121,8 +10147,8 @@ def test_award_accepts_only_gold_or_loaded_srd_items(make_state) -> None:
 
     with pytest.raises(ValueError, match="unknown reward id"):
         tools.award(["pc1"], "item:srd.imaginary_sword", idempotency_key="award-bad-item")
-    with pytest.raises(ValueError, match="gold reward must be positive"):
-        tools.award(["pc1"], "gold:-1", idempotency_key="award-negative-gold")
+    with pytest.raises(ValueError, match="predefined campaign rewards"):
+        tools.award(["pc1"], "gold:5", idempotency_key="award-direct-gold")
 
     assert state.characters["pc1"].gold == 5
     assert "srd.imaginary_sword" not in state.characters["pc1"].inventory

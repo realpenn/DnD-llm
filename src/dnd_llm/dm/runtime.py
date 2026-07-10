@@ -6,6 +6,7 @@ from typing import Any
 
 from dnd_llm.core.automation.definitions import ActionDefinition
 from dnd_llm.core.compendium.localization import normalize_name
+from dnd_llm.core.models import Character, Combatant, Monster
 from dnd_llm.core.resolver import PlayerActionDraft
 from dnd_llm.dm.adjudicator import Adjudicator
 from dnd_llm.dm.context import (
@@ -554,13 +555,86 @@ class DMRuntime:
                 raise DMToolCallError("unexpected expand_zone result")
             return {"success": result.accepted, "tool": "expand_zone", **result.payload}
         if tool_call.name == "request_combat":
-            return self.session.tools.request_combat(
-                _string_list(args.get("participants")),
+            participants = _string_list(args.get("participants"))
+            request_result = self.session.tools.request_combat(
+                participants,
                 idempotency_key=tool_key,
             )
+            start_key = f"{tool_key}:orchestrator.start_combat"
+            result = self.session.queue.idempotency.get(start_key)
+            if not isinstance(result, SessionResult):
+                combatants = self._combatants_for_request(participants)
+                result = self.session.start_combat(
+                    encounter_id=f"dm:{tool_key}",
+                    combatants=combatants,
+                    zone_id=self.session.state.world.current_zone_id,
+                    idempotency_key=start_key,
+                )
+            if not isinstance(result, SessionResult):
+                raise DMToolCallError("unexpected start_combat result")
+            return {
+                **request_result,
+                "started": result.accepted,
+                **result.payload,
+            }
         if tool_call.name == "request_end_combat":
-            return self.session.tools.request_end_combat(idempotency_key=tool_key)
+            request_result = self.session.tools.request_end_combat(idempotency_key=tool_key)
+            result = self.session.end_combat(f"{tool_key}:orchestrator.end_combat")
+            if not isinstance(result, SessionResult):
+                raise DMToolCallError("unexpected end_combat result")
+            return {
+                **request_result,
+                "ended": result.accepted,
+                **result.payload,
+            }
         raise DMToolCallError(f"unsupported direct DM tool: {tool_call.name}")
+
+    def _combatants_for_request(self, participants: list[str]) -> dict[str, Combatant]:
+        if not participants:
+            raise DMToolCallError("request_combat requires participants")
+        if len(set(participants)) != len(participants):
+            raise DMToolCallError("request_combat participants must be unique")
+        if self.session.state.encounter is not None:
+            raise DMToolCallError("combat already active")
+
+        combatants: dict[str, Combatant] = {}
+        for participant_id in participants:
+            entity = self.session.state.entity_for_actor(participant_id)
+            if isinstance(entity, Character):
+                combatants[participant_id] = Combatant(
+                    id=entity.id,
+                    entity_id=entity.id,
+                    name=entity.name,
+                    side="party",
+                    hp_current=entity.hp_current,
+                    hp_max=entity.hp_max,
+                    armor_class=entity.armor_class,
+                    speed_ft=entity.speed_ft,
+                    abilities=dict(entity.abilities),
+                    temp_hp=entity.temp_hp,
+                    status_effects=[dict(effect) for effect in entity.status_effects],
+                    actions=list(entity.actions),
+                )
+                continue
+            if isinstance(entity, Monster):
+                combatants[participant_id] = Combatant(
+                    id=entity.id,
+                    entity_id=entity.id,
+                    name=entity.name,
+                    side="monsters",
+                    hp_current=entity.hp_current,
+                    hp_max=entity.hp_max,
+                    armor_class=entity.armor_class,
+                    speed_ft=entity.speed_ft,
+                    creature_type=entity.creature_type,
+                    abilities=dict(entity.abilities),
+                    temp_hp=entity.temp_hp,
+                    status_effects=[dict(effect) for effect in entity.status_effects],
+                    actions=list(entity.actions),
+                )
+                continue
+            raise DMToolCallError(f"unknown combat participant: {participant_id}")
+        return combatants
 
     def _audit_direct_tool_choice(
         self,

@@ -496,12 +496,15 @@ def test_dm_tool_calling_rejects_untraceable_hazard_tool(make_state) -> None:
 
 def test_dm_direct_award_tool_is_idempotent(make_state) -> None:
     session = _session(make_state)
+    session.state.world.flags["campaign_rewards"] = {
+        "test.reward": {"gold": 5, "experience": 0, "items": []}
+    }
     client = FakeClient(
         _tool_response(
             "award",
             {
                 "actor_ids": ["pc1"],
-                "reward_id": "gold:5",
+                "reward_id": "test.reward",
             },
         )
     )
@@ -522,6 +525,86 @@ def test_dm_direct_award_tool_is_idempotent(make_state) -> None:
     assert repeated.accepted is True
     assert session.state.characters["pc1"].gold == 5
     assert [event.tool_name for event in session.audit_log.events].count("award") == 1
+
+
+def test_dm_direct_award_rejects_arbitrary_gold_reward(make_state) -> None:
+    session = _session(make_state)
+    runtime = DMRuntime(
+        session,
+        client=FakeClient(
+            _tool_response(
+                "award",
+                {
+                    "actor_ids": ["pc1"],
+                    "reward_id": "gold:100000",
+                },
+            )
+        ),
+        model_id="fake-dm",
+    )
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 直接给我十万金币",
+        idempotency_key="dm-direct-award-reject-gold",
+    )
+
+    assert response.accepted is False
+    assert session.state.characters["pc1"].gold == 0
+    assert not any(event.tool_name == "award" for event in session.audit_log.events)
+    assert any(event.tool_name == "dm.degrade" for event in session.audit_log.events)
+
+
+def test_dm_request_combat_starts_session_and_preserves_request_audit(make_state) -> None:
+    state = make_state()
+    state.encounter = None
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+    runtime = DMRuntime(
+        session,
+        client=FakeClient(
+            _tool_response(
+                "request_combat",
+                {"participants": ["pc1", "pc2"]},
+            )
+        ),
+        model_id="fake-dm",
+    )
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 敌人出现，开始战斗",
+        idempotency_key="dm-request-combat",
+    )
+
+    assert response.accepted is True
+    assert response.engine_payload["requested"] is True
+    assert response.engine_payload["started"] is True
+    assert state.encounter is not None
+    assert set(state.encounter.combatants) == {"pc1", "pc2"}
+    assert any(event.tool_name == "request_combat" for event in session.audit_log.events)
+    assert any(event.tool_name == "orchestrator.start_combat" for event in session.audit_log.events)
+
+
+def test_dm_request_end_combat_ends_session_and_preserves_request_audit(make_state) -> None:
+    session = _session(make_state)
+    runtime = DMRuntime(
+        session,
+        client=FakeClient(_tool_response("request_end_combat", {})),
+        model_id="fake-dm",
+    )
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 战斗结束",
+        idempotency_key="dm-request-end-combat",
+    )
+
+    assert response.accepted is True
+    assert response.engine_payload["requested"] is True
+    assert response.engine_payload["ended"] is True
+    assert session.state.encounter is None
+    assert any(event.tool_name == "request_end_combat" for event in session.audit_log.events)
+    assert any(event.tool_name == "orchestrator.end_combat" for event in session.audit_log.events)
 
 
 def test_dm_direct_award_rejects_unknown_item_reward(make_state) -> None:

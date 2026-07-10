@@ -1777,13 +1777,7 @@ class EngineTools:
         if isinstance(campaign_rewards, dict) and reward_id in campaign_rewards:
             return self._parse_campaign_reward(reward_id, campaign_rewards[reward_id])
         if reward_id.startswith("gold:"):
-            try:
-                amount = int(reward_id.removeprefix("gold:"))
-            except ValueError as exc:
-                raise ValueError(f"invalid gold reward: {reward_id}") from exc
-            if amount <= 0:
-                raise ValueError("gold reward must be positive")
-            return {"kind": "gold", "amount": amount}
+            raise ValueError("gold rewards must be predefined campaign rewards")
         item_id = reward_id.removeprefix("item:") if reward_id.startswith("item:") else reward_id
         if item_id in self.compendium.items:
             return {"kind": "item", "item_id": item_id, "quantity": 1}

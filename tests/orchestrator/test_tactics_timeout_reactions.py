@@ -369,6 +369,97 @@ def test_pending_reaction_window_round_trips_through_save(tmp_path, make_state) 
     assert loaded_state.encounter.pending_reactions == state.encounter.pending_reactions
 
 
+def test_session_advance_turn_idempotency_survives_save_load(tmp_path, make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    audit = AuditLog()
+    session = GameSession(state, CompendiumLoader("rules_data").load(), audit)
+    session.set_current_time(100)
+
+    first = session.advance_turn("restart-advance")
+    assert isinstance(first, SessionResult)
+    assert first.accepted is True
+    save_game(tmp_path / "slot", state, audit)
+
+    loaded_state, loaded_audit = load_game(tmp_path / "slot")
+    restarted = GameSession(
+        loaded_state,
+        CompendiumLoader("rules_data").load(),
+        loaded_audit,
+    )
+    current_before_retry = loaded_state.encounter.current_combatant_id
+    event_count_before_retry = len(loaded_audit.events)
+
+    repeated = restarted.advance_turn("restart-advance")
+
+    assert repeated == first
+    assert loaded_state.encounter.current_combatant_id == current_before_retry
+    assert len(loaded_audit.events) == event_count_before_retry
+
+
+def test_session_player_action_idempotency_survives_save_load(tmp_path, make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    audit = AuditLog()
+    session = GameSession(state, CompendiumLoader("rules_data").load(), audit)
+    session.set_current_time(100)
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="短剑",
+        candidate_action_id="srd.shortsword_attack",
+        target_ids=["goblin1"],
+    )
+
+    first = session.submit_player_action(draft, "restart-action")
+    assert isinstance(first, SessionResult)
+    assert first.accepted is True
+    save_game(tmp_path / "slot", state, audit)
+
+    loaded_state, loaded_audit = load_game(tmp_path / "slot")
+    restarted = GameSession(
+        loaded_state,
+        CompendiumLoader("rules_data").load(),
+        loaded_audit,
+    )
+    current_before_retry = loaded_state.encounter.current_combatant_id
+    roll_counter_before_retry = loaded_state.roll_counter
+    event_count_before_retry = len(loaded_audit.events)
+
+    repeated = restarted.submit_player_action(draft, "restart-action")
+
+    assert repeated == first
+    assert loaded_state.encounter.current_combatant_id == current_before_retry
+    assert loaded_state.roll_counter == roll_counter_before_retry
+    assert len(loaded_audit.events) == event_count_before_retry
+
+
+def test_player_action_records_timeout_start_for_next_turn(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+    session.set_current_time(123)
+
+    result = session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            candidate_action_id="srd.shortsword_attack",
+            target_ids=["goblin1"],
+        ),
+        "records-timeout-start",
+    )
+
+    assert isinstance(result, SessionResult)
+    assert result.accepted is True
+    assert session.timeout.turn_started_at["goblin1"] == 123
+
+
 def test_timeout_takeover_uses_character_tactic_and_advances_turn(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

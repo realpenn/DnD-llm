@@ -5,6 +5,7 @@ from pathlib import Path
 
 from dnd_llm.config import Settings
 from dnd_llm.content.campaign_gen import starter_campaign_pack
+from dnd_llm.content.character_gen import default_fighter
 from dnd_llm.runtime import GameRuntime, MultiCampaignRuntime
 from dnd_llm.telegram_bot.runtime import IncomingMessage
 
@@ -262,6 +263,37 @@ def test_gm_save_load_and_saves_commands_round_trip_state(tmp_path: Path) -> Non
     assert "slot1" in saves[0].text
     assert "已读取" in loaded[0].text
     assert runtime.state.world.current_zone_id == "ruins"
+
+
+def test_game_runtime_load_syncs_character_registry_before_join(tmp_path: Path) -> None:
+    runtime = GameRuntime.build(_settings(tmp_path))
+    registry = runtime.command_router.characters
+    character = registry.create_default("u1", "Penn")
+    registry.join_campaign("u1")
+    restored_character = default_fighter(character.id, character.name)
+    restored_character.gold = 42
+    restored_character.hp_current = 7
+    runtime.state.characters[character.id] = restored_character
+    runtime.save("slot1")
+
+    registry.characters_by_user["u1"][character.id].gold = 1
+    runtime.state.characters[character.id].gold = 1
+    runtime.load("slot1")
+
+    active = registry.active_character("u1")
+    assert active is not None
+    assert active.gold == 42
+    sheet = runtime.telegram_runtime.handle_message(
+        IncomingMessage(user_id="u1", chat_id="private-u1", text="/sheet", is_private=True),
+        now=1,
+    )
+    assert "HP：7/12" in sheet[0].text
+    registry.campaign_members.clear()
+    runtime.telegram_runtime.handle_message(
+        IncomingMessage(user_id="u1", chat_id="group", text="/join"),
+        now=1,
+    )
+    assert runtime.state.characters[character.id].gold == 42
 
 
 def test_gm_commands_reject_non_gm_through_runtime(tmp_path: Path) -> None:

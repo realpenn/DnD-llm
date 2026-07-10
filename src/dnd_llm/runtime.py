@@ -15,7 +15,7 @@ from dnd_llm.content.runtime import apply_campaign_pack, register_campaign_pack_
 from dnd_llm.core.compendium.loader import Compendium, CompendiumLoader
 from dnd_llm.core.compendium.schema_loader import SchemaRegistry
 from dnd_llm.core.compendium.validators import RuleDataValidator
-from dnd_llm.core.models import GameState
+from dnd_llm.core.models import Character, GameState
 from dnd_llm.core.persistence import AuditLog, load_game, save_game
 from dnd_llm.dm.client import OpenAICompatibleClient
 from dnd_llm.dm.runtime import DMRuntime
@@ -276,12 +276,25 @@ class GameRuntime:
     def _replace_state(self, state: GameState, audit_log: AuditLog) -> None:
         self.state = state
         self.audit_log = audit_log
+        self._sync_character_registry_from_state()
         self.session = self._new_session()
         self.dm_runtime = self._new_dm_runtime()
         self.session.timeout_takeover_planner = self.dm_runtime.timeout_takeover_draft
         self.session.monster_turn_planner = self.dm_runtime.monster_turn_draft
         self.telegram_runtime.session = self.session
         self.telegram_runtime.dm_runtime = self.dm_runtime
+
+    def _sync_character_registry_from_state(self) -> None:
+        registry = self.command_router.characters
+        registry.sync_from_state(self.state)
+        for characters in registry.characters_by_user.values():
+            for character_id in list(characters):
+                restored = self.state.characters.get(character_id)
+                if restored is not None:
+                    characters[character_id] = Character.from_dict(restored.to_dict())
+        for user_id, character_id in list(registry.campaign_members.items()):
+            if character_id not in self.state.characters:
+                registry.campaign_members.pop(user_id, None)
 
     def _new_session(self) -> GameSession:
         return GameSession(
@@ -432,7 +445,7 @@ class MultiCampaignRuntime:
             return None
         reaction_id = parts[1]
         for group_id, runtime in self._runtimes_by_group.items():
-            character = runtime.command_router.characters.character_for_user(user_id)
+            character = runtime.command_router.characters.campaign_character_for_user(user_id)
             if character is None or runtime.state.encounter is None:
                 continue
             window = runtime.state.encounter.pending_reactions.get(reaction_id)

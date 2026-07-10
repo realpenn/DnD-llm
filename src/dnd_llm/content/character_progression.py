@@ -29,6 +29,7 @@ from dnd_llm.core.rules.class_features import (
     NATURAL_RECOVERY_SPELL_SLOTS_RESOURCE,
     NATURES_VEIL_RESOURCE,
     PERSISTENT_RAGE_INITIATIVE_RESTORE_RESOURCE,
+    RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE,
     STROKE_OF_LUCK_RESOURCE,
     TIRELESS_RESOURCE,
     UNCANNY_METABOLISM_RESOURCE,
@@ -85,7 +86,10 @@ from dnd_llm.core.rules.class_features import (
     warlock_pact_of_tome_cantrip_choice_key,
     warlock_pact_of_tome_ritual_choice_key,
 )
-from dnd_llm.core.rules.spell_slots import spell_slot_maxima_for_class_levels
+from dnd_llm.core.rules.spell_slots import (
+    spell_slot_maxima_for_class_levels,
+    warlock_pact_slot_maxima_for_class_levels,
+)
 
 
 def _choice_key(raw: str) -> str:
@@ -1926,6 +1930,10 @@ def _recalculate_progression_fields(character: Character) -> None:
         character.abilities,
     )
     spell_slots = spell_slot_maxima_for_class_levels(character.class_levels)
+    for slot_level, maximum in warlock_pact_slot_maxima_for_class_levels(
+        character.class_levels
+    ).items():
+        spell_slots[slot_level] = max(spell_slots.get(slot_level, 0), maximum)
     character.spell_slots = dict(spell_slots)
     character.spell_slots_max = dict(spell_slots)
     _sync_class_languages(character)
@@ -2507,6 +2515,11 @@ def _resources_for_levels(
     current: dict[str, int],
     abilities: dict[str, int],
 ) -> dict[str, int]:
+    current_resource_values = {
+        resource: max(0, int(amount))
+        for resource, amount in current.items()
+        if resource.startswith("srd.resource.")
+    }
     resources = {
         resource: amount
         for resource, amount in current.items()
@@ -2617,6 +2630,21 @@ def _resources_for_levels(
     wizard_level = int(class_levels.get("wizard", 0))
     if wizard_level >= 1:
         resources["srd.resource.arcane_recovery"] = 1
+
+    for resource, maximum in list(resources.items()):
+        if not resource.startswith("srd.resource."):
+            continue
+        resources[resource] = min(
+            int(maximum),
+            current_resource_values.get(resource, int(maximum)),
+        )
+    if (
+        barbarian_level >= 11
+        and RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE in current_resource_values
+    ):
+        resources[RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE] = current_resource_values[
+            RELENTLESS_RAGE_USES_SINCE_REST_RESOURCE
+        ]
     return resources
 
 

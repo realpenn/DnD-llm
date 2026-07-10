@@ -15408,6 +15408,7 @@ class AutomationExecutor:
         )
         if death_ward is not None:
             ctx.result.state_changes.append(death_ward)
+        self._sync_hp_state_for_target(target)
         return before - int(getattr(target, "hp_current"))
 
     def _set_temp_hp_source(
@@ -15760,6 +15761,7 @@ class AutomationExecutor:
         before = int(getattr(target, "hp_current"))
         max_hp = int(getattr(target, "hp_max"))
         setattr(target, "hp_current", min(max_hp, before + amount))
+        self._sync_hp_state_for_target(target)
         return int(getattr(target, "hp_current")) - before
 
     def _disciple_of_life_bonus(self, ctx: _Context) -> int:

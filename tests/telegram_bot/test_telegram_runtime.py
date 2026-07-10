@@ -237,6 +237,7 @@ def test_dd_group_message_routes_to_dm_runtime(make_state) -> None:
     assert result[0].chat_id == "group-1"
     assert result[0].metadata["accepted"] is True
     assert result[0].metadata["actor_id"] == "pc1"
+    assert runtime.session.timeout.turn_started_at["goblin1"] == 1
 
 
 def test_group_dm_action_prompts_next_party_player(make_state) -> None:
@@ -292,6 +293,9 @@ def test_gm_forceturn_command_prompts_next_party_player(make_state) -> None:
 
 def test_dm_action_syncs_character_growth_back_to_registry(make_state) -> None:
     runtime = _runtime(make_state)
+    runtime.session.state.world.flags["campaign_rewards"] = {
+        "test.reward": {"gold": 5, "experience": 0, "items": []}
+    }
     runtime.dm_runtime = DMRuntime(
         runtime.session,
         client=FakeClient(
@@ -299,7 +303,7 @@ def test_dm_action_syncs_character_growth_back_to_registry(make_state) -> None:
                 "award",
                 {
                     "actor_ids": ["pc1"],
-                    "reward_id": "gold:5",
+                    "reward_id": "test.reward",
                 },
             )
         ),
@@ -379,6 +383,27 @@ def test_group_dd_requires_join_even_with_active_character(make_state) -> None:
 
     assert result[0].metadata["missing_character"] is True
     assert "先私聊 /newchar" in result[0].text
+
+
+def test_private_dd_requires_join_and_does_not_sync_active_character(make_state) -> None:
+    runtime = _runtime(make_state)
+    unjoined = default_fighter("pc_unjoined", "Unjoined")
+    runtime.commands.characters.characters_by_user["u2"] = {unjoined.id: unjoined}
+    runtime.commands.characters.active_by_user["u2"] = unjoined.id
+
+    result = runtime.handle_message(
+        IncomingMessage(
+            user_id="u2",
+            chat_id="private-u2",
+            text="DD 我用短剑攻击 Goblin",
+            is_private=True,
+            message_id="private-unjoined",
+        ),
+        now=1,
+    )
+
+    assert result[0].metadata["missing_character"] is True
+    assert unjoined.id not in runtime.session.state.characters
 
 
 def test_spectator_group_dd_is_read_only(make_state) -> None:
@@ -484,6 +509,45 @@ def test_react_command_confirms_pending_reaction_window(make_state) -> None:
     assert result[1].metadata["combatant_id"] == "pc1"
     assert state.encounter.pending_reactions == {}
     assert state.encounter.action_budgets["pc1"]["reaction"] == 0
+
+
+def test_reaction_window_uses_telegram_timestamp(make_state) -> None:
+    runtime = _runtime(make_state, reaction_mode="interactive")
+    state = runtime.session.state
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["goblin1"].position_node_id = "front"
+    state.encounter.combatants["goblin1"].speed_ft = 60
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    now = 1_700_000_000
+    runtime.session.set_current_time(now)
+
+    opened = runtime.session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="移动",
+            candidate_action_id="srd.move",
+            params={"to_position_node_id": "back"},
+        ),
+        "telegram-unix-reaction",
+    )
+    assert isinstance(opened.payload["reaction_windows"], list)
+    window = opened.payload["reaction_windows"][0]
+
+    assert window["opened_at"] == now
+    result = runtime.handle_message(
+        IncomingMessage(
+            user_id="u1",
+            chat_id="private-u1",
+            text=f"/react {window['reaction_id']} yes",
+            is_private=True,
+            message_id="unix-reaction-confirm",
+        ),
+        now=now + 1,
+    )
+
+    assert result[0].metadata["accepted"] is True
 
 
 def test_spectator_cannot_confirm_reaction_window(make_state) -> None:

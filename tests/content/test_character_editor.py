@@ -2919,7 +2919,7 @@ def test_natural_language_character_edit_can_set_level_and_take_feat_in_one_requ
     assert "srd.action_surge" in result.character.actions
     assert "srd.tactical_mind" in result.character.actions
     assert result.character.resources["srd.resource.action_surge"] == 1
-    assert result.character.resources["srd.resource.second_wind"] == 3
+    assert result.character.resources["srd.resource.second_wind"] == 2
     assert result.character.feats == ["tough"]
     assert result.character.hp_max == 44
 
@@ -3355,3 +3355,34 @@ def test_natural_language_character_edit_rejects_multiclass_total_above_level_ca
     assert result.errors is not None
     assert any("总等级不能超过" in error for error in result.errors)
     assert character.class_levels == {"fighter": 19}
+
+
+def test_character_edit_preserves_consumed_resources_when_progression_is_rebuilt() -> None:
+    character = default_fighter("pc1", "Penn")
+    leveled = apply_natural_language_character_edit(character, "职业 fighter2")
+
+    assert leveled.accepted is True
+    assert leveled.character is not None
+    leveled.character.resources["srd.resource.action_surge"] = 0
+
+    edited = apply_natural_language_character_edit(leveled.character, "职业 fighter3")
+
+    assert edited.accepted is True
+    assert edited.character is not None
+    assert edited.character.resources["srd.resource.action_surge"] == 0
+    assert edited.character.resources["srd.resource.second_wind"] == 2
+
+
+def test_subclass_edit_preserves_consumed_shared_class_resource() -> None:
+    character = default_fighter("pc1", "Penn")
+    paladin = apply_natural_language_character_edit(character, "职业 paladin3")
+
+    assert paladin.accepted is True
+    assert paladin.character is not None
+    paladin.character.resources["srd.resource.channel_divinity"] = 1
+
+    edited = apply_natural_language_character_edit(paladin.character, "子职 devotion")
+
+    assert edited.accepted is True
+    assert edited.character is not None
+    assert edited.character.resources["srd.resource.channel_divinity"] == 1

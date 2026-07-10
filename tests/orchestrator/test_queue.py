@@ -60,3 +60,22 @@ def test_event_queue_does_not_cache_failed_events() -> None:
         queue.submit(QueuedEvent("retryable", {}), failing_handler)
 
     assert calls == 2
+
+
+def test_event_queue_restores_persisted_result_after_restart() -> None:
+    persistent: dict[str, object] = {}
+    first_queue: EventQueue[str] = EventQueue(persistent_store=persistent)
+    calls = 0
+
+    def handler(_: QueuedEvent) -> str:
+        nonlocal calls
+        calls += 1
+        return "handled once"
+
+    assert first_queue.submit(QueuedEvent("restart-key", {}), handler) == "handled once"
+
+    restarted_queue: EventQueue[str] = EventQueue(persistent_store=persistent)
+    repeated = restarted_queue.submit(QueuedEvent("restart-key", {}), handler)
+
+    assert repeated == "handled once"
+    assert calls == 1

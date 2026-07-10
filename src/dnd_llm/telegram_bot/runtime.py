@@ -78,6 +78,7 @@ class TelegramRuntime:
         cache_key = self._message_cache_key(incoming)
         if cache_key is not None and cache_key in self._message_cache:
             return _copy_messages(self._message_cache[cache_key])
+        self.session.set_current_time(now)
         if incoming.is_private:
             self.channels.bind_private_chat(incoming.user_id, incoming.chat_id)
         intent = normalize_message(
@@ -207,11 +208,7 @@ class TelegramRuntime:
                     metadata={"spectator_blocked_action": True},
                 )
             ]
-        character = (
-            self.commands.characters.active_character(intent.user_id)
-            if incoming.is_private
-            else self.commands.characters.campaign_character_for_user(intent.user_id)
-        )
+        character = self.commands.characters.campaign_character_for_user(intent.user_id)
         if character is None:
             return [
                 OutgoingMessage(
@@ -278,7 +275,7 @@ class TelegramRuntime:
                     metadata={"command": "/react", "accepted": False},
                 )
             ]
-        character = self.commands.characters.character_for_user(intent.user_id)
+        character = self.commands.characters.campaign_character_for_user(intent.user_id)
         if character is None:
             return [
                 OutgoingMessage(
