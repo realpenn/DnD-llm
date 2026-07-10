@@ -179,6 +179,19 @@ CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"}
 DREAM_ACTION_ID = "srd.dream"
 PLANAR_BINDING_ACTION_ID = "srd.planar_binding"
 SIMULACRUM_ACTION_ID = "srd.simulacrum"
+PRISMATIC_SPRAY_ACTION_ID = "srd.prismatic_spray"
+PRISMATIC_SPRAY_DAMAGE_RAYS = {
+    1: ("red", "fire"),
+    2: ("orange", "acid"),
+    3: ("yellow", "lightning"),
+    4: ("green", "poison"),
+    5: ("blue", "cold"),
+}
+PRISMATIC_SPRAY_UNAUTOMATED_RESULTS = {
+    6: ("indigo", "indigo_repeat_save_counter_not_automated"),
+    7: ("violet", "violet_repeat_save_and_planar_teleport_not_automated"),
+    8: ("special", "special_two_ray_resolution_not_automated"),
+}
 EYEBITE_EFFECT_PARAM = "eyebite_effect"
 EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 EYEBITE_SOURCE_ACTION_ID = "srd.eyebite"
@@ -651,6 +664,15 @@ class AutomationExecutor:
         )
         for index, node in enumerate(action.automation):
             self._execute_node(ctx, node, f"automation[{index}]", idempotency_key)
+        if action.id == PRISMATIC_SPRAY_ACTION_ID and not any(
+            node.get("type") == "prismatic_spray" for node in action.automation
+        ):
+            self._execute_node(
+                ctx,
+                {"type": "prismatic_spray"},
+                f"automation[{len(action.automation)}]",
+                idempotency_key,
+            )
         self._mark_action_surge_used(ctx)
         self._expire_actor_effects_after_action(ctx, preexisting_actor_effect_ids)
         self._record_fleet_step_window(ctx)
@@ -691,6 +713,8 @@ class AutomationExecutor:
             self._node_teleport_outcome(ctx, node, path)
         elif node_type == "damage":
             self._node_damage(ctx, node, path)
+        elif node_type == "prismatic_spray":
+            self._node_prismatic_spray(ctx, node, path)
         elif node_type == "instant_death":
             self._node_instant_death(ctx, node, path)
         elif node_type == "resurrection":
@@ -2138,6 +2162,90 @@ class AutomationExecutor:
                     )
                 )
         self._apply_horde_breaker_if_requested(ctx, node, path)
+
+    def _node_prismatic_spray(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        """Resolve only Prismatic Spray's SRD rays 1 through 5.
+
+        The action data records the Indigo, Violet, and Special rules as metadata;
+        those results deliberately remain visible here without applying effects
+        that the current automation engine cannot resolve faithfully.
+        """
+        original_targets = list(ctx.targets)
+        results: list[dict[str, Any]] = []
+        save_node = node.get("saving_throw", {})
+        if not isinstance(save_node, dict):
+            raise AutomationError("prismatic_spray saving_throw must be an object")
+        save_node = dict(save_node)
+        save_node.setdefault("type", "saving_throw")
+        save_node.setdefault("ability", "dex")
+        save_node.setdefault("dc_from", {"spell_save_dc": "actor"})
+        try:
+            for target_index, target_id in enumerate(original_targets):
+                ctx.targets = [target_id]
+                if ctx.save_abilities.get(target_id) != "dex":
+                    self._node_saving_throw(
+                        ctx,
+                        save_node,
+                        f"{path}.target[{target_index}].saving_throw",
+                    )
+
+                color_roll = self.roll_service.roll("1d8")
+                ctx.result.dice_rolls.append(color_roll.to_dict())
+                if color_roll.total not in (
+                    *PRISMATIC_SPRAY_DAMAGE_RAYS,
+                    *PRISMATIC_SPRAY_UNAUTOMATED_RESULTS,
+                ):
+                    raise AutomationError(
+                        "Prismatic Spray color roll must be a 1d8 result between 1 and 8"
+                    )
+                result: dict[str, Any] = {
+                    "target_id": target_id,
+                    "color_roll": color_roll.total,
+                    "save_success": ctx.save_successes.get(target_id),
+                }
+                damage_ray = PRISMATIC_SPRAY_DAMAGE_RAYS.get(color_roll.total)
+                if damage_ray is None:
+                    color, reason = PRISMATIC_SPRAY_UNAUTOMATED_RESULTS[color_roll.total]
+                    result.update(
+                        {
+                            "color": color,
+                            "automated": False,
+                            "automation_status": "not_automated",
+                            "reason": reason,
+                        }
+                    )
+                    results.append(result)
+                    continue
+
+                color, damage_type = damage_ray
+                result.update(
+                    {
+                        "color": color,
+                        "automated": True,
+                        "damage_type": damage_type,
+                    }
+                )
+                damage_path = f"{path}.target[{target_index}].damage"
+                self._node_damage(
+                    ctx,
+                    {
+                        "type": "damage",
+                        "dice": "12d6",
+                        "damage_type": damage_type,
+                        "save_half": True,
+                    },
+                    damage_path,
+                )
+                result["damage_node_path"] = damage_path
+                results.append(result)
+        finally:
+            ctx.targets = original_targets
+        ctx.result.node_results[path] = results
 
     def _node_healing(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         blessed_healer_triggered = False

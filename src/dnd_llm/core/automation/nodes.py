@@ -10,6 +10,7 @@ NODE_TYPES = {
     "maze_escape",
     "teleport_outcome",
     "damage",
+    "prismatic_spray",
     "instant_death",
     "resurrection",
     "restore_all_hit_points",
@@ -52,6 +53,7 @@ NODE_TYPES = {
 
 STATE_CHANGING_NODE_TYPES = {
     "damage",
+    "prismatic_spray",
     "instant_death",
     "resurrection",
     "restore_all_hit_points",

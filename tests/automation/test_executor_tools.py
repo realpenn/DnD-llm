@@ -75,6 +75,114 @@ class _FixedSingleDieRollService:
         )
 
 
+def _prepare_prismatic_spray(make_state, target_count: int):
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 5
+    caster.spell_slots = {"7": 1}
+    target_ids = [f"spray-target-{index}" for index in range(target_count)]
+    for target_id in target_ids:
+        state.encounter.combatants[target_id] = Combatant(
+            id=target_id,
+            entity_id=target_id,
+            name=target_id,
+            side="monsters",
+            hp_current=100,
+            hp_max=100,
+            armor_class=10,
+            abilities={"dex": 10},
+            position_node_id="cover",
+        )
+    action = CompendiumLoader("rules_data").load().action("srd.prismatic_spray")
+    return state, action, target_ids
+
+
+def test_prismatic_spray_maps_independent_colors_to_srd_damage_types(make_state) -> None:
+    state, action, target_ids = _prepare_prismatic_spray(make_state, 5)
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1, 1, 1, 1, 1, 1, 12, 2, 13, 3, 14, 4, 15, 5, 16]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", targets=target_ids, idempotency_key="prismatic-colors")
+
+    spray_results = result.node_results["automation[3]"]
+    assert [entry["color_roll"] for entry in spray_results] == [1, 2, 3, 4, 5]
+    assert [entry["color"] for entry in spray_results] == [
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "blue",
+    ]
+    assert [entry["damage_type"] for entry in spray_results] == [
+        "fire",
+        "acid",
+        "lightning",
+        "poison",
+        "cold",
+    ]
+    assert all(entry["automated"] is True for entry in spray_results)
+    damage_changes = [change for change in result.state_changes if change["type"] == "damage"]
+    assert [change["target_id"] for change in damage_changes] == target_ids
+    assert [change["amount"] for change in damage_changes] == [12, 13, 14, 15, 16]
+    assert [roll["expression"] for roll in result.dice_rolls] == (
+        ["1d20+0"] * 5 + ["1d8", "12d6"] * 5
+    )
+
+
+def test_prismatic_spray_node_makes_dex_save_and_halves_successful_save_damage(
+    make_state,
+) -> None:
+    state, action, target_ids = _prepare_prismatic_spray(make_state, 2)
+    action.automation = [
+        {"type": "target", "mode": "area"},
+        {"type": "prismatic_spray"},
+    ]
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1, 1, 12, 20, 2, 20]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", targets=target_ids, idempotency_key="prismatic-half")
+
+    spray_results = result.node_results["automation[1]"]
+    assert [entry["save_success"] for entry in spray_results] == [False, True]
+    damage_changes = [change for change in result.state_changes if change["type"] == "damage"]
+    assert [change["damage_type"] for change in damage_changes] == ["fire", "acid"]
+    assert [change["amount"] for change in damage_changes] == [12, 10]
+    assert [change["applied"] for change in damage_changes] == [12, 10]
+
+
+def test_prismatic_spray_marks_indigo_violet_and_special_as_not_automated(make_state) -> None:
+    state, action, target_ids = _prepare_prismatic_spray(make_state, 3)
+    action.automation = [
+        {"type": "target", "mode": "area"},
+        {"type": "prismatic_spray"},
+    ]
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([1, 1, 1, 6, 7, 8]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", targets=target_ids, idempotency_key="prismatic-unautomated")
+
+    spray_results = result.node_results["automation[3]"]
+    assert [entry["color_roll"] for entry in spray_results] == [6, 7, 8]
+    assert [entry["automation_status"] for entry in spray_results] == [
+        "not_automated",
+        "not_automated",
+        "not_automated",
+    ]
+    assert [entry["reason"] for entry in spray_results] == [
+        "indigo_repeat_save_counter_not_automated",
+        "violet_repeat_save_and_planar_teleport_not_automated",
+        "special_two_ray_resolution_not_automated",
+    ]
+    assert not [change for change in result.state_changes if change["type"] == "damage"]
+    assert not [change for change in result.state_changes if change["type"] == "condition"]
+
+
 def test_cure_wounds_changes_hp_and_writes_audit(make_state) -> None:
     state = make_state()
     compendium = CompendiumLoader("rules_data").load()
@@ -18725,6 +18833,174 @@ def test_death_ward_negates_instant_death_without_damage_and_ends(make_state) ->
     assert state.characters["pc2"].dead is False
     assert protected.status_effects == []
     assert not any(change["type"] == "death" for change in result.state_changes)
+
+
+@pytest.mark.parametrize(
+    ("color_roll", "damage_type"),
+    [
+        (1, "fire"),
+        (2, "acid"),
+        (3, "lightning"),
+        (4, "poison"),
+        (5, "cold"),
+    ],
+)
+def test_prismatic_spray_automates_srd_rays_one_through_five(
+    make_state,
+    color_roll: int,
+    damage_type: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1, color_roll, 6]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.prismatic_spray",
+        ["goblin1"],
+        7,
+        idempotency_key=f"prismatic-spray-ray-{color_roll}",
+    )
+
+    assert result["success"] is True
+    assert result["node_results"]["automation[1]"]["success"] is False
+    spray_result = result["node_results"]["automation[3]"][0]
+    assert spray_result["color_roll"] == color_roll
+    assert spray_result["automated"] is True
+    assert spray_result["damage_type"] == damage_type
+    assert spray_result["save_success"] is False
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["damage_type"] == damage_type
+    assert damage_change["amount"] == 6
+    assert damage_change["applied"] == 6
+    assert [roll["expression"] for roll in result["dice_rolls"]] == [
+        "1d20+0",
+        "1d8",
+        "12d6",
+    ]
+
+
+def test_prismatic_spray_rolls_color_and_save_independently_for_each_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].abilities = {"dex": 10}
+    state.encounter.combatants["goblin1"].hp_current = 80
+    state.encounter.combatants["goblin1"].hp_max = 80
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin Two",
+        side="monsters",
+        hp_current=80,
+        hp_max=80,
+        armor_class=12,
+        abilities={"dex": 10},
+        position_node_id="cover",
+    )
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["7"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, 1, 1, 8, 2, 8]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.prismatic_spray",
+        ["goblin1"],
+        {"slot_level": 7, "area_targets": ["goblin1", "goblin2"]},
+        idempotency_key="prismatic-spray-independent-targets",
+    )
+
+    assert result["success"] is True
+    spray_results = result["node_results"]["automation[3]"]
+    assert [(item["color_roll"], item["damage_type"], item["save_success"]) for item in spray_results] == [
+        (1, "fire", True),
+        (2, "acid", False),
+    ]
+    damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
+    assert [(change["target_id"], change["damage_type"], change["amount"]) for change in damage_changes] == [
+        ("goblin1", "fire", 4),
+        ("goblin2", "acid", 8),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("color_roll", "color", "reason"),
+    [
+        (6, "indigo", "indigo_repeat_save_counter_not_automated"),
+        (7, "violet", "violet_repeat_save_and_planar_teleport_not_automated"),
+        (8, "special", "special_two_ray_resolution_not_automated"),
+    ],
+)
+def test_prismatic_spray_keeps_indigo_violet_and_special_unautomated(
+    make_state,
+    color_roll: int,
+    color: str,
+    reason: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 13}
+    caster.abilities["int"] = 18
+    caster.proficiency_bonus = 4
+    caster.spell_slots["7"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.abilities = {"dex": 10}
+    target.hp_current = 80
+    target.hp_max = 80
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20, color_roll]),
+    )
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.prismatic_spray",
+        ["goblin1"],
+        7,
+        idempotency_key=f"prismatic-spray-unautomated-{color_roll}",
+    )
+
+    spray_result = result["node_results"]["automation[3]"][0]
+    assert spray_result == {
+        "target_id": "goblin1",
+        "color_roll": color_roll,
+        "save_success": True,
+        "color": color,
+        "automated": False,
+        "automation_status": "not_automated",
+        "reason": reason,
+    }
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert target.hp_current == 80
+    assert target.status_effects == []
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0", "1d8"]
 
 
 @pytest.mark.parametrize(
