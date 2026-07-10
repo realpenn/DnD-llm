@@ -255,7 +255,7 @@ P0 脚手架
 
 ↳ spec §9 Phase 2 / §11.12/29。架构已预留全量空间，本阶段填充。
 
-- [ ] **P2-1** 等级 6+：更高环法术、更多子职特性。
+- [x] **P2-1** 等级 6+：更高环法术、更多子职特性。
   - [x] **P2-1a** SRD 5.2.1 `Greater Invisibility` 落地：新增 4 环 Illusion spell 与 `srd.greater_invisibility` action；按 SRD 以 Action/Touch/Concentration 1 minute 给目标施加 Invisible condition，且不会像普通 `Invisibility` 一样因攻击或施法提前结束；覆盖 compendium、executor、生命周期 tick 与自动模拟测试。
   - [x] **P2-1b** SRD 5.2.1 `Blight` 落地：新增 4 环 Necromancy spell 与 `srd.blight` action；按 SRD 以施法者可用法术职业推断 spell save DC，目标 Constitution saving throw 失败承受 `8d8` Necrotic damage、成功半伤，Plant creature 自动豁免失败，并支持每高一环 `+1d8` 且实际扣除请求环位；覆盖 compendium、executor、resolver、自动模拟与全量门禁测试。
   - [x] **P2-1c** SRD 5.2.1 `Mass Cure Wounds` 落地：新增 5 环 Abjuration spell 与 `srd.mass_cure_wounds` action；按 SRD 以 60 尺内 30 尺半径 Sphere 最多 6 个目标恢复 `5d8 + spellcasting ability modifier` HP，支持每高一环 `+1d8` 且实际扣除请求环位；新增受限施法属性治疗加值解析，覆盖 compendium、executor、自动模拟与全量门禁测试。
