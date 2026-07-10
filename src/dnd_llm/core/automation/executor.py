@@ -9,6 +9,7 @@ from ..economy import EconomyTracker
 from ..models import Character, Combatant, GameState, Monster
 from ..persistence import AuditLog
 from ..positioning import TacticalGraph
+from ..rules.auras import HOLY_AURA_ACTION_ID, holy_aura_benefit_sources
 from ..rules.checks import charisma_check_minimum_d20_adjustment, d20_expression
 from ..rules.class_features import (
     DARK_ONES_OWN_LUCK_RESOURCE,
@@ -612,6 +613,7 @@ class AutomationExecutor:
         self._validate_conjure_fey_preconditions(action, targets or [], params)
         self._validate_dream_preconditions(action, targets or [], params)
         self._validate_planar_binding_preconditions(action, params)
+        self._validate_holy_aura_targets(action, actor_id, targets or [])
         self._validate_conjure_minor_elementals_damage_type(
             action,
             actor_id,
@@ -998,6 +1000,7 @@ class AutomationExecutor:
             )
             self._apply_studied_attacks_on_miss(ctx, target_id, path)
             self._apply_multiattack_defense_on_hit(ctx, target_id, path)
+            self._apply_holy_aura_blinding_save_on_hit(ctx, target_id, path)
             self._mark_weapon_attack_target_this_turn(ctx, target_id)
             self._mark_thirsting_blade_pact_weapon_attack_this_turn(ctx, target_id)
             self._mark_thirsting_blade_extra_attack_used(ctx, target_id)
@@ -4258,6 +4261,11 @@ class AutomationExecutor:
         }
 
     def _resolved_passive_modifier_value(self, ctx: _Context, value: Any) -> Any:
+        if isinstance(value, dict) and value == {"action_target_ids": True}:
+            return list(ctx.original_targets)
+        if isinstance(value, dict) and value == {"spell_save_dc": "actor"}:
+            dc, _source = self._actor_spell_save_dc(ctx)
+            return dc
         if isinstance(value, dict) and set(value) == {"param"}:
             param_name = str(value["param"])
             selected = ctx.params.get(param_name)
@@ -10421,7 +10429,13 @@ class AutomationExecutor:
         disadvantage_sources.extend(self._condition_sources(target, {"invisible"}))
         if distance_ft is not None and distance_ft > 5:
             disadvantage_sources.extend(self._condition_sources(target, {"prone"}))
-        disadvantage_sources.extend(self._incoming_attack_disadvantage_sources(target))
+        disadvantage_sources.extend(
+            self._incoming_attack_disadvantage_sources(
+                target,
+                actor_id=actor_id,
+                target_id=target_id,
+            )
+        )
         disadvantage_sources.extend(self._strong_wind_ranged_weapon_sources(actor, action))
         return _merge_advantage(
             None,
@@ -10876,6 +10890,9 @@ class AutomationExecutor:
     def _incoming_attack_disadvantage_sources(
         self,
         target: Character | Monster | Combatant,
+        *,
+        actor_id: str,
+        target_id: str,
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
         for effect in self._status_effects_for(target):
@@ -10891,6 +10908,15 @@ class AutomationExecutor:
                     "source_action_id": effect.get("source_action_id"),
                     "modifier": "incoming_attacks_disadvantage",
                 }
+            )
+        if not self._entity_ids_match(actor_id, target_id):
+            sources.extend(
+                {
+                    **source,
+                    "modifier": "holy_aura_incoming_attacks_disadvantage",
+                    "attacker_id": actor_id,
+                }
+                for source in holy_aura_benefit_sources(self.state, target_id)
             )
         return sources
 
@@ -11078,6 +11104,16 @@ class AutomationExecutor:
                 contexts=contexts,
             )
         )
+        target_id = str(getattr(target, "id", ""))
+        if target_id:
+            advantage_sources.extend(
+                {
+                    **source,
+                    "modifier": "holy_aura_saving_throw_advantage",
+                    "ability": ability.lower(),
+                }
+                for source in holy_aura_benefit_sources(self.state, target_id)
+            )
         disadvantage_sources: list[dict[str, Any]] = []
         disadvantage_sources.extend(
             self._passive_ability_advantage_sources(
@@ -11958,6 +11994,24 @@ class AutomationExecutor:
             raise AutomationError("Planar Binding source spell effect is not active")
         if not all(self._effect_has_spell_source(effect) for _, _, effect in matching_effects):
             raise AutomationError("Planar Binding source effect must be a spell effect")
+
+    def _validate_holy_aura_targets(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        targets: list[str],
+    ) -> None:
+        if action.id != HOLY_AURA_ACTION_ID:
+            return
+        actor = self._entity(actor_id)
+        for target_id in targets:
+            if self._entity_ids_match(actor_id, target_id):
+                continue
+            distance = self._combat_distance(actor, self._entity(target_id))
+            if distance is None or distance > 30:
+                raise AutomationError(
+                    "Holy Aura chosen creatures must be within the 30-foot Emanation"
+                )
 
     @staticmethod
     def _validate_allowed_creature_types_param(
@@ -13497,6 +13551,146 @@ class AutomationExecutor:
         }
         ctx.result.state_changes.append({"type": "superior_hunters_defense", **change})
         return change
+
+    def _apply_holy_aura_blinding_save_on_hit(
+        self,
+        ctx: _Context,
+        target_id: str,
+        path: str,
+    ) -> None:
+        if ctx.attack_hits.get(target_id) is not True:
+            return
+        if not self._action_is_melee_attack_roll(ctx.action):
+            return
+        attacker = self._entity(ctx.actor_id)
+        if self._creature_type_for(attacker).lower() not in {"fiend", "undead"}:
+            return
+        aura_sources = holy_aura_benefit_sources(self.state, target_id)
+        sources_with_dc = [
+            source
+            for source in aura_sources
+            if isinstance(source.get("spell_save_dc"), int)
+            and not isinstance(source.get("spell_save_dc"), bool)
+        ]
+        if not sources_with_dc:
+            return
+        dc = max(int(source["spell_save_dc"]) for source in sources_with_dc)
+        applied_sources = [
+            source for source in sources_with_dc if int(source["spell_save_dc"]) == dc
+        ]
+        base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(attacker, "con")
+        exhaustion, exhaustion_penalty = self._exhaustion_details(attacker)
+        bonus = base_bonus - exhaustion_penalty
+        status_advantage, status_sources = self._saving_throw_status_advantage(
+            attacker,
+            "con",
+        )
+        roll = self.roll_service.roll(d20_expression(bonus), advantage=status_advantage)
+        adjustment, adjustment_rolls, adjustment_sources = self._passive_roll_adjustment(
+            attacker,
+            bonus_key="saving_throw_bonus_dice",
+            penalty_key="saving_throw_penalty_dice",
+        )
+        ctx.result.dice_rolls.append(roll.to_dict())
+        ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
+        total = roll.total + adjustment
+        success = total >= dc
+        save_result = {
+            "target_id": ctx.actor_id,
+            "ability": "con",
+            "dc": dc,
+            "dc_source": "holy_aura",
+            "base_bonus": base_bonus,
+            "bonus": bonus,
+            "proficient": proficient,
+            "proficiency_sources": proficiency_sources,
+            "exhaustion_level": exhaustion,
+            "d20_penalty": exhaustion_penalty,
+            "status_advantage": status_advantage,
+            "status_sources": status_sources,
+            "passive_adjustment": adjustment,
+            "passive_sources": adjustment_sources,
+            "total": total,
+            "success": success,
+            "aura_sources": applied_sources,
+        }
+        ctx.result.node_results[path]["holy_aura_blinding_save"] = save_result
+        ctx.result.state_changes.append(
+            {
+                "type": "holy_aura_blinding_save",
+                "attacker_id": ctx.actor_id,
+                "protected_target_id": target_id,
+                "dc": dc,
+                "total": total,
+                "success": success,
+                "aura_sources": applied_sources,
+                "path": path,
+            }
+        )
+        if success:
+            return
+        immunity_sources = self._condition_immunity_sources(attacker, "blinded")
+        if immunity_sources:
+            ctx.result.state_changes.append(
+                {
+                    "type": "condition_immune",
+                    "target_id": ctx.actor_id,
+                    "condition": "blinded",
+                    "immunity_sources": immunity_sources,
+                    "path": path,
+                }
+            )
+            return
+        source = applied_sources[0]
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, f"{path}.holy_aura_blinded"),
+            source_ref="SRD 5.2.1 Chapter 7: Spells",
+            source_action_id=HOLY_AURA_ACTION_ID,
+            target_id=ctx.actor_id,
+            applied_by=str(source["source_actor_id"]),
+            condition="blinded",
+            duration={
+                "until": "end_of_next_turn",
+                "remaining_ticks": 2,
+                "turn_owner_id": ctx.actor_id,
+            },
+            tick_on="self_turn_end",
+            stacking_policy="replace",
+            audit={
+                "node_path": path,
+                "holy_aura_effect_id": source.get("effect_id"),
+                "protected_target_id": target_id,
+            },
+        )
+        effects = getattr(attacker, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != "blinded"
+            or existing.get("source_action_id") != HOLY_AURA_ACTION_ID
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "condition",
+                "target_id": ctx.actor_id,
+                "condition": "blinded",
+                "source_action_id": HOLY_AURA_ACTION_ID,
+                "duration": effect.duration,
+                "path": path,
+            }
+        )
+
+    @staticmethod
+    def _action_is_melee_attack_roll(action: ActionDefinition) -> bool:
+        if action.properties.get("melee_attack_roll") is True:
+            return True
+        normal_range = action.range.get("normal_ft")
+        return (
+            isinstance(normal_range, int)
+            and not isinstance(normal_range, bool)
+            and normal_range <= 5
+        )
 
     def _apply_uncanny_dodge_if_requested(
         self,

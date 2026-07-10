@@ -1125,6 +1125,78 @@
       }
     },
     {
+      "id": "srd.spell.holy_aura",
+      "name": "Holy Aura",
+      "localization": {
+        "en": "Holy Aura",
+        "zh": "圣洁灵光",
+        "aliases": ["神圣灵光"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.holy_aura",
+        "name": "Holy Aura",
+        "localization": {
+          "en": "Holy Aura",
+          "zh": "圣洁灵光",
+          "aliases": ["神圣灵光"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 30 },
+        "target_policy": { "min": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a reliquary worth 1,000+ GP",
+            "consumed": false
+          },
+          "self_centered_emanation_radius_ft": 30,
+          "dynamic_chosen_creatures": true,
+          "no_higher_level_spell_slot_effect": true,
+          "spell_definition_id": "srd.spell.holy_aura",
+          "spell_level": 8
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit", "optional": true },
+          {
+            "type": "world_effect",
+            "effect_type": "holy_aura",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 30 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true,
+            "metadata": {
+              "chosen_creature_ids": { "action_target_ids": true },
+              "spell_save_dc": { "spell_save_dc": "actor" },
+              "emanation_moves_with_caster": true,
+              "origin_included_only_if_chosen": true,
+              "all_saving_throws_advantage": true,
+              "other_creatures_attack_rolls_disadvantage": true,
+              "fiend_or_undead_melee_hit_requires_con_save": true,
+              "failed_save_condition": "blinded",
+              "blinded_until_end_of_attacker_next_turn": true,
+              "dynamic_aura_membership_fully_automated": true
+            }
+          }
+        ],
+        "audit_label": "Holy Aura"
+      }
+    },
+    {
       "id": "srd.spell.mind_blank",
       "name": "Mind Blank",
       "localization": {

@@ -8,6 +8,7 @@ from .automation.definitions import ActionDefinition, ItemDefinition
 from .economy import ActionBudget, EconomyTracker
 from .models import Character, Combatant, GameState, Monster
 from .positioning import TacticalGraph
+from .rules.auras import HOLY_AURA_ACTION_ID
 from .rules.class_features import (
     WARLOCK_PACT_OF_BLADE_WEAPON_ACTION_IDS,
     bloodied_hp_cap,
@@ -331,6 +332,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=planar_binding_error,
+                action_id=action.id,
+            )
+        holy_aura_error = self._holy_aura_target_error(draft, action)
+        if holy_aura_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=holy_aura_error,
                 action_id=action.id,
             )
         allowed_list_error = self._allowed_list_params_error(draft, action)
@@ -824,6 +832,22 @@ class ActionResolver:
             and isinstance(source_ref, str)
             and "spell" in source_ref.casefold()
         )
+
+    def _holy_aura_target_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.id != HOLY_AURA_ACTION_ID:
+            return None
+        actor_aliases = self._entity_aliases(draft.actor_id)
+        for target_id in draft.target_ids:
+            if actor_aliases & self._entity_aliases(target_id):
+                continue
+            distance = self._combat_distance(draft.actor_id, target_id)
+            if distance is None or distance > 30:
+                return "Holy Aura chosen creatures must be within the 30-foot Emanation"
+        return None
 
     @staticmethod
     def _allowed_list_params_error(

@@ -33235,6 +33235,331 @@ def test_planar_binding_rejects_invalid_context_before_spending_cost(make_state)
     assert caster.gold == 999
 
 
+def _holy_aura_test_attack(*, range_ft: int = 5, attack_bonus: int = 99) -> ActionDefinition:
+    return ActionDefinition(
+        id=f"test.holy_aura_attack.{range_ft}",
+        name="Holy Aura Test Attack",
+        localization={"en": "Holy Aura Test Attack", "zh": "圣洁灵光测试攻击", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="monster_attack",
+        action_economy="none",
+        range={"normal_ft": range_ft},
+        target_policy={"min": 1, "max": 1, "harmful": True},
+        automation=[
+            {"type": "target", "mode": "explicit"},
+            {"type": "attack_roll", "attack_bonus": attack_bonus},
+        ],
+    )
+
+
+def _holy_aura_test_save() -> ActionDefinition:
+    return ActionDefinition(
+        id="test.holy_aura_save",
+        name="Holy Aura Test Save",
+        localization={"en": "Holy Aura Test Save", "zh": "圣洁灵光测试豁免", "aliases": []},
+        source="test",
+        rules_version="test",
+        action_type="test",
+        action_economy="none",
+        range={"normal_ft": 30},
+        target_policy={"min": 1, "max": 1, "harmful": False},
+        automation=[{"type": "saving_throw", "ability": "wis", "difficulty_tier": "medium"}],
+    )
+
+
+def test_holy_aura_dynamic_membership_grants_save_advantage_and_attack_disadvantage(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    caster.gold = 123
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 10, 10]),
+    )
+
+    cast = tools._execute_action(
+        action_id="srd.holy_aura",
+        actor_id="pc1",
+        targets=["pc1", "pc2"],
+        params={"slot_level": 8},
+        idempotency_key="cast-holy-aura-dynamic",
+    )
+
+    assert cast["success"] is True
+    assert caster.spell_slots["8"] == 0
+    assert caster.gold == 123
+    aura = state.world.active_effects[-1]
+    assert aura["source_action_id"] == "srd.holy_aura"
+    assert aura["effect_type"] == "holy_aura"
+    assert aura["duration"] == {"until": "concentration_1_minute"}
+    assert aura["concentration"] is True
+    assert aura["metadata"]["chosen_creature_ids"] == ["pc1", "pc2"]
+    assert aura["metadata"]["spell_save_dc"] == 18
+
+    direct_save = tools.roll_save(
+        "pc2",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="holy-aura-direct-save",
+    )
+    automation_save = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10]),
+        AuditLog(),
+    ).execute(
+        _holy_aura_test_save(),
+        actor_id="goblin1",
+        targets=["pc1"],
+        idempotency_key="holy-aura-automation-save",
+    )
+    unchosen_save = tools.roll_save(
+        "goblin1",
+        "con",
+        difficulty_tier="medium",
+        idempotency_key="holy-aura-unchosen-save",
+    )
+    incoming_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20]),
+        AuditLog(),
+    ).execute(
+        _holy_aura_test_attack(),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="holy-aura-incoming-attack",
+    )
+
+    assert direct_save["roll"]["advantage"] == "advantage"
+    assert direct_save["status_sources"][0]["modifier"] == (
+        "holy_aura_saving_throw_advantage"
+    )
+    automation_save_node = automation_save.node_results["automation[0]"]
+    assert automation_save_node["status_advantage"] == "advantage"
+    assert automation_save_node["status_sources"][0]["modifier"] == (
+        "holy_aura_saving_throw_advantage"
+    )
+    assert unchosen_save["roll"]["advantage"] is None
+    incoming_node = incoming_attack.node_results["automation[1]"]
+    assert incoming_node["status_advantage"] == "disadvantage"
+    assert incoming_node["status_sources"][0]["modifier"] == (
+        "holy_aura_incoming_attacks_disadvantage"
+    )
+    assert "holy_aura_blinding_save" not in incoming_node
+
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    out_of_range_save = tools.roll_save(
+        "pc2",
+        "dex",
+        difficulty_tier="medium",
+        idempotency_key="holy-aura-out-of-range-save",
+    )
+    out_of_range_attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20]),
+        AuditLog(),
+    ).execute(
+        _holy_aura_test_attack(range_ft=60),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="holy-aura-out-of-range-attack",
+    )
+
+    assert out_of_range_save["roll"]["advantage"] is None
+    assert out_of_range_attack.node_results["automation[1]"]["status_advantage"] is None
+
+
+def test_holy_aura_failed_post_hit_save_blinds_until_attacker_next_turn_ends(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots.update({"1": 1, "8": 1})
+    attacker = state.encounter.combatants["goblin1"]
+    attacker.creature_type = "fiend"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools._execute_action(
+        action_id="srd.holy_aura",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 8},
+        idempotency_key="cast-holy-aura-blind",
+    )
+
+    attack = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20, 1]),
+        AuditLog(),
+    ).execute(
+        _holy_aura_test_attack(),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="holy-aura-fiend-melee-hit",
+    )
+
+    attack_node = attack.node_results["automation[1]"]
+    assert attack_node["holy_aura_blinding_save"]["dc"] == 18
+    assert attack_node["holy_aura_blinding_save"]["success"] is False
+    blinded = next(effect for effect in attacker.status_effects if effect["condition"] == "blinded")
+    assert blinded["source_action_id"] == "srd.holy_aura"
+    assert blinded["duration"] == {
+        "until": "end_of_next_turn",
+        "remaining_ticks": 2,
+        "turn_owner_id": "goblin1",
+    }
+
+    cleared = AutomationExecutor(state, RollService(state), AuditLog())._clear_existing_concentration(
+        "pc1"
+    )
+    assert any(entry["source_action_id"] == "srd.holy_aura" for entry in cleared)
+    assert not any(
+        effect.get("source_action_id") == "srd.holy_aura"
+        for effect in state.world.active_effects
+    )
+    assert any(effect.get("condition") == "blinded" for effect in attacker.status_effects)
+
+    first_tick = tick_effects(state, trigger="self_turn_end", actor_id="goblin1")
+    assert first_tick.ticked[0]["remaining_ticks_after"] == 1
+    second_tick = tick_effects(state, trigger="self_turn_end", actor_id="goblin1")
+    assert second_tick.expired[0]["condition"] == "blinded"
+    assert not any(effect.get("condition") == "blinded" for effect in attacker.status_effects)
+
+
+@pytest.mark.parametrize(
+    ("creature_type", "range_ft", "attack_roll", "save_roll", "expects_save"),
+    [
+        ("humanoid", 5, 20, None, False),
+        ("fiend", 30, 20, None, False),
+        ("undead", 5, 1, None, False),
+        ("undead", 5, 20, 20, True),
+    ],
+)
+def test_holy_aura_post_hit_save_only_triggers_for_eligible_melee_hits(
+    make_state,
+    creature_type: str,
+    range_ft: int,
+    attack_roll: int,
+    save_roll: int | None,
+    expects_save: bool,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    attacker = state.encounter.combatants["goblin1"]
+    attacker.creature_type = creature_type
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(state, compendium, AuditLog())._execute_action(
+        action_id="srd.holy_aura",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 8},
+        idempotency_key=f"cast-holy-aura-{creature_type}-{range_ft}-{attack_roll}",
+    )
+    rolls = [attack_roll]
+    if save_roll is not None:
+        rolls.append(save_roll)
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService(rolls),
+        AuditLog(),
+    ).execute(
+        _holy_aura_test_attack(range_ft=range_ft),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key=f"holy-aura-trigger-{creature_type}-{range_ft}-{attack_roll}",
+    )
+
+    node = result.node_results["automation[1]"]
+    assert ("holy_aura_blinding_save" in node) is expects_save
+    if expects_save:
+        assert node["holy_aura_blinding_save"]["success"] is True
+    assert not any(effect.get("condition") == "blinded" for effect in attacker.status_effects)
+
+
+def test_holy_aura_blinding_respects_condition_immunity(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    caster.spell_slots["8"] = 1
+    attacker = state.encounter.combatants["goblin1"]
+    attacker.creature_type = "fiend"
+    attacker.status_effects.append(
+        {
+            "effect_id": "blinded-immunity",
+            "source_action_id": "test.blinded_immunity",
+            "passive_modifiers": {"condition_immunities": ["blinded"]},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    EngineTools(state, compendium, AuditLog())._execute_action(
+        action_id="srd.holy_aura",
+        actor_id="pc1",
+        targets=["pc2"],
+        params={"slot_level": 8},
+        idempotency_key="cast-holy-aura-immunity",
+    )
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([20, 1]),
+        AuditLog(),
+    ).execute(
+        _holy_aura_test_attack(),
+        actor_id="goblin1",
+        targets=["pc2"],
+        idempotency_key="holy-aura-blinded-immunity",
+    )
+
+    assert any(change["type"] == "condition_immune" for change in result.state_changes)
+    assert not any(effect.get("condition") == "blinded" for effect in attacker.status_effects)
+
+
+def test_holy_aura_rejects_chosen_creature_outside_emanation_before_slot_spend(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 15}
+    caster.spell_slots["8"] = 1
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="within the 30-foot Emanation"):
+        tools._execute_action(
+            action_id="srd.holy_aura",
+            actor_id="pc1",
+            targets=["pc2"],
+            params={"slot_level": 8},
+            idempotency_key="holy-aura-outside-emanation",
+        )
+
+    assert caster.spell_slots["8"] == 1
+
+
 def _fixed_damage_action(action_id: str, *, amount: int) -> ActionDefinition:
     return ActionDefinition(
         id=action_id,

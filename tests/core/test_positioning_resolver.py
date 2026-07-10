@@ -4671,6 +4671,57 @@ def test_resolver_checks_planar_binding_context_and_target_type(make_state) -> N
     assert invalid_target_type.reason == "target must be celestial, elemental, fey, fiend"
 
 
+def test_resolver_checks_holy_aura_chosen_creatures_are_in_emanation(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 15}
+    character.actions.append("srd.holy_aura")
+    character.prepared_spells.append("srd.spell.holy_aura")
+    character.spell_slots["8"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    outside = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣洁灵光",
+            target_ids=["pc2"],
+            candidate_action_id="srd.holy_aura",
+            params={"slot_level": 8},
+        )
+    )
+    state.encounter.combatants["pc2"].position_node_id = "front"
+    inside = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣洁灵光",
+            target_ids=["pc1", "pc2"],
+            candidate_action_id="srd.holy_aura",
+            params={"slot_level": 8},
+        )
+    )
+    empty_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣洁灵光",
+            target_ids=[],
+            candidate_action_id="srd.holy_aura",
+            params={"slot_level": 8},
+        )
+    )
+
+    assert outside.status == "rejected"
+    assert outside.reason == (
+        "Holy Aura chosen creatures must be within the 30-foot Emanation"
+    )
+    assert inside.status == "accepted"
+    assert inside.action_id == "srd.holy_aura"
+    assert empty_choice.status == "accepted"
+    assert empty_choice.action_id == "srd.holy_aura"
+
+
 def test_resolver_rejects_fast_hands_for_item_that_is_already_bonus_action(
     make_state,
 ) -> None:

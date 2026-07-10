@@ -179,6 +179,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.hallucinatory_terrain",
     "srd.hallow",
     "srd.heroes_feast",
+    "srd.holy_aura",
     "srd.mass_heal",
     "srd.phantasmal_killer",
     "srd.plane_shift",

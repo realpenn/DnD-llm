@@ -14,6 +14,7 @@ from .invariants import require_game_state_invariants
 from .models import Character, Combatant, GameState, Monster
 from .persistence import AuditLog
 from .positioning import TacticalGraph
+from .rules.auras import holy_aura_benefit_sources
 from .rules.checks import (
     actor_ability_modifier,
     charisma_check_minimum_d20_adjustment,
@@ -2105,6 +2106,14 @@ class EngineTools:
                         "modifier": "next_saving_throw_disadvantage",
                     }
                 )
+        advantage_sources.extend(
+            {
+                **source,
+                "modifier": "holy_aura_saving_throw_advantage",
+                "ability": ability,
+            }
+            for source in holy_aura_benefit_sources(self.state, actor_id)
+        )
         return (
             _merge_advantage(
                 "advantage" if advantage_sources else None,

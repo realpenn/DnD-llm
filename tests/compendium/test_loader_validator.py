@@ -48,6 +48,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.sunbeam",
         "srd.sunbeam_radiant_line",
         "srd.sunburst",
+        "srd.holy_aura",
         "srd.mind_blank",
         "srd.meteor_swarm",
         "srd.flame_strike",
@@ -3494,6 +3495,66 @@ def test_compendium_loads_srd_actions() -> None:
             "duration": {"until": "concentration_1_hour"},
             "tick_on": "self_turn_end",
             "concentration": True,
+        },
+    ]
+    holy_aura_spell = compendium.spell("srd.spell.holy_aura")
+    assert holy_aura_spell.level == 8
+    assert holy_aura_spell.school == "abjuration"
+    assert holy_aura_spell.classes == ["cleric"]
+    holy_aura = compendium.action("srd.holy_aura")
+    assert holy_aura.action_economy == "action"
+    assert holy_aura.requirements == {
+        "spell_level": 8,
+        "class_any": ["cleric"],
+    }
+    assert holy_aura.properties == {
+        "spell_classes": ["cleric"],
+        "components": ["V", "S", "M"],
+        "material_component": {
+            "description": "a reliquary worth 1,000+ GP",
+            "consumed": False,
+        },
+        "self_centered_emanation_radius_ft": 30,
+        "dynamic_chosen_creatures": True,
+        "no_higher_level_spell_slot_effect": True,
+        "spell_definition_id": "srd.spell.holy_aura",
+        "spell_level": 8,
+    }
+    assert holy_aura.cost.to_dict() == {
+        "spell_slot_level": 8,
+        "resources": {},
+        "resource_params": {},
+        "items": {},
+        "gold": 0,
+    }
+    assert holy_aura.range == {
+        "self": True,
+        "shape": "emanation",
+        "radius_ft": 30,
+    }
+    assert holy_aura.target_policy == {"min": 0, "harmful": False}
+    assert holy_aura.friendly_fire_policy == "raw"
+    assert holy_aura.automation == [
+        {"type": "target", "mode": "explicit", "optional": True},
+        {
+            "type": "world_effect",
+            "effect_type": "holy_aura",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 30},
+            "duration": {"until": "concentration_1_minute"},
+            "tick_on": "self_turn_end",
+            "concentration": True,
+            "metadata": {
+                "chosen_creature_ids": {"action_target_ids": True},
+                "spell_save_dc": {"spell_save_dc": "actor"},
+                "emanation_moves_with_caster": True,
+                "origin_included_only_if_chosen": True,
+                "all_saving_throws_advantage": True,
+                "other_creatures_attack_rolls_disadvantage": True,
+                "fiend_or_undead_melee_hit_requires_con_save": True,
+                "failed_save_condition": "blinded",
+                "blinded_until_end_of_attacker_next_turn": True,
+                "dynamic_aura_membership_fully_automated": True,
+            },
         },
     ]
     globe_of_invulnerability = compendium.action("srd.globe_of_invulnerability")
@@ -10140,6 +10201,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.fire_storm",
         "srd.spell.forcecage",
         "srd.spell.sunburst",
+        "srd.spell.holy_aura",
         "srd.spell.mind_blank",
         "srd.spell.meteor_swarm",
         "srd.spell.flame_strike",
