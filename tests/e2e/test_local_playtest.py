@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +45,115 @@ def test_local_playtest_replays_deterministically(tmp_path: Path) -> None:
     assert _without_timestamps(first_audit.to_dicts()) == _without_timestamps(
         second_audit.to_dicts()
     )
+
+
+def test_local_party_playtest_reloads_in_fresh_process_and_continues_combat(
+    tmp_path: Path,
+) -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    pack = CampaignPackLoader().load("rules_data/campaigns/starter/pack.json")
+    pack_report = CampaignPackValidator(compendium=compendium).validate(pack)
+    assert pack_report.ok, pack_report.errors
+
+    party = {
+        f"pc{index}": default_fighter(f"pc{index}", f"Penn {index}")
+        for index in range(1, 5)
+    }
+    state = GameState(campaign_id="blank", rng_seed=20260629, characters=party)
+    audit_log = AuditLog()
+    apply_campaign_pack(state, pack)
+    tools = EngineTools(state, compendium, audit_log)
+
+    for character_id in party:
+        moved = tools.move(
+            character_id,
+            to_zone_id="ruins",
+            idempotency_key=f"party-playtest:move:{character_id}",
+        )
+        assert moved["success"] is True
+    event = tools.trigger_event(
+        "starter.loose_stones",
+        actor_ids=list(party),
+        targets=list(party),
+    )
+    assert event["success"] is True
+
+    encounter_id = encounter_id_for_zone(pack, "ruins")
+    assert encounter_id is not None
+    session = GameSession(state, compendium, audit_log)
+    started = session.start_combat(
+        encounter_id=encounter_id,
+        combatants=build_encounter_combatants(
+            pack=pack,
+            encounter_id=encounter_id,
+            party=party,
+            compendium=compendium,
+            monster_start_node="front",
+        ),
+        tactical_graph=tactical_graph_for_zone(pack, "ruins"),
+        idempotency_key="party-playtest:start-combat",
+    )
+    assert isinstance(started, SessionResult)
+    assert started.accepted is True
+    assert state.encounter is not None
+
+    while state.encounter.current_combatant_id != "pc1":
+        session.advance_turn(f"party-playtest:advance:{state.encounter.turn_index}")
+    response = DMRuntime(session).handle_player_text(
+        actor_id="pc1",
+        text="DD 我用长剑攻击 Kobold Warrior",
+        idempotency_key="party-playtest:attack",
+    )
+    assert response.accepted is True
+    assert response.engine_payload["action_id"] == "srd.longsword_attack"
+    assert state.encounter.current_combatant_id is not None
+    while state.encounter.combatants[state.encounter.current_combatant_id].side != "monsters":
+        session.advance_turn(f"party-playtest:advance-after-attack:{state.encounter.turn_index}")
+
+    save_slot = tmp_path / "party-slot"
+    save_game(save_slot, state, audit_log)
+    repo_root = Path(__file__).parents[2]
+    pythonpath = [str(repo_root / "src"), os.environ.get("PYTHONPATH", "")]
+    child_code = """
+import json
+import sys
+from pathlib import Path
+
+from dnd_llm.core.compendium.loader import CompendiumLoader
+from dnd_llm.core.persistence import load_game
+from dnd_llm.orchestrator.session import GameSession
+
+state, audit = load_game(Path(sys.argv[1]))
+if state.encounter is None:
+    raise SystemExit("loaded game has no encounter")
+current = state.encounter.current_combatant_id
+if current is None or state.encounter.combatants[current].side != "monsters":
+    raise SystemExit("loaded game is not at a monster turn")
+session = GameSession(state, CompendiumLoader("rules_data").load(), audit)
+turn = session.run_current_monster_turn("party-playtest:fresh-process-monster-turn")
+if not turn.accepted:
+    raise SystemExit(f"monster turn rejected: {turn.payload}")
+print(json.dumps({
+    "character_ids": sorted(state.characters),
+    "action_id": turn.payload["action_id"],
+    "current_combatant_id": state.encounter.current_combatant_id,
+}, sort_keys=True))
+"""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(value for value in pythonpath if value)
+    child = subprocess.run(
+        [sys.executable, "-c", child_code, str(save_slot)],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert child.returncode == 0, child.stderr
+    child_payload = json.loads(child.stdout)
+    assert child_payload["character_ids"] == ["pc1", "pc2", "pc3", "pc4"]
+    assert child_payload["action_id"] in {"srd.kobold_dagger", "srd.dodge"}
+    assert child_payload["current_combatant_id"] == "pc1"
 
 
 def _run_local_playtest(
