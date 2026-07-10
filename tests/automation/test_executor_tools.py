@@ -26553,6 +26553,75 @@ def test_gate_spends_slot_and_records_concentration_planar_portal(make_state) ->
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 9
 
 
+def test_magnificent_mansion_spends_slot_and_records_nonconcentration_dwelling(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"bard": 13}
+    caster.spell_slots["7"] = 1
+    caster.gold = 20
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    result = tools.cast_spell(
+        "pc1",
+        "srd.magnificent_mansion",
+        [],
+        7,
+        idempotency_key="cast-magnificent-mansion",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["7"] == 0
+    assert caster.gold == 20
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.magnificent_mansion"
+    assert effect["effect_type"] == "magnificent_mansion"
+    assert effect["concentration"] is False
+    assert effect["scope"] == {"target": "point", "range_ft": 300}
+    assert effect["duration"] == {"until": "duration_24_hours"}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["metadata"] == {
+        "shimmering_door": True,
+        "door_width_ft": 5,
+        "door_height_ft": 10,
+        "designated_creatures_can_enter_while_open": True,
+        "caster_can_open_or_close_door_no_action_within_ft": 30,
+        "closed_door_imperceptible": True,
+        "extradimensional_dwelling": True,
+        "atmosphere": ["clean", "fresh", "warm"],
+        "floor_plan_chosen_by_caster": True,
+        "floor_plan_max_contiguous_cubes": 50,
+        "floor_plan_cube_size_ft": 10,
+        "dwelling_furnished_and_decorated_as_chosen": True,
+        "nine_course_banquet_food_max_people": 100,
+        "removed_furnishings_and_other_objects_dissipate": True,
+        "servant_count": 100,
+        "servants_near_transparent": True,
+        "servants_appearance_and_attire_chosen_by_caster": True,
+        "servants_invulnerable": True,
+        "servants_obey_caster_commands": True,
+        "servants_can_perform_human_tasks": True,
+        "servants_cannot_attack": True,
+        "servants_cannot_take_actions_that_directly_harm_another_creature": True,
+        "servants_cannot_leave_dwelling": True,
+        "spell_end_expels_creatures_and_objects_inside": True,
+        "expulsion_to_nearest_unoccupied_spaces_near_entrance": True,
+    }
+
+    world_effect_change = next(
+        change for change in result["state_changes"] if change["type"] == "world_effect"
+    )
+    assert world_effect_change["effect_type"] == "magnificent_mansion"
+    assert world_effect_change["concentration"] is False
+
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
+    assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
+    assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
+
+
 def test_demiplane_spends_slot_and_records_shadowy_door(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -182,6 +182,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.heroes_feast",
     "srd.holy_aura",
     "srd.mass_heal",
+    "srd.magnificent_mansion",
     "srd.phantasmal_killer",
     "srd.plane_shift",
     "srd.planar_binding",
