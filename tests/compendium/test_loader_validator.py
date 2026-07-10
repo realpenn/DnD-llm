@@ -865,10 +865,7 @@ def test_compendium_loads_srd_actions() -> None:
             "consumed": True,
             "consumed_gold": 1000,
             "non_consumed_components": [
-                (
-                    "sealable vessel worth 2,000+ GP large enough to hold the creature "
-                    "being cloned"
-                ),
+                ("sealable vessel worth 2,000+ GP large enough to hold the creature being cloned"),
             ],
         },
         "non_consumed_material_component_value_gp": 2000,
@@ -2426,9 +2423,7 @@ def test_compendium_loads_srd_actions() -> None:
         "description": "a leather strap",
         "consumed": False,
     }
-    assert (
-        freedom_of_movement.properties["higher_level_additional_targets_per_slot_above_4"] == 1
-    )
+    assert freedom_of_movement.properties["higher_level_additional_targets_per_slot_above_4"] == 1
     assert freedom_of_movement.cost.spell_slot_level == 4
     assert freedom_of_movement.range == {"touch": True}
     assert freedom_of_movement.target_policy == {
@@ -3329,9 +3324,7 @@ def test_compendium_loads_srd_actions() -> None:
         "planar_binding_target_within_range_entire_casting_param": (
             "planar_binding_target_within_range_entire_casting"
         ),
-        "planar_binding_source_spell_effect_id_param": (
-            "planar_binding_source_spell_effect_id"
-        ),
+        "planar_binding_source_spell_effect_id_param": ("planar_binding_source_spell_effect_id"),
         "spell_definition_id": "srd.spell.planar_binding",
         "spell_level": 5,
     }
@@ -4239,9 +4232,7 @@ def test_compendium_loads_srd_actions() -> None:
         "components": ["V", "S"],
         "summon_range_ft": 60,
         "summon_space": "visible_unoccupied_space",
-        "conjure_fey_visible_unoccupied_space_param": (
-            "conjure_fey_visible_unoccupied_space"
-        ),
+        "conjure_fey_visible_unoccupied_space_param": ("conjure_fey_visible_unoccupied_space"),
         "conjure_fey_target_within_5_ft_param": "conjure_fey_target_within_5_ft",
         "initial_attack_optional": True,
         "bonus_action_attack_action_id": "srd.conjure_fey_attack",
@@ -4319,9 +4310,7 @@ def test_compendium_loads_srd_actions() -> None:
         "spell_definition_id": "srd.spell.conjure_fey",
         "spell_classes": ["druid"],
         "spell_level": 6,
-        "conjure_fey_visible_unoccupied_space_param": (
-            "conjure_fey_visible_unoccupied_space"
-        ),
+        "conjure_fey_visible_unoccupied_space_param": ("conjure_fey_visible_unoccupied_space"),
         "conjure_fey_teleport_visible_unoccupied_space_param": (
             "conjure_fey_teleport_visible_unoccupied_space"
         ),
@@ -5210,8 +5199,7 @@ def test_compendium_loads_srd_actions() -> None:
         "components": ["V", "S", "M"],
         "material_component": {
             "description": (
-                "incense worth 250+ GP, consumed, and four ivory strips "
-                "worth 50+ GP each"
+                "incense worth 250+ GP, consumed, and four ivory strips worth 50+ GP each"
             ),
             "consumed": True,
             "consumed_gold": 250,
@@ -5294,8 +5282,7 @@ def test_compendium_loads_srd_actions() -> None:
                 "divine_beings_not_necessarily_omniscient": True,
                 "unclear_answer_if_beyond_deity_knowledge": True,
                 (
-                    "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_"
-                    "to_deity_interests"
+                    "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_to_deity_interests"
                 ): True,
                 "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
                 "answer_generation_not_automated": True,
@@ -5326,12 +5313,8 @@ def test_compendium_loads_srd_actions() -> None:
     assert commune.properties["casting_time"] == {"minutes": 1}
     assert commune.properties["components"] == ["V", "S"]
     assert commune.properties["facts_param"] == "commune_with_nature_facts"
-    assert commune.properties["allowed_list_params"] == {
-        "commune_with_nature_facts": commune_facts
-    }
-    assert commune.properties["required_list_param_counts"] == {
-        "commune_with_nature_facts": 3
-    }
+    assert commune.properties["allowed_list_params"] == {"commune_with_nature_facts": commune_facts}
+    assert commune.properties["required_list_param_counts"] == {"commune_with_nature_facts": 3}
     assert commune.properties["max_facts"] == 3
     assert commune.cost.spell_slot_level == 5
     assert commune.range == {"self": True}
@@ -9158,15 +9141,11 @@ def test_compendium_loads_srd_actions() -> None:
     assert "srd.blessed_strikes" not in compendium.classes["cleric"].levels["6"]["actions"]
     assert compendium.classes["cleric"].levels["7"]["features"] == ["Blessed Strikes"]
     assert "srd.blessed_strikes" in compendium.classes["cleric"].levels["7"]["actions"]
-    assert "srd.improved_blessed_strikes" not in compendium.classes["cleric"].levels["13"][
-        "actions"
-    ]
-    assert compendium.classes["cleric"].levels["14"]["features"] == [
-        "Improved Blessed Strikes"
-    ]
-    assert "srd.improved_blessed_strikes" in compendium.classes["cleric"].levels["14"][
-        "actions"
-    ]
+    assert (
+        "srd.improved_blessed_strikes" not in compendium.classes["cleric"].levels["13"]["actions"]
+    )
+    assert compendium.classes["cleric"].levels["14"]["features"] == ["Improved Blessed Strikes"]
+    assert "srd.improved_blessed_strikes" in compendium.classes["cleric"].levels["14"]["actions"]
     assert compendium.classes["cleric"].levels["17"]["features"] == ["Subclass Feature"]
     assert "srd.blessed_healer" in compendium.classes["cleric"].levels["6"]["actions"]
     assert "srd.supreme_healing" not in compendium.classes["cleric"].levels["16"]["actions"]

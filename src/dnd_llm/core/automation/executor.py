@@ -161,9 +161,7 @@ BLESSED_HEALER_ACTION_ID = "srd.blessed_healer"
 CLERIC_BLESSED_STRIKES_ACTION_ID = "srd.blessed_strikes"
 CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID = "srd.blessed_strikes_divine_strike"
 CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION = "blessed_strikes_divine_strike_used"
-CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING_ACTION_ID = (
-    "srd.blessed_strikes_potent_spellcasting"
-)
+CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING_ACTION_ID = "srd.blessed_strikes_potent_spellcasting"
 CLERIC_IMPROVED_BLESSED_STRIKES_ACTION_ID = "srd.improved_blessed_strikes"
 SUPREME_HEALING_ACTION_ID = "srd.supreme_healing"
 AURA_OF_PROTECTION_ACTION_ID = "srd.aura_of_protection"
@@ -1657,9 +1655,7 @@ class AutomationExecutor:
             if mishap_count > max_mishaps:
                 raise AutomationError("Teleport Mishap rerolled too many times")
             if target_mode == "object":
-                object_mishap_damage.append(
-                    self._roll_teleport_object_mishap_damage(ctx, node)
-                )
+                object_mishap_damage.append(self._roll_teleport_object_mishap_damage(ctx, node))
             else:
                 for target_id in affected_target_ids:
                     self._apply_teleport_mishap_damage(
@@ -4832,9 +4828,7 @@ class AutomationExecutor:
             before_max = int(getattr(target, "hp_max"))
             before_current = int(getattr(target, "hp_current"))
             prevention_sources = (
-                self._passive_hp_max_reduction_prevention_sources(target)
-                if amount < 0
-                else []
+                self._passive_hp_max_reduction_prevention_sources(target) if amount < 0 else []
             )
             if prevention_sources:
                 ctx.result.state_changes.append(
@@ -6012,11 +6006,15 @@ class AutomationExecutor:
             amount, rolls = self._roll_amount(ctx, node)
             return amount, rolls, None
         amount = self._minimum_amount(maximum + self._amount_bonus(ctx, node), node)
-        return amount, [], {
-            "source_action_id": SUPREME_HEALING_ACTION_ID,
-            "dice_expression": expression,
-            "maximized_dice_total": maximum,
-        }
+        return (
+            amount,
+            [],
+            {
+                "source_action_id": SUPREME_HEALING_ACTION_ID,
+                "dice_expression": expression,
+                "maximized_dice_total": maximum,
+            },
+        )
 
     def _supreme_healing_applies(self, ctx: _Context) -> bool:
         owner = self._resource_owner(ctx.actor_id)
@@ -6036,7 +6034,9 @@ class AutomationExecutor:
         has_dice = False
         for match in re.finditer(r"([+-]?)(?:(\d*)d(\d+)|(\d+))", cleaned, re.IGNORECASE):
             if match.start() != position:
-                raise AutomationError(f"unsupported dice expression for Supreme Healing: {expression}")
+                raise AutomationError(
+                    f"unsupported dice expression for Supreme Healing: {expression}"
+                )
             sign = -1 if match.group(1) == "-" else 1
             if match.group(3) is not None:
                 count = int(match.group(2) or "1")
@@ -8233,9 +8233,7 @@ class AutomationExecutor:
                 ctx.actor_id,
                 CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_USED_CONDITION,
             ),
-            source_ref=(
-                "SRD 5.2.1 Cleric Class Features: Level 7: Blessed Strikes, Divine Strike"
-            ),
+            source_ref=("SRD 5.2.1 Cleric Class Features: Level 7: Blessed Strikes, Divine Strike"),
             source_action_id=CLERIC_BLESSED_STRIKES_DIVINE_STRIKE_ACTION_ID,
             target_id=ctx.actor_id,
             applied_by=ctx.actor_id,
@@ -12105,9 +12103,7 @@ class AutomationExecutor:
             raise AutomationError(
                 "Dream requires the messenger to be the caster or willing touched creature"
             )
-        terrifying_param = str(
-            action.properties.get("dream_terrifying_param", "dream_terrifying")
-        )
+        terrifying_param = str(action.properties.get("dream_terrifying_param", "dream_terrifying"))
         if params.get(terrifying_param) is not True:
             return
         if not targets:
@@ -12138,9 +12134,7 @@ class AutomationExecutor:
                 "Planar Binding requires the target to remain within 60 feet "
                 "for the entire 1-hour casting"
             )
-        effect_id_param = action.properties.get(
-            "planar_binding_source_spell_effect_id_param"
-        )
+        effect_id_param = action.properties.get("planar_binding_source_spell_effect_id_param")
         if not isinstance(effect_id_param, str):
             return
         raw_effect_id = params.get(effect_id_param)
@@ -12440,7 +12434,9 @@ class AutomationExecutor:
             )
         )
         damage_param = str(
-            action.properties.get("extra_effect_damage_type_param", "hallow_extra_effect_damage_type")
+            action.properties.get(
+                "extra_effect_damage_type_param", "hallow_extra_effect_damage_type"
+            )
         )
         if effect in HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES:
             AutomationExecutor._normalize_hallow_list_param(
@@ -12599,7 +12595,9 @@ class AutomationExecutor:
             if not targets:
                 raise AutomationError("Resurrection requires a dead target")
             self._resurrection_dead_days(node, params)
-            if bool(params.get(str(node.get("died_of_old_age_param", "resurrection_old_age_death")))):
+            if bool(
+                params.get(str(node.get("died_of_old_age_param", "resurrection_old_age_death")))
+            ):
                 raise AutomationError("Resurrection cannot revive a creature that died of old age")
             allow_undead = bool(node.get("allow_undead_when_died", False))
             undead_when_died = bool(
@@ -12666,7 +12664,9 @@ class AutomationExecutor:
         node: dict[str, Any],
         params: dict[str, Any],
     ) -> bool | None:
-        param_name = str(node.get("original_body_exists_param", "true_resurrection_original_body_exists"))
+        param_name = str(
+            node.get("original_body_exists_param", "true_resurrection_original_body_exists")
+        )
         if param_name not in params:
             return None
         value = params[param_name]
@@ -12685,7 +12685,9 @@ class AutomationExecutor:
         node: dict[str, Any],
         params: dict[str, Any],
     ) -> str:
-        param_name = str(node.get("restored_creature_type_param", "true_resurrection_restored_creature_type"))
+        param_name = str(
+            node.get("restored_creature_type_param", "true_resurrection_restored_creature_type")
+        )
         restored = str(params.get(param_name, "")).strip().lower()
         allowed = HALLOW_EXTRA_EFFECT_CREATURE_TYPES - {"undead"}
         if restored not in allowed:
@@ -14555,9 +14557,7 @@ class AutomationExecutor:
                     )
                     if temp_hp_expired is not None:
                         removed_entry["temp_hp_expired"] = temp_hp_expired
-                    removed.append(
-                        removed_entry
-                    )
+                    removed.append(removed_entry)
                 else:
                     retained.append(effect)
             effects[:] = retained
@@ -15903,9 +15903,7 @@ class AutomationExecutor:
             return
         actor_owner = self._resource_owner(actor_id)
         if not isinstance(actor_owner, Character):
-            raise AutomationError(
-                "Improved Blessed Strikes Potent Spellcasting requires Cleric 14"
-            )
+            raise AutomationError("Improved Blessed Strikes Potent Spellcasting requires Cleric 14")
         if not (
             has_cleric_improved_blessed_strikes(actor_owner)
             and has_cleric_blessed_strikes_potent_spellcasting(actor_owner)
@@ -16678,8 +16676,7 @@ class AutomationExecutor:
         allocation_set = set(allocations)
         if allocation_set != target_set:
             raise AutomationError(
-                target_mismatch_error
-                or f"{param_name} must be assigned to exactly the targets"
+                target_mismatch_error or f"{param_name} must be assigned to exactly the targets"
             )
         for amount in allocations.values():
             if amount <= 0:
@@ -17213,9 +17210,7 @@ class AutomationExecutor:
             if action_economy not in blocked_economies:
                 continue
             source = effect.get("source_action_id") or effect.get("condition") or "effect"
-            raise AutomationError(
-                f"actor cannot take {action_economy} while affected by {source}"
-            )
+            raise AutomationError(f"actor cannot take {action_economy} while affected by {source}")
 
     def _entity_aliases(self, entity_id: str) -> set[str]:
         aliases = {entity_id}

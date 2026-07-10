@@ -144,19 +144,13 @@ def _validate_duration_from_param(duration: dict[str, Any], path: str) -> list[s
         errors.append(f"{path}: duration.duration_from_param.param must be a string")
     by_value = spec.get("by_value")
     if not isinstance(by_value, dict) or not by_value:
-        errors.append(
-            f"{path}: duration.duration_from_param.by_value must be a non-empty object"
-        )
+        errors.append(f"{path}: duration.duration_from_param.by_value must be a non-empty object")
         return errors
     for value_key, until in by_value.items():
         if not isinstance(value_key, str) or not value_key:
-            errors.append(
-                f"{path}: duration.duration_from_param.by_value keys must be strings"
-            )
+            errors.append(f"{path}: duration.duration_from_param.by_value keys must be strings")
         if not isinstance(until, str) or not until:
-            errors.append(
-                f"{path}: duration.duration_from_param.by_value values must be strings"
-            )
+            errors.append(f"{path}: duration.duration_from_param.by_value values must be strings")
     return errors
 
 
@@ -325,21 +319,18 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             not isinstance(negated_reason, str) or not negated_reason
         ):
             errors.append(
-                f"{path}: instant_death.death_ward_negated_reason "
-                "must be a non-empty string"
+                f"{path}: instant_death.death_ward_negated_reason must be a non-empty string"
             )
     if node_type == "optional_reaction_remove_condition":
         condition = node.get("condition")
         if not isinstance(condition, str) or not condition:
             errors.append(
-                f"{path}: optional_reaction_remove_condition.condition "
-                "must be a non-empty string"
+                f"{path}: optional_reaction_remove_condition.condition must be a non-empty string"
             )
         param = node.get("param")
         if param is not None and (not isinstance(param, str) or not param):
             errors.append(
-                f"{path}: optional_reaction_remove_condition.param "
-                "must be a non-empty string"
+                f"{path}: optional_reaction_remove_condition.param must be a non-empty string"
             )
     if node_type == "healing_pool":
         points_param = node.get("points_param", "healing_points")
@@ -400,16 +391,16 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.extend(_validate_duration_from_slot(duration, path))
             errors.extend(_validate_duration_from_param(duration, path))
             errors.extend(_validate_repeat_save(duration, path))
-    if node_type == "condition" and "requires_hit" in node and not isinstance(
-        node["requires_hit"],
-        bool,
+    if (
+        node_type == "condition"
+        and "requires_hit" in node
+        and not isinstance(
+            node["requires_hit"],
+            bool,
+        )
     ):
         errors.append(f"{path}: requires_hit must be a boolean")
-    if (
-        node_type == "attack_roll"
-        and "spell_attack" in node
-        and node["spell_attack"] != "actor"
-    ):
+    if node_type == "attack_roll" and "spell_attack" in node and node["spell_attack"] != "actor":
         errors.append(f"{path}: spell_attack supports only actor")
     if (
         node_type in {"damage", "condition", "passive_effect"}
@@ -567,7 +558,10 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         direction_table = node.get("direction_table")
         if direction_table is not None and (
             not isinstance(direction_table, dict)
-            or not all(str(key).isdigit() and isinstance(value, str) and value for key, value in direction_table.items())
+            or not all(
+                str(key).isdigit() and isinstance(value, str) and value
+                for key, value in direction_table.items()
+            )
         ):
             errors.append(f"{path}: teleport_outcome direction_table must map dice to strings")
     if node_type == "preserve_life_healing":

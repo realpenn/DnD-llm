@@ -529,9 +529,7 @@ def _add_dream_params(params: dict[str, Any], action: ActionDefinition) -> None:
 
 
 def _add_planar_binding_params(params: dict[str, Any], action: ActionDefinition) -> None:
-    range_param = action.properties.get(
-        "planar_binding_target_within_range_entire_casting_param"
-    )
+    range_param = action.properties.get("planar_binding_target_within_range_entire_casting_param")
     if isinstance(range_param, str) and range_param:
         params[range_param] = True
 

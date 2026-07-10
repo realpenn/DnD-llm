@@ -55,10 +55,7 @@ def test_local_party_playtest_reloads_in_fresh_process_and_continues_combat(
     pack_report = CampaignPackValidator(compendium=compendium).validate(pack)
     assert pack_report.ok, pack_report.errors
 
-    party = {
-        f"pc{index}": default_fighter(f"pc{index}", f"Penn {index}")
-        for index in range(1, 5)
-    }
+    party = {f"pc{index}": default_fighter(f"pc{index}", f"Penn {index}") for index in range(1, 5)}
     state = GameState(campaign_id="blank", rng_seed=20260629, characters=party)
     audit_log = AuditLog()
     apply_campaign_pack(state, pack)

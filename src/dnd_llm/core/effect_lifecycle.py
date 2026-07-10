@@ -229,9 +229,7 @@ def _expire_child_effects(
                     effect_id = effect.get("effect_id")
                     if isinstance(effect_id, str) and effect_id:
                         result.ticked[:] = [
-                            entry
-                            for entry in result.ticked
-                            if entry.get("effect_id") != effect_id
+                            entry for entry in result.ticked if entry.get("effect_id") != effect_id
                         ]
                     entry = _entry(
                         effect,

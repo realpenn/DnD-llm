@@ -23,8 +23,7 @@ def holy_aura_benefit_sources(
             continue
         chosen = metadata.get("chosen_creature_ids", [])
         if not isinstance(chosen, list) or not any(
-            target_aliases & _entity_aliases(state, str(chosen_id))
-            for chosen_id in chosen
+            target_aliases & _entity_aliases(state, str(chosen_id)) for chosen_id in chosen
         ):
             continue
         source_actor_id = effect.get("applied_by")

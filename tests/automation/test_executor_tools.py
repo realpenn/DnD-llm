@@ -17015,8 +17015,7 @@ def test_mislead_applies_invisibility_and_persistent_illusory_double(
 
     assert attack.success is True
     assert not any(
-        active.get("source_action_id") == "srd.mislead"
-        and active.get("condition") == "invisible"
+        active.get("source_action_id") == "srd.mislead" and active.get("condition") == "invisible"
         for active in state.encounter.combatants["pc1"].status_effects
     )
     expiry = next(change for change in attack.state_changes if change["type"] == "effect_expired")
@@ -18441,7 +18440,10 @@ def test_banishment_upcast_adds_one_target_per_slot_above_four(make_state) -> No
     assert cost_change["base_spell_slot_level"] == 4
     assert cost_change["spell_slot_level"] == 5
     assert all(
-        any(effect["passive_modifiers"].get("banished") is True for effect in combatant.status_effects)
+        any(
+            effect["passive_modifiers"].get("banished") is True
+            for effect in combatant.status_effects
+        )
         for combatant in (
             state.encounter.combatants["goblin1"],
             state.encounter.combatants["goblin2"],
@@ -18592,7 +18594,11 @@ def test_banishment_fiend_does_not_return_after_full_duration(make_state) -> Non
         lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
 
     assert lifecycle is not None
-    completion = next(entry["banishment_completed"] for entry in lifecycle.expired if "banishment_completed" in entry)
+    completion = next(
+        entry["banishment_completed"]
+        for entry in lifecycle.expired
+        if "banishment_completed" in entry
+    )
     assert completion == {
         "target_id": "goblin1",
         "creature_type": "fiend",
@@ -18741,8 +18747,7 @@ def test_death_ward_does_not_trigger_when_target_already_at_zero_hp(make_state) 
     assert not any(change["type"] == "death_ward" for change in damage.state_changes)
     assert protected.hp_current == 0
     assert any(
-        effect["passive_modifiers"].get("death_ward") is True
-        for effect in protected.status_effects
+        effect["passive_modifiers"].get("death_ward") is True for effect in protected.status_effects
     )
 
 
@@ -18935,12 +18940,16 @@ def test_prismatic_spray_rolls_color_and_save_independently_for_each_target(make
 
     assert result["success"] is True
     spray_results = result["node_results"]["automation[3]"]
-    assert [(item["color_roll"], item["damage_type"], item["save_success"]) for item in spray_results] == [
+    assert [
+        (item["color_roll"], item["damage_type"], item["save_success"]) for item in spray_results
+    ] == [
         (1, "fire", True),
         (2, "acid", False),
     ]
     damage_changes = [change for change in result["state_changes"] if change["type"] == "damage"]
-    assert [(change["target_id"], change["damage_type"], change["amount"]) for change in damage_changes] == [
+    assert [
+        (change["target_id"], change["damage_type"], change["amount"]) for change in damage_changes
+    ] == [
         ("goblin1", "fire", 4),
         ("goblin2", "acid", 8),
     ]
@@ -19199,9 +19208,7 @@ def test_reverse_gravity_failed_save_records_upward_fall_and_cylinder(
 
     lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     ticks = [
-        entry
-        for entry in lifecycle.ticked
-        if entry["source_action_id"] == "srd.reverse_gravity"
+        entry for entry in lifecycle.ticked if entry["source_action_id"] == "srd.reverse_gravity"
     ]
     assert len(ticks) == 2
     assert {entry["remaining_ticks_before"] for entry in ticks} == {10}
@@ -19302,9 +19309,7 @@ def test_earthquake_failed_save_prones_target_breaks_concentration_and_records_a
 
     lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     earthquake_ticks = [
-        entry
-        for entry in lifecycle.ticked
-        if entry["source_action_id"] == "srd.earthquake"
+        entry for entry in lifecycle.ticked if entry["source_action_id"] == "srd.earthquake"
     ]
     assert len(earthquake_ticks) == 2
     assert {entry["remaining_ticks_before"] for entry in earthquake_ticks} == {10}
@@ -19397,8 +19402,7 @@ def test_reverse_gravity_successful_save_records_cylinder_without_target_effect(
     assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+0"]
     assert not any(change["type"] == "damage" for change in result["state_changes"])
     assert not any(
-        effect["source_action_id"] == "srd.reverse_gravity"
-        for effect in target.status_effects
+        effect["source_action_id"] == "srd.reverse_gravity" for effect in target.status_effects
     )
     assert state.world.active_effects[-1]["effect_type"] == "reverse_gravity_cylinder"
 
@@ -19617,9 +19621,16 @@ def test_sequester_effects_end_when_target_takes_any_damage(make_state) -> None:
         params={"slot_level": 7, "target_willing": True},
         idempotency_key="cast-sequester-before-damage",
     )
-    assert len(
-        [effect for effect in target.status_effects if effect["source_action_id"] == "srd.sequester"]
-    ) == 3
+    assert (
+        len(
+            [
+                effect
+                for effect in target.status_effects
+                if effect["source_action_id"] == "srd.sequester"
+            ]
+        )
+        == 3
+    )
     passive = target.status_effects[-1]
     assert passive["passive_modifiers"]["early_end_condition"] is None
 
@@ -20823,11 +20834,12 @@ def test_eyebite_children_clear_when_source_concentration_ends(make_state) -> No
     )
 
     assert result["success"] is True
-    assert not any(effect.get("source_action_id") == "srd.eyebite" for effect in target.status_effects)
+    assert not any(
+        effect.get("source_action_id") == "srd.eyebite" for effect in target.status_effects
+    )
     assert second_target.status_effects == []
     assert not any(
-        effect.get("effect_type") == "eyebite_active"
-        for effect in state.world.active_effects
+        effect.get("effect_type") == "eyebite_active" for effect in state.world.active_effects
     )
     assert state.world.active_effects[-1]["source_action_id"] == "srd.detect_magic"
     cleared = next(
@@ -21729,8 +21741,7 @@ def test_mass_heal_distributes_700_hp_and_removes_srd_conditions(make_state) -> 
     assert [change["applied"] for change in healing_changes] == [490, 210]
     assert all(change["healing_pool_max_points"] == 700 for change in healing_changes)
     assert all(
-        change["healing_pool_points_param"] == "mass_heal_points"
-        for change in healing_changes
+        change["healing_pool_points_param"] == "mass_heal_points" for change in healing_changes
     )
     assert ally.hp_current == 500
     assert undead.hp_current == 211
@@ -22599,8 +22610,7 @@ def test_dominate_beast_charms_beast_and_repeats_save_on_any_damage(
     expiry = next(
         change
         for change in successful_repeat.state_changes
-        if change["type"] == "effect_expired"
-        and change.get("reason") == "repeat_save_success"
+        if change["type"] == "effect_expired" and change.get("reason") == "repeat_save_success"
     )
     assert expiry["trigger"] == "damage"
     assert expiry["removed"][0]["source_action_id"] == "srd.dominate_beast"
@@ -22787,8 +22797,7 @@ def test_dominate_person_charms_humanoid_and_repeats_save_on_any_damage(
     expiry = next(
         change
         for change in successful_repeat.state_changes
-        if change["type"] == "effect_expired"
-        and change.get("reason") == "repeat_save_success"
+        if change["type"] == "effect_expired" and change.get("reason") == "repeat_save_success"
     )
     assert expiry["trigger"] == "damage"
     assert expiry["removed"][0]["source_action_id"] == "srd.dominate_person"
@@ -22977,8 +22986,7 @@ def test_dominate_monster_charms_any_creature_and_repeats_save_on_damage(
     expiry = next(
         change
         for change in successful_repeat.state_changes
-        if change["type"] == "effect_expired"
-        and change.get("reason") == "repeat_save_success"
+        if change["type"] == "effect_expired" and change.get("reason") == "repeat_save_success"
     )
     assert expiry["trigger"] == "damage"
     assert expiry["removed"][0]["source_action_id"] == "srd.dominate_monster"
@@ -23769,9 +23777,7 @@ def test_commune_with_nature_can_be_cast_as_ritual_without_spending_slot(
         "casting_time_extra_minutes": 10,
         "source": "prepared_spell",
     }
-    assert not any(
-        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
-    )
+    assert not any(change.get("resource") == "spell_slot_5" for change in result["state_changes"])
     assert state.world.active_effects[-1]["metadata"]["facts_chosen"] == facts
 
 
@@ -24033,9 +24039,7 @@ def test_antimagic_field_records_aura_and_blocks_caster_spellcasting(
 
     lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     ticks = [
-        entry
-        for entry in lifecycle.ticked
-        if entry["source_action_id"] == "srd.antimagic_field"
+        entry for entry in lifecycle.ticked if entry["source_action_id"] == "srd.antimagic_field"
     ]
     assert len(ticks) == 2
     assert {entry["remaining_ticks_before"] for entry in ticks} == {600}
@@ -24337,7 +24341,9 @@ def test_hallow_rejects_invalid_or_missing_choices_before_spending_cost(make_sta
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(state, compendium, AuditLog())
 
-    with pytest.raises(AutomationError, match="missing required parameter hallow_extra_effect_damage_type"):
+    with pytest.raises(
+        AutomationError, match="missing required parameter hallow_extra_effect_damage_type"
+    ):
         tools._execute_action(
             action_id="srd.hallow",
             actor_id="pc1",
@@ -25153,9 +25159,7 @@ def test_conjure_minor_elementals_records_emanation_and_adds_chosen_attack_damag
         "1d6+3",
         "2d8",
     ]
-    damage_change = next(
-        change for change in attack["state_changes"] if change["type"] == "damage"
-    )
+    damage_change = next(change for change in attack["state_changes"] if change["type"] == "damage")
     assert damage_change["extra_damage"] == [
         {
             "amount": 7,
@@ -25224,9 +25228,7 @@ def test_conjure_minor_elementals_upcast_increases_attack_damage_dice(
         "1d6+3",
         "3d8",
     ]
-    damage_change = next(
-        change for change in attack["state_changes"] if change["type"] == "damage"
-    )
+    damage_change = next(change for change in attack["state_changes"] if change["type"] == "damage")
     assert damage_change["extra_damage"][0]["amount"] == 9
     assert damage_change["extra_damage"][0]["damage_type"] == "lightning"
     assert damage_change["extra_damage"][0]["sources"][0]["dice"] == "3d8"
@@ -25304,9 +25306,7 @@ def test_conjure_minor_elementals_does_not_trigger_against_distant_target(
         idempotency_key="conjure-minor-elementals-distant-hit",
     )
 
-    damage_change = next(
-        change for change in attack["state_changes"] if change["type"] == "damage"
-    )
+    damage_change = next(change for change in attack["state_changes"] if change["type"] == "damage")
     assert "extra_damage" not in damage_change
     assert target.hp_current == 25
 
@@ -26241,9 +26241,7 @@ def test_heroes_feast_consumes_bowl_gold_and_grants_partaker_benefits(
     poison_damage = next(change for change in poison.state_changes if change["type"] == "damage")
     assert poison_damage["amount"] == 5
     assert poison_damage["applied"] == 2
-    assert poison_damage["damage_resistance_sources"][0]["source_action_id"] == (
-        "srd.heroes_feast"
-    )
+    assert poison_damage["damage_resistance_sources"][0]["source_action_id"] == ("srd.heroes_feast")
 
     frightened_action = ActionDefinition(
         id="test.heroes_feast.frightened",
@@ -26272,9 +26270,7 @@ def test_heroes_feast_consumes_bowl_gold_and_grants_partaker_benefits(
 
     lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
     heroes_ticks = [
-        entry
-        for entry in lifecycle.ticked
-        if entry["effect_id"] == effects["pc2"]["effect_id"]
+        entry for entry in lifecycle.ticked if entry["effect_id"] == effects["pc2"]["effect_id"]
     ]
     assert heroes_ticks[0]["remaining_ticks_before"] == 14400
     assert heroes_ticks[0]["remaining_ticks_after"] == 14399
@@ -27098,7 +27094,9 @@ def test_maze_escape_study_failure_keeps_effect_and_success_ends_spell(make_stat
             "condition": None,
         }
     ]
-    assert not any(effect["source_action_id"] == "srd.maze" for effect in escaped_target.status_effects)
+    assert not any(
+        effect["source_action_id"] == "srd.maze" for effect in escaped_target.status_effects
+    )
 
 
 def test_maze_out_of_play_blocks_other_actions_but_allows_escape(make_state) -> None:
@@ -27430,7 +27428,10 @@ def test_legend_lore_spends_consumed_incense_and_records_gm_lore_request(
     )
     assert world_effect_change["effect_type"] == "legend_lore_summary"
     assert world_effect_change["concentration"] is False
-    assert not any(change["type"] in {"damage", "saving_throw", "condition"} for change in result["state_changes"])
+    assert not any(
+        change["type"] in {"damage", "saving_throw", "condition"}
+        for change in result["state_changes"]
+    )
 
 
 def test_legend_lore_requires_consumed_incense_before_spending_slot(make_state) -> None:
@@ -27585,9 +27586,7 @@ def test_contact_other_plane_can_be_cast_as_ritual_without_spending_spell_slot(
         "casting_time_extra_minutes": 10,
         "source": "prepared_spell",
     }
-    assert not any(
-        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
-    )
+    assert not any(change.get("resource") == "spell_slot_5" for change in result["state_changes"])
     assert state.world.active_effects[-1]["effect_type"] == "contact_other_plane_answer_window"
 
 
@@ -27765,10 +27764,7 @@ def test_commune_records_one_minute_divine_answer_window(make_state) -> None:
         "receives_correct_answer_for_each_question": True,
         "divine_beings_not_necessarily_omniscient": True,
         "unclear_answer_if_beyond_deity_knowledge": True,
-        (
-            "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_"
-            "to_deity_interests"
-        ): True,
+        ("gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_to_deity_interests"): True,
         "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
         "answer_generation_not_automated": True,
         "repeat_casting_chance_not_automated": True,
@@ -27817,9 +27813,7 @@ def test_commune_can_be_cast_as_ritual_without_spending_spell_slot(make_state) -
         "casting_time_extra_minutes": 10,
         "source": "prepared_spell",
     }
-    assert not any(
-        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
-    )
+    assert not any(change.get("resource") == "spell_slot_5" for change in result["state_changes"])
     assert state.world.active_effects[-1]["effect_type"] == "commune_answer_window"
 
 
@@ -27935,9 +27929,7 @@ def test_telepathic_bond_can_be_cast_as_ritual_without_spending_spell_slot(
         "casting_time_extra_minutes": 10,
         "source": "prepared_spell",
     }
-    assert not any(
-        change.get("resource") == "spell_slot_5" for change in result["state_changes"]
-    )
+    assert not any(change.get("resource") == "spell_slot_5" for change in result["state_changes"])
     assert state.world.active_effects[-1]["effect_type"] == "telepathic_bond"
 
 
@@ -28557,9 +28549,7 @@ def test_power_word_kill_high_hp_deals_srd_psychic_damage(make_state) -> None:
     assert damage_roll["expression"] == "12d12"
     assert len(damage_roll["dice"]) == 12
     assert {die["sides"] for die in damage_roll["dice"]} == {12}
-    damage_change = next(
-        change for change in result["state_changes"] if change["type"] == "damage"
-    )
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
     assert damage_change["path"] == "automation[1].if_false[0]"
     assert damage_change["amount"] == damage_roll["total"]
     assert damage_change["applied"] == damage_roll["total"]
@@ -29599,7 +29589,9 @@ def test_resurrection_revives_with_full_hp_and_long_rest_reduces_penalty(
     assert caster.spell_slots["7"] == 0
     assert caster.gold == 0
     assert [roll["expression"] for roll in result["dice_rolls"]] == []
-    assert not any(change["type"] in {"damage", "saving_throw"} for change in result["state_changes"])
+    assert not any(
+        change["type"] in {"damage", "saving_throw"} for change in result["state_changes"]
+    )
     cost_resources = [
         change["resource"] for change in result["state_changes"] if change["type"] == "cost"
     ]
@@ -29745,7 +29737,9 @@ def test_resurrection_caster_tax_for_creature_dead_at_least_365_days(
         "attack_roll_disadvantage": True,
     }
     assert caster_tax["duration"] == {"until": "long_rest"}
-    with pytest.raises(AutomationError, match="actor cannot cast spells while affected by srd.resurrection"):
+    with pytest.raises(
+        AutomationError, match="actor cannot cast spells while affected by srd.resurrection"
+    ):
         tools.cast_spell(
             "pc1",
             "srd.cure_wounds",
@@ -29863,7 +29857,9 @@ def test_true_resurrection_revives_and_cleans_magical_contagions_and_curses(
     assert caster.spell_slots["9"] == 0
     assert caster.gold == 0
     assert [roll["expression"] for roll in result["dice_rolls"]] == []
-    assert not any(change["type"] in {"damage", "saving_throw"} for change in result["state_changes"])
+    assert not any(
+        change["type"] in {"damage", "saving_throw"} for change in result["state_changes"]
+    )
     cost_resources = [
         change["resource"] for change in result["state_changes"] if change["type"] == "cost"
     ]
@@ -29935,9 +29931,7 @@ def test_true_resurrection_restores_undead_to_non_undead_form(make_state) -> Non
     )
 
     type_change = next(
-        change
-        for change in result["state_changes"]
-        if change["type"] == "creature_type_restored"
+        change for change in result["state_changes"] if change["type"] == "creature_type_restored"
     )
     assert type_change["creature_type_before"] == "undead"
     assert type_change["creature_type_after"] == "humanoid"
@@ -33936,15 +33930,12 @@ def test_planar_binding_extends_source_spell_even_when_target_saves(make_state) 
     assert result["success"] is True
     assert state.world.active_effects[0]["duration"] == {"until": "duration_180_days"}
     extension = next(
-        change
-        for change in result["state_changes"]
-        if change["type"] == "effect_duration_extended"
+        change for change in result["state_changes"] if change["type"] == "effect_duration_extended"
     )
     assert extension["effect_id"] == "summoned-fey-spell-effect"
     assert extension["duration"] == {"until": "duration_180_days"}
     assert not any(
-        effect.get("source_action_id") == "srd.planar_binding"
-        for effect in target.status_effects
+        effect.get("source_action_id") == "srd.planar_binding" for effect in target.status_effects
     )
 
 
@@ -34139,9 +34130,7 @@ def test_holy_aura_dynamic_membership_grants_save_advantage_and_attack_disadvant
     )
 
     assert direct_save["roll"]["advantage"] == "advantage"
-    assert direct_save["status_sources"][0]["modifier"] == (
-        "holy_aura_saving_throw_advantage"
-    )
+    assert direct_save["status_sources"][0]["modifier"] == ("holy_aura_saving_throw_advantage")
     automation_save_node = automation_save.node_results["automation[0]"]
     assert automation_save_node["status_advantage"] == "advantage"
     assert automation_save_node["status_sources"][0]["modifier"] == (
@@ -34221,13 +34210,12 @@ def test_holy_aura_failed_post_hit_save_blinds_until_attacker_next_turn_ends(
         "turn_owner_id": "goblin1",
     }
 
-    cleared = AutomationExecutor(state, RollService(state), AuditLog())._clear_existing_concentration(
-        "pc1"
-    )
+    cleared = AutomationExecutor(
+        state, RollService(state), AuditLog()
+    )._clear_existing_concentration("pc1")
     assert any(entry["source_action_id"] == "srd.holy_aura" for entry in cleared)
     assert not any(
-        effect.get("source_action_id") == "srd.holy_aura"
-        for effect in state.world.active_effects
+        effect.get("source_action_id") == "srd.holy_aura" for effect in state.world.active_effects
     )
     assert any(effect.get("condition") == "blinded" for effect in attacker.status_effects)
 

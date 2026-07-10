@@ -177,7 +177,9 @@ def test_natural_language_character_edit_assigns_cleric_blessed_strikes_divine_s
     assert "srd.blessed_strikes_potent_spellcasting" not in result.character.actions
 
 
-def test_natural_language_character_edit_assigns_cleric_blessed_strikes_potent_spellcasting() -> None:
+def test_natural_language_character_edit_assigns_cleric_blessed_strikes_potent_spellcasting() -> (
+    None
+):
     character = default_fighter("pc1", "Penn")
 
     result = apply_natural_language_character_edit(
@@ -188,9 +190,7 @@ def test_natural_language_character_edit_assigns_cleric_blessed_strikes_potent_s
     assert result.accepted is True
     assert result.character is not None
     assert result.character.class_levels == {"cleric": 7}
-    assert result.character.feature_choices == {
-        "cleric.blessed_strikes": "potent_spellcasting"
-    }
+    assert result.character.feature_choices == {"cleric.blessed_strikes": "potent_spellcasting"}
     assert "srd.blessed_strikes" in result.character.actions
     assert "srd.blessed_strikes_potent_spellcasting" in result.character.actions
     assert "srd.improved_blessed_strikes" not in result.character.actions
@@ -208,9 +208,7 @@ def test_natural_language_character_edit_assigns_cleric_improved_blessed_strikes
     assert result.accepted is True
     assert result.character is not None
     assert result.character.class_levels == {"cleric": 14}
-    assert result.character.feature_choices == {
-        "cleric.blessed_strikes": "potent_spellcasting"
-    }
+    assert result.character.feature_choices == {"cleric.blessed_strikes": "potent_spellcasting"}
     assert "srd.blessed_strikes" in result.character.actions
     assert "srd.blessed_strikes_potent_spellcasting" in result.character.actions
     assert "srd.improved_blessed_strikes" in result.character.actions

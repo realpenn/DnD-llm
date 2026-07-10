@@ -520,10 +520,7 @@ def has_cleric_blessed_strikes_divine_strike(character: Character) -> bool:
 
 
 def has_cleric_blessed_strikes_potent_spellcasting(character: Character) -> bool:
-    return (
-        cleric_blessed_strikes_choice(character)
-        == CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING
-    )
+    return cleric_blessed_strikes_choice(character) == CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING
 
 
 def has_cleric_improved_blessed_strikes(character: Character) -> bool:

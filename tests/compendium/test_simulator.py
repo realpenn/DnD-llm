@@ -33,9 +33,7 @@ def test_prismatic_spray_simulation_resolves_automated_ray_subset() -> None:
     assert report.ok is True
     assert report.result is not None
     spray_results = next(
-        value
-        for value in report.result["node_results"].values()
-        if isinstance(value, list)
+        value for value in report.result["node_results"].values() if isinstance(value, list)
     )
     assert len(spray_results) == 1
     assert spray_results[0]["target_id"] == "npc_enemy"

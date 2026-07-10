@@ -761,9 +761,7 @@ WIZARD_SCHOLAR_SKILLS = frozenset(
 FEATURE_CHOICE_ACTIONS = {
     CLERIC_BLESSED_STRIKES_CHOICE_KEY: {
         CLERIC_BLESSED_STRIKES_DIVINE_STRIKE: ["srd.blessed_strikes_divine_strike"],
-        CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING: [
-            "srd.blessed_strikes_potent_spellcasting"
-        ],
+        CLERIC_BLESSED_STRIKES_POTENT_SPELLCASTING: ["srd.blessed_strikes_potent_spellcasting"],
     },
     HUNTERS_PREY_CHOICE_KEY: {
         HUNTERS_PREY_COLOSSUS_SLAYER: ["srd.hunters_prey_colossus_slayer"],

@@ -44,9 +44,7 @@ RESOLVER_ATTACK_ACTION_TYPES = {"weapon_attack", "monster_attack", "unarmed_atta
 RESOLVER_CONJURE_MINOR_ELEMENTALS_ACTION_ID = "srd.conjure_minor_elementals"
 RESOLVER_CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE = "conjure_minor_elementals_emanation"
 RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_type"
-RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
-    {"acid", "cold", "fire", "lightning"}
-)
+RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "lightning"})
 RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 RESOLVER_CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 RESOLVER_DREAM_ACTION_ID = "srd.dream"
@@ -700,15 +698,13 @@ class ActionResolver:
             return None
         if isinstance(raw, (dict, list)):
             return (
-                f"parameter {RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} "
-                "must be a scalar"
+                f"parameter {RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} must be a scalar"
             )
         normalized = str(raw).casefold().strip()
         if normalized not in RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES:
             expected = ", ".join(sorted(RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES))
             return (
-                f"{RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} must be one of: "
-                f"{expected}"
+                f"{RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM} must be one of: {expected}"
             )
         draft.params[RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM] = normalized
         return None
@@ -756,9 +752,7 @@ class ActionResolver:
         messenger_param = action.properties.get("dream_messenger_willing_touched_param")
         if isinstance(messenger_param, str) and draft.params.get(messenger_param) is not True:
             return "Dream requires the messenger to be the caster or willing touched creature"
-        terrifying_param = str(
-            action.properties.get("dream_terrifying_param", "dream_terrifying")
-        )
+        terrifying_param = str(action.properties.get("dream_terrifying_param", "dream_terrifying"))
         if draft.params.get(terrifying_param) is not True:
             return None
         if not draft.target_ids:
@@ -786,9 +780,7 @@ class ActionResolver:
                 "Planar Binding requires the target to remain within 60 feet "
                 "for the entire 1-hour casting"
             )
-        effect_id_param = action.properties.get(
-            "planar_binding_source_spell_effect_id_param"
-        )
+        effect_id_param = action.properties.get("planar_binding_source_spell_effect_id_param")
         if not isinstance(effect_id_param, str):
             return None
         raw_effect_id = draft.params.get(effect_id_param)
@@ -844,9 +836,7 @@ class ActionResolver:
             )
         for monster in self.state.monsters.values():
             matches.extend(
-                effect
-                for effect in monster.status_effects
-                if effect.get("effect_id") == effect_id
+                effect for effect in monster.status_effects if effect.get("effect_id") == effect_id
             )
         if self.state.encounter is not None:
             for combatant in self.state.encounter.combatants.values():
@@ -944,7 +934,9 @@ class ActionResolver:
         allowed_raw = action.properties.get("allowed_eyebite_effects")
         allowed = {
             str(choice).casefold().strip()
-            for choice in (allowed_raw if isinstance(allowed_raw, list) else RESOLVER_EYEBITE_EFFECTS)
+            for choice in (
+                allowed_raw if isinstance(allowed_raw, list) else RESOLVER_EYEBITE_EFFECTS
+            )
         }
         if not allowed:
             allowed = set(RESOLVER_EYEBITE_EFFECTS)
@@ -971,9 +963,8 @@ class ActionResolver:
             if not self._effect_has_marker(effect, RESOLVER_EYEBITE_SUCCESS_MARKER):
                 continue
             applied_by = effect.get("applied_by")
-            if (
-                isinstance(applied_by, str)
-                and bool(self._entity_aliases(applied_by) & self._entity_aliases(actor_id))
+            if isinstance(applied_by, str) and bool(
+                self._entity_aliases(applied_by) & self._entity_aliases(actor_id)
             ):
                 return True
         return False
@@ -1034,7 +1025,9 @@ class ActionResolver:
             )
         )
         damage_param = str(
-            action.properties.get("extra_effect_damage_type_param", "hallow_extra_effect_damage_type")
+            action.properties.get(
+                "extra_effect_damage_type_param", "hallow_extra_effect_damage_type"
+            )
         )
         if effect in RESOLVER_HALLOW_EXTRA_EFFECTS_REQUIRING_CREATURE_TYPES:
             error = ActionResolver._normalize_hallow_list_param(
@@ -2993,9 +2986,8 @@ class ActionResolver:
         for target_id in draft.target_ids:
             target = self.state.encounter.combatants.get(target_id)
             if target is not None and target.side == actor_combatant.side:
-                if (
-                    action.properties.get("allows_willing_target") is True
-                    and self._target_willing(draft.params, target_id)
+                if action.properties.get("allows_willing_target") is True and self._target_willing(
+                    draft.params, target_id
                 ):
                     continue
                 allied_targets.append(target_id)
@@ -3655,8 +3647,7 @@ class ActionResolver:
             raise ValueError(f"parameter {param_name} must be a target-to-points map")
         if set(allocations) != set(targets):
             raise ValueError(
-                target_mismatch_error
-                or f"{param_name} must be assigned to exactly the targets"
+                target_mismatch_error or f"{param_name} must be assigned to exactly the targets"
             )
         for amount in allocations.values():
             if amount <= 0:

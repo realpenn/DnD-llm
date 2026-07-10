@@ -976,8 +976,7 @@ def test_resolver_accepts_conjure_minor_elementals_and_attack_damage_choice(
 
     assert missing_choice.status == "rejected"
     assert (
-        missing_choice.reason
-        == "missing required parameter conjure_minor_elementals_damage_type"
+        missing_choice.reason == "missing required parameter conjure_minor_elementals_damage_type"
     )
     assert invalid_choice.status == "rejected"
     assert invalid_choice.reason == (
@@ -1173,8 +1172,7 @@ def test_resolver_checks_dream_context(make_state) -> None:
 
     assert missing_same_plane.status == "rejected"
     assert (
-        missing_same_plane.reason
-        == "Dream requires a known target on the same plane of existence"
+        missing_same_plane.reason == "Dream requires a known target on the same plane of existence"
     )
     assert missing_messenger.status == "rejected"
     assert missing_messenger.reason == (
@@ -1225,8 +1223,7 @@ def test_resolver_validates_hallow_extra_effect_choices(make_state) -> None:
     )
     assert missing_damage_type.status == "rejected"
     assert (
-        missing_damage_type.reason
-        == "missing required parameter hallow_extra_effect_damage_type"
+        missing_damage_type.reason == "missing required parameter hallow_extra_effect_damage_type"
     )
 
     invalid_creature_type = resolver.resolve(
@@ -1707,7 +1704,10 @@ def test_resolver_checks_conjure_fey_context_and_followup_gate(make_state) -> No
     )
 
     assert missing_effect.status == "rejected"
-    assert missing_effect.reason == "srd.conjure_fey_attack requires active effect from srd.conjure_fey"
+    assert (
+        missing_effect.reason
+        == "srd.conjure_fey_attack requires active effect from srd.conjure_fey"
+    )
 
     state.world.active_effects.append(
         {
@@ -4658,8 +4658,7 @@ def test_resolver_checks_planar_binding_context_and_target_type(make_state) -> N
 
     assert missing_range_context.status == "rejected"
     assert missing_range_context.reason == (
-        "Planar Binding requires the target to remain within 60 feet "
-        "for the entire 1-hour casting"
+        "Planar Binding requires the target to remain within 60 feet for the entire 1-hour casting"
     )
     assert accepted_plain.status == "accepted"
     assert accepted_plain.action_id == "srd.planar_binding"
@@ -4776,9 +4775,7 @@ def test_resolver_checks_holy_aura_chosen_creatures_are_in_emanation(make_state)
     )
 
     assert outside.status == "rejected"
-    assert outside.reason == (
-        "Holy Aura chosen creatures must be within the 30-foot Emanation"
-    )
+    assert outside.reason == ("Holy Aura chosen creatures must be within the 30-foot Emanation")
     assert inside.status == "accepted"
     assert inside.action_id == "srd.holy_aura"
     assert empty_choice.status == "accepted"
