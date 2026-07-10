@@ -77,6 +77,7 @@ class CompendiumSimulator:
                     )
                     params[creature_types_param] = [str(allowed_creature_types[0])]
                 _add_allowed_list_params(params, action)
+                _add_conjure_fey_params(params, action)
                 _add_eyebite_params(params, action)
                 _add_fire_shield_params(params, action)
                 _add_shapechange_params(params, action)
@@ -463,6 +464,7 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
         creature_types_param = str(action.properties.get("creature_types_param", "creature_types"))
         params[creature_types_param] = [str(allowed_creature_types[0])]
     _add_allowed_list_params(params, action)
+    _add_conjure_fey_params(params, action)
     _add_eyebite_params(params, action)
     if action.id == "srd.hallow":
         params["hallow_extra_effect_creature_types"] = ["aberration"]
@@ -499,6 +501,17 @@ def _add_allowed_list_params(params: dict[str, Any], action: ActionDefinition) -
             count = int(required_counts.get(param, 1))
             count = max(1, count)
             params[param] = [str(item) for item in allowed_raw[:count]]
+
+
+def _add_conjure_fey_params(params: dict[str, Any], action: ActionDefinition) -> None:
+    for key in (
+        "conjure_fey_visible_unoccupied_space_param",
+        "conjure_fey_teleport_visible_unoccupied_space_param",
+        "conjure_fey_target_within_5_ft_param",
+    ):
+        param_name = action.properties.get(key)
+        if isinstance(param_name, str) and param_name:
+            params[param_name] = True
 
 
 def _add_shapechange_params(params: dict[str, Any], action: ActionDefinition) -> None:

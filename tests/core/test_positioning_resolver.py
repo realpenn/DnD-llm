@@ -1514,6 +1514,111 @@ def test_resolver_gates_conjure_woodland_beings_bonus_disengage(make_state) -> N
     assert accepted.action_id == "srd.conjure_woodland_beings_disengage"
 
 
+def test_resolver_checks_conjure_fey_context_and_followup_gate(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 11}
+    character.actions.extend(["srd.conjure_fey", "srd.conjure_fey_attack"])
+    character.prepared_spells.append("srd.spell.conjure_fey")
+    character.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_space = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤妖精",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey",
+            params={"conjure_fey_target_within_5_ft": True},
+        )
+    )
+
+    assert missing_space.status == "rejected"
+    assert missing_space.reason == "Conjure Fey requires a visible unoccupied space within 60 feet"
+
+    accepted_cast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤妖精",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert accepted_cast.status == "accepted"
+    assert accepted_cast.action_id == "srd.conjure_fey"
+
+    missing_effect = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="妖精灵体攻击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey_attack",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_teleport_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert missing_effect.status == "rejected"
+    assert missing_effect.reason == "srd.conjure_fey_attack requires active effect from srd.conjure_fey"
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "conjure-fey-test",
+            "source_action_id": "srd.conjure_fey",
+            "applied_by": "pc1",
+            "effect_type": "conjure_fey_spirit",
+            "concentration": True,
+            "scope": {"target": "visible_unoccupied_space", "range_ft": 60},
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+
+    missing_teleport = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="妖精灵体攻击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey_attack",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert missing_teleport.status == "rejected"
+    assert missing_teleport.reason == (
+        "Conjure Fey requires the spirit to teleport to a visible unoccupied space within 30 feet"
+    )
+
+    accepted_attack = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="妖精灵体攻击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey_attack",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_teleport_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert accepted_attack.status == "accepted"
+    assert accepted_attack.action_id == "srd.conjure_fey_attack"
+
+
 def test_resolver_checks_instinctive_pounce_movement_preconditions(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

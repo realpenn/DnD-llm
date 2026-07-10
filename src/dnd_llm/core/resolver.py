@@ -47,6 +47,7 @@ RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
     {"acid", "cold", "fire", "lightning"}
 )
 RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
+RESOLVER_CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 RESOLVER_EYEBITE_EFFECT_PARAM = "eyebite_effect"
 RESOLVER_EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 RESOLVER_EYEBITE_SUCCESS_MARKER = "eyebite_save_success"
@@ -307,6 +308,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=conjure_minor_elementals_error,
+                action_id=action.id,
+            )
+        conjure_fey_error = self._conjure_fey_context_error(draft, action)
+        if conjure_fey_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=conjure_fey_error,
                 action_id=action.id,
             )
         allowed_list_error = self._allowed_list_params_error(draft, action)
@@ -671,6 +679,36 @@ class ActionResolver:
                 f"{expected}"
             )
         draft.params[RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM] = normalized
+        return None
+
+    @staticmethod
+    def _conjure_fey_context_error(
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.id not in RESOLVER_CONJURE_FEY_ACTION_IDS:
+            return None
+        summon_space_param = action.properties.get("conjure_fey_visible_unoccupied_space_param")
+        if isinstance(summon_space_param, str) and draft.params.get(summon_space_param) is not True:
+            return "Conjure Fey requires a visible unoccupied space within 60 feet"
+        teleport_space_param = action.properties.get(
+            "conjure_fey_teleport_visible_unoccupied_space_param"
+        )
+        if (
+            isinstance(teleport_space_param, str)
+            and draft.params.get(teleport_space_param) is not True
+        ):
+            return (
+                "Conjure Fey requires the spirit to teleport to a visible unoccupied space "
+                "within 30 feet"
+            )
+        target_within_param = action.properties.get("conjure_fey_target_within_5_ft_param")
+        if (
+            draft.target_ids
+            and isinstance(target_within_param, str)
+            and draft.params.get(target_within_param) is not True
+        ):
+            return "Conjure Fey attack target must be within 5 feet of the spirit"
         return None
 
     @staticmethod

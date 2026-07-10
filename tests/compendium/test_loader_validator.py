@@ -88,6 +88,8 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.contact_other_plane",
         "srd.control_weather",
         "srd.confusion",
+        "srd.conjure_fey",
+        "srd.conjure_fey_attack",
         "srd.conjure_minor_elementals",
         "srd.conjure_woodland_beings",
         "srd.conjure_woodland_beings_disengage",
@@ -3969,6 +3971,150 @@ def test_compendium_loads_srd_actions() -> None:
                 "The caster takes the Disengage action as a Bonus Action while "
                 "Conjure Woodland Beings lasts."
             ),
+        },
+    ]
+    conjure_fey = compendium.action("srd.conjure_fey")
+    assert conjure_fey.action_type == "spell"
+    assert conjure_fey.action_economy == "action"
+    assert conjure_fey.requirements == {
+        "spell_level": 6,
+        "class_any": ["druid"],
+    }
+    assert conjure_fey.range == {"special": "visible_unoccupied_space_within_60_feet"}
+    assert conjure_fey.target_policy == {"min": 0, "max": 1, "harmful": True}
+    assert conjure_fey.cost.spell_slot_level == 6
+    assert conjure_fey.properties == {
+        "spell_classes": ["druid"],
+        "components": ["V", "S"],
+        "summon_range_ft": 60,
+        "summon_space": "visible_unoccupied_space",
+        "conjure_fey_visible_unoccupied_space_param": (
+            "conjure_fey_visible_unoccupied_space"
+        ),
+        "conjure_fey_target_within_5_ft_param": "conjure_fey_target_within_5_ft",
+        "initial_attack_optional": True,
+        "bonus_action_attack_action_id": "srd.conjure_fey_attack",
+        "fey_spirit_size": "Medium",
+        "fey_spirit_origin": "Feywild",
+        "fey_spirit_no_stat_block": True,
+        "spell_definition_id": "srd.spell.conjure_fey",
+        "spell_level": 6,
+    }
+    assert conjure_fey.automation == [
+        {"type": "target", "mode": "explicit", "optional": True},
+        {"type": "attack_roll", "spell_attack": "actor"},
+        {
+            "type": "damage",
+            "dice": "3d12",
+            "damage_type": "psychic",
+            "requires_hit": True,
+            "bonus_from": {"spellcasting_ability_modifier": "actor"},
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "1d12",
+        },
+        {
+            "type": "condition",
+            "condition": "frightened",
+            "requires_hit": True,
+            "passive_modifiers": {
+                "frightened_sources": ["caster", "fey_spirit"],
+            },
+            "duration": {
+                "until": "start_of_next_turn",
+                "turn_owner_id_from": "actor",
+            },
+            "tick_on": "self_turn_start",
+        },
+        {
+            "type": "world_effect",
+            "effect_type": "conjure_fey_spirit",
+            "scope": {
+                "target": "visible_unoccupied_space",
+                "range_ft": 60,
+            },
+            "duration": {"until": "concentration_10_minutes"},
+            "tick_on": "self_turn_end",
+            "metadata_from_slot": {
+                "psychic_damage_dice_count": {
+                    "base_spell_slot_level": 6,
+                    "base_value": 3,
+                    "value_per_slot_above": 1,
+                },
+            },
+            "metadata": {
+                "spirit_size": "Medium",
+                "spirit_origin": "Feywild",
+                "creature_type": "fey",
+                "appearance_chosen_by_caster": True,
+                "visible_unoccupied_space_required": True,
+                "initial_attack_optional": True,
+                "attack_type": "melee_spell_attack",
+                "attack_target_range_ft_from_spirit": 5,
+                "damage": "3d12 + spellcasting ability modifier psychic",
+                "higher_level_damage_increase": "1d12 per slot above 6",
+                "frightened_until": "start_of_caster_next_turn",
+                "frightened_sources": ["caster", "fey_spirit"],
+                "bonus_action_attack_action_id": "srd.conjure_fey_attack",
+                "bonus_action_teleport_ft": 30,
+                "spirit_stat_block_not_created": True,
+            },
+        },
+    ]
+    conjure_fey_attack = compendium.action("srd.conjure_fey_attack")
+    assert conjure_fey_attack.action_type == "base_action"
+    assert conjure_fey_attack.action_economy == "bonus_action"
+    assert conjure_fey_attack.properties == {
+        "requires_active_effect_source_action_id": "srd.conjure_fey",
+        "spell_definition_id": "srd.spell.conjure_fey",
+        "spell_classes": ["druid"],
+        "spell_level": 6,
+        "conjure_fey_visible_unoccupied_space_param": (
+            "conjure_fey_visible_unoccupied_space"
+        ),
+        "conjure_fey_teleport_visible_unoccupied_space_param": (
+            "conjure_fey_teleport_visible_unoccupied_space"
+        ),
+        "conjure_fey_target_within_5_ft_param": "conjure_fey_target_within_5_ft",
+        "spirit_teleport_ft": 30,
+        "attack_target_range_ft_from_spirit": 5,
+        "fey_spirit_no_stat_block": True,
+        "original_spell_slot_level_param": "slot_level",
+    }
+    assert conjure_fey_attack.range == {
+        "special": "fey_spirit_teleport_30_ft_then_melee_spell_attack_5_ft",
+    }
+    assert conjure_fey_attack.target_policy == {"min": 1, "max": 1, "harmful": True}
+    assert conjure_fey_attack.automation == [
+        {"type": "target", "mode": "explicit"},
+        {
+            "type": "text_result",
+            "text": (
+                "The Fey spirit teleports up to 30 feet to a visible unoccupied "
+                "space, then makes a melee spell attack."
+            ),
+        },
+        {"type": "attack_roll", "spell_attack": "actor"},
+        {
+            "type": "damage",
+            "dice": "3d12",
+            "damage_type": "psychic",
+            "requires_hit": True,
+            "bonus_from": {"spellcasting_ability_modifier": "actor"},
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "1d12",
+        },
+        {
+            "type": "condition",
+            "condition": "frightened",
+            "requires_hit": True,
+            "passive_modifiers": {
+                "frightened_sources": ["caster", "fey_spirit"],
+            },
+            "duration": {
+                "until": "start_of_next_turn",
+                "turn_owner_id_from": "actor",
+            },
+            "tick_on": "self_turn_start",
         },
     ]
     secret_chest = compendium.action("srd.secret_chest")
@@ -9832,6 +9978,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.legend_lore",
         "srd.spell.telepathic_bond",
         "srd.spell.compulsion",
+        "srd.spell.conjure_fey",
         "srd.spell.conjure_minor_elementals",
         "srd.spell.conjure_woodland_beings",
         "srd.spell.incendiary_cloud",

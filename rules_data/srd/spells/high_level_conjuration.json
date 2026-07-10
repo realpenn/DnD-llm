@@ -835,6 +835,117 @@
       }
     },
     {
+      "id": "srd.spell.conjure_fey",
+      "name": "Conjure Fey",
+      "localization": {
+        "en": "Conjure Fey",
+        "zh": "召唤妖精",
+        "aliases": ["召唤妖精术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "conjuration",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.conjure_fey",
+        "name": "Conjure Fey",
+        "localization": {
+          "en": "Conjure Fey",
+          "zh": "召唤妖精",
+          "aliases": ["召唤妖精术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "special": "visible_unoccupied_space_within_60_feet" },
+        "target_policy": { "min": 0, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "spell_classes": ["druid"],
+          "components": ["V", "S"],
+          "summon_range_ft": 60,
+          "summon_space": "visible_unoccupied_space",
+          "conjure_fey_visible_unoccupied_space_param": "conjure_fey_visible_unoccupied_space",
+          "conjure_fey_target_within_5_ft_param": "conjure_fey_target_within_5_ft",
+          "initial_attack_optional": true,
+          "bonus_action_attack_action_id": "srd.conjure_fey_attack",
+          "fey_spirit_size": "Medium",
+          "fey_spirit_origin": "Feywild",
+          "fey_spirit_no_stat_block": true,
+          "spell_definition_id": "srd.spell.conjure_fey",
+          "spell_level": 6
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit", "optional": true },
+          { "type": "attack_roll", "spell_attack": "actor" },
+          {
+            "type": "damage",
+            "dice": "3d12",
+            "damage_type": "psychic",
+            "requires_hit": true,
+            "bonus_from": { "spellcasting_ability_modifier": "actor" },
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "1d12"
+          },
+          {
+            "type": "condition",
+            "condition": "frightened",
+            "requires_hit": true,
+            "passive_modifiers": {
+              "frightened_sources": ["caster", "fey_spirit"]
+            },
+            "duration": {
+              "until": "start_of_next_turn",
+              "turn_owner_id_from": "actor"
+            },
+            "tick_on": "self_turn_start"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "conjure_fey_spirit",
+            "scope": {
+              "target": "visible_unoccupied_space",
+              "range_ft": 60
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata_from_slot": {
+              "psychic_damage_dice_count": {
+                "base_spell_slot_level": 6,
+                "base_value": 3,
+                "value_per_slot_above": 1
+              }
+            },
+            "metadata": {
+              "spirit_size": "Medium",
+              "spirit_origin": "Feywild",
+              "creature_type": "fey",
+              "appearance_chosen_by_caster": true,
+              "visible_unoccupied_space_required": true,
+              "initial_attack_optional": true,
+              "attack_type": "melee_spell_attack",
+              "attack_target_range_ft_from_spirit": 5,
+              "damage": "3d12 + spellcasting ability modifier psychic",
+              "higher_level_damage_increase": "1d12 per slot above 6",
+              "frightened_until": "start_of_caster_next_turn",
+              "frightened_sources": ["caster", "fey_spirit"],
+              "bonus_action_attack_action_id": "srd.conjure_fey_attack",
+              "bonus_action_teleport_ft": 30,
+              "spirit_stat_block_not_created": true
+            }
+          }
+        ],
+        "audit_label": "Conjure Fey"
+      }
+    },
+    {
       "id": "srd.spell.transport_via_plants",
       "name": "Transport via Plants",
       "localization": {

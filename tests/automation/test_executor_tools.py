@@ -24615,6 +24615,263 @@ def test_conjure_woodland_beings_disengage_requires_active_effect(make_state) ->
     )
 
 
+def test_conjure_fey_summons_spirit_and_initial_attack_can_frighten(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 60
+    target.hp_max = 60
+    target.armor_class = 12
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([10, 20]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.conjure_fey",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={
+            "slot_level": 6,
+            "conjure_fey_visible_unoccupied_space": True,
+            "conjure_fey_target_within_5_ft": True,
+        },
+        idempotency_key="cast-conjure-fey",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots["6"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+9", "3d12"]
+    attack_node = result["node_results"]["automation[1]"]
+    assert attack_node["base_attack_bonus"] == 9
+    assert attack_node["attack_bonus_sources"] == [
+        {
+            "kind": "spellcasting_ability",
+            "class": "druid",
+            "ability": "wis",
+            "amount": 5,
+        },
+        {"kind": "proficiency", "amount": 4},
+    ]
+    assert attack_node["hit"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["target_id"] == "goblin1"
+    assert damage_change["amount"] == 25
+    assert damage_change["damage_type"] == "psychic"
+    assert target.hp_current == 35
+    frightened = next(
+        effect for effect in target.status_effects if effect.get("condition") == "frightened"
+    )
+    assert frightened["source_action_id"] == "srd.conjure_fey"
+    assert frightened["duration"] == {
+        "until": "start_of_next_turn",
+        "turn_owner_id": "pc1",
+    }
+    assert frightened["tick_on"] == "self_turn_start"
+    assert frightened["passive_modifiers"] == {
+        "frightened_sources": ["caster", "fey_spirit"],
+    }
+    effect = state.world.active_effects[-1]
+    assert effect["source_action_id"] == "srd.conjure_fey"
+    assert effect["effect_type"] == "conjure_fey_spirit"
+    assert effect["concentration"] is True
+    assert effect["scope"] == {
+        "target": "visible_unoccupied_space",
+        "range_ft": 60,
+    }
+    assert effect["duration"] == {"until": "concentration_10_minutes"}
+    assert effect["metadata"]["spirit_size"] == "Medium"
+    assert effect["metadata"]["spirit_origin"] == "Feywild"
+    assert effect["metadata"]["spirit_stat_block_not_created"] is True
+    assert effect["metadata"]["psychic_damage_dice_count"] == 3
+
+    goblin_turn = tick_effects(state, trigger="self_turn_start", actor_id="goblin1")
+    assert goblin_turn.expired == []
+    pc_turn = tick_effects(state, trigger="self_turn_start", actor_id="pc1")
+    assert pc_turn.expired
+    assert not any(effect.get("condition") == "frightened" for effect in target.status_effects)
+
+
+def test_conjure_fey_missed_initial_attack_does_not_frighten(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 4
+    caster.spell_slots["6"] = 1
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 60
+    target.hp_max = 60
+    target.armor_class = 30
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([2]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.conjure_fey",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={
+            "slot_level": 6,
+            "conjure_fey_visible_unoccupied_space": True,
+            "conjure_fey_target_within_5_ft": True,
+        },
+        idempotency_key="cast-conjure-fey-miss",
+    )
+
+    assert result["success"] is True
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+9"]
+    assert result["node_results"]["automation[1]"]["hit"] is False
+    assert not any(change["type"] == "damage" for change in result["state_changes"])
+    assert not any(effect.get("condition") == "frightened" for effect in target.status_effects)
+    assert state.world.active_effects[-1]["effect_type"] == "conjure_fey_spirit"
+
+
+def test_conjure_fey_bonus_action_attack_uses_active_spirit_and_slot_scaling(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 13}
+    caster.abilities["wis"] = 20
+    caster.proficiency_bonus = 5
+    target = state.encounter.combatants["goblin1"]
+    target.hp_current = 70
+    target.hp_max = 70
+    target.armor_class = 12
+    state.world.active_effects.append(
+        {
+            "effect_id": "conjure-fey-active",
+            "source_ref": "SRD 5.2.1 Chapter 7: Spells",
+            "source_action_id": "srd.conjure_fey",
+            "applied_by": "pc1",
+            "effect_type": "conjure_fey_spirit",
+            "concentration": True,
+            "scope": {"target": "visible_unoccupied_space", "range_ft": 60},
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([7, 30]),
+    )
+
+    result = tools.perform_action(
+        "pc1",
+        "srd.conjure_fey_attack",
+        ["goblin1"],
+        params={
+            "slot_level": 7,
+            "conjure_fey_visible_unoccupied_space": True,
+            "conjure_fey_teleport_visible_unoccupied_space": True,
+            "conjure_fey_target_within_5_ft": True,
+        },
+        idempotency_key="conjure-fey-bonus-attack",
+    )
+
+    assert result["success"] is True
+    assert state.encounter.action_budgets["pc1"]["bonus_action"] == 0
+    assert [roll["expression"] for roll in result["dice_rolls"]] == ["1d20+10", "4d12"]
+    attack_node = result["node_results"]["automation[2]"]
+    assert attack_node["base_attack_bonus"] == 10
+    assert attack_node["hit"] is True
+    damage_change = next(change for change in result["state_changes"] if change["type"] == "damage")
+    assert damage_change["amount"] == 35
+    assert damage_change["damage_type"] == "psychic"
+    assert target.hp_current == 35
+    assert any(effect.get("condition") == "frightened" for effect in target.status_effects)
+
+
+def test_conjure_fey_rejects_missing_context_before_spending_resources(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 11}
+    caster.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(
+        AutomationError,
+        match="Conjure Fey requires a visible unoccupied space within 60 feet",
+    ):
+        tools._execute_action(
+            action_id="srd.conjure_fey",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={"slot_level": 6, "conjure_fey_target_within_5_ft": True},
+            idempotency_key="conjure-fey-missing-space",
+        )
+
+    assert caster.spell_slots["6"] == 1
+
+    with pytest.raises(
+        AutomationError,
+        match="srd.conjure_fey_attack requires active effect from srd.conjure_fey",
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.conjure_fey_attack",
+            ["goblin1"],
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_teleport_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+            idempotency_key="conjure-fey-attack-missing-effect",
+        )
+
+    assert state.encounter.action_budgets.get("pc1", {}).get("bonus_action", 1) == 1
+    state.world.active_effects.append(
+        {
+            "effect_id": "conjure-fey-active",
+            "source_action_id": "srd.conjure_fey",
+            "applied_by": "pc1",
+            "effect_type": "conjure_fey_spirit",
+            "concentration": True,
+            "scope": {"target": "visible_unoccupied_space", "range_ft": 60},
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+
+    with pytest.raises(
+        AutomationError,
+        match=(
+            "Conjure Fey requires the spirit to teleport to a visible unoccupied space "
+            "within 30 feet"
+        ),
+    ):
+        tools.perform_action(
+            "pc1",
+            "srd.conjure_fey_attack",
+            ["goblin1"],
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+            idempotency_key="conjure-fey-attack-missing-teleport",
+        )
+
+    assert state.encounter.action_budgets.get("pc1", {}).get("bonus_action", 1) == 1
+
+
 def test_teleportation_circle_spends_inks_and_records_expiring_portal(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

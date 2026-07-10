@@ -174,6 +174,7 @@ CONJURE_MINOR_ELEMENTALS_EFFECT_TYPE = "conjure_minor_elementals_emanation"
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM = "conjure_minor_elementals_damage_type"
 CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "lightning"})
 CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
+CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 EYEBITE_EFFECT_PARAM = "eyebite_effect"
 EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 EYEBITE_SOURCE_ACTION_ID = "srd.eyebite"
@@ -606,6 +607,7 @@ class AutomationExecutor:
         self._validate_investment_of_chain_master_preconditions(action, actor_id, params)
         self._validate_thirsting_blade_preconditions(action, actor_id, params)
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
+        self._validate_conjure_fey_preconditions(action, targets or [], params)
         self._validate_conjure_minor_elementals_damage_type(
             action,
             actor_id,
@@ -793,7 +795,7 @@ class AutomationExecutor:
         if mode == "self":
             ctx.targets = [ctx.actor_id]
         elif mode == "explicit":
-            if not ctx.targets:
+            if not ctx.targets and node.get("optional") is not True:
                 raise AutomationError("explicit target node requires targets")
         elif mode == "all":
             if self.state.encounter is None:
@@ -835,7 +837,11 @@ class AutomationExecutor:
     def _node_attack_roll(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         if ctx.action.action_type == "weapon_attack":
             ctx.last_attack_node = dict(node)
-        ability = str(node.get("ability", "str")).lower()
+        ability = (
+            "spellcasting"
+            if node.get("spell_attack") == "actor"
+            else str(node.get("ability", "str")).lower()
+        )
         base_attack_bonus, attack_bonus_sources = self._attack_bonus(ctx, node, ability)
         node_advantage = _advantage_value(node.get("advantage"))
         actor = self._entity(ctx.actor_id)
@@ -997,6 +1003,13 @@ class AutomationExecutor:
         ability: str,
     ) -> tuple[int, list[dict[str, Any]]]:
         actor = self._entity(ctx.actor_id)
+        if node.get("spell_attack") == "actor":
+            bonus, sources = self._actor_spell_attack_bonus(ctx)
+            spell_bonus, spell_sources = self._spell_attack_bonus(actor, ctx.action)
+            if spell_bonus:
+                bonus += spell_bonus
+                sources.extend(spell_sources)
+            return bonus, sources
         if "attack_bonus" in node:
             bonus = int(node["attack_bonus"])
             sources = [{"kind": "fixed", "amount": int(node["attack_bonus"])}]
@@ -2636,6 +2649,11 @@ class AutomationExecutor:
             dict(node.get("passive_modifiers", {})),
         )
         for target_id in ctx.targets:
+            if bool(node.get("requires_hit", False)) and not ctx.attack_hits.get(
+                target_id,
+                False,
+            ):
+                continue
             if self._skip_target_for_save_gate(ctx, node, target_id):
                 continue
             target = self._entity(target_id)
@@ -5959,6 +5977,37 @@ class AutomationExecutor:
             self._ability_modifier(entity, SPELLCASTING_ABILITIES[class_name])
             for class_name in matching_classes
         )
+
+    def _actor_spell_attack_bonus(self, ctx: _Context) -> tuple[int, list[dict[str, Any]]]:
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character):
+            raise AutomationError("spell_attack actor requires a character actor")
+        class_levels = {
+            str(class_name).lower(): int(level) for class_name, level in owner.class_levels.items()
+        }
+        candidate_classes = self._spell_save_dc_candidate_classes(ctx.action)
+        matching_classes = [
+            class_name for class_name in candidate_classes if class_levels.get(class_name, 0) > 0
+        ]
+        if not matching_classes:
+            raise AutomationError("actor has no matching spellcasting class for this spell")
+        entity = self._entity(ctx.actor_id)
+        proficiency = int(getattr(owner, "proficiency_bonus", 2))
+        options = []
+        for class_name in matching_classes:
+            ability = SPELLCASTING_ABILITIES[class_name]
+            ability_modifier = self._ability_modifier(entity, ability)
+            options.append((proficiency + ability_modifier, class_name, ability, ability_modifier))
+        total, class_name, ability, ability_modifier = max(options, key=lambda item: item[0])
+        return total, [
+            {
+                "kind": "spellcasting_ability",
+                "class": class_name,
+                "ability": ability,
+                "amount": ability_modifier,
+            },
+            {"kind": "proficiency", "amount": proficiency},
+        ]
 
     def _spell_save_dc_candidate_classes(self, action: ActionDefinition) -> list[str]:
         raw_candidates = action.properties.get("spell_classes")
@@ -10781,7 +10830,10 @@ class AutomationExecutor:
         actor: Character | Monster | Combatant,
         action: ActionDefinition,
     ) -> tuple[int, list[dict[str, Any]]]:
-        if action.action_type != "spell":
+        if action.action_type != "spell" and not isinstance(
+            action.properties.get("spell_definition_id"),
+            str,
+        ):
             return 0, []
         actor_classes = set(self._class_levels_for_entity(actor))
         bonus = 0
@@ -11727,6 +11779,33 @@ class AutomationExecutor:
             )
         params[CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPE_PARAM] = normalized
         return normalized
+
+    @staticmethod
+    def _validate_conjure_fey_preconditions(
+        action: ActionDefinition,
+        targets: list[str],
+        params: dict[str, Any],
+    ) -> None:
+        if action.id not in CONJURE_FEY_ACTION_IDS:
+            return
+        summon_space_param = action.properties.get("conjure_fey_visible_unoccupied_space_param")
+        if isinstance(summon_space_param, str) and params.get(summon_space_param) is not True:
+            raise AutomationError("Conjure Fey requires a visible unoccupied space within 60 feet")
+        teleport_space_param = action.properties.get(
+            "conjure_fey_teleport_visible_unoccupied_space_param"
+        )
+        if isinstance(teleport_space_param, str) and params.get(teleport_space_param) is not True:
+            raise AutomationError(
+                "Conjure Fey requires the spirit to teleport to a visible unoccupied space "
+                "within 30 feet"
+            )
+        target_within_param = action.properties.get("conjure_fey_target_within_5_ft_param")
+        if (
+            targets
+            and isinstance(target_within_param, str)
+            and params.get(target_within_param) is not True
+        ):
+            raise AutomationError("Conjure Fey attack target must be within 5 feet of the spirit")
 
     @staticmethod
     def _validate_allowed_creature_types_param(

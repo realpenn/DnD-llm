@@ -259,6 +259,8 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
         param = node.get("param")
         if not isinstance(param, str) or not param:
             errors.append(f"{path}: target.mode param requires param")
+    if node_type == "target" and "optional" in node and not isinstance(node["optional"], bool):
+        errors.append(f"{path}: target.optional must be a boolean")
     if (
         node_type in {"damage", "healing", "temp_hp"}
         and "dice" not in node
@@ -390,6 +392,17 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
             errors.extend(_validate_duration_from_slot(duration, path))
             errors.extend(_validate_duration_from_param(duration, path))
             errors.extend(_validate_repeat_save(duration, path))
+    if node_type == "condition" and "requires_hit" in node and not isinstance(
+        node["requires_hit"],
+        bool,
+    ):
+        errors.append(f"{path}: requires_hit must be a boolean")
+    if (
+        node_type == "attack_roll"
+        and "spell_attack" in node
+        and node["spell_attack"] != "actor"
+    ):
+        errors.append(f"{path}: spell_attack supports only actor")
     if (
         node_type in {"damage", "condition", "passive_effect"}
         and "requires_failed_save" in node

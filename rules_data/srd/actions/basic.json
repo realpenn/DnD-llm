@@ -4935,6 +4935,68 @@
             "audit_label": "Conjure Woodland Beings: Disengage"
         },
         {
+            "id": "srd.conjure_fey_attack",
+            "name": "Conjure Fey: Spirit Attack",
+            "localization": {
+                "en": "Conjure Fey: Spirit Attack",
+                "zh": "召唤妖精：灵体攻击",
+                "aliases": ["召唤妖精灵体攻击", "妖精灵体攻击"]
+            },
+            "source": "SRD 5.2.1 Chapter 7: Spells: Conjure Fey",
+            "rules_version": "srd-5.2.1",
+            "action_type": "base_action",
+            "action_economy": "bonus_action",
+            "range": {"special": "fey_spirit_teleport_30_ft_then_melee_spell_attack_5_ft"},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "requires_active_effect_source_action_id": "srd.conjure_fey",
+                "spell_definition_id": "srd.spell.conjure_fey",
+                "spell_classes": ["druid"],
+                "spell_level": 6,
+                "conjure_fey_visible_unoccupied_space_param": "conjure_fey_visible_unoccupied_space",
+                "conjure_fey_teleport_visible_unoccupied_space_param": "conjure_fey_teleport_visible_unoccupied_space",
+                "conjure_fey_target_within_5_ft_param": "conjure_fey_target_within_5_ft",
+                "spirit_teleport_ft": 30,
+                "attack_target_range_ft_from_spirit": 5,
+                "fey_spirit_no_stat_block": true,
+                "original_spell_slot_level_param": "slot_level"
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {
+                    "type": "text_result",
+                    "text": "The Fey spirit teleports up to 30 feet to a visible unoccupied space, then makes a melee spell attack."
+                },
+                {"type": "attack_roll", "spell_attack": "actor"},
+                {
+                    "type": "damage",
+                    "dice": "3d12",
+                    "damage_type": "psychic",
+                    "requires_hit": true,
+                    "bonus_from": {"spellcasting_ability_modifier": "actor"},
+                    "base_spell_slot_level": 6,
+                    "extra_dice_per_slot_above": "1d12"
+                },
+                {
+                    "type": "condition",
+                    "condition": "frightened",
+                    "requires_hit": true,
+                    "passive_modifiers": {
+                        "frightened_sources": ["caster", "fey_spirit"]
+                    },
+                    "duration": {
+                        "until": "start_of_next_turn",
+                        "turn_owner_id_from": "actor"
+                    },
+                    "tick_on": "self_turn_start"
+                }
+            ],
+            "audit_label": "Conjure Fey: Spirit Attack"
+        },
+        {
             "id": "srd.shapechange_change_form",
             "name": "Shapechange: Change Form",
             "localization": {

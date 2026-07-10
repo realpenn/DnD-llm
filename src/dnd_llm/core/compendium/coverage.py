@@ -84,6 +84,8 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.telepathic_bond",
     "srd.teleport",
     "srd.time_stop",
+    "srd.conjure_fey",
+    "srd.conjure_fey_attack",
     "srd.conjure_minor_elementals",
     "srd.compulsion",
     "srd.confusion",
