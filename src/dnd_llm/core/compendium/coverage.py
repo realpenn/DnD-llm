@@ -182,6 +182,7 @@ EXPECTED_PHASE1_ACTIONS = {
     "srd.mass_heal",
     "srd.phantasmal_killer",
     "srd.plane_shift",
+    "srd.planar_binding",
     "srd.power_word_heal",
     "srd.power_word_kill",
     "srd.power_word_stun",

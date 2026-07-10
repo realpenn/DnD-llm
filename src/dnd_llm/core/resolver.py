@@ -49,6 +49,7 @@ RESOLVER_CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset(
 RESOLVER_CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 RESOLVER_CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 RESOLVER_DREAM_ACTION_ID = "srd.dream"
+RESOLVER_PLANAR_BINDING_ACTION_ID = "srd.planar_binding"
 RESOLVER_EYEBITE_EFFECT_PARAM = "eyebite_effect"
 RESOLVER_EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 RESOLVER_EYEBITE_SUCCESS_MARKER = "eyebite_save_success"
@@ -323,6 +324,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=dream_error,
+                action_id=action.id,
+            )
+        planar_binding_error = self._planar_binding_context_error(draft, action)
+        if planar_binding_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=planar_binding_error,
                 action_id=action.id,
             )
         allowed_list_error = self._allowed_list_params_error(draft, action)
@@ -746,6 +754,76 @@ class ActionResolver:
         if isinstance(message_param, str) and draft.params.get(message_param) is not True:
             return "Terrifying Dream message must be no more than ten words"
         return None
+
+    def _planar_binding_context_error(
+        self,
+        draft: PlayerActionDraft,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.id != RESOLVER_PLANAR_BINDING_ACTION_ID:
+            return None
+        range_param = action.properties.get(
+            "planar_binding_target_within_range_entire_casting_param"
+        )
+        if isinstance(range_param, str) and draft.params.get(range_param) is not True:
+            return (
+                "Planar Binding requires the target to remain within 60 feet "
+                "for the entire 1-hour casting"
+            )
+        effect_id_param = action.properties.get(
+            "planar_binding_source_spell_effect_id_param"
+        )
+        if not isinstance(effect_id_param, str):
+            return None
+        raw_effect_id = draft.params.get(effect_id_param)
+        if raw_effect_id in (None, ""):
+            return None
+        if not isinstance(raw_effect_id, str):
+            return f"parameter {effect_id_param} must be a string"
+        matching_effects = self._active_effects_with_id(raw_effect_id)
+        if not matching_effects:
+            return "Planar Binding source spell effect is not active"
+        if not all(self._effect_has_spell_source(effect) for effect in matching_effects):
+            return "Planar Binding source effect must be a spell effect"
+        return None
+
+    def _active_effects_with_id(self, effect_id: str) -> list[dict[str, Any]]:
+        matches = [
+            effect
+            for effect in self.state.world.active_effects
+            if effect.get("effect_id") == effect_id
+        ]
+        for character in self.state.characters.values():
+            matches.extend(
+                effect
+                for effect in character.status_effects
+                if effect.get("effect_id") == effect_id
+            )
+        for monster in self.state.monsters.values():
+            matches.extend(
+                effect
+                for effect in monster.status_effects
+                if effect.get("effect_id") == effect_id
+            )
+        if self.state.encounter is not None:
+            for combatant in self.state.encounter.combatants.values():
+                matches.extend(
+                    effect
+                    for effect in combatant.status_effects
+                    if effect.get("effect_id") == effect_id
+                )
+        return matches
+
+    @staticmethod
+    def _effect_has_spell_source(effect: dict[str, Any]) -> bool:
+        source_action_id = effect.get("source_action_id")
+        source_ref = effect.get("source_ref")
+        return (
+            isinstance(source_action_id, str)
+            and bool(source_action_id)
+            and isinstance(source_ref, str)
+            and "spell" in source_ref.casefold()
+        )
 
     @staticmethod
     def _allowed_list_params_error(

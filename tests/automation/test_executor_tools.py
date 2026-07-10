@@ -33035,6 +33035,206 @@ def test_detect_magic_records_world_effect(make_state) -> None:
     assert any(change["type"] == "world_effect" for change in result["state_changes"])
 
 
+@pytest.mark.parametrize(
+    ("slot_level", "expected_duration"),
+    [
+        (5, "duration_24_hours"),
+        (6, "duration_10_days"),
+        (7, "duration_30_days"),
+        (8, "duration_180_days"),
+        (9, "duration_366_days"),
+    ],
+)
+def test_planar_binding_failed_save_binds_target_for_slot_duration(
+    make_state,
+    slot_level: int,
+    expected_duration: str,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"wizard": 17}
+    caster.spell_slots["5"] = 0
+    caster.spell_slots[str(slot_level)] = 1
+    caster.gold = 1000
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "fiend"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([1]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.planar_binding",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={
+            "slot_level": slot_level,
+            "planar_binding_target_within_range_entire_casting": True,
+        },
+        idempotency_key=f"cast-planar-binding-{slot_level}",
+    )
+
+    assert result["success"] is True
+    assert caster.spell_slots[str(slot_level)] == 0
+    assert caster.gold == 0
+    effect = target.status_effects[-1]
+    assert effect["source_action_id"] == "srd.planar_binding"
+    assert effect["condition"] is None
+    assert effect["passive_modifiers"]["planar_binding"] is True
+    assert effect["passive_modifiers"]["bound_to_serve_caster"] is True
+    assert effect["passive_modifiers"]["follows_commands_best_ability"] is True
+    assert effect["passive_modifiers"]["command_ai_not_automated"] is True
+    assert effect["duration"] == {"until": expected_duration}
+    assert effect["tick_on"] == "self_turn_end"
+    assert effect["concentration"] is False
+
+
+def test_planar_binding_extends_source_spell_even_when_target_saves(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"druid": 15}
+    caster.spell_slots["8"] = 1
+    caster.gold = 1000
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "fey"
+    state.world.active_effects.append(
+        {
+            "effect_id": "summoned-fey-spell-effect",
+            "source_ref": "SRD 5.2.1 Chapter 7: Spells",
+            "source_action_id": "srd.conjure_fey",
+            "applied_by": "pc1",
+            "effect_type": "summoned_fey",
+            "duration": {"until": "concentration_10_minutes"},
+            "scope": {"target_id": "goblin1"},
+            "metadata": {},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(
+        state,
+        compendium,
+        AuditLog(),
+        roll_service=_FixedSingleDieRollService([20]),
+    )
+
+    result = tools._execute_action(
+        action_id="srd.planar_binding",
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={
+            "slot_level": 8,
+            "planar_binding_target_within_range_entire_casting": True,
+            "planar_binding_source_spell_effect_id": "summoned-fey-spell-effect",
+        },
+        idempotency_key="cast-planar-binding-saved-source-extension",
+    )
+
+    assert result["success"] is True
+    assert state.world.active_effects[0]["duration"] == {"until": "duration_180_days"}
+    extension = next(
+        change
+        for change in result["state_changes"]
+        if change["type"] == "effect_duration_extended"
+    )
+    assert extension["effect_id"] == "summoned-fey-spell-effect"
+    assert extension["duration"] == {"until": "duration_180_days"}
+    assert not any(
+        effect.get("source_action_id") == "srd.planar_binding"
+        for effect in target.status_effects
+    )
+
+
+def test_planar_binding_rejects_invalid_context_before_spending_cost(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    caster = state.characters["pc1"]
+    caster.class_levels = {"cleric": 9}
+    caster.spell_slots["5"] = 1
+    caster.gold = 1000
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "celestial"
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+
+    with pytest.raises(AutomationError, match="remain within 60 feet"):
+        tools._execute_action(
+            action_id="srd.planar_binding",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={"slot_level": 5},
+            idempotency_key="planar-binding-missing-range-context",
+        )
+
+    with pytest.raises(AutomationError, match="source spell effect is not active"):
+        tools._execute_action(
+            action_id="srd.planar_binding",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+                "planar_binding_source_spell_effect_id": "missing-effect",
+            },
+            idempotency_key="planar-binding-missing-source-effect",
+        )
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "non-spell-effect",
+            "source_ref": "test class feature",
+            "source_action_id": "test.feature",
+            "duration": {"until": "duration_1_minute"},
+        }
+    )
+    with pytest.raises(AutomationError, match="source effect must be a spell effect"):
+        tools._execute_action(
+            action_id="srd.planar_binding",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+                "planar_binding_source_spell_effect_id": "non-spell-effect",
+            },
+            idempotency_key="planar-binding-non-spell-source-effect",
+        )
+
+    target.creature_type = "humanoid"
+    with pytest.raises(AutomationError, match="target must be celestial, elemental, fey, fiend"):
+        tools._execute_action(
+            action_id="srd.planar_binding",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+            },
+            idempotency_key="planar-binding-invalid-target-type",
+        )
+
+    target.creature_type = "fiend"
+    caster.gold = 999
+    with pytest.raises(AutomationError, match="gold is insufficient"):
+        tools._execute_action(
+            action_id="srd.planar_binding",
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+            },
+            idempotency_key="planar-binding-insufficient-jewel",
+        )
+
+    assert caster.spell_slots["5"] == 1
+    assert caster.gold == 999
+
+
 def _fixed_damage_action(action_id: str, *, amount: int) -> ActionDefinition:
     return ActionDefinition(
         id=action_id,

@@ -4573,6 +4573,104 @@ def test_resolver_validates_potion_of_resistance_damage_type(make_state) -> None
     assert draft.params["damage_type"] == "fire"
 
 
+def test_resolver_checks_planar_binding_context_and_target_type(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.planar_binding")
+    character.prepared_spells.append("srd.spell.planar_binding")
+    character.spell_slots["5"] = 1
+    character.gold = 1000
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "fiend"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_range_context = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={"slot_level": 5},
+        )
+    )
+    accepted_plain = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+            },
+        )
+    )
+    missing_source_effect = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+                "planar_binding_source_spell_effect_id": "missing-effect",
+            },
+        )
+    )
+    state.world.active_effects.append(
+        {
+            "effect_id": "summoning-spell-effect",
+            "source_ref": "SRD 5.2.1 Chapter 7: Spells",
+            "source_action_id": "srd.conjure_fey",
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+    accepted_with_source = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+                "planar_binding_source_spell_effect_id": "summoning-spell-effect",
+            },
+        )
+    )
+    target.creature_type = "humanoid"
+    invalid_target_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+            },
+        )
+    )
+
+    assert missing_range_context.status == "rejected"
+    assert missing_range_context.reason == (
+        "Planar Binding requires the target to remain within 60 feet "
+        "for the entire 1-hour casting"
+    )
+    assert accepted_plain.status == "accepted"
+    assert accepted_plain.action_id == "srd.planar_binding"
+    assert missing_source_effect.status == "rejected"
+    assert missing_source_effect.reason == "Planar Binding source spell effect is not active"
+    assert accepted_with_source.status == "accepted"
+    assert accepted_with_source.action_id == "srd.planar_binding"
+    assert invalid_target_type.status == "rejected"
+    assert invalid_target_type.reason == "target must be celestial, elemental, fey, fiend"
+
+
 def test_resolver_rejects_fast_hands_for_item_that_is_already_bonus_action(
     make_state,
 ) -> None:

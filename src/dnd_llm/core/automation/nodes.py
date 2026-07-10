@@ -27,6 +27,7 @@ NODE_TYPES = {
     "shapechange_form",
     "passive_effect",
     "world_effect",
+    "extend_effect_duration",
     "natures_sanctuary",
     "natures_sanctuary_move",
     "repeat_use_save_before_long_rest",
@@ -66,6 +67,7 @@ STATE_CHANGING_NODE_TYPES = {
     "shapechange_form",
     "passive_effect",
     "world_effect",
+    "extend_effect_duration",
     "maze_escape",
     "teleport_outcome",
     "natures_sanctuary",
@@ -641,6 +643,22 @@ def validate_node(node: dict[str, Any], path: str = "automation") -> list[str]:
                     errors.append(
                         f"{path}: metadata_from_slot value_per_slot_above must be non-negative"
                     )
+    if node_type == "extend_effect_duration":
+        effect_id_param = node.get("effect_id_param")
+        if not isinstance(effect_id_param, str) or not effect_id_param:
+            errors.append(f"{path}: extend_effect_duration requires effect_id_param")
+        optional = node.get("optional")
+        if optional is not None and not isinstance(optional, bool):
+            errors.append(f"{path}: extend_effect_duration optional must be a boolean")
+        source_kind = node.get("source_kind")
+        if source_kind is not None and source_kind != "spell":
+            errors.append(f"{path}: extend_effect_duration source_kind supports only spell")
+        duration = node.get("duration")
+        if not isinstance(duration, dict) or not duration:
+            errors.append(f"{path}: extend_effect_duration requires duration")
+        else:
+            errors.extend(_validate_duration_from_slot(duration, path))
+            errors.extend(_validate_duration_from_param(duration, path))
     if node_type in {"natures_sanctuary", "natures_sanctuary_move"}:
         destination_param = node.get(
             "destination_param",

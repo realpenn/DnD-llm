@@ -176,6 +176,7 @@ CONJURE_MINOR_ELEMENTALS_DAMAGE_TYPES = frozenset({"acid", "cold", "fire", "ligh
 CONJURE_MINOR_ELEMENTALS_RADIUS_FT = 15
 CONJURE_FEY_ACTION_IDS = frozenset({"srd.conjure_fey", "srd.conjure_fey_attack"})
 DREAM_ACTION_ID = "srd.dream"
+PLANAR_BINDING_ACTION_ID = "srd.planar_binding"
 EYEBITE_EFFECT_PARAM = "eyebite_effect"
 EYEBITE_EFFECTS = frozenset({"asleep", "panicked", "sickened"})
 EYEBITE_SOURCE_ACTION_ID = "srd.eyebite"
@@ -610,6 +611,7 @@ class AutomationExecutor:
         self._validate_eldritch_smite_preconditions(action, actor_id, targets or [], params)
         self._validate_conjure_fey_preconditions(action, targets or [], params)
         self._validate_dream_preconditions(action, targets or [], params)
+        self._validate_planar_binding_preconditions(action, params)
         self._validate_conjure_minor_elementals_damage_type(
             action,
             actor_id,
@@ -719,6 +721,8 @@ class AutomationExecutor:
             self._node_passive_effect(ctx, node, path)
         elif node_type == "world_effect":
             self._node_world_effect(ctx, node, path)
+        elif node_type == "extend_effect_duration":
+            self._node_extend_effect_duration(ctx, node, path)
         elif node_type == "natures_sanctuary":
             self._node_natures_sanctuary(ctx, node, path)
         elif node_type == "natures_sanctuary_move":
@@ -3335,6 +3339,82 @@ class AutomationExecutor:
                 return True
         markers = effect.get("effect_markers", [])
         return isinstance(markers, list) and marker in {str(item) for item in markers}
+
+    def _node_extend_effect_duration(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+        path: str,
+    ) -> None:
+        effect_id_param = str(node["effect_id_param"])
+        raw_effect_id = ctx.params.get(effect_id_param)
+        if raw_effect_id in (None, "") and node.get("optional") is True:
+            return
+        if not isinstance(raw_effect_id, str) or not raw_effect_id:
+            raise AutomationError(f"missing required parameter {effect_id_param}")
+        matching_effects = self._active_effects_with_id(raw_effect_id)
+        if not matching_effects:
+            raise AutomationError(f"active effect not found: {raw_effect_id}")
+        if node.get("source_kind") == "spell" and not all(
+            self._effect_has_spell_source(effect) for _, _, effect in matching_effects
+        ):
+            raise AutomationError(f"active effect is not from a spell: {raw_effect_id}")
+        duration = self._resolved_effect_duration(ctx, node)
+        owners: list[dict[str, Any]] = []
+        for owner_type, owner_id, effect in matching_effects:
+            duration_before = dict(effect.get("duration", {}))
+            effect["duration"] = dict(duration)
+            owners.append(
+                {
+                    "owner_type": owner_type,
+                    "owner_id": owner_id,
+                    "duration_before": duration_before,
+                    "duration_after": dict(duration),
+                }
+            )
+        ctx.result.state_changes.append(
+            {
+                "type": "effect_duration_extended",
+                "effect_id": raw_effect_id,
+                "duration": duration,
+                "owners": owners,
+                "path": path,
+            }
+        )
+
+    def _active_effects_with_id(
+        self,
+        effect_id: str,
+    ) -> list[tuple[str, str, dict[str, Any]]]:
+        matches: list[tuple[str, str, dict[str, Any]]] = []
+        for effect in self.state.world.active_effects:
+            if effect.get("effect_id") == effect_id:
+                matches.append(("world", self.state.world.current_zone_id, effect))
+        for character_id, character in self.state.characters.items():
+            for effect in character.status_effects:
+                if effect.get("effect_id") == effect_id:
+                    matches.append(("character", character_id, effect))
+        for monster_id, monster in self.state.monsters.items():
+            for effect in monster.status_effects:
+                if effect.get("effect_id") == effect_id:
+                    matches.append(("monster", monster_id, effect))
+        if self.state.encounter is not None:
+            for combatant_id, combatant in self.state.encounter.combatants.items():
+                for effect in combatant.status_effects:
+                    if effect.get("effect_id") == effect_id:
+                        matches.append(("combatant", combatant_id, effect))
+        return matches
+
+    @staticmethod
+    def _effect_has_spell_source(effect: dict[str, Any]) -> bool:
+        source_action_id = effect.get("source_action_id")
+        source_ref = effect.get("source_ref")
+        return (
+            isinstance(source_action_id, str)
+            and bool(source_action_id)
+            and isinstance(source_ref, str)
+            and "spell" in source_ref.casefold()
+        )
 
     def _node_passive_effect(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
         concentration = bool(node.get("concentration", False))
@@ -11847,6 +11927,37 @@ class AutomationExecutor:
         message_param = action.properties.get("dream_message_10_words_or_less_param")
         if isinstance(message_param, str) and params.get(message_param) is not True:
             raise AutomationError("Terrifying Dream message must be no more than ten words")
+
+    def _validate_planar_binding_preconditions(
+        self,
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> None:
+        if action.id != PLANAR_BINDING_ACTION_ID:
+            return
+        range_param = action.properties.get(
+            "planar_binding_target_within_range_entire_casting_param"
+        )
+        if isinstance(range_param, str) and params.get(range_param) is not True:
+            raise AutomationError(
+                "Planar Binding requires the target to remain within 60 feet "
+                "for the entire 1-hour casting"
+            )
+        effect_id_param = action.properties.get(
+            "planar_binding_source_spell_effect_id_param"
+        )
+        if not isinstance(effect_id_param, str):
+            return
+        raw_effect_id = params.get(effect_id_param)
+        if raw_effect_id in (None, ""):
+            return
+        if not isinstance(raw_effect_id, str):
+            raise AutomationError(f"parameter {effect_id_param} must be a string")
+        matching_effects = self._active_effects_with_id(raw_effect_id)
+        if not matching_effects:
+            raise AutomationError("Planar Binding source spell effect is not active")
+        if not all(self._effect_has_spell_source(effect) for _, _, effect in matching_effects):
+            raise AutomationError("Planar Binding source effect must be a spell effect")
 
     @staticmethod
     def _validate_allowed_creature_types_param(

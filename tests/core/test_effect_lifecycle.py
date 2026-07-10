@@ -456,6 +456,7 @@ def test_multi_day_duration_variants_tick_from_inferred_remaining_ticks(make_sta
     durations = [
         ("effect-ten-days", "duration_10_days_or_harmed", 144000),
         ("effect-thirty-days", "duration_30_days_or_harmed", 432000),
+        ("effect-one-eighty-days", "duration_180_days", 2592000),
         ("effect-year-and-day", "duration_366_days_or_harmed", 5270400),
     ]
     for effect_id, until, _ticks in durations:

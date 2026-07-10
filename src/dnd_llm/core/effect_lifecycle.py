@@ -634,6 +634,8 @@ def _initial_ticks(until: str) -> int | None:
         return 144000
     if timed_until in {"duration_30_days", "concentration_30_days"}:
         return 432000
+    if timed_until in {"duration_180_days", "concentration_180_days"}:
+        return 2592000
     if timed_until in {"duration_366_days", "concentration_366_days"}:
         return 5270400
     return None

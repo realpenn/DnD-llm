@@ -79,6 +79,7 @@ class CompendiumSimulator:
                 _add_allowed_list_params(params, action)
                 _add_conjure_fey_params(params, action)
                 _add_dream_params(params, action)
+                _add_planar_binding_params(params, action)
                 _add_eyebite_params(params, action)
                 _add_fire_shield_params(params, action)
                 _add_shapechange_params(params, action)
@@ -467,6 +468,7 @@ def _spell_params_for_action(action: ActionDefinition) -> dict[str, Any]:
     _add_allowed_list_params(params, action)
     _add_conjure_fey_params(params, action)
     _add_dream_params(params, action)
+    _add_planar_binding_params(params, action)
     _add_eyebite_params(params, action)
     if action.id == "srd.hallow":
         params["hallow_extra_effect_creature_types"] = ["aberration"]
@@ -523,6 +525,14 @@ def _add_dream_params(params: dict[str, Any], action: ActionDefinition) -> None:
     messenger_param = action.properties.get("dream_messenger_willing_touched_param")
     if isinstance(messenger_param, str) and messenger_param:
         params[messenger_param] = True
+
+
+def _add_planar_binding_params(params: dict[str, Any], action: ActionDefinition) -> None:
+    range_param = action.properties.get(
+        "planar_binding_target_within_range_entire_casting_param"
+    )
+    if isinstance(range_param, str) and range_param:
+        params[range_param] = True
 
 
 def _add_shapechange_params(params: dict[str, Any], action: ActionDefinition) -> None:

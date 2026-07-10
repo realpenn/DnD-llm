@@ -63,6 +63,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.hallucinatory_terrain",
         "srd.phantasmal_killer",
         "srd.dream",
+        "srd.planar_binding",
         "srd.mislead",
         "srd.seeming",
         "srd.project_image",
@@ -3290,6 +3291,85 @@ def test_compendium_loads_srd_actions() -> None:
                 "hp_max_reduction",
                 "contact_other_plane_incapacitation",
             ],
+        },
+    ]
+    planar_binding_spell = compendium.spell("srd.spell.planar_binding")
+    assert planar_binding_spell.level == 5
+    assert planar_binding_spell.school == "abjuration"
+    assert planar_binding_spell.classes == [
+        "bard",
+        "cleric",
+        "druid",
+        "warlock",
+        "wizard",
+    ]
+    planar_binding = compendium.action("srd.planar_binding")
+    assert planar_binding.requirements == {
+        "spell_level": 5,
+        "class_any": ["bard", "cleric", "druid", "warlock", "wizard"],
+    }
+    assert planar_binding.properties == {
+        "spell_classes": ["bard", "cleric", "druid", "warlock", "wizard"],
+        "components": ["V", "S", "M"],
+        "casting_time": {"hours": 1},
+        "material_component": {
+            "description": "a jewel worth 1,000+ GP",
+            "consumed": True,
+        },
+        "planar_binding_target_within_range_entire_casting_param": (
+            "planar_binding_target_within_range_entire_casting"
+        ),
+        "planar_binding_source_spell_effect_id_param": (
+            "planar_binding_source_spell_effect_id"
+        ),
+        "spell_definition_id": "srd.spell.planar_binding",
+        "spell_level": 5,
+    }
+    assert planar_binding.cost.spell_slot_level == 5
+    assert planar_binding.cost.gold == 1000
+    assert planar_binding.range == {"normal_ft": 60}
+    assert planar_binding.target_policy == {
+        "min": 1,
+        "max": 1,
+        "harmful": True,
+        "creature_types": ["celestial", "elemental", "fey", "fiend"],
+    }
+    planar_binding_duration = {
+        "until": "duration_24_hours",
+        "duration_from_slot": {
+            "base_spell_slot_level": 5,
+            "by_slot_level": {
+                "6": "duration_10_days",
+                "7": "duration_30_days",
+                "8": "duration_180_days",
+                "9": "duration_366_days",
+            },
+        },
+    }
+    assert planar_binding.automation == [
+        {"type": "target", "mode": "explicit"},
+        {"type": "saving_throw", "ability": "cha", "dc_from": {"spell_save_dc": "actor"}},
+        {
+            "type": "extend_effect_duration",
+            "effect_id_param": "planar_binding_source_spell_effect_id",
+            "optional": True,
+            "source_kind": "spell",
+            "duration": planar_binding_duration,
+        },
+        {
+            "type": "passive_effect",
+            "requires_failed_save": True,
+            "passive_modifiers": {
+                "planar_binding": True,
+                "bound_to_serve_caster": True,
+                "follows_commands_best_ability": True,
+                "hostile_twists_commands_toward_own_objectives": True,
+                "report_same_plane_to_caster": True,
+                "report_different_plane_to_binding_place": True,
+                "command_ai_not_automated": True,
+            },
+            "duration": planar_binding_duration,
+            "tick_on": "self_turn_end",
         },
     ]
     antilife_shell = compendium.action("srd.antilife_shell")
@@ -10051,6 +10131,7 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.spell.phantasmal_killer",
         "srd.spell.resilient_sphere",
         "srd.spell.banishment",
+        "srd.spell.planar_binding",
         "srd.spell.antilife_shell",
         "srd.spell.aura_of_life",
         "srd.spell.death_ward",
