@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dnd_llm.core.compendium.loader import CompendiumLoader
-from dnd_llm.core.models import Combatant
+from dnd_llm.core.models import Combatant, Monster
 from dnd_llm.core.persistence import AuditLog
 from dnd_llm.core.positioning import PositionEdge, PositionNode, TacticalGraph
 from dnd_llm.core.resolver import ActionResolver, PlayerActionDraft
@@ -21,6 +21,38 @@ def test_tactical_graph_distance_area_and_opportunity(make_state) -> None:
         enemy_positions={"goblin1": "cover"},
         enemy_reach_ft={"goblin1": 5},
     ) == ["goblin1"]
+
+
+def test_tactical_graph_difficult_terrain_doubles_movement_cost() -> None:
+    graph = TacticalGraph(
+        nodes={
+            "start": PositionNode("start", "Start"),
+            "mud": PositionNode("mud", "Mud"),
+        },
+        edges=[PositionEdge("start", "mud", 10, difficult_terrain=True)],
+    )
+
+    assert graph.shortest_distance("start", "mud") == 10
+    assert graph.shortest_distance("start", "mud", movement_cost=True) == 20
+    assert graph.reachable("start", 10) == {"start"}
+    assert graph.reachable("start", 20) == {"start", "mud"}
+
+
+def test_tactical_graph_cover_uses_only_edges_on_shortest_path() -> None:
+    graph = TacticalGraph(
+        nodes={
+            node_id: PositionNode(node_id, node_id.title())
+            for node_id in ("start", "middle", "goal", "remote_a", "remote_b")
+        },
+        edges=[
+            PositionEdge("start", "middle", 5, cover="half"),
+            PositionEdge("middle", "goal", 5),
+            PositionEdge("start", "goal", 30, cover="three_quarters"),
+            PositionEdge("remote_a", "remote_b", 5, cover="total"),
+        ],
+    )
+
+    assert graph.cover_between("start", "goal") == "half"
 
 
 def test_resolver_accepts_legal_and_rejects_out_of_range(make_state) -> None:
@@ -50,6 +82,77 @@ def test_resolver_accepts_legal_and_rejects_out_of_range(make_state) -> None:
     )
     assert out_of_range.status == "rejected"
     assert out_of_range.reason == "target out of range"
+
+
+def test_resolver_checks_range_for_target_backing_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    combatant = state.encounter.combatants.pop("goblin1")
+    combatant.id = "goblin-combatant"
+    combatant.entity_id = "goblin1"
+    combatant.position_node_id = "back"
+    state.encounter.combatants[combatant.id] = combatant
+    state.monsters["goblin1"] = Monster(
+        id="goblin1",
+        name="Goblin",
+        abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "target out of range"
+
+
+def test_resolver_checks_line_of_sight_for_target_backing_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    combatant = state.encounter.combatants.pop("goblin1")
+    combatant.id = "goblin-combatant"
+    combatant.entity_id = "goblin1"
+    combatant.position_node_id = "back"
+    state.encounter.combatants[combatant.id] = combatant
+    state.monsters["goblin1"] = Monster(
+        id="goblin1",
+        name="Goblin",
+        abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+    )
+    state.encounter.tactical_graph = TacticalGraph(
+        nodes={
+            "front": PositionNode("front", "Front"),
+            "back": PositionNode("back", "Back"),
+        },
+        edges=[PositionEdge("front", "back", 5, line_of_sight=False)],
+    ).to_dict()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "line of sight blocked"
 
 
 def test_resolver_extends_selected_eldritch_blast_range_with_eldritch_spear(
@@ -346,6 +449,40 @@ def test_resolver_blocks_pvp_by_default(make_state) -> None:
 
     assert result.status == "rejected"
     assert result.reason == "pvp is disabled"
+
+
+def test_resolver_blocks_pvp_for_target_backing_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    ally = state.encounter.combatants.pop("pc2")
+    ally.id = "ally-combatant"
+    ally.entity_id = "pc2"
+    state.encounter.combatants[ally.id] = ally
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["pc2"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "pvp is disabled"
+
+
+def test_resolver_filters_alias_conflicts_by_owned_actions(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(PlayerActionDraft(actor_id="pc1", verb="闪避"))
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.dodge"
 
 
 def test_resolver_rejects_hallucinated_action_id(make_state) -> None:

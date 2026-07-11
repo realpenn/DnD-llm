@@ -36,7 +36,8 @@ class PositionEdge:
     difficult_terrain: bool = False
 
     def cost(self) -> int:
-        return self.movement_cost if self.movement_cost is not None else self.distance_ft
+        base_cost = self.movement_cost if self.movement_cost is not None else self.distance_ft
+        return base_cost * 2 if self.difficult_terrain else base_cost
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -115,17 +116,42 @@ class TacticalGraph:
         return False
 
     def cover_between(self, start: str, goal: str) -> str:
-        best = "none"
-        for edge in self.edges:
-            if {edge.source, edge.target} == {start, goal}:
-                return edge.cover
-        distance = self.shortest_distance(start, goal)
-        if distance is None:
+        path = self._shortest_path_edges(start, goal)
+        if path is None:
             return "total"
-        for edge in self.edges:
-            if edge.cover in {"three_quarters", "total"}:
-                best = edge.cover
-        return best
+        cover_rank = {"none": 0, "half": 1, "three_quarters": 2, "total": 3}
+        return max(
+            (edge.cover for edge in path),
+            key=lambda cover: cover_rank.get(cover, 0),
+            default="none",
+        )
+
+    def _shortest_path_edges(self, start: str, goal: str) -> list[PositionEdge] | None:
+        if start == goal:
+            return []
+        queue: list[tuple[int, str]] = [(0, start)]
+        distances: dict[str, int] = {start: 0}
+        previous: dict[str, tuple[str, PositionEdge]] = {}
+        while queue:
+            distance, node = heapq.heappop(queue)
+            if distance > distances[node]:
+                continue
+            if node == goal:
+                path: list[PositionEdge] = []
+                current = goal
+                while current != start:
+                    parent, edge = previous[current]
+                    path.append(edge)
+                    current = parent
+                path.reverse()
+                return path
+            for neighbor, edge in self.neighbors(node):
+                new_distance = distance + edge.distance_ft
+                if new_distance < distances.get(neighbor, 10**9):
+                    distances[neighbor] = new_distance
+                    previous[neighbor] = (node, edge)
+                    heapq.heappush(queue, (new_distance, neighbor))
+        return None
 
     def reachable(self, start: str, movement_budget: int) -> set[str]:
         result = {start}

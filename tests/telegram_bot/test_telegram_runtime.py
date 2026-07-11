@@ -116,6 +116,22 @@ def test_commands_do_not_call_dm_runtime(make_state) -> None:
     assert result[0].metadata["command"] == "/status"
 
 
+def test_commands_support_telegram_bot_suffix_and_ignore_other_bots(make_state) -> None:
+    runtime = _runtime(make_state)
+
+    own = runtime.handle_message(
+        IncomingMessage(user_id="u1", chat_id="group-1", text="/status@DnD_Bot"),
+        now=1,
+    )
+    other = runtime.handle_message(
+        IncomingMessage(user_id="u1", chat_id="group-1", text="/status@other_bot"),
+        now=2,
+    )
+
+    assert own[0].metadata["command"] == "/status"
+    assert other == []
+
+
 def test_group_private_command_requires_start(make_state) -> None:
     runtime = _runtime(make_state)
 
@@ -293,6 +309,7 @@ def test_gm_forceturn_command_prompts_next_party_player(make_state) -> None:
 
 def test_dm_action_syncs_character_growth_back_to_registry(make_state) -> None:
     runtime = _runtime(make_state)
+    runtime.commands.gm_user_ids.add("u1")
     runtime.session.state.world.flags["campaign_rewards"] = {
         "test.reward": {"gold": 5, "experience": 0, "items": []}
     }
@@ -404,6 +421,26 @@ def test_private_dd_requires_join_and_does_not_sync_active_character(make_state)
 
     assert result[0].metadata["missing_character"] is True
     assert unjoined.id not in runtime.session.state.characters
+
+
+def test_private_dd_records_actor_scoped_memory(make_state) -> None:
+    runtime = _runtime(make_state)
+
+    result = runtime.handle_message(
+        IncomingMessage(
+            user_id="u1",
+            chat_id="private-u1",
+            text="DD 我用短剑攻击 Goblin，并记住银烛暗号",
+            is_private=True,
+            message_id="private-memory",
+        ),
+        now=1,
+    )
+
+    assert result[0].private is True
+    assert runtime.session.state.memory_fragments[-1].visibility == "private:pc1"
+    assert runtime.session.context_for("pc1", query="银烛暗号").memory_fragments
+    assert runtime.session.context_for("pc2", query="银烛暗号").memory_fragments == []
 
 
 def test_spectator_group_dd_is_read_only(make_state) -> None:

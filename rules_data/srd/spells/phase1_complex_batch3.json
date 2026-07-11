@@ -122,7 +122,7 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "enchantment",
-      "classes": ["cleric", "paladin"],
+      "classes": ["bard", "cleric", "paladin"],
       "action": {
         "id": "srd.command",
         "name": "Command",
@@ -132,7 +132,13 @@
         "action_type": "spell",
         "action_economy": "action",
         "range": { "normal_ft": 60 },
-        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "base_spell_slot_level": 1,
+          "max_targets_per_slot_above": 1
+        },
         "requirements": { "spell_level": 1 },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 1 },
@@ -304,7 +310,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "transmutation",
-      "classes": ["bard", "cleric", "druid", "sorcerer"],
+      "classes": ["bard", "cleric", "druid", "ranger", "sorcerer", "wizard"],
       "action": {
         "id": "srd.enhance_ability",
         "name": "Enhance Ability",
@@ -339,7 +345,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "transmutation",
-      "classes": ["sorcerer", "wizard"],
+      "classes": ["bard", "druid", "sorcerer", "wizard"],
       "action": {
         "id": "srd.enlarge_reduce",
         "name": "Enlarge/Reduce",
@@ -500,7 +506,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "evocation",
-      "classes": ["druid"],
+      "classes": ["druid", "sorcerer"],
       "action": {
         "id": "srd.flame_blade",
         "name": "Flame Blade",
@@ -607,7 +613,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "evocation",
-      "classes": ["druid", "sorcerer", "wizard"],
+      "classes": ["druid", "ranger", "sorcerer", "wizard"],
       "action": {
         "id": "srd.gust_of_wind",
         "name": "Gust of Wind",
@@ -680,7 +686,7 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "enchantment",
-      "classes": ["bard", "wizard"],
+      "classes": ["bard", "warlock", "wizard"],
       "action": {
         "id": "srd.hideous_laughter",
         "name": "Hideous Laughter",
@@ -826,7 +832,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "illusion",
-      "classes": ["sorcerer", "warlock", "wizard"],
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
       "action": {
         "id": "srd.mirror_image",
         "name": "Mirror Image",
@@ -970,7 +976,7 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "abjuration",
-      "classes": ["cleric", "paladin", "warlock", "wizard"],
+      "classes": ["cleric", "druid", "paladin", "warlock", "wizard"],
       "action": {
         "id": "srd.protection_from_evil_and_good",
         "name": "Protection from Evil and Good",
@@ -1085,7 +1091,7 @@
       "rules_version": "srd-5.2.1",
       "level": 3,
       "school": "necromancy",
-      "classes": ["cleric", "paladin"],
+      "classes": ["cleric", "druid", "paladin", "ranger"],
       "action": {
         "id": "srd.revivify",
         "name": "Revivify",
@@ -1298,7 +1304,7 @@
       "rules_version": "srd-5.2.1",
       "level": 3,
       "school": "transmutation",
-      "classes": ["sorcerer", "wizard"],
+      "classes": ["bard", "sorcerer", "wizard"],
       "action": {
         "id": "srd.slow",
         "name": "Slow",
@@ -1307,7 +1313,7 @@
         "rules_version": "srd-5.2.1",
         "action_type": "spell",
         "action_economy": "action",
-        "range": { "normal_ft": 120 },
+        "range": { "normal_ft": 120, "shape": "cube", "size_ft": 40 },
         "target_policy": { "min": 1, "max": 6, "harmful": true },
         "requirements": { "spell_level": 3 },
         "friendly_fire_policy": "confirm",
@@ -1481,7 +1487,7 @@
       "rules_version": "srd-5.2.1",
       "level": 3,
       "school": "necromancy",
-      "classes": ["warlock", "wizard"],
+      "classes": ["sorcerer", "warlock", "wizard"],
       "action": {
         "id": "srd.vampiric_touch",
         "name": "Vampiric Touch",
@@ -1513,7 +1519,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "abjuration",
-      "classes": ["cleric"],
+      "classes": ["cleric", "paladin"],
       "action": {
         "id": "srd.warding_bond",
         "name": "Warding Bond",

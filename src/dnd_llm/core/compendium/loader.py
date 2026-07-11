@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ...resources import bundled_rules_data_dir
 from ..automation.definitions import (
     ActionDefinition,
     ClassDefinition,
@@ -17,7 +18,7 @@ from ..automation.definitions import (
 )
 from .localization import AliasIndex
 from .schema_loader import SchemaRegistry
-from .validators import RuleDataValidator
+from .validators import RuleDataValidator, SrdCatalog, rule_payload_digest
 
 
 @dataclass
@@ -57,6 +58,8 @@ class CompendiumLoader:
         )
 
     def load(self) -> Compendium:
+        _build_srd_catalog(self.root)
+        self.validator.srd_catalog = _build_srd_catalog(_trusted_srd_root(self.root))
         compendium = Compendium()
         compendium.attributions = self._load_attributions()
         for path in sorted(self.root.glob("srd/actions/**/*.json")):
@@ -64,11 +67,12 @@ class CompendiumLoader:
                 report = self.validator.validate_action(item)
                 report.require_ok()
                 action = ActionDefinition.from_dict(item)
-                compendium.actions[action.id] = action
+                _store_unique(compendium.actions, action.id, action, "action")
                 self._add_aliases(compendium, action)
         scoped_validator = RuleDataValidator(
             known_action_ids=set(compendium.actions),
             schema_registry=self.validator.schema_registry,
+            srd_catalog=self.validator.srd_catalog,
         )
         self._load_spells(compendium, scoped_validator)
         scoped_validator.known_action_ids = set(compendium.actions)
@@ -81,13 +85,13 @@ class CompendiumLoader:
                 report = self.validator.validate_hazard(item)
                 report.require_ok()
                 hazard = HazardDefinition.from_dict(item)
-                compendium.hazards[hazard.id] = hazard
+                _store_unique(compendium.hazards, hazard.id, hazard, "hazard")
         for path in sorted(self.root.glob("campaigns/events/**/*.json")):
             for item in _load_items(path):
                 report = self.validator.validate_event(item)
                 report.require_ok()
                 event = EventDefinition.from_dict(item)
-                compendium.events[event.id] = event
+                _store_unique(compendium.events, event.id, event, "event")
         return compendium
 
     def _load_conditions(
@@ -109,7 +113,7 @@ class CompendiumLoader:
                 report = validator.validate_condition(item)
                 report.require_ok()
                 condition = ConditionDefinition.from_dict(item)
-                compendium.conditions[condition.id] = condition
+                _store_unique(compendium.conditions, condition.id, condition, "condition")
 
     def _load_classes(
         self,
@@ -121,7 +125,7 @@ class CompendiumLoader:
                 report = validator.validate_class(item)
                 report.require_ok()
                 class_definition = ClassDefinition.from_dict(item)
-                compendium.classes[class_definition.id] = class_definition
+                _store_unique(compendium.classes, class_definition.id, class_definition, "class")
 
     def _load_spells(
         self,
@@ -143,10 +147,10 @@ class CompendiumLoader:
                     }
                     if spell.ritual:
                         action.properties["ritual"] = True
-                    compendium.actions[action.id] = action
+                    _store_unique(compendium.actions, action.id, action, "action")
                     self._add_aliases(compendium, action)
                     spell.action_id = action.id
-                compendium.spells[spell.id] = spell
+                _store_unique(compendium.spells, spell.id, spell, "spell")
 
     def _load_monsters(
         self,
@@ -158,7 +162,7 @@ class CompendiumLoader:
                 report = validator.validate_monster(item)
                 report.require_ok()
                 monster = MonsterDefinition.from_dict(item)
-                compendium.monsters[monster.id] = monster
+                _store_unique(compendium.monsters, monster.id, monster, "monster")
 
     def _load_items(
         self,
@@ -170,7 +174,7 @@ class CompendiumLoader:
                 report = validator.validate_item(item)
                 report.require_ok()
                 item_definition = ItemDefinition.from_dict(item)
-                compendium.items[item_definition.id] = item_definition
+                _store_unique(compendium.items, item_definition.id, item_definition, "item")
 
     def _load_attributions(self) -> list[dict[str, Any]]:
         path = self.root / "attribution.json"
@@ -202,7 +206,7 @@ class CompendiumLoader:
         compendium.aliases.add(action.id, *names)
 
 
-def _load_items(path: Path) -> list[dict[str, Any]]:
+def _load_items(path: Path) -> list[Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(data, list):
         return data
@@ -211,3 +215,78 @@ def _load_items(path: Path) -> list[dict[str, Any]]:
     if isinstance(data, dict):
         return [data]
     raise ValueError(f"unsupported rule data file: {path}")
+
+
+def _trusted_srd_root(root: Path) -> Path:
+    bundled_root = bundled_rules_data_dir().resolve()
+    if root.resolve() == bundled_root:
+        return root
+    return bundled_root
+
+
+def _build_srd_catalog(root: Path) -> SrdCatalog:
+    catalog: SrdCatalog = {}
+    locations: dict[tuple[str, str], Path] = {}
+    patterns = {
+        "action": "srd/actions/**/*.json",
+        "condition": "srd/conditions/**/*.json",
+        "class": "srd/classes/**/*.json",
+        "spell": "srd/spells/**/*.json",
+        "monster": "srd/monsters/**/*.json",
+        "item": "srd/items/**/*.json",
+        "hazard": "srd/hazards/**/*.json",
+    }
+    for namespace, pattern in patterns.items():
+        for path in sorted(root.glob(pattern)):
+            for raw_item in _load_items(path):
+                item = raw_item
+                if namespace == "condition" and isinstance(item, str):
+                    item = {
+                        "id": item,
+                        "name": item.title(),
+                        "localization": {"en": item.title(), "zh": item, "aliases": []},
+                        "source": "SRD 5.2.1",
+                        "rules_version": "srd-5.2.1",
+                        "effects": {},
+                    }
+                if not isinstance(item, dict):
+                    continue
+                _add_catalog_entry(catalog, locations, namespace, item, path)
+                if namespace == "spell" and isinstance(item.get("action"), dict):
+                    _add_catalog_entry(catalog, locations, "action", item["action"], path)
+    return catalog
+
+
+def _add_catalog_entry(
+    catalog: SrdCatalog,
+    locations: dict[tuple[str, str], Path],
+    namespace: str,
+    item: dict[str, Any],
+    path: Path,
+) -> None:
+    item_id = item.get("id")
+    if not isinstance(item_id, str) or not item_id:
+        return
+    key = (namespace, item_id)
+    if key in locations:
+        raise ValueError(f"duplicate {namespace} id {item_id}: {locations[key]} and {path}")
+    locations[key] = path
+    source = item.get("source")
+    rules_version = item.get("rules_version")
+    if isinstance(source, str) and isinstance(rules_version, str):
+        catalog.setdefault(namespace, {})[item_id] = (
+            source,
+            rules_version,
+            rule_payload_digest(item),
+        )
+
+
+def _store_unique(
+    entries: dict[str, Any],
+    entry_id: str,
+    entry: Any,
+    namespace: str,
+) -> None:
+    if entry_id in entries:
+        raise ValueError(f"duplicate {namespace} id {entry_id}")
+    entries[entry_id] = entry

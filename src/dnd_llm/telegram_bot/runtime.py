@@ -222,12 +222,15 @@ class TelegramRuntime:
             actor_id=character.id,
             text=intent.text,
             idempotency_key=self._idempotency_key(intent, incoming),
+            visibility="private" if incoming.is_private else "public",
+            allow_gm_tools=intent.user_id in self.commands.gm_user_ids,
         )
         self._sync_campaign_characters_from_state()
         messages = [
             OutgoingMessage(
                 chat_id=intent.chat_id,
                 text=response.narration,
+                private=incoming.is_private,
                 metadata={
                     "accepted": response.accepted,
                     "actor_id": character.id,

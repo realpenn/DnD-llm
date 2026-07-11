@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dnd_llm.content.campaign_pack import CampaignPackLoader
 from dnd_llm.content.runtime import apply_campaign_pack
 from dnd_llm.core.compendium.loader import CompendiumLoader
-from dnd_llm.core.models import Combatant
+from dnd_llm.core.models import Combatant, Monster
 from dnd_llm.core.persistence import AuditLog
 from dnd_llm.core.positioning import TacticalGraph
 from dnd_llm.core.resolver import PlayerActionDraft
@@ -427,6 +427,94 @@ def test_session_rejects_out_of_turn_action(make_state) -> None:
     assert isinstance(result, SessionResult)
     assert result.accepted is False
     assert result.payload["reason"] == "not actor turn"
+
+
+def test_session_rejects_movement_without_destination_instead_of_raising(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "pc2", "goblin1"]
+    state.encounter.turn_index = 0
+    state.characters["pc1"].actions.append("srd.move")
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    result = session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="移动",
+            candidate_action_id="srd.move",
+            raw_text="DD 移动到遗迹入口",
+        ),
+        "move-without-destination",
+    )
+
+    assert isinstance(result, SessionResult)
+    assert result.accepted is False
+    assert result.payload["status"] == "rejected"
+    assert result.payload["reason"] == "move requires exactly one destination"
+    assert state.encounter.current_combatant_id == "pc1"
+
+
+def test_end_combat_preserves_character_and_monster_status_effects(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.monsters["goblin1"] = Monster(
+        id="goblin1",
+        name="Goblin",
+        abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+    )
+    character_effect = {
+        "effect_id": "character-poison",
+        "source_action_id": "test.poison",
+        "target_id": "pc2",
+        "applied_by": "goblin1",
+        "condition": "poisoned",
+        "duration": {"until": "duration_1_hour"},
+        "tick_on": "self_turn_start",
+    }
+    monster_effect = {
+        "effect_id": "monster-poison",
+        "source_action_id": "test.poison",
+        "target_id": "goblin1",
+        "applied_by": "pc1",
+        "condition": "poisoned",
+        "duration": {"until": "duration_1_hour"},
+        "tick_on": "self_turn_start",
+    }
+    state.encounter.combatants["pc2"].status_effects.append(character_effect)
+    state.encounter.combatants["goblin1"].status_effects.append(monster_effect)
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    ended = session.end_combat("preserve-cross-combat-effects")
+
+    assert isinstance(ended, SessionResult)
+    assert ended.accepted is True
+    assert state.encounter is None
+    assert state.characters["pc2"].status_effects == [character_effect]
+    assert state.monsters["goblin1"].status_effects == [monster_effect]
+
+
+def test_end_combat_does_not_restore_effect_removed_from_combatant(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    stale_effect = {
+        "effect_id": "expired-poison",
+        "source_action_id": "test.poison",
+        "target_id": "pc2",
+        "applied_by": "goblin1",
+        "condition": "poisoned",
+    }
+    state.characters["pc2"].status_effects = [stale_effect]
+    state.encounter.combatants["pc2"].status_effects = []
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    ended = session.end_combat("remove-expired-cross-combat-effect")
+
+    assert isinstance(ended, SessionResult)
+    assert ended.accepted is True
+    assert state.characters["pc2"].status_effects == []
 
 
 def test_roll_initiative_groups_same_named_monsters(make_state) -> None:

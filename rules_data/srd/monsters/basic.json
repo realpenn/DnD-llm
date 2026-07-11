@@ -28,7 +28,12 @@
       "size": "medium_or_small",
       "creature_type": "humanoid",
       "abilities": { "str": 15, "dex": 16, "con": 14, "int": 14, "wis": 11, "cha": 14 },
-      "actions": ["srd.bandit_captain_scimitar", "srd.bandit_captain_pistol"]
+      "actions": [
+        "srd.bandit_captain_multiattack",
+        "srd.bandit_captain_scimitar",
+        "srd.bandit_captain_pistol",
+        "srd.bandit_captain_parry"
+      ]
     },
     {
       "id": "srd.cultist",
@@ -88,7 +93,7 @@
       "size": "medium_or_small",
       "creature_type": "humanoid",
       "abilities": { "str": 13, "dex": 11, "con": 11, "int": 8, "wis": 11, "cha": 8 },
-      "actions": ["srd.warrior_infantry_spear"]
+      "actions": ["srd.warrior_infantry_pack_tactics", "srd.warrior_infantry_spear"]
     },
     {
       "id": "srd.skeleton",

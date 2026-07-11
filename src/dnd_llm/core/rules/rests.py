@@ -194,20 +194,12 @@ def long_rest(
         character.spell_slots_max = dict(restored_slots)
 
     maxima = _max_hit_dice(character)
-    total_max = sum(maxima.values())
-    dice_to_restore = max(1, total_max // 2) if total_max else 0
     restored_hit_dice: dict[str, int] = {}
     for die, maximum in sorted(maxima.items()):
         current = min(character.hit_dice.get(die, 0), maximum)
-        missing = maximum - current
-        restored = min(missing, dice_to_restore)
-        character.hit_dice[die] = current + restored
+        restored = maximum - current
+        character.hit_dice[die] = maximum
         restored_hit_dice[die] = restored
-        dice_to_restore -= restored
-        if dice_to_restore <= 0:
-            break
-    for die, maximum in maxima.items():
-        character.hit_dice.setdefault(die, maximum)
 
     restored_resources = _restore_long_rest_resources(character)
     reset_resources = _reset_rest_resources(character)

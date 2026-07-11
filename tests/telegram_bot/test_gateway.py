@@ -50,3 +50,28 @@ def test_gateway_normalizes_commands_and_mentions() -> None:
     assert mention is not None
     assert mention.source == "mention"
     assert mention.text == "我检查门缝"
+
+
+def test_gateway_normalizes_command_addressed_to_this_bot() -> None:
+    intent = normalize_message(
+        user_id="u1",
+        chat_id="group-1",
+        text="/status@DnD_Bot details",
+        bot_username="dnd_bot",
+    )
+
+    assert intent is not None
+    assert intent.is_command is True
+    assert intent.text == "/status details"
+
+
+def test_gateway_ignores_command_addressed_to_another_bot() -> None:
+    assert (
+        normalize_message(
+            user_id="u1",
+            chat_id="group-1",
+            text="/status@other_bot",
+            bot_username="dnd_bot",
+        )
+        is None
+    )

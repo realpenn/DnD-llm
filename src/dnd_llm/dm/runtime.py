@@ -42,6 +42,18 @@ DIRECT_DM_TOOL_NAMES = {
     "expand_zone",
 }
 
+GM_DIRECT_DM_TOOL_NAMES = frozenset(
+    {
+        "trigger_event",
+        "apply_hazard",
+        "award",
+        "request_combat",
+        "request_end_combat",
+        "expand_zone",
+    }
+)
+PLAYER_DIRECT_DM_TOOL_NAMES = frozenset({"roll_check", "roll_save", "interact"})
+
 _MEMORY_NUMBER_RE = re.compile(r"\b\d+\b")
 _RESTRICTED_SUMMARY_TERMS = (
     "金币",
@@ -106,9 +118,14 @@ class DMRuntime:
         actor_id: str,
         text: str,
         idempotency_key: str,
+        visibility: str = "public",
+        allow_gm_tools: bool = False,
     ) -> DMResponse:
         draft, model_error, direct_payload = self._draft(
-            actor_id=actor_id, text=text, idempotency_key=idempotency_key
+            actor_id=actor_id,
+            text=text,
+            idempotency_key=idempotency_key,
+            allow_gm_tools=allow_gm_tools,
         )
         if direct_payload is not None:
             response = DMResponse(
@@ -118,7 +135,13 @@ class DMRuntime:
                 engine_payload=direct_payload,
                 retries=0,
             )
-            self._capture_public_memory(text, response, idempotency_key)
+            self._capture_memory(
+                actor_id=actor_id,
+                text=text,
+                response=response,
+                idempotency_key=idempotency_key,
+                visibility=visibility,
+            )
             return response
         if model_error is not None:
             return DMResponse(
@@ -175,7 +198,13 @@ class DMRuntime:
                 prompt_version="dm-runtime-v1",
             )
         else:
-            self._capture_public_memory(text, response, idempotency_key)
+            self._capture_memory(
+                actor_id=actor_id,
+                text=text,
+                response=response,
+                idempotency_key=idempotency_key,
+                visibility=visibility,
+            )
         return response
 
     def summarize_scene(self, scene_notes: str, *, idempotency_key: str) -> str:
@@ -325,11 +354,13 @@ class DMRuntime:
         actor_id: str,
         text: str,
         idempotency_key: str,
+        allow_gm_tools: bool,
     ) -> tuple[PlayerActionDraft, dict[str, Any] | None, dict[str, Any] | None]:
         model_draft, model_error, direct_payload = self._model_draft(
             actor_id=actor_id,
             text=text,
             idempotency_key=idempotency_key,
+            allow_gm_tools=allow_gm_tools,
         )
         if direct_payload is not None:
             return self._empty_draft(actor_id, text), None, direct_payload
@@ -339,21 +370,26 @@ class DMRuntime:
             return model_draft, None, None
         return self._heuristic_draft(actor_id=actor_id, text=text), None, None
 
-    def _capture_public_memory(
+    def _capture_memory(
         self,
+        *,
+        actor_id: str,
         text: str,
         response: DMResponse,
         idempotency_key: str,
+        visibility: str,
     ) -> None:
         if not response.accepted:
             return
+        if visibility not in {"public", "private"}:
+            raise ValueError("memory visibility must be public or private")
         note = _public_memory_note(text, response.narration)
         if note is None:
             return
         self.session.remember(
             text=note,
             tags=["scene"],
-            visibility="public",
+            visibility=("public" if visibility == "public" else f"private:{actor_id}"),
             idempotency_key=f"{idempotency_key}:memory",
         )
 
@@ -363,11 +399,12 @@ class DMRuntime:
         actor_id: str,
         text: str,
         idempotency_key: str,
+        allow_gm_tools: bool,
     ) -> tuple[PlayerActionDraft | None, dict[str, Any] | None, dict[str, Any] | None]:
         if self.client is None:
             return None, None, None
         messages = build_dm_messages(self.session.context_for(actor_id, query=text), text)
-        tools = dm_tool_schemas()
+        tools = self._tool_schemas(allow_gm_tools=allow_gm_tools)
         try:
             response = self.client.chat(messages=messages, tools=tools)
             if response.get("type") == "unconfigured":
@@ -412,12 +449,25 @@ class DMRuntime:
             )
             return None, None, None
         tool_call = tool_calls[0]
+        if tool_call.name in GM_DIRECT_DM_TOOL_NAMES and not allow_gm_tools:
+            return (
+                None,
+                self._audit_model_error(
+                    idempotency_key=idempotency_key,
+                    text=text,
+                    reason=f"GM tool is not permitted for player DM requests: {tool_call.name}",
+                    response={"tool_name": tool_call.name, "arguments": tool_call.arguments},
+                    model_usage=model_usage,
+                ),
+                None,
+            )
         if tool_call.name in DIRECT_DM_TOOL_NAMES:
             try:
                 direct_payload = self._execute_direct_tool_call(
                     actor_id=actor_id,
                     tool_call=tool_call,
                     idempotency_key=idempotency_key,
+                    allow_gm_tools=allow_gm_tools,
                 )
             except Exception as exc:
                 return (
@@ -477,9 +527,14 @@ class DMRuntime:
         actor_id: str,
         tool_call: DMToolCall,
         idempotency_key: str,
+        allow_gm_tools: bool,
     ) -> dict[str, Any]:
         args = tool_call.arguments
         tool_key = f"{idempotency_key}:dm_tool:{tool_call.name}"
+        if tool_call.name in GM_DIRECT_DM_TOOL_NAMES and not allow_gm_tools:
+            raise DMToolCallError(f"GM tool is not permitted: {tool_call.name}")
+        if tool_call.name in PLAYER_DIRECT_DM_TOOL_NAMES:
+            self._require_current_actor(actor_id)
         if tool_call.name == "roll_check":
             self._require_actor_match(actor_id, args.get("actor_id"))
             return self.session.tools.roll_check(
@@ -664,6 +719,29 @@ class DMRuntime:
     def _require_actor_match(expected_actor_id: str, received_actor_id: Any) -> None:
         if received_actor_id is not None and str(received_actor_id) != expected_actor_id:
             raise DMToolCallError("tool actor_id does not match current actor")
+
+    def _require_current_actor(self, actor_id: str) -> None:
+        encounter = self.session.state.encounter
+        if encounter is None:
+            return
+        current_id = encounter.current_combatant_id
+        current = encounter.combatants.get(current_id) if current_id is not None else None
+        allowed_actor_ids = {current_id}
+        if current is not None:
+            allowed_actor_ids.add(current.entity_id)
+        if actor_id not in allowed_actor_ids:
+            raise DMToolCallError("direct player tool requires the current combat actor")
+
+    @staticmethod
+    def _tool_schemas(*, allow_gm_tools: bool) -> list[dict[str, Any]]:
+        schemas = dm_tool_schemas()
+        if allow_gm_tools:
+            return schemas
+        return [
+            schema
+            for schema in schemas
+            if schema.get("function", {}).get("name") not in GM_DIRECT_DM_TOOL_NAMES
+        ]
 
     def _actor_zone(self, actor_id: str) -> str:
         entity = self.session.state.entity_for_actor(actor_id)

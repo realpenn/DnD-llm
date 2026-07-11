@@ -81,3 +81,35 @@ def test_every_loaded_hazard_can_be_simulated_and_serialized() -> None:
     assert {report.action_id for report in reports} == set(compendium.hazards)
     assert all(report.serialized_state for report in reports)
     assert all(report.audit_events for report in reports)
+
+
+def test_new_weapon_and_monster_actions_are_simulator_covered() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    action_ids = {
+        "srd.dagger_attack",
+        "srd.dagger_throw",
+        "srd.shortbow_attack",
+        "srd.light_crossbow_attack",
+        "srd.quarterstaff_attack",
+        "srd.mace_attack",
+        "srd.spear_attack",
+        "srd.spear_throw",
+        "srd.handaxe_attack",
+        "srd.handaxe_throw",
+        "srd.bandit_captain_multiattack",
+        "srd.bandit_captain_parry",
+        "srd.warrior_infantry_pack_tactics",
+    }
+
+    reports = {
+        action_id: CompendiumSimulator(compendium).simulate_action(action_id)
+        for action_id in action_ids
+    }
+
+    assert {action_id: report.error for action_id, report in reports.items() if not report.ok} == {}
+    multiattack = reports["srd.bandit_captain_multiattack"]
+    assert multiattack.result is not None
+    assert (
+        sum("natural" in node_result for node_result in multiattack.result["node_results"].values())
+        == 2
+    )

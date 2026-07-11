@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,6 +18,19 @@ from ..automation.definitions import (
 from ..automation.nodes import validate_node
 from .localization import AliasIndex
 from .schema_loader import SchemaRegistry
+
+SrdCatalog = dict[str, dict[str, tuple[str, str, str]]]
+
+
+def rule_payload_digest(data: object) -> str:
+    payload = json.dumps(
+        data,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
 
 ALLOWED_ACTION_ECONOMY = {"action", "bonus_action", "reaction", "movement", "free", "none"}
 ALLOWED_FRIENDLY_FIRE = {"off", "confirm", "raw"}
@@ -112,9 +127,11 @@ class RuleDataValidator:
         self,
         known_action_ids: set[str] | None = None,
         schema_registry: SchemaRegistry | None = None,
+        srd_catalog: SrdCatalog | None = None,
     ):
         self.known_action_ids = known_action_ids or set()
         self.schema_registry = schema_registry or SchemaRegistry()
+        self.srd_catalog = srd_catalog
 
     def validate_action(self, data: dict[str, Any]) -> ValidationReport:
         report = ValidationReport()
@@ -143,7 +160,14 @@ class RuleDataValidator:
         except TypeError as exc:
             report.errors.append(str(exc))
             return report
-        self._validate_source_metadata(action.id, action.source, action.rules_version, report)
+        self._validate_source_metadata(
+            "action",
+            action.id,
+            action.source,
+            action.rules_version,
+            data,
+            report,
+        )
         if action.action_economy not in ALLOWED_ACTION_ECONOMY:
             report.errors.append(f"{action.id}: invalid action_economy {action.action_economy}")
         if action.friendly_fire_policy not in ALLOWED_FRIENDLY_FIRE:
@@ -204,9 +228,11 @@ class RuleDataValidator:
             report.errors.append(str(exc))
             return report
         self._validate_source_metadata(
+            "condition",
             condition.id,
             condition.source,
             condition.rules_version,
+            data,
             report,
         )
         if condition.id not in ALLOWED_CONDITIONS and not condition.id.startswith("marker."):
@@ -226,9 +252,11 @@ class RuleDataValidator:
             report.errors.append(str(exc))
             return report
         self._validate_source_metadata(
+            "class",
             class_definition.id,
             class_definition.source,
             class_definition.rules_version,
+            data,
             report,
         )
         if class_definition.hit_die not in {"d6", "d8", "d10", "d12"}:
@@ -275,7 +303,14 @@ class RuleDataValidator:
         except TypeError as exc:
             report.errors.append(str(exc))
             return report
-        self._validate_source_metadata(spell.id, spell.source, spell.rules_version, report)
+        self._validate_source_metadata(
+            "spell",
+            spell.id,
+            spell.source,
+            spell.rules_version,
+            data,
+            report,
+        )
         if spell.level < 0 or spell.level > 9:
             report.errors.append(f"{spell.id}: SRD spell level must be 0-9")
         if bool(spell.action_id) == bool(spell.action):
@@ -298,7 +333,14 @@ class RuleDataValidator:
         except TypeError as exc:
             report.errors.append(str(exc))
             return report
-        self._validate_source_metadata(monster.id, monster.source, monster.rules_version, report)
+        self._validate_source_metadata(
+            "monster",
+            monster.id,
+            monster.source,
+            monster.rules_version,
+            data,
+            report,
+        )
         if monster.armor_class <= 0 or monster.hit_points <= 0:
             report.errors.append(f"{monster.id}: armor_class and hit_points must be positive")
         if monster.cr < 0:
@@ -322,7 +364,14 @@ class RuleDataValidator:
         except TypeError as exc:
             report.errors.append(str(exc))
             return report
-        self._validate_source_metadata(item.id, item.source, item.rules_version, report)
+        self._validate_source_metadata(
+            "item",
+            item.id,
+            item.source,
+            item.rules_version,
+            data,
+            report,
+        )
         if item.quantity < 0:
             report.errors.append(f"{item.id}: quantity cannot be negative")
         for action_id in item.actions:
@@ -339,7 +388,14 @@ class RuleDataValidator:
         except TypeError as exc:
             report.errors.append(str(exc))
             return report
-        self._validate_source_metadata(hazard.id, hazard.source, hazard.rules_version, report)
+        self._validate_source_metadata(
+            "hazard",
+            hazard.id,
+            hazard.source,
+            hazard.rules_version,
+            data,
+            report,
+        )
         if not hazard.hazard_type:
             report.errors.append(f"{hazard.id}: hazard_type is required")
         for index, node in enumerate(hazard.automation):
@@ -357,7 +413,14 @@ class RuleDataValidator:
         except TypeError as exc:
             report.errors.append(str(exc))
             return report
-        self._validate_source_metadata(event.id, event.source, event.rules_version, report)
+        self._validate_source_metadata(
+            "event",
+            event.id,
+            event.source,
+            event.rules_version,
+            data,
+            report,
+        )
         if not isinstance(event.trigger, dict):
             report.errors.append(f"{event.id}: trigger must be object")
         for index, node in enumerate(event.automation):
@@ -449,9 +512,11 @@ class RuleDataValidator:
 
     def _validate_source_metadata(
         self,
+        namespace: str,
         owner_id: str,
         source: str,
         rules_version: str,
+        payload: dict[str, Any],
         report: ValidationReport,
     ) -> None:
         source_text = source.casefold()
@@ -460,3 +525,21 @@ class RuleDataValidator:
             report.errors.append(f"{owner_id}: srd namespace requires srd rules_version")
         if owner_id.startswith("srd.") and "srd" not in source_text:
             report.errors.append(f"{owner_id}: srd namespace requires SRD source")
+        claims_official_srd = owner_id.startswith("srd.") or source_text.startswith("srd 5.2.1")
+        if not claims_official_srd:
+            return
+        if self.srd_catalog is None:
+            return
+        catalog_entry = self.srd_catalog.get(namespace, {}).get(owner_id)
+        if catalog_entry is None:
+            report.errors.append(f"{owner_id}: unknown {namespace} id in verified SRD catalog")
+            return
+        expected_source, expected_rules_version, expected_digest = catalog_entry
+        if source != expected_source:
+            report.errors.append(f"{owner_id}: source does not match verified SRD catalog entry")
+        if rules_version != expected_rules_version:
+            report.errors.append(
+                f"{owner_id}: rules_version does not match verified SRD catalog entry"
+            )
+        if rule_payload_digest(payload) != expected_digest:
+            report.errors.append(f"{owner_id}: content does not match verified SRD catalog entry")

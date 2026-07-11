@@ -47,8 +47,18 @@ SRD_MONSTER_TACTICS = {
         MonsterTacticProfile(
             monster_name="Bandit Captain",
             options=[
-                TacticOption("srd.bandit_captain_scimitar", weight=2, target="nearest_enemy"),
-                TacticOption("srd.bandit_captain_pistol", weight=2, target="lowest_hp_enemy"),
+                TacticOption(
+                    "srd.bandit_captain_multiattack",
+                    weight=4,
+                    target="nearest_enemy",
+                    when={"enemy_within_ft": 5},
+                ),
+                TacticOption(
+                    "srd.bandit_captain_pistol",
+                    weight=2,
+                    target="lowest_hp_enemy",
+                    when={"enemy_beyond_ft": 5},
+                ),
                 TacticOption("srd.dodge", weight=1, target="self", when={"hp_ratio_lte": 0.35}),
             ],
             use_llm=True,
@@ -148,7 +158,7 @@ class MonsterTacticsLibrary:
             for option in profile_options
             if option.action_id in actions
             and _action_available_to_actor(option.action_id, owned_actions)
-            and _condition_matches(actor, option.when)
+            and _condition_matches(state, actor, option.when)
             and _option_has_legal_target(
                 state=state,
                 actor=actor,
@@ -208,7 +218,7 @@ def _action_available_to_actor(action_id: str, owned_actions: set[str]) -> bool:
     )
 
 
-def _condition_matches(actor: Combatant, when: dict[str, Any]) -> bool:
+def _condition_matches(state: GameState, actor: Combatant, when: dict[str, Any]) -> bool:
     if not when:
         return True
     hp_ratio_lte = when.get("hp_ratio_lte")
@@ -216,7 +226,34 @@ def _condition_matches(actor: Combatant, when: dict[str, Any]) -> bool:
         maximum = max(actor.hp_max, 1)
         if actor.hp_current / maximum > float(hp_ratio_lte):
             return False
-    return True
+    enemy_within_ft = when.get("enemy_within_ft")
+    if enemy_within_ft is not None and not _enemy_within_ft(state, actor, int(enemy_within_ft)):
+        return False
+    enemy_beyond_ft = when.get("enemy_beyond_ft")
+    return enemy_beyond_ft is None or not _enemy_within_ft(state, actor, int(enemy_beyond_ft))
+
+
+def _enemy_within_ft(state: GameState, actor: Combatant, distance_ft: int) -> bool:
+    if state.encounter is None:
+        return False
+    enemies = [
+        combatant
+        for combatant in state.encounter.combatants.values()
+        if combatant.side != actor.side and combatant.hp_current > 0 and not combatant.dead
+    ]
+    if not enemies:
+        return False
+    graph_data = state.encounter.tactical_graph
+    if graph_data is None or actor.position_node_id is None:
+        return True
+    graph = TacticalGraph.from_dict(graph_data)
+    for enemy in enemies:
+        if enemy.position_node_id is None:
+            continue
+        distance = graph.shortest_distance(actor.position_node_id, enemy.position_node_id)
+        if distance is not None and distance <= distance_ft:
+            return True
+    return False
 
 
 def _option_has_legal_target(

@@ -116,7 +116,7 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "enchantment",
-      "classes": ["bard", "cleric"],
+      "classes": ["bard", "cleric", "warlock"],
       "action": {
         "id": "srd.bane",
         "name": "Bane",
@@ -126,7 +126,13 @@
         "action_type": "spell",
         "action_economy": "action",
         "range": { "normal_ft": 30 },
-        "target_policy": { "min": 1, "max": 3, "harmful": true },
+        "target_policy": {
+          "min": 1,
+          "max": 3,
+          "harmful": true,
+          "base_spell_slot_level": 1,
+          "max_targets_per_slot_above": 1
+        },
         "requirements": { "spell_level": 1 },
         "friendly_fire_policy": "confirm",
         "cost": { "spell_slot_level": 1 },
@@ -760,7 +766,7 @@
       "rules_version": "srd-5.2.1",
       "level": 3,
       "school": "abjuration",
-      "classes": ["cleric", "paladin"],
+      "classes": ["cleric"],
       "action": {
         "id": "srd.beacon_of_hope",
         "name": "Beacon of Hope",

@@ -69,3 +69,25 @@ def test_tier1_srd_monsters_do_not_use_generic_monster_attack() -> None:
     ]
 
     assert generic_users == []
+
+
+def test_coverage_includes_executable_starter_weapons_and_monster_stat_block_features() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+
+    required_actions = {
+        "srd.dagger_attack",
+        "srd.dagger_throw",
+        "srd.shortbow_attack",
+        "srd.light_crossbow_attack",
+        "srd.quarterstaff_attack",
+        "srd.mace_attack",
+        "srd.spear_attack",
+        "srd.spear_throw",
+        "srd.handaxe_attack",
+        "srd.handaxe_throw",
+        "srd.bandit_captain_multiattack",
+        "srd.bandit_captain_parry",
+        "srd.warrior_infantry_pack_tactics",
+    }
+
+    assert required_actions <= set(compendium.actions)

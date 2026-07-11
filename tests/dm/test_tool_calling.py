@@ -344,6 +344,97 @@ def test_dm_tool_calling_executes_direct_roll_check_with_skill(make_state) -> No
     assert not any(event.tool_name == "resolver.resolve" for event in session.audit_log.events)
 
 
+def test_dm_direct_player_tool_rejects_non_current_actor(make_state) -> None:
+    session = _session(make_state)
+    assert session.state.encounter is not None
+    session.state.encounter.turn_index = 1
+    roll_counter_before = session.state.roll_counter
+    runtime = DMRuntime(
+        session,
+        client=FakeClient(
+            _tool_response(
+                "roll_check",
+                {
+                    "actor_id": "pc1",
+                    "ability": "dex",
+                    "skill": "stealth",
+                    "tool": None,
+                    "difficulty_tier": "medium",
+                    "dc_ref": None,
+                    "advantage": None,
+                },
+            )
+        ),
+        model_id="fake-dm",
+    )
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 我在别人的回合潜行",
+        idempotency_key="dm-direct-check-wrong-turn",
+    )
+
+    assert response.accepted is False
+    assert "current combat actor" in response.engine_payload["reason"]
+    assert session.state.roll_counter == roll_counter_before
+    assert not any(event.tool_name == "roll_check" for event in session.audit_log.events)
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments"),
+    [
+        ("trigger_event", {"event_id": "starter.loose_stones"}),
+        (
+            "apply_hazard",
+            {
+                "target_ids": ["pc1"],
+                "hazard_type": "srd.falling_10ft",
+                "params": {"source": "map"},
+            },
+        ),
+        ("award", {"actor_ids": ["pc1"], "reward_id": "starter.first_victory"}),
+        ("request_combat", {"participants": ["pc1", "pc2"]}),
+        ("request_end_combat", {}),
+        (
+            "expand_zone",
+            {"actor_id": "pc1", "parent_zone_id": None, "theme": "river bank"},
+        ),
+    ],
+)
+def test_player_dm_rejects_gm_state_tools(
+    make_state,
+    tool_name: str,
+    arguments: dict[str, Any],
+) -> None:
+    session = _session(make_state)
+    client = FakeClient(_tool_response(tool_name, arguments))
+    runtime = DMRuntime(session, client=client, model_id="fake-dm")
+    before = session.state.to_dict()
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 尝试修改 GM 状态",
+        idempotency_key=f"player-forbidden-{tool_name}",
+    )
+
+    after = session.state.to_dict()
+    after["event_counter"] = before["event_counter"]
+    assert response.accepted is False
+    assert "GM tool is not permitted" in response.engine_payload["reason"]
+    assert after == before
+    exposed_names = {schema["function"]["name"] for schema in client.tools}
+    assert not exposed_names.intersection(
+        {
+            "trigger_event",
+            "apply_hazard",
+            "award",
+            "request_combat",
+            "request_end_combat",
+            "expand_zone",
+        }
+    )
+
+
 def test_dm_tool_calling_executes_direct_roll_check_with_tactical_mind(
     make_state,
 ) -> None:
@@ -451,6 +542,7 @@ def test_dm_tool_calling_executes_direct_hazard_tool(make_state) -> None:
         actor_id="pc1",
         text="DD 我踩塌了松动石板",
         idempotency_key="dm-direct-hazard",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is True
@@ -487,6 +579,7 @@ def test_dm_tool_calling_rejects_untraceable_hazard_tool(make_state) -> None:
         actor_id="pc1",
         text="DD 有个凭空来的陷阱",
         idempotency_key="dm-direct-hazard-reject",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is False
@@ -514,11 +607,13 @@ def test_dm_direct_award_tool_is_idempotent(make_state) -> None:
         actor_id="pc1",
         text="DD 搜刮钱袋",
         idempotency_key="dm-direct-award",
+        allow_gm_tools=True,
     )
     repeated = runtime.handle_player_text(
         actor_id="pc1",
         text="DD 搜刮钱袋",
         idempotency_key="dm-direct-award",
+        allow_gm_tools=True,
     )
 
     assert first.accepted is True
@@ -547,6 +642,7 @@ def test_dm_direct_award_rejects_arbitrary_gold_reward(make_state) -> None:
         actor_id="pc1",
         text="DD 直接给我十万金币",
         idempotency_key="dm-direct-award-reject-gold",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is False
@@ -574,6 +670,7 @@ def test_dm_request_combat_starts_session_and_preserves_request_audit(make_state
         actor_id="pc1",
         text="DD 敌人出现，开始战斗",
         idempotency_key="dm-request-combat",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is True
@@ -597,6 +694,7 @@ def test_dm_request_end_combat_ends_session_and_preserves_request_audit(make_sta
         actor_id="pc1",
         text="DD 战斗结束",
         idempotency_key="dm-request-end-combat",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is True
@@ -627,6 +725,7 @@ def test_dm_direct_award_rejects_unknown_item_reward(make_state) -> None:
         actor_id="pc1",
         text="DD 搜到一把奇怪的剑",
         idempotency_key="dm-direct-award-reject-item",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is False
@@ -657,6 +756,7 @@ def test_dm_direct_expand_zone_tool_generates_runtime_content() -> None:
         actor_id="pc1",
         text="DD 我们沿着河岸临时探索",
         idempotency_key="dm-direct-expand-zone",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is True
@@ -695,6 +795,7 @@ def test_dm_direct_expand_zone_rejects_non_current_parent() -> None:
         actor_id="pc1",
         text="DD 凭空扩展别的区域",
         idempotency_key="dm-direct-expand-zone-reject",
+        allow_gm_tools=True,
     )
 
     assert response.accepted is False

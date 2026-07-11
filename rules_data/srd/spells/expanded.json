@@ -132,7 +132,7 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "illusion",
-      "classes": ["sorcerer", "wizard"],
+      "classes": ["bard", "sorcerer", "wizard"],
       "action": {
         "id": "srd.color_spray",
         "name": "Color Spray",
@@ -537,7 +537,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "conjuration",
-      "classes": ["druid", "wizard"],
+      "classes": ["druid", "sorcerer", "wizard"],
       "action": {
         "id": "srd.flaming_sphere",
         "name": "Flaming Sphere",
@@ -545,7 +545,7 @@
         "source": "SRD 5.2.1",
         "rules_version": "srd-5.2.1",
         "action_type": "spell",
-        "action_economy": "bonus_action",
+        "action_economy": "action",
         "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 5 },
         "target_policy": { "min": 1, "max": 2, "harmful": true },
         "requirements": { "spell_level": 2 },
@@ -980,7 +980,7 @@
       "rules_version": "srd-5.2.1",
       "level": 2,
       "school": "abjuration",
-      "classes": ["cleric", "paladin", "ranger"],
+      "classes": ["bard", "cleric", "druid", "paladin", "ranger"],
       "action": {
         "id": "srd.aid",
         "name": "Aid",

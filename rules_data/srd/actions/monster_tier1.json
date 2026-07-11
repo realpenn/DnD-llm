@@ -121,6 +121,83 @@
       "audit_label": "Bandit Captain Pistol"
     },
     {
+      "id": "srd.bandit_captain_multiattack",
+      "name": "Bandit Captain Multiattack",
+      "localization": {
+        "en": "Bandit Captain Multiattack",
+        "zh": "强盗首领多重攻击",
+        "aliases": ["强盗队长多重攻击"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit Captain, Actions: Multiattack (p. 261)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "properties": {
+        "multiattack_count": 2,
+        "allowed_attack_action_ids": [
+          "srd.bandit_captain_scimitar",
+          "srd.bandit_captain_pistol"
+        ],
+        "default_attack_action_id": "srd.bandit_captain_scimitar"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        {
+          "type": "text_result",
+          "text": "The captain makes two attacks using Scimitar and Pistol in any combination; this executable default resolves two Scimitar attacks."
+        }
+      ],
+      "audit_label": "Bandit Captain Multiattack"
+    },
+    {
+      "id": "srd.bandit_captain_parry",
+      "name": "Bandit Captain Parry",
+      "localization": {
+        "en": "Bandit Captain Parry",
+        "zh": "强盗首领招架",
+        "aliases": ["强盗队长招架"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit Captain, Reactions: Parry (p. 261)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_reaction",
+      "action_economy": "reaction",
+      "range": { "self": true },
+      "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+      "requirements": { "trigger": "hit_by_melee_attack_roll_while_holding_weapon" },
+      "properties": {
+        "armor_class_bonus_against_triggering_attack": 2,
+        "can_turn_hit_into_miss": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "text_result",
+          "text": "The captain adds 2 to its AC against the triggering melee attack, possibly causing it to miss."
+        }
+      ],
+      "audit_label": "Bandit Captain Parry"
+    },
+    {
       "id": "srd.cultist_ritual_sickle",
       "name": "Cultist Ritual Sickle",
       "localization": {
@@ -245,6 +322,36 @@
         { "type": "text_result", "text": "The warrior infantry's spear attack is resolved." }
       ],
       "audit_label": "Warrior Infantry Spear"
+    },
+    {
+      "id": "srd.warrior_infantry_pack_tactics",
+      "name": "Warrior Infantry Pack Tactics",
+      "localization": {
+        "en": "Warrior Infantry Pack Tactics",
+        "zh": "步兵战士集群战术",
+        "aliases": ["步兵集群战术"]
+      },
+      "source": "SRD 5.2.1 Monsters: Warrior Infantry, Traits: Pack Tactics (pp. 336-337)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_trait",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+      "requirements": {},
+      "properties": {
+        "grants_attack_roll_advantage": true,
+        "requires_ally_within_target_ft": 5,
+        "ally_must_not_be_incapacitated": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "text_result",
+          "text": "The warrior has Advantage on an attack roll when a non-Incapacitated ally is within 5 feet of the target."
+        }
+      ],
+      "audit_label": "Warrior Infantry Pack Tactics"
     },
     {
       "id": "srd.skeleton_shortsword",

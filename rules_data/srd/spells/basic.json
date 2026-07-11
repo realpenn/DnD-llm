@@ -103,7 +103,7 @@
       "source": "SRD 5.2.1",
       "rules_version": "srd-5.2.1",
       "level": 1,
-      "school": "evocation",
+      "school": "abjuration",
       "classes": ["cleric", "bard", "druid", "paladin", "ranger"],
       "action_id": "srd.cure_wounds"
     },

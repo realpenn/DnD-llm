@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import deque
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -13,6 +14,22 @@ from dnd_llm.core.compendium.validators import RuleDataValidator, ValidationRepo
 from dnd_llm.core.positioning import TacticalGraph
 
 from .encounter_budget import EncounterBudget, budget_from_encounter, cr_fraction, xp_for_cr
+
+_CAMPAIGN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+
+
+def campaign_id_validation_error(campaign_id: str) -> str | None:
+    if not campaign_id:
+        return "campaign_id is required"
+    if Path(campaign_id).is_absolute():
+        return "campaign_id must not be an absolute path"
+    if ".." in campaign_id:
+        return "campaign_id must not contain '..'"
+    if "/" in campaign_id or "\\" in campaign_id:
+        return "campaign_id must not contain path separators"
+    if _CAMPAIGN_ID_RE.fullmatch(campaign_id) is None:
+        return "campaign_id may contain only letters, numbers, underscores, and hyphens"
+    return None
 
 
 @dataclass
@@ -85,8 +102,9 @@ class CampaignPackValidator:
         report.extend(self.schema_registry.validate("campaign_pack", pack.to_dict()))
         if report.errors:
             return report
-        if not pack.campaign_id:
-            report.errors.append("campaign_id is required")
+        campaign_id_error = campaign_id_validation_error(pack.campaign_id)
+        if campaign_id_error is not None:
+            report.errors.append(campaign_id_error)
         if not pack.title:
             report.errors.append("title is required")
         if pack.start_zone_id not in pack.zones:

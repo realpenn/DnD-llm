@@ -59,6 +59,33 @@ def test_srd_monster_tactic_profiles_use_loaded_actions() -> None:
     assert all(option.action_id in compendium.actions for option in bandit_captain.options)
 
 
+def test_bandit_captain_deterministic_tactics_use_multiattack_in_melee(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    captain = state.encounter.combatants["goblin1"]
+    captain.name = "Bandit Captain"
+    captain.actions = [
+        "srd.bandit_captain_multiattack",
+        "srd.bandit_captain_scimitar",
+        "srd.bandit_captain_pistol",
+        "srd.bandit_captain_parry",
+    ]
+    captain.position_node_id = "front"
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    compendium = CompendiumLoader("rules_data").load()
+
+    draft = MonsterTacticsLibrary().draft_for_current_turn(
+        state=state,
+        actions=compendium.actions,
+        roll_service=RollService(state),
+    )
+
+    assert draft.candidate_action_id == "srd.bandit_captain_multiattack"
+    assert draft.target_ids == ["pc1"]
+
+
 def test_monster_tactics_filter_conditions_and_count_choice_roll(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -87,7 +87,14 @@ def _validated_pack_from_response(
             errors=[f"invalid CampaignPack JSON: {exc}"],
             raw_payload=payload,
         )
-    report = validator.validate(pack)
+    try:
+        report = validator.validate(pack)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        return CampaignLLMResult(
+            accepted=False,
+            errors=[f"CampaignPack validation failed: {exc}"],
+            raw_payload=payload,
+        )
     if not report.ok:
         return CampaignLLMResult(accepted=False, errors=report.errors, raw_payload=payload)
     return CampaignLLMResult(accepted=True, pack=pack, errors=[], raw_payload=payload)

@@ -282,7 +282,16 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "divination",
-      "classes": ["bard", "cleric", "druid", "paladin", "ranger", "sorcerer", "wizard"],
+      "classes": [
+        "bard",
+        "cleric",
+        "druid",
+        "paladin",
+        "ranger",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
       "ritual": true,
       "action": {
         "id": "srd.detect_magic",
@@ -592,7 +601,7 @@
       "rules_version": "srd-5.2.1",
       "level": 0,
       "school": "transmutation",
-      "classes": ["bard", "sorcerer", "wizard"],
+      "classes": ["bard", "druid", "sorcerer", "wizard"],
       "action": {
         "id": "srd.message",
         "name": "Message",
@@ -797,7 +806,7 @@
       "rules_version": "srd-5.2.1",
       "level": 1,
       "school": "divination",
-      "classes": ["bard", "druid", "ranger"],
+      "classes": ["bard", "druid", "ranger", "warlock"],
       "ritual": true,
       "action": {
         "id": "srd.speak_with_animals",

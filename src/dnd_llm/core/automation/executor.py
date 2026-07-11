@@ -312,6 +312,9 @@ FOOD_DRINK_EXHAUSTION_HAZARD_IDS = frozenset({"srd.dehydration", "srd.malnutriti
 THIRSTING_BLADE_EXTRA_ATTACK_USED_CONDITION = "thirsting_blade_extra_attack_used"
 ELDRITCH_SMITE_USED_CONDITION = "eldritch_smite_used"
 SLOW_FALL_ACTION_ID = "srd.slow_fall"
+BANDIT_CAPTAIN_PARRY_ACTION_ID = "srd.bandit_captain_parry"
+BANDIT_CAPTAIN_SCIMITAR_ACTION_ID = "srd.bandit_captain_scimitar"
+PACK_TACTICS_ACTION_ID = "srd.warrior_infantry_pack_tactics"
 OIL_OF_SHARPNESS_ACTION_ID = "srd.apply_oil_of_sharpness"
 OIL_OF_ETHEREALNESS_ACTION_ID = "srd.apply_oil_of_etherealness"
 APPLY_OIL_OF_SLIPPERINESS_ACTION_ID = "srd.apply_oil_of_slipperiness"
@@ -972,6 +975,27 @@ class AutomationExecutor:
                 total = int(stroke_of_luck_result["total_after"])
                 natural_critical = natural >= critical_threshold
                 hit = True
+            parry_result = self._apply_bandit_captain_parry(
+                ctx,
+                target_id,
+                target,
+                total=total,
+                armor_class=ac,
+                hit=hit,
+                critical=natural_critical,
+                path=path,
+            )
+            if parry_result is not None:
+                ac = int(parry_result["armor_class_after"])
+                armor_class_sources = [
+                    *armor_class_sources,
+                    {
+                        "source_action_id": BANDIT_CAPTAIN_PARRY_ACTION_ID,
+                        "modifier": "armor_class_bonus_against_triggering_attack",
+                        "bonus": 2,
+                    },
+                ]
+                hit = False
             auto_critical_sources = (
                 self._target_auto_critical_sources(target, distance_ft) if hit else []
             )
@@ -1011,6 +1035,8 @@ class AutomationExecutor:
                 ctx.result.node_results[path]["brutal_strike"] = brutal_strike
             if stroke_of_luck_result is not None:
                 ctx.result.node_results[path]["stroke_of_luck"] = stroke_of_luck_result
+            if parry_result is not None:
+                ctx.result.node_results[path]["parry"] = parry_result
             if sundering_expiry is not None:
                 ctx.result.state_changes.append(sundering_expiry)
             ctx.result.state_changes.extend(
@@ -1871,8 +1897,10 @@ class AutomationExecutor:
             else:
                 amount, rolls = self._roll_amount(ctx, node)
             ctx.result.dice_rolls.extend(roll.to_dict() for roll in rolls)
-            if ctx.attack_critical.get(target_id, False) and "dice" in node:
-                critical_extra_amount, extra_rolls = self._roll_amount(ctx, node)
+            if ctx.attack_critical.get(target_id, False) and (
+                "dice" in node or "dice_from" in node
+            ):
+                critical_extra_amount, extra_rolls = self._roll_critical_damage_dice(ctx, node)
                 amount += critical_extra_amount
                 ctx.result.dice_rolls.extend(roll.to_dict() for roll in extra_rolls)
             passive_bonus, passive_bonus_sources = self._passive_damage_bonus(ctx, node)
@@ -1984,10 +2012,16 @@ class AutomationExecutor:
                 damage_type,
             )
             damage_taken = self._mitigated_damage(target_before, amount, damage_type)
-            applied = self._apply_damage(target_id, amount, damage_type, ctx=ctx, path=path)
+            applied = self._apply_damage(
+                target_id,
+                amount,
+                damage_type,
+                ctx=ctx,
+                path=path,
+                resolve_zero_hp=False,
+            )
             extra_damage_changes: list[dict[str, Any]] = []
             extra_damage_taken = 0
-            extra_damage_applied = 0
             for extra_result in extra_damage:
                 extra_superior_hunters_defense = self._apply_superior_hunters_defense_if_requested(
                     ctx,
@@ -2008,9 +2042,9 @@ class AutomationExecutor:
                     extra_result.damage_type,
                     ctx=ctx,
                     path=f"{path}.extra_damage",
+                    resolve_zero_hp=False,
                 )
                 extra_damage_taken += extra_taken
-                extra_damage_applied += extra_applied
                 extra_damage_changes.append(
                     {
                         "amount": extra_result.amount,
@@ -2023,15 +2057,36 @@ class AutomationExecutor:
                     extra_damage_changes[-1]["superior_hunters_defense"] = (
                         extra_superior_hunters_defense
                     )
-            hp_after = int(getattr(self._entity(target_id), "hp_current"))
             total_damage_taken = damage_taken + extra_damage_taken
-            total_applied = applied + extra_damage_applied
+            hp_damage_after_temp_hp = max(0, total_damage_taken - temp_hp_before)
+            zero_hp_change = self._resolve_damage_at_zero_hp(
+                target_id,
+                hp_before=hp_before,
+                hp_damage=hp_damage_after_temp_hp,
+                critical=ctx.attack_critical.get(target_id, False),
+                path=path,
+            )
+            if zero_hp_change is not None:
+                ctx.result.state_changes.append(zero_hp_change)
+            hp_after = int(getattr(self._entity(target_id), "hp_current"))
+            total_applied = max(0, hp_before - hp_after)
+            remaining_applied = total_applied
+            applied = min(applied, remaining_applied)
+            remaining_applied -= applied
+            for extra_change in extra_damage_changes:
+                extra_change["applied"] = min(
+                    int(extra_change["applied"]),
+                    remaining_applied,
+                )
+                remaining_applied -= int(extra_change["applied"])
             ctx.last_damage_taken[target_id] = total_damage_taken
             change = {
                 "type": "damage",
                 "target_id": target_id,
                 "amount": amount,
                 "applied": applied,
+                "hp_before": hp_before,
+                "hp_after": hp_after,
                 "damage_type": damage_type,
                 "path": path,
             }
@@ -2079,7 +2134,7 @@ class AutomationExecutor:
                 change["reduce_weapon_damage_sources"] = reduced_weapon_damage.sources
             if extra_damage_changes:
                 change["extra_damage"] = extra_damage_changes
-                change["total_applied"] = total_applied
+            change["total_applied"] = total_applied
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
@@ -5984,6 +6039,30 @@ class AutomationExecutor:
             ), [roll]
         roll = self.roll_service.roll(self._scaled_dice_expression(ctx, node))
         return self._minimum_amount(roll.total + self._amount_bonus(ctx, node), node), [roll]
+
+    def _roll_critical_damage_dice(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> tuple[int, list[RollResult]]:
+        expression = (
+            self._dynamic_dice_expression(ctx, node)
+            if "dice_from" in node
+            else self._scaled_dice_expression(ctx, node)
+        )
+        dice_expression = self._dice_terms_only(expression)
+        roll = self.roll_service.roll(dice_expression)
+        return roll.total, [roll]
+
+    @staticmethod
+    def _dice_terms_only(expression: str) -> str:
+        terms = re.findall(r"[+-]?\d*d\d+", expression.replace(" ", ""), re.IGNORECASE)
+        if not terms:
+            raise AutomationError(f"critical damage requires dice: {expression}")
+        normalized = terms[0]
+        for term in terms[1:]:
+            normalized += term if term.startswith(("+", "-")) else f"+{term}"
+        return normalized
 
     def _healing_amount(
         self,
@@ -10024,13 +10103,12 @@ class AutomationExecutor:
         target = self._entity(target_id)
         if not isinstance(actor, Combatant) or not isinstance(target, Combatant):
             return False
-        for ally_id, ally in self.state.encounter.combatants.items():
-            if ally_id == actor_id or ally.side != actor.side:
+        for ally in self.state.encounter.combatants.values():
+            if self._actor_matches_combatant(actor_id, ally) or ally.side != actor.side:
                 continue
-            if any(
-                effect.get("condition") == "incapacitated"
-                for effect in self._status_effects_for(ally)
-            ):
+            if ally.hp_current <= 0 or ally.dead:
+                continue
+            if self._condition_names(ally) & ACTION_BLOCKING_CONDITIONS:
                 continue
             distance = self._combat_distance(ally, target)
             if distance is not None and distance <= 5:
@@ -10265,9 +10343,13 @@ class AutomationExecutor:
     def _status_effects_for(self, entity: Character | Monster | Combatant) -> list[dict[str, Any]]:
         effects = list(getattr(entity, "status_effects", []))
         if isinstance(entity, Combatant) and entity.entity_id in self.state.characters:
-            effects.extend(self.state.characters[entity.entity_id].status_effects)
+            backing_effects = self.state.characters[entity.entity_id].status_effects
+            if backing_effects is not entity.status_effects:
+                effects.extend(backing_effects)
         if isinstance(entity, Combatant) and entity.entity_id in self.state.monsters:
-            effects.extend(self.state.monsters[entity.entity_id].status_effects)
+            backing_effects = self.state.monsters[entity.entity_id].status_effects
+            if backing_effects is not entity.status_effects:
+                effects.extend(backing_effects)
         return effects
 
     def _out_of_play_sources(self, entity: Character | Monster | Combatant) -> list[str]:
@@ -10533,6 +10615,7 @@ class AutomationExecutor:
         advantage_sources.extend(
             self._attack_roll_advantage_sources(actor, action, actor_id, target_id)
         )
+        advantage_sources.extend(self._pack_tactics_advantage_sources(actor_id, target_id))
         advantage_sources.extend(self._incoming_attack_advantage_sources(target))
         advantage_blocked_source = self._elusive_attack_advantage_block_source(
             target_id,
@@ -10637,6 +10720,31 @@ class AutomationExecutor:
                 }
             )
         return sources
+
+    def _pack_tactics_advantage_sources(
+        self,
+        actor_id: str,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        actor = self._entity(actor_id)
+        owner = self._resource_owner(actor_id)
+        action_ids = {
+            str(action_id)
+            for entity in (actor, owner)
+            for action_id in getattr(entity, "actions", [])
+        }
+        if PACK_TACTICS_ACTION_ID not in action_ids:
+            return []
+        if not self._has_ally_within_5ft_of_target(actor_id, target_id):
+            return []
+        return [
+            {
+                "source_action_id": PACK_TACTICS_ACTION_ID,
+                "modifier": "pack_tactics",
+                "target_id": target_id,
+                "ally_within_target_ft": 5,
+            }
+        ]
 
     def _precise_hunter_advantage_sources(
         self,
@@ -13872,12 +13980,96 @@ class AutomationExecutor:
     def _action_is_melee_attack_roll(action: ActionDefinition) -> bool:
         if action.properties.get("melee_attack_roll") is True:
             return True
+        reach = action.range.get("reach_ft")
+        if isinstance(reach, int) and not isinstance(reach, bool) and reach > 0:
+            return True
         normal_range = action.range.get("normal_ft")
         return (
             isinstance(normal_range, int)
             and not isinstance(normal_range, bool)
             and normal_range <= 5
         )
+
+    def _apply_bandit_captain_parry(
+        self,
+        ctx: _Context,
+        target_id: str,
+        target: Character | Monster | Combatant,
+        *,
+        total: int,
+        armor_class: int,
+        hit: bool,
+        critical: bool,
+        path: str,
+    ) -> dict[str, Any] | None:
+        if not hit or critical or not self._action_is_melee_attack_roll(ctx.action):
+            return None
+        owner = self._resource_owner(target_id)
+        action_ids = {
+            str(action_id)
+            for entity in (target, owner)
+            for action_id in getattr(entity, "actions", [])
+        }
+        if (
+            not {
+                BANDIT_CAPTAIN_PARRY_ACTION_ID,
+                BANDIT_CAPTAIN_SCIMITAR_ACTION_ID,
+            }
+            <= action_ids
+        ):
+            return None
+        if self._condition_names(target) & ACTION_BLOCKING_CONDITIONS:
+            return None
+        if total >= armor_class + 2:
+            return None
+        if not self._reaction_budget_available(target_id, target):
+            return None
+        if not self._parry_target_can_see_attacker(ctx.actor_id, target_id):
+            return None
+
+        before = self.economy.budget_for(target_id, self._effective_speed(target)).to_dict()
+        self.economy.spend(target_id, "reaction", 1)
+        after = self.economy.budget_for(target_id).to_dict()
+        result = {
+            "source_action_id": BANDIT_CAPTAIN_PARRY_ACTION_ID,
+            "target_id": target_id,
+            "attacker_id": ctx.actor_id,
+            "attack_total": total,
+            "armor_class_before": armor_class,
+            "armor_class_after": armor_class + 2,
+            "hit_before": True,
+            "hit_after": False,
+            "reaction_before": before,
+            "reaction_after": after,
+        }
+        ctx.result.state_changes.append(
+            {
+                "type": "reaction",
+                "actor_id": target_id,
+                "economy": "reaction",
+                "source_action_id": BANDIT_CAPTAIN_PARRY_ACTION_ID,
+                "trigger": "hit_by_melee_attack_roll_while_holding_weapon",
+                "attack_total": total,
+                "armor_class_before": armor_class,
+                "armor_class_after": armor_class + 2,
+                "path": path,
+                "reaction_before": before,
+                "reaction_after": after,
+            }
+        )
+        return result
+
+    def _parry_target_can_see_attacker(self, attacker_id: str, target_id: str) -> bool:
+        if self.state.encounter is None or self.state.encounter.tactical_graph is None:
+            return True
+        attacker = self._entity(attacker_id)
+        target = self._entity(target_id)
+        if not isinstance(attacker, Combatant) or not isinstance(target, Combatant):
+            return True
+        if attacker.position_node_id is None or target.position_node_id is None:
+            return True
+        graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
+        return graph.has_line_of_sight(target.position_node_id, attacker.position_node_id)
 
     def _apply_uncanny_dodge_if_requested(
         self,
@@ -15389,6 +15581,7 @@ class AutomationExecutor:
         *,
         ctx: _Context,
         path: str,
+        resolve_zero_hp: bool = True,
     ) -> int:
         target = self._entity(target_id)
         adjusted = self._mitigated_damage(target, amount, damage_type)
@@ -15400,16 +15593,81 @@ class AutomationExecutor:
         remaining = adjusted - absorbed
         before = int(getattr(target, "hp_current"))
         setattr(target, "hp_current", max(0, before - remaining))
+        if resolve_zero_hp:
+            zero_hp_change = self._resolve_damage_at_zero_hp(
+                target_id,
+                hp_before=before,
+                hp_damage=remaining,
+                critical=False,
+                path=path,
+            )
+            if zero_hp_change is not None:
+                ctx.result.state_changes.append(zero_hp_change)
+        self._sync_hp_state_for_target(target)
+        return before - int(getattr(target, "hp_current"))
+
+    def _resolve_damage_at_zero_hp(
+        self,
+        target_id: str,
+        *,
+        hp_before: int,
+        hp_damage: int,
+        critical: bool,
+        path: str,
+    ) -> dict[str, Any] | None:
+        target = self._entity(target_id)
+        if hp_damage <= 0 or int(getattr(target, "hp_current", 0)) != 0:
+            return None
+        if bool(getattr(target, "dead", False)):
+            return None
         death_ward = self._death_ward_after_drop_to_zero(
             target_id,
-            hp_before=before,
-            hp_after_without_death_ward=int(getattr(target, "hp_current")),
+            hp_before=hp_before,
+            hp_after_without_death_ward=0,
             path=path,
         )
         if death_ward is not None:
-            ctx.result.state_changes.append(death_ward)
-        self._sync_hp_state_for_target(target)
-        return before - int(getattr(target, "hp_current"))
+            return death_ward
+        if isinstance(target, Character):
+            death_target: Character | Combatant = target
+        elif isinstance(target, Combatant) and target.entity_id in self.state.characters:
+            death_target = target
+        else:
+            return None
+
+        hp_max = int(death_target.hp_max)
+        failures_before = int(death_target.death_save_failures)
+        stable_before = bool(death_target.stable)
+        dead_before = bool(death_target.dead)
+        overflow = max(0, hp_damage - max(0, hp_before))
+        massive_damage = overflow >= hp_max
+        failures_added = 0
+        if massive_damage:
+            death_target.death_save_failures = 3
+            death_target.dead = True
+        elif hp_before == 0:
+            failures_added = 2 if critical else 1
+            death_target.death_save_failures = min(3, failures_before + failures_added)
+            death_target.dead = death_target.death_save_failures >= 3
+        death_target.stable = False
+        self._sync_hp_state_for_target(death_target)
+        return {
+            "type": "damage_at_zero_hp",
+            "target_id": target_id,
+            "hp_before": hp_before,
+            "hp_damage": hp_damage,
+            "hp_max": hp_max,
+            "critical": critical,
+            "massive_damage": massive_damage,
+            "death_save_failures_added": failures_added,
+            "death_save_failures_before": failures_before,
+            "death_save_failures_after": int(death_target.death_save_failures),
+            "stable_before": stable_before,
+            "stable_after": bool(death_target.stable),
+            "dead_before": dead_before,
+            "dead_after": bool(death_target.dead),
+            "path": path,
+        }
 
     def _set_temp_hp_source(
         self,
@@ -15522,15 +15780,43 @@ class AutomationExecutor:
             damage_type,
         ):
             return 0
-        if (
+        resisted = (
             damage_type in getattr(target, "resistances", [])
             or self._has_condition(target, "petrified")
             or self._passive_damage_resistance_sources(target, damage_type)
-        ):
+        )
+        vulnerable = damage_type in getattr(
+            target, "vulnerabilities", []
+        ) or self._passive_damage_vulnerability_sources(target, damage_type)
+        if resisted and vulnerable:
+            return amount
+        if resisted:
             return amount // 2
-        if damage_type in getattr(target, "vulnerabilities", []):
+        if vulnerable:
             return amount * 2
         return amount
+
+    def _passive_damage_vulnerability_sources(
+        self,
+        target: Character | Monster | Combatant,
+        damage_type: str,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(target):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            vulnerabilities = _string_set(modifiers.get("damage_vulnerabilities"))
+            if damage_type in vulnerabilities:
+                sources.append(
+                    {
+                        "effect_id": effect.get("effect_id"),
+                        "source_action_id": effect.get("source_action_id"),
+                        "modifier": "damage_vulnerabilities",
+                        "damage_type": damage_type,
+                    }
+                )
+        return sources
 
     def _passive_damage_immunity_sources(
         self,

@@ -71,16 +71,7 @@ def apply_damage(
     amount: int,
     damage_type: str = "untyped",
 ) -> int:
-    adjusted = amount
-    if damage_type in getattr(target, "immunities", []) or _has_damage_immunity(
-        target,
-        damage_type,
-    ):
-        adjusted = 0
-    elif damage_type in getattr(target, "resistances", []) or _has_condition(target, "petrified"):
-        adjusted //= 2
-    elif damage_type in getattr(target, "vulnerabilities", []):
-        adjusted *= 2
+    adjusted = adjusted_damage_amount(target, amount, damage_type)
     temp_hp = int(getattr(target, "temp_hp", 0))
     absorbed = min(temp_hp, adjusted)
     setattr(target, "temp_hp", temp_hp - absorbed)
@@ -89,6 +80,28 @@ def apply_damage(
     before = int(getattr(target, "hp_current"))
     setattr(target, "hp_current", max(0, before - (adjusted - absorbed)))
     return before - int(getattr(target, "hp_current"))
+
+
+def adjusted_damage_amount(
+    target: Character | Monster | Combatant,
+    amount: int,
+    damage_type: str = "untyped",
+) -> int:
+    adjusted = max(0, int(amount))
+    if damage_type in getattr(target, "immunities", []) or _has_damage_immunity(
+        target,
+        damage_type,
+    ):
+        return 0
+    resistant = damage_type in getattr(target, "resistances", []) or _has_condition(
+        target, "petrified"
+    )
+    vulnerable = damage_type in getattr(target, "vulnerabilities", [])
+    if resistant and not vulnerable:
+        adjusted //= 2
+    elif vulnerable and not resistant:
+        adjusted *= 2
+    return adjusted
 
 
 def apply_healing(target: Character | Monster | Combatant, amount: int) -> int:

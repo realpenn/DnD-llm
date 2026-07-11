@@ -13,7 +13,7 @@ from .rules.class_features import (
     monk_self_restoration_applies,
     saving_throw_proficiency_sources,
 )
-from .rules.combat import apply_damage
+from .rules.combat import adjusted_damage_amount, apply_damage
 from .rules.conditions import (
     exhaustion_d20_penalty,
     exhaustion_level,
@@ -24,6 +24,7 @@ from .rules.conditions import (
 SELF_RESTORATION_ACTION_ID = "srd.self_restoration"
 SELF_RESTORATION_CONDITIONS = ("charmed", "frightened", "poisoned")
 BANISHMENT_DEFAULT_DESTINATION = "random_location_on_gm_chosen_associated_plane"
+EFFECT_TICK_CYCLES_FLAG = "effect_lifecycle_tick_cycles"
 
 
 @dataclass
@@ -67,9 +68,10 @@ def tick_effects(
     trigger: str,
     actor_id: str,
     roll_service: RollService | None = None,
+    cycle_id: str | None = None,
 ) -> EffectLifecycleResult:
     result = EffectLifecycleResult(trigger=trigger, actor_id=actor_id)
-    pending_saving_throw_consumptions: list[tuple[str, dict[str, Any]]] = []
+    pending_saving_throw_consumptions: dict[str, dict[str, Any]] = {}
     expired_effect_ids: set[str] = set()
     for owner_type, owner_id, effects in _effect_lists(state):
         retained: list[dict[str, Any]] = []
@@ -77,6 +79,21 @@ def tick_effects(
             if not _matches_trigger(effect, trigger=trigger, actor_id=actor_id):
                 retained.append(effect)
                 continue
+            if cycle_id is not None and _effect_already_ticked_in_cycle(
+                state,
+                effect,
+                trigger=trigger,
+                cycle_id=cycle_id,
+            ):
+                retained.append(effect)
+                continue
+            if cycle_id is not None:
+                _mark_effect_ticked_in_cycle(
+                    state,
+                    effect,
+                    trigger=trigger,
+                    cycle_id=cycle_id,
+                )
             duration = effect.setdefault("duration", {})
             if not isinstance(duration, dict):
                 duration = {}
@@ -99,16 +116,22 @@ def tick_effects(
             repeat_save = _repeat_save(effect, trigger)
             repeat_save_entry = None
             if repeat_save is not None and roll_service is not None:
+                repeat_save_target_id = str(effect.get("target_id") or actor_id)
                 repeat_save_entry = _roll_repeat_save(
                     state,
                     effect,
                     actor_id,
                     repeat_save,
                     roll_service,
+                    include_next_saving_throw_disadvantage=(
+                        repeat_save_target_id not in pending_saving_throw_consumptions
+                    ),
                 )
-                pending_saving_throw_consumptions.append(
-                    (str(effect.get("target_id") or actor_id), repeat_save_entry)
-                )
+                if any(
+                    source.get("modifier") == "next_saving_throw_disadvantage"
+                    for source in repeat_save_entry["status_sources"]
+                ):
+                    pending_saving_throw_consumptions[repeat_save_target_id] = repeat_save_entry
                 if not repeat_save_entry["success"]:
                     failure_damage = _repeat_save_failure_damage(
                         state,
@@ -188,7 +211,7 @@ def tick_effects(
                 result.ticked.append(entry)
                 retained.append(effect)
         effects[:] = retained
-    for target_id, repeat_save_entry in pending_saving_throw_consumptions:
+    for target_id, repeat_save_entry in pending_saving_throw_consumptions.items():
         consumed = _consume_next_saving_throw_disadvantage(state, target_id)
         if consumed:
             repeat_save_entry["consumed_effects"] = consumed
@@ -350,20 +373,23 @@ def _target_effect_lists(
 
 def _effect_lists(state: GameState) -> list[tuple[str, str, list[dict[str, Any]]]]:
     effect_lists: list[tuple[str, str, list[dict[str, Any]]]] = []
-    effect_lists.extend(
-        ("character", character_id, character.status_effects)
-        for character_id, character in state.characters.items()
-    )
-    effect_lists.extend(
-        ("monster", monster_id, monster.status_effects)
-        for monster_id, monster in state.monsters.items()
-    )
+    seen: set[int] = set()
+
+    def add(owner_type: str, owner_id: str, effects: list[dict[str, Any]]) -> None:
+        list_id = id(effects)
+        if list_id in seen:
+            return
+        seen.add(list_id)
+        effect_lists.append((owner_type, owner_id, effects))
+
+    for character_id, character in state.characters.items():
+        add("character", character_id, character.status_effects)
+    for monster_id, monster in state.monsters.items():
+        add("monster", monster_id, monster.status_effects)
     if state.encounter is not None:
-        effect_lists.extend(
-            ("combatant", combatant_id, combatant.status_effects)
-            for combatant_id, combatant in state.encounter.combatants.items()
-        )
-    effect_lists.append(("world", "world", state.world.active_effects))
+        for combatant_id, combatant in state.encounter.combatants.items():
+            add("combatant", combatant_id, combatant.status_effects)
+    add("world", "world", state.world.active_effects)
     return effect_lists
 
 
@@ -556,10 +582,53 @@ def _matches_trigger(effect: dict[str, Any], *, trigger: str, actor_id: str) -> 
             turn_owner_id = duration.get("turn_owner_id")
             if isinstance(turn_owner_id, str) and turn_owner_id:
                 return turn_owner_id == actor_id
-        return target_id == actor_id or applied_by == actor_id
+            if isinstance(duration.get("repeat_save"), dict):
+                return target_id == actor_id
+        modifiers = effect.get("passive_modifiers", {})
+        if isinstance(modifiers, dict) and (
+            isinstance(modifiers.get("ends_if_condition"), str)
+            or isinstance(modifiers.get("ends_if_conditions"), list)
+        ):
+            return target_id == actor_id
+        if isinstance(applied_by, str) and applied_by:
+            return applied_by == actor_id
+        return target_id == actor_id
     if trigger.startswith("target_"):
         return target_id == actor_id
     return False
+
+
+def _effect_already_ticked_in_cycle(
+    state: GameState,
+    effect: dict[str, Any],
+    *,
+    trigger: str,
+    cycle_id: str,
+) -> bool:
+    effect_id = effect.get("effect_id")
+    if not isinstance(effect_id, str) or not effect_id:
+        return False
+    store = state.world.flags.get(EFFECT_TICK_CYCLES_FLAG, {})
+    if not isinstance(store, dict):
+        return False
+    return store.get(f"{effect_id}:{trigger}") == cycle_id
+
+
+def _mark_effect_ticked_in_cycle(
+    state: GameState,
+    effect: dict[str, Any],
+    *,
+    trigger: str,
+    cycle_id: str,
+) -> None:
+    effect_id = effect.get("effect_id")
+    if not isinstance(effect_id, str) or not effect_id:
+        return
+    store = state.world.flags.setdefault(EFFECT_TICK_CYCLES_FLAG, {})
+    if not isinstance(store, dict):
+        store = {}
+        state.world.flags[EFFECT_TICK_CYCLES_FLAG] = store
+    store[f"{effect_id}:{trigger}"] = cycle_id
 
 
 def _remaining_ticks(duration: dict[str, Any]) -> int | None:
@@ -657,6 +726,8 @@ def _roll_repeat_save(
     actor_id: str,
     repeat_save: dict[str, Any],
     roll_service: RollService,
+    *,
+    include_next_saving_throw_disadvantage: bool,
 ) -> dict[str, Any]:
     target = state.entity_for_actor(str(effect.get("target_id") or actor_id))
     ability = str(repeat_save["ability"]).lower()
@@ -665,7 +736,10 @@ def _roll_repeat_save(
     exhaustion = exhaustion_level(status_effects)
     penalty = exhaustion_d20_penalty(status_effects) + passive_d20_test_penalty(status_effects)
     bonus = base_bonus - penalty
-    status_advantage, status_sources = _saving_throw_status_advantage(target)
+    status_advantage, status_sources = _saving_throw_status_advantage(
+        target,
+        include_next_saving_throw_disadvantage=include_next_saving_throw_disadvantage,
+    )
     roll = roll_service.roll(d20_expression(bonus), advantage=status_advantage)
     total = roll.total
     dc = int(repeat_save["dc"])
@@ -704,9 +778,13 @@ def _status_effects_for(
 ) -> list[dict[str, Any]]:
     effects = list(getattr(entity, "status_effects", []))
     if isinstance(entity, Combatant) and entity.entity_id in state.characters:
-        effects.extend(state.characters[entity.entity_id].status_effects)
+        backing_effects = state.characters[entity.entity_id].status_effects
+        if backing_effects is not entity.status_effects:
+            effects.extend(backing_effects)
     if isinstance(entity, Combatant) and entity.entity_id in state.monsters:
-        effects.extend(state.monsters[entity.entity_id].status_effects)
+        backing_effects = state.monsters[entity.entity_id].status_effects
+        if backing_effects is not entity.status_effects:
+            effects.extend(backing_effects)
     return effects
 
 
@@ -725,11 +803,21 @@ def _repeat_save_failure_damage(
     dice = str(failure_damage["dice"])
     damage_type = str(failure_damage["damage_type"]).lower()
     hp_before = int(getattr(target, "hp_current"))
+    hp_max = int(getattr(target, "hp_max"))
     temp_hp_before = int(getattr(target, "temp_hp", 0))
     roll = roll_service.roll(dice)
+    adjusted_amount = adjusted_damage_amount(target, roll.total, damage_type)
+    hp_damage_after_temp = max(0, adjusted_amount - temp_hp_before)
     applied = apply_damage(target, roll.total, damage_type)
+    death_rule = _apply_repeat_save_damage_death_rules(
+        state,
+        target,
+        hp_before=hp_before,
+        hp_max=hp_max,
+        hp_damage_after_temp=hp_damage_after_temp,
+    )
     _sync_hp_state_for_target(state, target_id, target)
-    return {
+    result = {
         "type": "repeat_save_failure_damage",
         "target_id": target_id,
         "effect_id": effect.get("effect_id"),
@@ -743,6 +831,52 @@ def _repeat_save_failure_damage(
         "hp_after": int(getattr(target, "hp_current")),
         "temp_hp_before": temp_hp_before,
         "temp_hp_after": int(getattr(target, "temp_hp", 0)),
+    }
+    if death_rule is not None:
+        result["death_rule"] = death_rule
+    return result
+
+
+def _apply_repeat_save_damage_death_rules(
+    state: GameState,
+    target: Character | Monster | Combatant,
+    *,
+    hp_before: int,
+    hp_max: int,
+    hp_damage_after_temp: int,
+) -> dict[str, Any] | None:
+    character_target = isinstance(target, Character) or (
+        isinstance(target, Combatant) and target.entity_id in state.characters
+    )
+    if not character_target or hp_damage_after_temp <= 0 or bool(getattr(target, "dead", False)):
+        return None
+    if hp_before <= 0:
+        failures_before = int(getattr(target, "death_save_failures", 0))
+        failures_after = min(3, failures_before + 1)
+        setattr(target, "death_save_failures", failures_after)
+        setattr(target, "stable", False)
+        if failures_after >= 3:
+            setattr(target, "dead", True)
+        return {
+            "type": "damage_at_zero_hp",
+            "death_save_failures_before": failures_before,
+            "death_save_failures_after": failures_after,
+            "death_save_failures_added": failures_after - failures_before,
+            "dead": bool(getattr(target, "dead", False)),
+        }
+    if int(getattr(target, "hp_current")) != 0:
+        return None
+    setattr(target, "stable", False)
+    excess_damage = max(0, hp_damage_after_temp - hp_before)
+    massive_damage = excess_damage >= hp_max
+    if massive_damage:
+        setattr(target, "death_save_failures", 3)
+        setattr(target, "dead", True)
+    return {
+        "type": "drop_to_zero_hp",
+        "massive_damage": massive_damage,
+        "excess_damage": excess_damage,
+        "dead": bool(getattr(target, "dead", False)),
     }
 
 
@@ -805,13 +939,19 @@ def _indomitable_might_repeat_save(
     }
 
 
-def _saving_throw_status_advantage(target: Any) -> tuple[str | None, list[dict[str, Any]]]:
+def _saving_throw_status_advantage(
+    target: Any,
+    *,
+    include_next_saving_throw_disadvantage: bool = True,
+) -> tuple[str | None, list[dict[str, Any]]]:
     disadvantage_sources: list[dict[str, Any]] = []
     for effect in getattr(target, "status_effects", []):
         modifiers = effect.get("passive_modifiers", {})
         if not isinstance(modifiers, dict):
             continue
         if modifiers.get("next_saving_throw_disadvantage") is not True:
+            continue
+        if not include_next_saving_throw_disadvantage:
             continue
         disadvantage_sources.append(
             {

@@ -107,3 +107,19 @@ def test_llm_campaign_edit_rejects_invalid_or_unconfigured_response() -> None:
     assert invalid.errors == ["LLM response did not contain a CampaignPack JSON object"]
     assert unconfigured.accepted is False
     assert unconfigured.errors == ["LLM client is unconfigured"]
+
+
+def test_llm_campaign_candidate_returns_validation_failure_for_deep_type_error() -> None:
+    payload = starter_campaign_pack().to_dict()
+    payload["zones"] = {"start": 1}
+
+    result = generate_campaign_pack_candidate(
+        "生成错误的区域结构",
+        client=FakeClient(_content_response(payload)),
+        validator=_validator(),
+    )
+
+    assert result.accepted is False
+    assert result.errors
+    assert "validation failed" in result.errors[0]
+    assert result.raw_payload == payload

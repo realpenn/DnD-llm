@@ -390,7 +390,7 @@
       "rules_version": "srd-5.2.1",
       "level": 3,
       "school": "transmutation",
-      "classes": ["cleric", "druid", "ranger", "sorcerer", "wizard"],
+      "classes": ["cleric", "druid", "ranger", "sorcerer"],
       "ritual": true,
       "action": {
         "id": "srd.water_walk",

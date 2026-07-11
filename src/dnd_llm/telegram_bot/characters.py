@@ -145,6 +145,13 @@ class CharacterRegistry:
             campaign_spectators={str(user_id) for user_id in data.get("campaign_spectators", [])},
         )
 
+    def replace_from_dict(self, data: dict[str, Any]) -> None:
+        restored = self.from_dict(data)
+        self.characters_by_user = restored.characters_by_user
+        self.active_by_user = restored.active_by_user
+        self.campaign_members = restored.campaign_members
+        self.campaign_spectators = restored.campaign_spectators
+
     def save(self, path: str | Path) -> None:
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)

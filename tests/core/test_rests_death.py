@@ -788,6 +788,19 @@ def test_long_rest_restores_hp_spell_slots_hit_dice_and_death_state(make_state) 
     assert character.status_effects[-1]["level"] == 1
 
 
+def test_long_rest_restores_all_expended_hit_point_dice(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"fighter": 4}
+    character.hit_dice = {"d10": 0}
+    tools = EngineTools(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    result = tools.long_rest(["pc1"], idempotency_key="restore-all-hit-point-dice")
+
+    assert result["results"]["pc1"]["restored_hit_dice"] == {"d10": 4}
+    assert character.hit_dice == {"d10": 4}
+
+
 def test_long_rest_restores_second_wind_to_srd_maximum(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

@@ -4,12 +4,14 @@ import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from dnd_llm.config import Settings
 from dnd_llm.content.campaign_pack import (
     CampaignPackDefinition,
     CampaignPackLoader,
     CampaignPackValidator,
+    campaign_id_validation_error,
 )
 from dnd_llm.content.runtime import apply_campaign_pack, register_campaign_pack_events
 from dnd_llm.core.compendium.loader import Compendium, CompendiumLoader
@@ -175,13 +177,18 @@ class GameRuntime:
 
     def save(self, slot: str) -> Path:
         path = self._save_path(slot)
-        save_game(path, self.state, self.audit_log)
+        save_game(
+            path,
+            self.state,
+            self.audit_log,
+            registry=self.command_router.characters.to_dict(),
+        )
         return path
 
     def load(self, slot: str) -> Path:
         path = self._save_path(slot)
-        state, audit_log = load_game(path)
-        self._replace_state(state, audit_log)
+        state, audit_log, registry = load_game(path, include_registry=True)
+        self._replace_state(state, audit_log, registry=registry)
         return path
 
     def list_saves(self) -> list[str]:
@@ -273,9 +280,17 @@ class GameRuntime:
     def _cmd_cost(self, _: PlayerIntent) -> str:
         return render_cost_report(self.cost_report())
 
-    def _replace_state(self, state: GameState, audit_log: AuditLog) -> None:
+    def _replace_state(
+        self,
+        state: GameState,
+        audit_log: AuditLog,
+        *,
+        registry: dict[str, Any] | None = None,
+    ) -> None:
         self.state = state
         self.audit_log = audit_log
+        if registry is not None:
+            self.command_router.characters.replace_from_dict(registry)
         self._sync_character_registry_from_state()
         self.session = self._new_session()
         self.dm_runtime = self._new_dm_runtime()
@@ -302,6 +317,7 @@ class GameRuntime:
             self.compendium,
             self.audit_log,
             reactions=ReactionManager(mode=self.settings.reaction_mode),
+            campaign_pack=self.campaign_pack,
         )
 
     def _new_dm_runtime(self) -> DMRuntime:
@@ -314,13 +330,22 @@ class GameRuntime:
         )
 
     def _campaign_save_root(self) -> Path:
-        return Path(self.settings.save_dir) / self.state.campaign_id
+        campaign_id_error = campaign_id_validation_error(self.state.campaign_id)
+        if campaign_id_error is not None:
+            raise ValueError(campaign_id_error)
+        save_root = Path(self.settings.save_dir).expanduser().resolve()
+        campaign_root = (save_root / self.state.campaign_id).resolve()
+        _require_contained_path(campaign_root, save_root, label="campaign save path")
+        return campaign_root
 
     def _save_path(self, slot: str) -> Path:
         safe_slot = slot.strip() or "manual"
         if "/" in safe_slot or "\\" in safe_slot or safe_slot in {".", ".."}:
             raise ValueError("invalid save slot")
-        return self._campaign_save_root() / safe_slot
+        campaign_root = self._campaign_save_root()
+        save_path = (campaign_root / safe_slot).resolve()
+        _require_contained_path(save_path, campaign_root, label="save slot path")
+        return save_path
 
 
 class MultiCampaignRuntime:
@@ -495,3 +520,10 @@ def _seed_for_chat(base_seed: int, chat_id: str) -> int:
 def _campaign_id_for_chat(base_campaign_id: str, chat_id: str) -> str:
     digest = hashlib.sha256(chat_id.encode("utf-8")).hexdigest()[:10]
     return f"{base_campaign_id}_chat_{digest}"
+
+
+def _require_contained_path(path: Path, root: Path, *, label: str) -> None:
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"{label} escapes configured save directory") from exc

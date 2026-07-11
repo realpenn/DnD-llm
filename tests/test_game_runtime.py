@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from dnd_llm.config import Settings
 from dnd_llm.content.campaign_gen import starter_campaign_pack
@@ -27,6 +31,7 @@ def test_game_runtime_builds_starter_campaign(tmp_path: Path) -> None:
     assert "starter.loose_stones" in runtime.compendium.events
     assert runtime.status().campaign_id == "starter"
     assert runtime.session.reactions.interactive is True
+    assert runtime.session.campaign_pack is runtime.campaign_pack
 
 
 def test_game_runtime_can_keep_phase1_auto_reaction_mode_configured(tmp_path: Path) -> None:
@@ -294,6 +299,70 @@ def test_game_runtime_load_syncs_character_registry_before_join(tmp_path: Path) 
         now=1,
     )
     assert runtime.state.characters[character.id].gold == 42
+
+
+def test_game_runtime_registry_round_trips_across_processes(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    runtime = GameRuntime.build(settings)
+    registry = runtime.command_router.characters
+    first = registry.create_default("u1", "First")
+    second = registry.create_default("u1", "Second")
+    registry.use_character("u1", first.id)
+    registry.join_campaign("u1")
+    registry.spectate_campaign("spectator")
+    runtime.state.characters[first.id] = default_fighter(first.id, first.name)
+    runtime.state.characters[first.id].gold = 42
+    runtime.save("cross-process")
+
+    script = """
+import json
+import sys
+from dnd_llm.config import Settings
+from dnd_llm.runtime import GameRuntime
+
+runtime = GameRuntime.build(Settings(
+    rules_data_dir=sys.argv[1],
+    save_dir=sys.argv[2],
+    gm_user_ids=("gm",),
+    rng_seed=12345,
+))
+runtime.load("cross-process")
+print(json.dumps(runtime.command_router.characters.to_dict(), ensure_ascii=False, sort_keys=True))
+"""
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(Path("rules_data").resolve()),
+            settings.save_dir,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=Path.cwd(),
+    )
+    restored = json.loads(completed.stdout)
+
+    assert set(restored["characters_by_user"]["u1"]) == {first.id, second.id}
+    assert restored["active_by_user"] == {"u1": first.id}
+    assert restored["campaign_members"] == {"u1": first.id}
+    assert restored["campaign_spectators"] == ["spectator"]
+    assert restored["characters_by_user"]["u1"][first.id]["gold"] == 42
+
+
+@pytest.mark.parametrize("campaign_id", ["../../escape", "/tmp/escape", "bad/name"])
+def test_game_runtime_rejects_unsafe_campaign_save_path(
+    tmp_path: Path,
+    campaign_id: str,
+) -> None:
+    runtime = GameRuntime.build(_settings(tmp_path))
+    runtime.state.campaign_id = campaign_id
+
+    with pytest.raises(ValueError, match="campaign_id"):
+        runtime.save("slot1")
+
+    assert not (tmp_path / "escape").exists()
 
 
 def test_gm_commands_reject_non_gm_through_runtime(tmp_path: Path) -> None:

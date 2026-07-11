@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any, Protocol
@@ -12,6 +13,7 @@ from dnd_llm.config import Settings
 from .runtime import IncomingMessage, OutgoingMessage
 
 BotSender = Callable[[str, str], Awaitable[Any]]
+MAX_CONCURRENT_UPDATES = 32
 
 
 class MessageRuntime(Protocol):
@@ -21,10 +23,19 @@ class MessageRuntime(Protocol):
 def build_application(settings: Settings, runtime: MessageRuntime) -> Application:
     if not settings.bot_token:
         raise ValueError("BOT_TOKEN is required to build the Telegram application")
-    application = Application.builder().token(settings.bot_token).build()
+    application = (
+        Application.builder()
+        .token(settings.bot_token)
+        .concurrent_updates(MAX_CONCURRENT_UPDATES)
+        .build()
+    )
+    chat_locks: dict[str, asyncio.Lock] = {}
 
     async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        await handle_update(update, runtime, context.bot.send_message)
+        chat_id = str(update.effective_chat.id) if update.effective_chat is not None else "unknown"
+        lock = chat_locks.setdefault(chat_id, asyncio.Lock())
+        async with lock:
+            await handle_update(update, runtime, context.bot.send_message)
 
     application.add_handler(MessageHandler(filters.TEXT, on_text))
     return application
@@ -46,14 +57,16 @@ async def handle_update(
     text = update.effective_message.text
     if text is None:
         return
-    outgoing = runtime.handle_message(
-        IncomingMessage(
-            user_id=str(update.effective_user.id),
-            chat_id=str(update.effective_chat.id),
-            text=text,
-            is_private=update.effective_chat.type == "private",
-            message_id=str(update.effective_message.message_id),
-        ),
+    incoming = IncomingMessage(
+        user_id=str(update.effective_user.id),
+        chat_id=str(update.effective_chat.id),
+        text=text,
+        is_private=update.effective_chat.type == "private",
+        message_id=str(update.effective_message.message_id),
+    )
+    outgoing = await asyncio.to_thread(
+        runtime.handle_message,
+        incoming,
         now=now if now is not None else int(time.time()),
     )
     for message in outgoing:

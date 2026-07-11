@@ -10,6 +10,7 @@ from dnd_llm.config import Settings
 class OpenAICompatibleClient:
     settings: Settings
     model: str | None
+    timeout_seconds: float = 30.0
 
     def chat(
         self, messages: list[dict[str, str]], tools: list[dict[str, Any]] | None = None
@@ -19,7 +20,9 @@ class OpenAICompatibleClient:
         from openai import OpenAI
 
         client = OpenAI(
-            api_key=self.settings.openai_api_key, base_url=self.settings.openai_base_url
+            api_key=self.settings.openai_api_key,
+            base_url=self.settings.openai_base_url,
+            timeout=self.timeout_seconds,
         )
         client_any = cast(Any, client)
         payload: dict[str, Any] = {"model": self.model, "messages": messages}

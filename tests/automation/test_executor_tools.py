@@ -26294,7 +26294,7 @@ def test_heroes_feast_consumes_bowl_gold_and_grants_partaker_benefits(
     assert immune_change["immunity_sources"][0]["source_action_id"] == "srd.heroes_feast"
     assert not any(effect.get("condition") == "frightened" for effect in pc2.status_effects)
 
-    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     heroes_ticks = [
         entry for entry in lifecycle.ticked if entry["effect_id"] == effects["pc2"]["effect_id"]
     ]
@@ -28284,7 +28284,7 @@ def test_foresight_requires_willing_target_and_grants_d20_test_protection(
     )
     assert passive_change["target_id"] == "pc2"
     assert passive_change["passive_modifiers"] == expected_modifiers
-    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     assert lifecycle.ticked[0]["remaining_ticks_before"] == 4800
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 4799
 
@@ -28900,7 +28900,7 @@ def test_mind_blank_requires_willing_target_and_grants_srd_immunities(
         for active in state.encounter.combatants["pc2"].status_effects
     )
 
-    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc2")
+    lifecycle = tick_effects(state, trigger="self_turn_end", actor_id="pc1")
     assert lifecycle.ticked[0]["remaining_ticks_before"] == 14400
     assert lifecycle.ticked[0]["remaining_ticks_after"] == 14399
 
@@ -33528,7 +33528,7 @@ def test_champion_improved_critical_scores_weapon_critical_on_natural_19(make_st
     )
 
     attack_node = result["node_results"]["automation[1]"]
-    damage_rolls = [roll for roll in result["dice_rolls"] if roll["expression"] == "1d8+2"]
+    damage_rolls = [roll for roll in result["dice_rolls"] if roll["expression"] in {"1d8+2", "1d8"}]
     assert attack_node["natural"] == 19
     assert attack_node["hit"] is True
     assert attack_node["critical"] is True
@@ -33537,6 +33537,7 @@ def test_champion_improved_critical_scores_weapon_critical_on_natural_19(make_st
         "srd.improved_critical"
     )
     assert len(damage_rolls) == 2
+    assert [roll["expression"] for roll in damage_rolls] == ["1d8+2", "1d8"]
 
 
 def test_champion_superior_critical_scores_weapon_critical_on_natural_18(make_state) -> None:
@@ -33561,7 +33562,7 @@ def test_champion_superior_critical_scores_weapon_critical_on_natural_18(make_st
     )
 
     attack_node = result["node_results"]["automation[1]"]
-    damage_rolls = [roll for roll in result["dice_rolls"] if roll["expression"] == "1d8+2"]
+    damage_rolls = [roll for roll in result["dice_rolls"] if roll["expression"] in {"1d8+2", "1d8"}]
     assert attack_node["natural"] == 18
     assert attack_node["hit"] is True
     assert attack_node["critical"] is True
@@ -33570,6 +33571,7 @@ def test_champion_superior_critical_scores_weapon_critical_on_natural_18(make_st
         "srd.superior_critical"
     )
     assert len(damage_rolls) == 2
+    assert [roll["expression"] for roll in damage_rolls] == ["1d8+2", "1d8"]
 
 
 def test_champion_before_superior_critical_does_not_crit_on_natural_18(make_state) -> None:

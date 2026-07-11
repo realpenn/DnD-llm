@@ -209,10 +209,10 @@ class ActionResolver:
         self.economy = economy or EconomyTracker()
 
     def resolve(self, draft: PlayerActionDraft) -> ResolverResult:
-        action = self._resolve_action(draft)
+        actor = self.state.entity_for_actor(draft.actor_id)
+        action = self._resolve_action(draft, actor)
         if action is None:
             return ResolverResult(status="ambiguous", reason="no matching action", candidates=[])
-        actor = self.state.entity_for_actor(draft.actor_id)
         item = self._item_for_draft(draft)
         ownership_error = self._ownership_error(draft.actor_id, actor, action, item)
         if ownership_error is not None:
@@ -522,7 +522,11 @@ class ActionResolver:
             return healing_pool_check
         return ResolverResult(status="accepted", reason="accepted", action_id=action.id)
 
-    def _resolve_action(self, draft: PlayerActionDraft) -> ActionDefinition | None:
+    def _resolve_action(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+    ) -> ActionDefinition | None:
         if draft.candidate_action_id is not None:
             action = self.actions.get(draft.candidate_action_id)
             if action is not None:
@@ -534,11 +538,23 @@ class ActionResolver:
             for action in self.actions.values()
             if action.id == normalized
             or action.name.casefold() == normalized
+            or any(
+                isinstance(action.localization.get(key), str)
+                and action.localization[key].casefold() == normalized
+                for key in ("en", "zh")
+            )
             or normalized
             in [str(alias).casefold() for alias in action.localization.get("aliases", [])]
         ]
         if len(matches) == 1:
             return matches[0]
+        owned_matches = [
+            action
+            for action in matches
+            if self._ownership_error(draft.actor_id, actor, action, None) is None
+        ]
+        if len(owned_matches) == 1:
+            return owned_matches[0]
         return None
 
     def _action_for_item(
@@ -996,7 +1012,7 @@ class ActionResolver:
         graph = TacticalGraph.from_dict(self.state.encounter.tactical_graph)
         target_must_be_visible = action.properties.get("target_must_be_visible") is True
         for target_id in draft.target_ids:
-            target = self.state.encounter.combatants.get(target_id)
+            target = self._combatant_for_reference(target_id)
             if target is None or target.position_node_id is None:
                 continue
             distance = graph.shortest_distance(actor.position_node_id, target.position_node_id)
@@ -1566,7 +1582,7 @@ class ActionResolver:
         for target_id in draft.target_ids:
             if target_id in actor_aliases:
                 continue
-            target = self.state.encounter.combatants.get(target_id)
+            target = self._combatant_for_reference(target_id)
             if target is not None and target.side == actor_combatant.side:
                 continue
             return ResolverResult(
@@ -2517,8 +2533,8 @@ class ActionResolver:
             return explicit is True
         if self.state.encounter is None or self.state.encounter.tactical_graph is None:
             return False
-        attacker = self.state.encounter.combatants.get(attacker_id)
-        target = self.state.encounter.combatants.get(target_id)
+        attacker = self._combatant_for_reference(attacker_id)
+        target = self._combatant_for_reference(target_id)
         if (
             attacker is None
             or target is None
@@ -2884,8 +2900,8 @@ class ActionResolver:
     def _combat_distance(self, actor_id: str, target_id: str) -> int | None:
         if self.state.encounter is None or self.state.encounter.tactical_graph is None:
             return None
-        actor = self.state.encounter.combatants.get(actor_id)
-        target = self.state.encounter.combatants.get(target_id)
+        actor = self._combatant_for_reference(actor_id)
+        target = self._combatant_for_reference(target_id)
         if actor is None or target is None:
             return None
         if actor.position_node_id is None or target.position_node_id is None:
@@ -2982,17 +2998,21 @@ class ActionResolver:
             draft,
             action,
         )
-        allied_targets = []
+        allied_targets: list[str] = []
+        allied_combatants: list[Combatant] = []
         for target_id in draft.target_ids:
-            target = self.state.encounter.combatants.get(target_id)
+            target = self._combatant_for_reference(target_id)
             if target is not None and target.side == actor_combatant.side:
                 if action.properties.get("allows_willing_target") is True and self._target_willing(
                     draft.params, target_id
                 ):
                     continue
                 allied_targets.append(target_id)
+                allied_combatants.append(target)
         if harmful and allied_targets:
-            has_pc_target = any(target_id.startswith("pc") for target_id in allied_targets)
+            has_pc_target = any(
+                target.entity_id in self.state.characters for target in allied_combatants
+            )
             is_area_friendly_fire = self._is_area_friendly_fire(
                 draft,
                 action,
@@ -3496,7 +3516,7 @@ class ActionResolver:
             base_range=int(max_range),
         )
         for target_id in draft.target_ids:
-            target = self.state.encounter.combatants.get(target_id)
+            target = self._combatant_for_reference(target_id)
             if target is None or target.position_node_id is None:
                 continue
             distance = graph.shortest_distance(actor.position_node_id, target.position_node_id)
@@ -3511,6 +3531,21 @@ class ActionResolver:
                 return ResolverResult(
                     status="rejected", reason="line of sight blocked", action_id=action.id
                 )
+        return None
+
+    def _combatant_for_reference(self, reference_id: str) -> Combatant | None:
+        if self.state.encounter is None:
+            return None
+        direct = self.state.encounter.combatants.get(reference_id)
+        if direct is not None:
+            return direct
+        matches = [
+            combatant
+            for combatant in self.state.encounter.combatants.values()
+            if combatant.entity_id == reference_id
+        ]
+        if len(matches) == 1:
+            return matches[0]
         return None
 
     def _effective_action_range_ft(

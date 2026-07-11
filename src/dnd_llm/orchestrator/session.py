@@ -377,6 +377,8 @@ class GameSession:
             event.idempotency_key,
             allow_reactions=True,
         )
+        if result.get("status") == "rejected":
+            return SessionResult(accepted=False, payload=result)
         self._advance_after_action_if_ready(
             result,
             f"{event.idempotency_key}:advance",
@@ -506,6 +508,7 @@ class GameSession:
         if self.state.encounter is None:
             return SessionResult(accepted=False, payload={"reason": "no active encounter"})
         ended_encounter_id = self.state.encounter.id
+        _sync_encounter_status_effects_to_backing(self.state)
         self.state.encounter = None
         self.economy.use_backing({})
         self.state.session_mode = "exploration"
@@ -665,6 +668,9 @@ class GameSession:
         previous = self.state.encounter.current_combatant_id
         lifecycle_results: list[EffectLifecycleResult] = []
         if previous is not None:
+            end_cycle = (
+                f"{self.state.encounter.id}:round:{self.state.encounter.round_number}:turn_end"
+            )
             lifecycle_results.extend(
                 [
                     tick_effects(
@@ -672,12 +678,14 @@ class GameSession:
                         trigger="self_turn_end",
                         actor_id=previous,
                         roll_service=self.roll_service,
+                        cycle_id=end_cycle,
                     ),
                     tick_effects(
                         self.state,
                         trigger="target_turn_end",
                         actor_id=previous,
                         roll_service=self.roll_service,
+                        cycle_id=end_cycle,
                     ),
                 ]
             )
@@ -692,6 +700,9 @@ class GameSession:
             current,
             _effective_combatant_speed(self.state, self.state.encounter.combatants[current]),
         )
+        start_cycle = (
+            f"{self.state.encounter.id}:round:{self.state.encounter.round_number}:turn_start"
+        )
         lifecycle_results.extend(
             [
                 tick_effects(
@@ -699,12 +710,14 @@ class GameSession:
                     trigger="self_turn_start",
                     actor_id=current,
                     roll_service=self.roll_service,
+                    cycle_id=start_cycle,
                 ),
                 tick_effects(
                     self.state,
                     trigger="target_turn_start",
                     actor_id=current,
                     roll_service=self.roll_service,
+                    cycle_id=start_cycle,
                 ),
             ]
         )
@@ -978,7 +991,7 @@ class GameSession:
             idempotency_key,
             allow_reactions=allow_reactions,
         )
-        return SessionResult(accepted=True, payload=result)
+        return SessionResult(accepted=result.get("status") != "rejected", payload=result)
 
     def _execute_resolved_draft(
         self,
@@ -1009,12 +1022,31 @@ class GameSession:
                 idempotency_key=idempotency_key,
             )
         elif action.action_economy == "movement":
-            result = self.tools.move(
-                draft.actor_id,
-                to_position_node_id=draft.params.get("to_position_node_id"),
-                to_zone_id=draft.params.get("to_zone_id"),
-                idempotency_key=idempotency_key,
-            )
+            try:
+                result = self.tools.move(
+                    draft.actor_id,
+                    to_position_node_id=draft.params.get("to_position_node_id"),
+                    to_zone_id=draft.params.get("to_zone_id"),
+                    idempotency_key=idempotency_key,
+                )
+            except ValueError as exc:
+                result = {
+                    "success": False,
+                    "status": "rejected",
+                    "reason": str(exc),
+                    "action_id": action.id,
+                    "actor_id": draft.actor_id,
+                }
+                self.audit_log.append(
+                    self.state,
+                    idempotency_key=f"{idempotency_key}:movement_rejected",
+                    player_text=draft.raw_text,
+                    player_intent=draft.__dict__,
+                    tool_name="orchestrator.movement.reject",
+                    tool_args=draft.params,
+                    tool_result=result,
+                )
+                return result
         else:
             result = self.tools.perform_action(
                 draft.actor_id,
@@ -1172,6 +1204,18 @@ def _resource_owner(state: GameState, actor_id: str) -> Character | Monster | Co
     return actor
 
 
+def _sync_encounter_status_effects_to_backing(state: GameState) -> None:
+    if state.encounter is None:
+        return
+    for combatant in state.encounter.combatants.values():
+        backing = state.characters.get(combatant.entity_id) or state.monsters.get(
+            combatant.entity_id
+        )
+        if backing is None or combatant.status_effects is backing.status_effects:
+            continue
+        backing.status_effects = [dict(effect) for effect in combatant.status_effects]
+
+
 def _status_effects_for(
     state: GameState,
     actor: Character | Monster | Combatant | None,
@@ -1180,9 +1224,13 @@ def _status_effects_for(
         return []
     effects = list(getattr(actor, "status_effects", []))
     if isinstance(actor, Combatant) and actor.entity_id in state.characters:
-        effects.extend(state.characters[actor.entity_id].status_effects)
+        backing_effects = state.characters[actor.entity_id].status_effects
+        if backing_effects is not actor.status_effects:
+            effects.extend(backing_effects)
     if isinstance(actor, Combatant) and actor.entity_id in state.monsters:
-        effects.extend(state.monsters[actor.entity_id].status_effects)
+        backing_effects = state.monsters[actor.entity_id].status_effects
+        if backing_effects is not actor.status_effects:
+            effects.extend(backing_effects)
     return effects
 
 
@@ -1191,10 +1239,13 @@ def _effective_combatant_speed(state: GameState, combatant: Combatant) -> int:
     base_speed = combatant.speed_ft
     if combatant.entity_id in state.characters:
         backing_character = state.characters[combatant.entity_id]
-        effects.extend(backing_character.status_effects)
+        if backing_character.status_effects is not combatant.status_effects:
+            effects.extend(backing_character.status_effects)
         base_speed += class_feature_speed_bonus(backing_character)
     if combatant.entity_id in state.monsters:
-        effects.extend(state.monsters[combatant.entity_id].status_effects)
+        backing_effects = state.monsters[combatant.entity_id].status_effects
+        if backing_effects is not combatant.status_effects:
+            effects.extend(backing_effects)
     return effective_speed(base_speed, effects)
 
 

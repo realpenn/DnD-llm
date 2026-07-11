@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
+import dnd_llm.core.compendium.loader as loader_module
 from dnd_llm.core.compendium.loader import CompendiumLoader
 from dnd_llm.core.compendium.schema_loader import SchemaRegistry
-from dnd_llm.core.compendium.validators import RuleDataValidator
+from dnd_llm.core.compendium.validators import RuleDataValidator, rule_payload_digest
 
 
 def test_compendium_loads_srd_actions() -> None:
@@ -159,6 +165,7 @@ def test_compendium_loads_srd_actions() -> None:
         "spell_level": 7,
         "class_any": ["bard", "sorcerer", "wizard"],
     }
+
     assert prismatic_spray.properties["metadata"]["automated_results"] == [1, 2, 3, 4, 5]
     assert prismatic_spray.properties["metadata"]["not_automated_results"] == [6, 7, 8]
     assert "srd.monster_melee_attack" not in compendium.actions
@@ -10272,6 +10279,12 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.monsters["srd.giant_rat"].abilities["dex"] == 16
     assert compendium.monsters["srd.bandit_captain"].armor_class == 15
     assert compendium.monsters["srd.bandit_captain"].hit_points == 52
+    assert compendium.monsters["srd.bandit_captain"].actions == [
+        "srd.bandit_captain_multiattack",
+        "srd.bandit_captain_scimitar",
+        "srd.bandit_captain_pistol",
+        "srd.bandit_captain_parry",
+    ]
     assert compendium.monsters["srd.bandit"].actions == [
         "srd.bandit_scimitar",
         "srd.bandit_light_crossbow",
@@ -10296,7 +10309,10 @@ def test_compendium_loads_srd_actions() -> None:
     assert compendium.monsters["srd.zombie"].creature_type == "undead"
     assert compendium.monsters["srd.zombie"].actions == ["srd.zombie_slam"]
     assert compendium.monsters["srd.warrior_infantry"].hit_points == 9
-    assert compendium.monsters["srd.warrior_infantry"].actions == ["srd.warrior_infantry_spear"]
+    assert compendium.monsters["srd.warrior_infantry"].actions == [
+        "srd.warrior_infantry_pack_tactics",
+        "srd.warrior_infantry_spear",
+    ]
     assert "srd.shortsword" in compendium.items
     assert compendium.items["srd.longsword"].actions == ["srd.longsword_attack"]
     assert compendium.items["srd.potion_of_healing"].actions == ["srd.use_potion_of_healing"]
@@ -10463,6 +10479,116 @@ def test_compendium_loads_srd_actions() -> None:
         "srd-5.2.1-structured-data",
         "starter-campaign-pack",
     }
+
+
+def test_loader_rejects_duplicate_ids_within_a_namespace(tmp_path: Path) -> None:
+    actions_dir = tmp_path / "srd" / "actions"
+    actions_dir.mkdir(parents=True)
+    action = {
+        "id": "extension.duplicate",
+        "name": "Duplicate",
+        "localization": {"en": "Duplicate", "zh": "重复", "aliases": []},
+        "source": "Extension rules",
+        "rules_version": "extension-1",
+        "action_type": "base_action",
+        "action_economy": "action",
+        "range": {"self": True},
+        "target_policy": {"min": 0, "max": 0},
+        "automation": [],
+    }
+    (actions_dir / "first.json").write_text(json.dumps(action), encoding="utf-8")
+    (actions_dir / "second.json").write_text(json.dumps(action), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate action id extension.duplicate"):
+        CompendiumLoader(tmp_path).load()
+
+
+def test_wheel_loader_rejects_external_unlisted_srd_id_but_allows_extension_namespace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundled_root = tmp_path / "wheel" / "dnd_llm" / "rules_data"
+    bundled_actions_dir = bundled_root / "srd" / "actions"
+    bundled_actions_dir.mkdir(parents=True)
+    bundled_action = {
+        "id": "srd.move",
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+    }
+    (bundled_actions_dir / "catalog.json").write_text(
+        json.dumps(bundled_action),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(loader_module, "bundled_rules_data_dir", lambda: bundled_root)
+
+    external_root = tmp_path / "external-rules"
+    actions_dir = external_root / "srd" / "actions"
+    actions_dir.mkdir(parents=True)
+    imaginary_srd = {
+        "id": "srd.imaginary_blade",
+        "name": "Imaginary Blade",
+        "localization": {"en": "Imaginary Blade", "zh": "虚构刃", "aliases": []},
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "weapon_attack",
+        "action_economy": "action",
+        "range": {"normal_ft": 5},
+        "target_policy": {"min": 1, "max": 1, "harmful": True},
+        "automation": [],
+    }
+    (actions_dir / "imaginary.json").write_text(
+        json.dumps(imaginary_srd),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unknown action id in verified SRD catalog"):
+        CompendiumLoader(external_root).load()
+
+    self_signed_validator = RuleDataValidator(
+        srd_catalog={
+            "action": {
+                "srd.imaginary_blade": (
+                    "SRD 5.2.1",
+                    "srd-5.2.1",
+                    rule_payload_digest(imaginary_srd),
+                ),
+            }
+        }
+    )
+    with pytest.raises(ValueError, match="unknown action id in verified SRD catalog"):
+        CompendiumLoader(external_root, validator=self_signed_validator).load()
+
+    imaginary_srd["id"] = "srd.move"
+    imaginary_srd["name"] = "Forged Move"
+    (actions_dir / "imaginary.json").write_text(
+        json.dumps(imaginary_srd),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="content does not match verified SRD catalog entry"):
+        CompendiumLoader(external_root).load()
+
+    imaginary_srd["id"] = "extension.imaginary_blade"
+    imaginary_srd["source"] = "Extension rules"
+    imaginary_srd["rules_version"] = "extension-1"
+    (actions_dir / "imaginary.json").write_text(
+        json.dumps(imaginary_srd),
+        encoding="utf-8",
+    )
+
+    compendium = CompendiumLoader(external_root).load()
+
+    assert "extension.imaginary_blade" in compendium.actions
+
+
+def test_standalone_validator_accepts_a_legal_srd_definition_without_catalog() -> None:
+    data = json.loads(Path("rules_data/srd/actions/basic.json").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
+
+    report = RuleDataValidator().validate_action(data)
+
+    assert report.ok
 
 
 def test_validator_rejects_unsafe_or_invalid_nodes() -> None:

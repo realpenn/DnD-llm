@@ -728,45 +728,59 @@ class EngineTools:
         cached = self._cached_result(idempotency_key)
         if cached is not None:
             return cached
+        if not actor_ids:
+            raise ValueError("award requires at least one recipient")
+        if len(set(actor_ids)) != len(actor_ids):
+            raise ValueError("award recipients must be unique")
         reward = self._parse_reward_id(reward_id)
-        changes = []
+        actors: dict[str, Character] = {}
         for actor_id in actor_ids:
-            actor = self.state.get_character(actor_id)
+            try:
+                actors[actor_id] = self.state.get_character(actor_id)
+            except KeyError as exc:
+                raise ValueError(f"unknown award recipient: {actor_id}") from exc
+
+        planned: dict[str, dict[str, Any]] = {}
+        changes: list[dict[str, Any]] = []
+        for actor_id, actor in actors.items():
+            next_gold = actor.gold
+            next_experience = actor.experience
+            next_inventory = dict(actor.inventory)
             if reward["kind"] == "gold":
-                before = actor.gold
-                actor.gold += int(reward["amount"])
+                before = next_gold
+                next_gold += int(reward["amount"])
                 changes.append(
                     {
                         "type": "gold",
                         "actor_id": actor_id,
                         "before": before,
-                        "after": actor.gold,
+                        "after": next_gold,
                     }
                 )
             else:
                 if reward["kind"] == "campaign_reward":
                     gold = int(reward.get("gold", 0))
                     if gold:
-                        before_gold = actor.gold
-                        actor.gold += gold
+                        before_gold = next_gold
+                        next_gold += gold
                         changes.append(
                             {
                                 "type": "gold",
                                 "actor_id": actor_id,
                                 "before": before_gold,
-                                "after": actor.gold,
+                                "after": next_gold,
                             }
                         )
                     experience = int(reward.get("experience", 0))
                     if experience:
-                        before_experience = actor.experience
-                        actor.experience += experience
+                        before_experience = next_experience
+                        next_experience += experience
                         changes.append(
                             {
                                 "type": "experience",
                                 "actor_id": actor_id,
                                 "before": before_experience,
-                                "after": actor.experience,
+                                "after": next_experience,
                             }
                         )
                     reward_items = list(reward.get("items", []))
@@ -780,8 +794,8 @@ class EngineTools:
                 for reward_item in reward_items:
                     item_id = str(reward_item["item_id"])
                     quantity = int(reward_item.get("quantity", 1))
-                    before = int(actor.inventory.get(item_id, 0))
-                    actor.inventory[item_id] = before + quantity
+                    before = int(next_inventory.get(item_id, 0))
+                    next_inventory[item_id] = before + quantity
                     changes.append(
                         {
                             "type": "item",
@@ -789,17 +803,43 @@ class EngineTools:
                             "item_id": item_id,
                             "quantity": quantity,
                             "before": before,
-                            "after": actor.inventory[item_id],
+                            "after": next_inventory[item_id],
                         }
                     )
-        self.audit_log.append(
-            self.state,
-            idempotency_key=idempotency_key,
-            tool_name="award",
-            tool_args={"actor_ids": actor_ids, "reward_id": reward_id},
-            tool_result={"reward": reward, "changes": changes},
-        )
-        require_game_state_invariants(self.state)
+            planned[actor_id] = {
+                "gold": next_gold,
+                "experience": next_experience,
+                "inventory": next_inventory,
+            }
+
+        snapshots = {
+            actor_id: (actor.gold, actor.experience, dict(actor.inventory))
+            for actor_id, actor in actors.items()
+        }
+        audit_length = len(self.audit_log.events)
+        event_counter = self.state.event_counter
+        try:
+            for actor_id, actor in actors.items():
+                actor.gold = int(planned[actor_id]["gold"])
+                actor.experience = int(planned[actor_id]["experience"])
+                actor.inventory = dict(planned[actor_id]["inventory"])
+            require_game_state_invariants(self.state)
+            self.audit_log.append(
+                self.state,
+                idempotency_key=idempotency_key,
+                tool_name="award",
+                tool_args={"actor_ids": actor_ids, "reward_id": reward_id},
+                tool_result={"reward": reward, "changes": changes},
+            )
+        except Exception:
+            for actor_id, actor in actors.items():
+                gold, experience, inventory = snapshots[actor_id]
+                actor.gold = gold
+                actor.experience = experience
+                actor.inventory = inventory
+            del self.audit_log.events[audit_length:]
+            self.state.event_counter = event_counter
+            raise
         return {"reward": reward, "changes": changes}
 
     def short_rest(

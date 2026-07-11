@@ -10,4 +10,3 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: []
-

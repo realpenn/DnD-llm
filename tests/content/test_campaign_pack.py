@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from dnd_llm.content.campaign_editor import apply_natural_language_campaign_edit
 from dnd_llm.content.campaign_gen import starter_campaign_pack
 from dnd_llm.content.campaign_pack import CampaignPackLoader, CampaignPackValidator
@@ -103,6 +105,21 @@ def test_campaign_pack_validator_rejects_missing_outline() -> None:
 
     assert not report.ok
     assert any("campaign_pack.outline" in error for error in report.errors)
+
+
+@pytest.mark.parametrize(
+    "campaign_id",
+    ["../../escape", "/tmp/escape", "nested/escape", "nested\\escape", "bad:id"],
+)
+def test_campaign_pack_validator_rejects_unsafe_campaign_id(campaign_id: str) -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    pack = CampaignPackLoader().load("rules_data/campaigns/starter/pack.json")
+    pack.campaign_id = campaign_id
+
+    report = CampaignPackValidator(compendium=compendium).validate(pack)
+
+    assert not report.ok
+    assert any("campaign_id" in error for error in report.errors)
 
 
 def test_campaign_pack_validator_rejects_bad_links() -> None:

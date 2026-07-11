@@ -287,6 +287,95 @@ def test_staggering_blow_consumes_next_saving_throw_on_repeat_save(make_state) -
     assert [effect["condition"] for effect in target.status_effects] == ["poisoned"]
 
 
+def test_next_save_disadvantage_only_applies_to_first_repeat_save_at_trigger(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.encounter.combatants["goblin1"]
+    target.status_effects.extend(
+        [
+            {
+                "effect_id": "next-save-disadvantage",
+                "source_action_id": "srd.brutal_strike",
+                "target_id": "goblin1",
+                "applied_by": "pc1",
+                "condition": "staggering_blow_save_disadvantage",
+                "passive_modifiers": {"next_saving_throw_disadvantage": True},
+            },
+            {
+                "effect_id": "repeat-save-first",
+                "source_action_id": "test.repeat_save.first",
+                "target_id": "goblin1",
+                "applied_by": "pc1",
+                "condition": "poisoned",
+                "duration": {
+                    "until": "duration_1_minute",
+                    "repeat_save": {"ability": "wis", "dc": 99, "end_on_success": True},
+                },
+                "tick_on": "target_turn_end",
+            },
+            {
+                "effect_id": "repeat-save-second",
+                "source_action_id": "test.repeat_save.second",
+                "target_id": "goblin1",
+                "applied_by": "pc1",
+                "condition": "frightened",
+                "duration": {
+                    "until": "duration_1_minute",
+                    "repeat_save": {"ability": "wis", "dc": 99, "end_on_success": True},
+                },
+                "tick_on": "target_turn_end",
+            },
+        ]
+    )
+
+    result = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="goblin1",
+        roll_service=RollService(state),
+    )
+
+    repeat_saves = [entry["repeat_save"] for entry in result.ticked]
+    assert repeat_saves[0]["status_advantage"] == "disadvantage"
+    assert repeat_saves[0]["consumed_effects"][0]["effect_id"] == "next-save-disadvantage"
+    assert repeat_saves[1]["status_advantage"] is None
+    assert "consumed_effects" not in repeat_saves[1]
+
+
+def test_duration_only_ticks_once_per_session_cycle(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    effect = {
+        "effect_id": "target-duration",
+        "source_action_id": "test.duration",
+        "target_id": "goblin1",
+        "applied_by": "pc1",
+        "condition": "poisoned",
+        "duration": {"until": "duration_1_minute"},
+        "tick_on": "self_turn_start",
+    }
+    state.encounter.combatants["goblin1"].status_effects.append(effect)
+
+    caster_turn = tick_effects(
+        state,
+        trigger="self_turn_start",
+        actor_id="pc1",
+        cycle_id="enc1:round:1:turn_start",
+    )
+    target_turn = tick_effects(
+        state,
+        trigger="self_turn_start",
+        actor_id="goblin1",
+        cycle_id="enc1:round:1:turn_start",
+    )
+
+    assert caster_turn.ticked[0]["remaining_ticks_before"] == 10
+    assert target_turn.changed is False
+    assert effect["duration"]["remaining_ticks"] == 9
+
+
 def test_longer_duration_ticks_and_round_trips(tmp_path: Path, make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -381,7 +470,7 @@ def test_effect_with_ends_if_condition_expires_when_condition_present(make_state
 
     assert result.expired[0]["source_action_id"] == "srd.superior_defense"
     assert result.expired[0]["ended_by_condition"] == "incapacitated"
-    assert result.ticked[0]["source_action_id"] == "test.incapacitated"
+    assert result.ticked == []
     assert [
         effect["source_action_id"] for effect in state.encounter.combatants["pc1"].status_effects
     ] == ["test.incapacitated"]
@@ -591,6 +680,83 @@ def test_repeat_save_failure_damage_keeps_effect_and_syncs_hp(make_state) -> Non
     assert target.hp_current == 11
     assert state.characters["pc2"].hp_current == 11
     assert target.status_effects[0]["effect_id"] == "repeat-damage"
+
+
+def test_repeat_save_failure_damage_at_zero_hp_adds_death_save_failure(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.encounter.combatants["pc2"]
+    character = state.characters["pc2"]
+    target.hp_current = character.hp_current = 0
+    target.stable = character.stable = True
+    target.status_effects.append(
+        {
+            "effect_id": "repeat-damage-zero-hp",
+            "source_action_id": "test.repeat_damage",
+            "target_id": "pc2",
+            "applied_by": "goblin1",
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc": 99,
+                    "failure_damage": {"dice": "1d10", "damage_type": "psychic"},
+                },
+            },
+            "tick_on": "target_turn_end",
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="pc2",
+        roll_service=_FixedRollService([1, 5]),
+    )
+
+    death_rule = result.damage[0]["death_rule"]
+    assert death_rule["type"] == "damage_at_zero_hp"
+    assert death_rule["death_save_failures_added"] == 1
+    assert target.death_save_failures == character.death_save_failures == 1
+    assert target.stable is character.stable is False
+
+
+def test_repeat_save_failure_damage_resistance_and_vulnerability_cancel(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    target = state.encounter.combatants["pc2"]
+    character = state.characters["pc2"]
+    target.hp_current = character.hp_current = 30
+    target.hp_max = character.hp_max = 30
+    target.resistances = ["psychic"]
+    target.vulnerabilities = ["psychic"]
+    target.status_effects.append(
+        {
+            "effect_id": "repeat-damage-resistance-vulnerability",
+            "source_action_id": "test.repeat_damage",
+            "target_id": "pc2",
+            "applied_by": "goblin1",
+            "duration": {
+                "until": "duration_1_minute",
+                "repeat_save": {
+                    "ability": "wis",
+                    "dc": 99,
+                    "failure_damage": {"dice": "4d10", "damage_type": "psychic"},
+                },
+            },
+            "tick_on": "target_turn_end",
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="target_turn_end",
+        actor_id="pc2",
+        roll_service=_FixedRollService([1, 25]),
+    )
+
+    assert result.damage[0]["applied"] == 25
+    assert target.hp_current == character.hp_current == 5
 
 
 def test_indomitable_might_floors_repeat_strength_save(make_state) -> None:

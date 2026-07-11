@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -32,12 +33,28 @@ def normalize_message(
     if not raw:
         return None
     if raw.startswith("/"):
+        command_parts = raw.split(maxsplit=1)
+        command_token = command_parts[0]
+        if "@" in command_token:
+            command, addressed_username = command_token.rsplit("@", maxsplit=1)
+            if (
+                not command
+                or not bot_username
+                or addressed_username.casefold() != bot_username.lstrip("@").casefold()
+            ):
+                return None
+            raw = command + (f" {command_parts[1]}" if len(command_parts) > 1 else "")
         return PlayerIntent(
             user_id=user_id, chat_id=chat_id, text=raw, source="command", is_command=True
         )
     if raw.startswith("DD"):
         return PlayerIntent(user_id=user_id, chat_id=chat_id, text=raw[2:].strip(), source="prefix")
-    if bot_username and f"@{bot_username}" in raw:
-        cleaned = raw.replace(f"@{bot_username}", "").strip()
+    mention_pattern = (
+        re.compile(rf"@{re.escape(bot_username.lstrip('@'))}(?![A-Za-z0-9_])", re.I)
+        if bot_username
+        else None
+    )
+    if mention_pattern is not None and mention_pattern.search(raw):
+        cleaned = mention_pattern.sub("", raw).strip()
         return PlayerIntent(user_id=user_id, chat_id=chat_id, text=cleaned, source="mention")
     return None

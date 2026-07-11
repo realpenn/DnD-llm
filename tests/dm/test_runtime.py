@@ -222,6 +222,32 @@ def test_dm_runtime_captures_accepted_public_memory(make_state) -> None:
     assert context.memory_fragments[0]["memory_id"] == state.memory_fragments[0].id
 
 
+def test_dm_runtime_private_memory_is_visible_only_to_same_character(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    compendium = CompendiumLoader("rules_data").load()
+    session = GameSession(state, compendium, AuditLog())
+    runtime = DMRuntime(session)
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 我用短剑攻击 Goblin，并悄悄记住银烛暗号",
+        idempotency_key="dm-private-memory",
+        visibility="private",
+    )
+
+    assert response.accepted is True
+    assert state.memory_fragments[-1].visibility == "private:pc1"
+    own_context = session.context_for("pc1", query="银烛暗号")
+    other_context = session.context_for("pc2", query="银烛暗号")
+    assert [item["memory_id"] for item in own_context.memory_fragments] == [
+        state.memory_fragments[-1].id
+    ]
+    assert other_context.memory_fragments == []
+
+
 def test_dm_runtime_retries_missing_target_once(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

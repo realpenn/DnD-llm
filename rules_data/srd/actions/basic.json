@@ -88,6 +88,396 @@
             "audit_label": "Longsword Attack"
         },
         {
+            "id": "srd.dagger_attack",
+            "name": "Dagger Attack",
+            "localization": {
+                "en": "Dagger Attack",
+                "zh": "匕首近战攻击",
+                "aliases": ["匕首攻击", "匕首近战"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (pp. 89-90), Dagger",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.dagger",
+                "weapon_category": "melee",
+                "weapon_properties": ["finesse", "light", "thrown"],
+                "weapon_mastery_property": "Nick",
+                "damage_dice": "1d4",
+                "thrown_range": {"normal_ft": 20, "long_ft": 60}
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice": "1d4",
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "piercing",
+                    "ability": "dex",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Dagger Attack"
+        },
+        {
+            "id": "srd.dagger_throw",
+            "name": "Dagger Throw",
+            "localization": {
+                "en": "Dagger Throw",
+                "zh": "投掷匕首",
+                "aliases": ["扔匕首", "投匕"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (pp. 89-90), Dagger",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 20, "long_ft": 60},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.dagger",
+                "weapon_category": "ranged",
+                "weapon_properties": ["finesse", "light", "thrown"],
+                "weapon_mastery_property": "Nick",
+                "damage_dice": "1d4",
+                "thrown": true
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice": "1d4",
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "piercing",
+                    "ability": "dex",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Dagger Throw"
+        },
+        {
+            "id": "srd.shortbow_attack",
+            "name": "Shortbow Attack",
+            "localization": {
+                "en": "Shortbow Attack",
+                "zh": "短弓攻击",
+                "aliases": ["短弓射击"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (p. 90), Shortbow",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 80, "long_ft": 320},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.shortbow",
+                "weapon_category": "ranged",
+                "weapon_properties": ["ammunition", "two-handed"],
+                "weapon_mastery_property": "Vex",
+                "damage_dice": "1d6",
+                "ammunition": "arrow"
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "piercing",
+                    "ability": "dex",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Shortbow Attack"
+        },
+        {
+            "id": "srd.light_crossbow_attack",
+            "name": "Light Crossbow Attack",
+            "localization": {
+                "en": "Light Crossbow Attack",
+                "zh": "轻弩攻击",
+                "aliases": ["轻弩射击"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (p. 90), Light Crossbow",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 80, "long_ft": 320},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.light_crossbow",
+                "weapon_category": "ranged",
+                "weapon_properties": ["ammunition", "loading", "two-handed"],
+                "weapon_mastery_property": "Slow",
+                "damage_dice": "1d8",
+                "ammunition": "bolt"
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "dex"},
+                {
+                    "type": "damage",
+                    "dice": "1d8",
+                    "bonus_from": {"ability_modifier": "dex"},
+                    "damage_type": "piercing",
+                    "ability": "dex",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Light Crossbow Attack"
+        },
+        {
+            "id": "srd.quarterstaff_attack",
+            "name": "Quarterstaff Attack",
+            "localization": {
+                "en": "Quarterstaff Attack",
+                "zh": "长棍攻击",
+                "aliases": ["木杖攻击"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (p. 90), Quarterstaff",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.quarterstaff",
+                "weapon_category": "melee",
+                "weapon_properties": ["versatile"],
+                "weapon_mastery_property": "Topple",
+                "damage_dice": "1d6",
+                "versatile_damage_dice": "1d8"
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "str"},
+                    "damage_type": "bludgeoning",
+                    "ability": "str",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Quarterstaff Attack"
+        },
+        {
+            "id": "srd.mace_attack",
+            "name": "Mace Attack",
+            "localization": {
+                "en": "Mace Attack",
+                "zh": "硬头锤攻击",
+                "aliases": ["钉头锤攻击"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (p. 90), Mace",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.mace",
+                "weapon_category": "melee",
+                "weapon_properties": [],
+                "weapon_mastery_property": "Sap",
+                "damage_dice": "1d6"
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "str"},
+                    "damage_type": "bludgeoning",
+                    "ability": "str",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Mace Attack"
+        },
+        {
+            "id": "srd.spear_attack",
+            "name": "Spear Attack",
+            "localization": {
+                "en": "Spear Attack",
+                "zh": "长矛近战攻击",
+                "aliases": ["长矛攻击", "矛攻击"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (p. 90), Spear",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.spear",
+                "weapon_category": "melee",
+                "weapon_properties": ["thrown", "versatile"],
+                "weapon_mastery_property": "Sap",
+                "damage_dice": "1d6",
+                "versatile_damage_dice": "1d8",
+                "thrown_range": {"normal_ft": 20, "long_ft": 60}
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "str"},
+                    "damage_type": "piercing",
+                    "ability": "str",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Spear Attack"
+        },
+        {
+            "id": "srd.spear_throw",
+            "name": "Spear Throw",
+            "localization": {
+                "en": "Spear Throw",
+                "zh": "投掷长矛",
+                "aliases": ["掷矛"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (pp. 89-90), Spear",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 20, "long_ft": 60},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.spear",
+                "weapon_category": "ranged",
+                "weapon_properties": ["thrown", "versatile"],
+                "weapon_mastery_property": "Sap",
+                "damage_dice": "1d6",
+                "thrown": true
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "str"},
+                    "damage_type": "piercing",
+                    "ability": "str",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Spear Throw"
+        },
+        {
+            "id": "srd.handaxe_attack",
+            "name": "Handaxe Attack",
+            "localization": {
+                "en": "Handaxe Attack",
+                "zh": "手斧近战攻击",
+                "aliases": ["手斧攻击"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (p. 90), Handaxe",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 5},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.handaxe",
+                "weapon_category": "melee",
+                "weapon_properties": ["light", "thrown"],
+                "weapon_mastery_property": "Vex",
+                "damage_dice": "1d6",
+                "thrown_range": {"normal_ft": 20, "long_ft": 60}
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "str"},
+                    "damage_type": "slashing",
+                    "ability": "str",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Handaxe Attack"
+        },
+        {
+            "id": "srd.handaxe_throw",
+            "name": "Handaxe Throw",
+            "localization": {
+                "en": "Handaxe Throw",
+                "zh": "投掷手斧",
+                "aliases": ["扔手斧"]
+            },
+            "source": "SRD 5.2.1 Chapter 6: Equipment, Weapons table (pp. 89-90), Handaxe",
+            "rules_version": "srd-5.2.1",
+            "action_type": "weapon_attack",
+            "action_economy": "action",
+            "range": {"normal_ft": 20, "long_ft": 60},
+            "target_policy": {"min": 1, "max": 1, "harmful": true},
+            "requirements": {},
+            "properties": {
+                "weapon_item_id": "srd.handaxe",
+                "weapon_category": "ranged",
+                "weapon_properties": ["light", "thrown"],
+                "weapon_mastery_property": "Vex",
+                "damage_dice": "1d6",
+                "thrown": true
+            },
+            "friendly_fire_policy": "confirm",
+            "cost": {},
+            "automation": [
+                {"type": "target", "mode": "explicit"},
+                {"type": "attack_roll", "ability": "str"},
+                {
+                    "type": "damage",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "str"},
+                    "damage_type": "slashing",
+                    "ability": "str",
+                    "requires_hit": true
+                }
+            ],
+            "audit_label": "Handaxe Throw"
+        },
+        {
             "id": "srd.monk_unarmed_strike",
             "name": "Monk Unarmed Strike",
             "localization": {

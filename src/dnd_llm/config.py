@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from .resources import bundled_rules_data_dir
 
 
 @dataclass(frozen=True)
@@ -13,7 +15,7 @@ class Settings:
     summary_model: str | None = None
     content_model: str | None = None
     campaign_pack_dir: str = "campaigns"
-    rules_data_dir: str = "rules_data"
+    rules_data_dir: str = field(default_factory=lambda: str(bundled_rules_data_dir()))
     campaign_pack_path: str | None = None
     save_dir: str = "saves"
     gm_user_ids: tuple[str, ...] = ()
@@ -36,7 +38,7 @@ class Settings:
             summary_model=os.getenv("SUMMARY_MODEL") or os.getenv("OPENAI_MODEL"),
             content_model=os.getenv("CONTENT_MODEL") or os.getenv("OPENAI_MODEL"),
             campaign_pack_dir=os.getenv("CAMPAIGN_PACK_DIR", "campaigns"),
-            rules_data_dir=os.getenv("RULES_DATA_DIR", "rules_data"),
+            rules_data_dir=os.getenv("RULES_DATA_DIR") or str(bundled_rules_data_dir()),
             campaign_pack_path=os.getenv("CAMPAIGN_PACK_PATH"),
             save_dir=os.getenv("SAVE_DIR", "saves"),
             gm_user_ids=_split_csv(os.getenv("GM_USER_IDS", "")),

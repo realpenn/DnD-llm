@@ -100,9 +100,23 @@ def build_context_slice(
                 state,
                 query=query,
                 limit=3,
+                visible_to=_memory_visibility_for_actor(state, actor_id),
             )
         ],
     )
+
+
+def _memory_visibility_for_actor(state: GameState, actor_id: str | None) -> set[str]:
+    visible_to = {"public"}
+    if actor_id is None:
+        return visible_to
+    entity_id = actor_id
+    if state.encounter is not None:
+        combatant = state.encounter.combatants.get(actor_id)
+        if combatant is not None:
+            entity_id = combatant.entity_id
+    visible_to.add(f"private:{entity_id}")
+    return visible_to
 
 
 def _visible_world_state(state: GameState) -> dict[str, Any]:
