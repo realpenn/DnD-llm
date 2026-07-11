@@ -1,0 +1,415 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.blight",
+      "name": "Blight",
+      "localization": { "en": "Blight", "zh": "枯萎术", "aliases": ["凋萎术"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "necromancy",
+      "classes": ["druid", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.blight",
+        "name": "Blight",
+        "localization": { "en": "Blight", "zh": "枯萎术", "aliases": ["凋萎术"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "sorcerer", "warlock", "wizard"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "saving_throw",
+            "ability": "con",
+            "dc_from": { "spell_save_dc": "actor" },
+            "auto_fail_creature_types": ["plant"]
+          },
+          {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "necrotic",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d8"
+          }
+        ],
+        "audit_label": "Blight"
+      }
+    },
+    {
+      "id": "srd.spell.circle_of_death",
+      "name": "Circle of Death",
+      "localization": {
+        "en": "Circle of Death",
+        "zh": "死亡法阵",
+        "aliases": ["死亡之环"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "necromancy",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.circle_of_death",
+        "name": "Circle of Death",
+        "localization": {
+          "en": "Circle of Death",
+          "zh": "死亡法阵",
+          "aliases": ["死亡之环"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 1, "max": 32, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "the powder of a crushed black pearl worth 500+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "necrotic",
+            "save_half": true,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "2d8"
+          }
+        ],
+        "audit_label": "Circle of Death"
+      }
+    },
+    {
+      "id": "srd.spell.eyebite",
+      "name": "Eyebite",
+      "localization": { "en": "Eyebite", "zh": "摄魂目光", "aliases": ["眼魔法"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "necromancy",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.eyebite",
+        "name": "Eyebite",
+        "localization": { "en": "Eyebite", "zh": "摄魂目光", "aliases": ["眼魔法"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S"],
+          "effect_target_range_ft": 60,
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "allowed_eyebite_effects": ["asleep", "panicked", "sickened"],
+          "eyebite_effect_param": "eyebite_effect",
+          "magic_action_target_action_id": "srd.eyebite_target",
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "world_effect",
+            "effect_type": "eyebite_active",
+            "scope": { "target": "self" },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "eyes_become_inky_void": true,
+              "can_target_another_creature_with_magic_action": true,
+              "magic_action_target_action_id": "srd.eyebite_target",
+              "effect_target_range_ft": 60,
+              "target_must_be_visible": true,
+              "successful_save_target_cannot_be_targeted_again_by_this_casting": true,
+              "allowed_eyebite_effects": ["asleep", "panicked", "sickened"]
+            }
+          },
+          {
+            "type": "eyebite_effect",
+            "choice_param": "eyebite_effect",
+            "choices": ["asleep", "panicked", "sickened"]
+          },
+          {
+            "type": "text_result",
+            "text": "For the duration, the caster's eyes become an inky void and the caster can use a Magic action on later turns to target another eligible creature."
+          }
+        ],
+        "audit_label": "Eyebite"
+      }
+    },
+    {
+      "id": "srd.spell.resurrection",
+      "name": "Resurrection",
+      "localization": { "en": "Resurrection", "zh": "复生术", "aliases": ["复活术"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "necromancy",
+      "classes": ["bard", "cleric"],
+      "action": {
+        "id": "srd.resurrection",
+        "name": "Resurrection",
+        "localization": { "en": "Resurrection", "zh": "复生术", "aliases": ["复活术"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "cleric"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "cleric"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 1 },
+          "material_component": {
+            "description": "a diamond worth 1,000+ GP, which the spell consumes",
+            "consumed": true,
+            "consumed_gold": 1000
+          },
+          "target_type": "dead_creature",
+          "dead_no_more_than_years": 100,
+          "dead_no_more_than_days": 36500,
+          "cannot_revive_old_age_death": true,
+          "cannot_revive_creature_undead_when_it_died": true,
+          "returns_with_all_hit_points": true,
+          "neutralizes_poisons_at_death": true,
+          "does_not_cure_disease": true,
+          "closes_mortal_wounds": true,
+          "restores_missing_body_parts": true,
+          "missing_body_part_tracking_not_automated": true,
+          "resurrection_d20_test_penalty": -4,
+          "resurrection_penalty_reduces_by_1_per_long_rest": true,
+          "caster_tax_if_dead_days_at_least": 365,
+          "caster_tax_until_long_rest": true,
+          "caster_tax_blocks_spellcasting": true,
+          "caster_tax_d20_tests_disadvantage": true,
+          "death_cause_database_not_automated": true,
+          "death_age_database_not_automated": true,
+          "poison_identity_database_not_automated": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7, "gold": 1000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "resurrection",
+            "dead_days_param": "resurrection_dead_days",
+            "died_of_old_age_param": "resurrection_old_age_death",
+            "undead_when_died_param": "resurrection_undead_when_died",
+            "max_dead_days": 36500,
+            "target_d20_test_penalty": 4,
+            "caster_tax_dead_days_at_least": 365
+          }
+        ],
+        "audit_label": "Resurrection"
+      }
+    },
+    {
+      "id": "srd.spell.true_resurrection",
+      "name": "True Resurrection",
+      "localization": {
+        "en": "True Resurrection",
+        "zh": "完全复生术",
+        "aliases": ["完全复活术", "真正复活术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "necromancy",
+      "classes": ["cleric", "druid"],
+      "action": {
+        "id": "srd.true_resurrection",
+        "name": "True Resurrection",
+        "localization": {
+          "en": "True Resurrection",
+          "zh": "完全复生术",
+          "aliases": ["完全复活术", "真正复活术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["cleric", "druid"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 1 },
+          "material_component": {
+            "description": "diamonds worth 25,000+ GP, which the spell consumes",
+            "consumed": true,
+            "consumed_gold": 25000
+          },
+          "target_type": "dead_creature",
+          "dead_no_more_than_years": 200,
+          "dead_no_more_than_days": 73000,
+          "cannot_revive_old_age_death": true,
+          "can_revive_undead_and_restore_non_undead_form": true,
+          "returns_with_all_hit_points": true,
+          "closes_all_wounds": true,
+          "neutralizes_any_poison": true,
+          "cures_all_magical_contagions": true,
+          "lifts_curses_at_death": true,
+          "replaces_damaged_or_missing_organs_and_limbs": true,
+          "can_provide_new_body_if_original_no_longer_exists": true,
+          "requires_creature_name_if_new_body": true,
+          "new_body_appears_in_unoccupied_space_within_10_ft": true,
+          "original_body_database_not_automated": true,
+          "body_creation_not_automated": true,
+          "chosen_unoccupied_space_not_automated": true,
+          "restored_creature_type_param": "true_resurrection_restored_creature_type",
+          "original_body_exists_param": "true_resurrection_original_body_exists",
+          "creature_name_param": "true_resurrection_creature_name",
+          "no_resurrection_penalty": true,
+          "no_resurrection_caster_tax": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9, "gold": 25000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "resurrection",
+            "dead_days_param": "true_resurrection_dead_days",
+            "died_of_old_age_param": "true_resurrection_old_age_death",
+            "undead_when_died_param": "true_resurrection_undead_when_died",
+            "restored_creature_type_param": "true_resurrection_restored_creature_type",
+            "original_body_exists_param": "true_resurrection_original_body_exists",
+            "creature_name_param": "true_resurrection_creature_name",
+            "max_dead_days": 73000,
+            "target_d20_test_penalty": 0,
+            "allow_undead_when_died": true,
+            "restores_undead_to_non_undead_form": true,
+            "remove_effect_markers": ["magical_contagion", "curse", "cursed_item_attunement"],
+            "cures_all_magical_contagions": true,
+            "lifts_curses_at_death": true,
+            "replaces_damaged_or_missing_organs_and_limbs": true
+          }
+        ],
+        "audit_label": "True Resurrection"
+      }
+    },
+    {
+      "id": "srd.spell.clone",
+      "name": "Clone",
+      "localization": { "en": "Clone", "zh": "克隆术", "aliases": ["克隆"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "necromancy",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.clone",
+        "name": "Clone",
+        "localization": { "en": "Clone", "zh": "克隆术", "aliases": ["克隆"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "spell_classes": ["wizard"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 1 },
+          "material_component": {
+            "description": "a diamond worth 1,000+ GP, which the spell consumes, and a sealable vessel worth 2,000+ GP that is large enough to hold the creature being cloned",
+            "consumed": true,
+            "consumed_gold": 1000,
+            "non_consumed_components": [
+              "sealable vessel worth 2,000+ GP large enough to hold the creature being cloned"
+            ]
+          },
+          "non_consumed_material_component_value_gp": 2000,
+          "non_consumed_vessel_requirement_not_automated": true,
+          "target_can_be_creature_or_flesh": true,
+          "minimum_flesh_cubic_inches": 1,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8, "gold": 1000 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "clone_vessel",
+            "scope": {
+              "target": "touched_creature_or_flesh",
+              "range": "touch",
+              "vessel": "sealable_vessel"
+            },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "target_can_be_creature_or_at_least_1_cubic_inch_flesh": true,
+              "duplicate_forms_inside_casting_vessel": true,
+              "clone_starts_inert": true,
+              "maturation_days": 120,
+              "caster_chooses_same_age_or_younger_finished_clone": true,
+              "finished_clone_remains_inert_indefinitely_while_vessel_undisturbed": true,
+              "non_consumed_vessel_requirement_not_automated": true,
+              "soul_transfers_if_original_dies_after_clone_finishes_forming": true,
+              "soul_must_be_free_and_willing_to_return": true,
+              "clone_physically_identical_to_original": true,
+              "clone_has_same_personality_memories_and_abilities": true,
+              "clone_has_none_of_original_equipment": true,
+              "original_remains_become_inert_and_cannot_be_revived_while_soul_elsewhere": true,
+              "clone_maturation_scheduler_not_automated": true,
+              "death_and_soul_transfer_listener_not_automated": true,
+              "creature_duplication_not_automated": true,
+              "equipment_transfer_not_automated": true,
+              "vessel_disturbance_tracking_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Clone"
+      }
+    }
+  ]
+}

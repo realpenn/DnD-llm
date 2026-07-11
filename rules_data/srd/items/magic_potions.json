@@ -1,0 +1,470 @@
+{
+  "items": [
+    {
+      "id": "srd.potion_of_greater_healing",
+      "name": "Potion of Greater Healing",
+      "localization": {
+        "en": "Potion of Greater Healing",
+        "zh": "强效治疗药水",
+        "aliases": ["Greater Healing Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_greater_healing"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_growth",
+      "name": "Potion of Growth",
+      "localization": {
+        "en": "Potion of Growth",
+        "zh": "生长药水",
+        "aliases": ["Growth Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Growth",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_growth"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_diminution",
+      "name": "Potion of Diminution",
+      "localization": {
+        "en": "Potion of Diminution",
+        "zh": "缩小药水",
+        "aliases": ["Diminution Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Diminution",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_diminution"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_superior_healing",
+      "name": "Potion of Superior Healing",
+      "localization": {
+        "en": "Potion of Superior Healing",
+        "zh": "优效治疗药水",
+        "aliases": ["Superior Healing Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_superior_healing"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_supreme_healing",
+      "name": "Potion of Supreme Healing",
+      "localization": {
+        "en": "Potion of Supreme Healing",
+        "zh": "极效治疗药水",
+        "aliases": ["Supreme Healing Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_supreme_healing"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.elixir_of_health",
+      "name": "Elixir of Health",
+      "localization": {
+        "en": "Elixir of Health",
+        "zh": "强效治疗灵药",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Elixir of Health",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_elixir_of_health"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_animal_friendship",
+      "name": "Potion of Animal Friendship",
+      "localization": {
+        "en": "Potion of Animal Friendship",
+        "zh": "动物友谊药水",
+        "aliases": ["Animal Friendship Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Animal Friendship",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_animal_friendship"],
+      "properties": {
+        "spell_definition_id": "srd.spell.animal_friendship",
+        "spell_level": 3,
+        "save_dc": 13
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.oil_of_sharpness",
+      "name": "Oil of Sharpness",
+      "localization": {
+        "en": "Oil of Sharpness",
+        "zh": "锐锋之油",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Sharpness",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.apply_oil_of_sharpness"],
+      "properties": {
+        "rarity": "very_rare",
+        "application_time_minutes": 1,
+        "weapon_bonus": 3,
+        "ammunition_count": 20
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.oil_of_etherealness",
+      "name": "Oil of Etherealness",
+      "localization": {
+        "en": "Oil of Etherealness",
+        "zh": "以太化之油",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Etherealness",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.apply_oil_of_etherealness"],
+      "properties": {
+        "rarity": "rare",
+        "application_time_minutes": 10,
+        "base_vial_target_size": "medium",
+        "additional_vial_per_size_category_above_medium": 1,
+        "duration": "duration_1_hour"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.oil_of_slipperiness",
+      "name": "Oil of Slipperiness",
+      "localization": {
+        "en": "Oil of Slipperiness",
+        "zh": "滑溜之油",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Slipperiness",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": [
+        "srd.apply_oil_of_slipperiness",
+        "srd.pour_oil_of_slipperiness_on_ground"
+      ],
+      "properties": {
+        "rarity": "uncommon",
+        "application_time_minutes": 10,
+        "base_vial_target_size": "medium",
+        "additional_vial_per_size_category_above_medium": 1,
+        "creature_effect_duration": "duration_8_hours",
+        "ground_effect_area_size_ft": 10,
+        "ground_effect_duration": "duration_8_hours"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_climbing",
+      "name": "Potion of Climbing",
+      "localization": {
+        "en": "Potion of Climbing",
+        "zh": "攀爬药水",
+        "aliases": ["Climbing Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Climbing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_climbing"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_clairvoyance",
+      "name": "Potion of Clairvoyance",
+      "localization": {
+        "en": "Potion of Clairvoyance",
+        "zh": "鹰眼药水",
+        "aliases": ["Clairvoyance Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Clairvoyance",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_clairvoyance"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_flying",
+      "name": "Potion of Flying",
+      "localization": {
+        "en": "Potion of Flying",
+        "zh": "飞行药水",
+        "aliases": ["Flying Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Flying",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_flying"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_gaseous_form",
+      "name": "Potion of Gaseous Form",
+      "localization": {
+        "en": "Potion of Gaseous Form",
+        "zh": "气化形体药水",
+        "aliases": ["Gaseous Form Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Gaseous Form",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_gaseous_form"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_invisibility",
+      "name": "Potion of Invisibility",
+      "localization": {
+        "en": "Potion of Invisibility",
+        "zh": "隐形药水",
+        "aliases": ["Invisibility Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Invisibility",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_invisibility"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_heroism",
+      "name": "Potion of Heroism",
+      "localization": {
+        "en": "Potion of Heroism",
+        "zh": "英雄气概药水",
+        "aliases": ["Heroism Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Heroism",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_heroism"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_invulnerability",
+      "name": "Potion of Invulnerability",
+      "localization": {
+        "en": "Potion of Invulnerability",
+        "zh": "无敌药水",
+        "aliases": ["Invulnerability Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Invulnerability",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_invulnerability"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_mind_reading",
+      "name": "Potion of Mind Reading",
+      "localization": {
+        "en": "Potion of Mind Reading",
+        "zh": "读心药水",
+        "aliases": ["Mind Reading Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Mind Reading",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_mind_reading"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_poison",
+      "name": "Potion of Poison",
+      "localization": {
+        "en": "Potion of Poison",
+        "zh": "毒药水",
+        "aliases": ["Poison Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Poison",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_poison"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_speed",
+      "name": "Potion of Speed",
+      "localization": {
+        "en": "Potion of Speed",
+        "zh": "速度药水",
+        "aliases": ["Speed Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Speed",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_speed"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_water_breathing",
+      "name": "Potion of Water Breathing",
+      "localization": {
+        "en": "Potion of Water Breathing",
+        "zh": "水下呼吸药水",
+        "aliases": ["Water Breathing Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Water Breathing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_water_breathing"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_vitality",
+      "name": "Potion of Vitality",
+      "localization": {
+        "en": "Potion of Vitality",
+        "zh": "活力药水",
+        "aliases": ["Vitality Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Vitality",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_vitality"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_hill_giant_strength",
+      "name": "Potion of Hill Giant Strength",
+      "localization": {
+        "en": "Potion of Hill Giant Strength",
+        "zh": "丘陵巨人力量药水",
+        "aliases": ["Hill Giant Strength Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_hill_giant_strength"],
+      "properties": {
+        "giant_type": "hill",
+        "strength_score": 21,
+        "rarity": "uncommon"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_frost_giant_strength",
+      "name": "Potion of Frost Giant Strength",
+      "localization": {
+        "en": "Potion of Frost Giant Strength",
+        "zh": "霜巨人力量药水",
+        "aliases": ["Frost Giant Strength Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_frost_giant_strength"],
+      "properties": {
+        "giant_type": "frost",
+        "strength_score": 23,
+        "rarity": "rare"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_stone_giant_strength",
+      "name": "Potion of Stone Giant Strength",
+      "localization": {
+        "en": "Potion of Stone Giant Strength",
+        "zh": "石巨人力量药水",
+        "aliases": ["Stone Giant Strength Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_stone_giant_strength"],
+      "properties": {
+        "giant_type": "stone",
+        "strength_score": 23,
+        "rarity": "rare"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_fire_giant_strength",
+      "name": "Potion of Fire Giant Strength",
+      "localization": {
+        "en": "Potion of Fire Giant Strength",
+        "zh": "火巨人力量药水",
+        "aliases": ["Fire Giant Strength Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_fire_giant_strength"],
+      "properties": {
+        "giant_type": "fire",
+        "strength_score": 25,
+        "rarity": "rare"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_cloud_giant_strength",
+      "name": "Potion of Cloud Giant Strength",
+      "localization": {
+        "en": "Potion of Cloud Giant Strength",
+        "zh": "云巨人力量药水",
+        "aliases": ["Cloud Giant Strength Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_cloud_giant_strength"],
+      "properties": {
+        "giant_type": "cloud",
+        "strength_score": 27,
+        "rarity": "very_rare"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_storm_giant_strength",
+      "name": "Potion of Storm Giant Strength",
+      "localization": {
+        "en": "Potion of Storm Giant Strength",
+        "zh": "风暴巨人力量药水",
+        "aliases": ["Storm Giant Strength Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_storm_giant_strength"],
+      "properties": {
+        "giant_type": "storm",
+        "strength_score": 29,
+        "rarity": "legendary"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_resistance",
+      "name": "Potion of Resistance",
+      "localization": {
+        "en": "Potion of Resistance",
+        "zh": "抗力药水",
+        "aliases": ["Resistance Potion"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Resistance",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_resistance"],
+      "quantity": 1
+    }
+  ]
+}

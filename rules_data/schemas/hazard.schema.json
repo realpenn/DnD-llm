@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HazardDefinition",
+  "type": "object",
+  "required": ["id", "name", "hazard_type", "source", "rules_version", "params_schema", "automation"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "hazard_type": { "type": "string" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "params_schema": { "type": "object" },
+    "automation": { "type": "array" },
+    "audit_label": { "type": "string" }
+  }
+}

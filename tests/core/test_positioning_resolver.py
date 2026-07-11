@@ -1,0 +1,5030 @@
+from __future__ import annotations
+
+from dnd_llm.core.compendium.loader import CompendiumLoader
+from dnd_llm.core.models import Combatant, Monster
+from dnd_llm.core.persistence import AuditLog
+from dnd_llm.core.positioning import PositionEdge, PositionNode, TacticalGraph
+from dnd_llm.core.resolver import ActionResolver, PlayerActionDraft
+from dnd_llm.core.tools import EngineTools
+
+
+def test_tactical_graph_distance_area_and_opportunity(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    graph = TacticalGraph.from_dict(state.encounter.tactical_graph or {})
+
+    assert graph.shortest_distance("front", "back") == 35
+    assert graph.area_nodes("front", 5) == {"front", "cover"}
+    assert graph.opportunity_attack_triggers(
+        actor_from="front",
+        actor_to="back",
+        enemy_positions={"goblin1": "cover"},
+        enemy_reach_ft={"goblin1": 5},
+    ) == ["goblin1"]
+
+
+def test_tactical_graph_difficult_terrain_doubles_movement_cost() -> None:
+    graph = TacticalGraph(
+        nodes={
+            "start": PositionNode("start", "Start"),
+            "mud": PositionNode("mud", "Mud"),
+        },
+        edges=[PositionEdge("start", "mud", 10, difficult_terrain=True)],
+    )
+
+    assert graph.shortest_distance("start", "mud") == 10
+    assert graph.shortest_distance("start", "mud", movement_cost=True) == 20
+    assert graph.reachable("start", 10) == {"start"}
+    assert graph.reachable("start", 20) == {"start", "mud"}
+
+
+def test_tactical_graph_cover_uses_only_edges_on_shortest_path() -> None:
+    graph = TacticalGraph(
+        nodes={
+            node_id: PositionNode(node_id, node_id.title())
+            for node_id in ("start", "middle", "goal", "remote_a", "remote_b")
+        },
+        edges=[
+            PositionEdge("start", "middle", 5, cover="half"),
+            PositionEdge("middle", "goal", 5),
+            PositionEdge("start", "goal", 30, cover="three_quarters"),
+            PositionEdge("remote_a", "remote_b", 5, cover="total"),
+        ],
+    )
+
+    assert graph.cover_between("start", "goal") == "half"
+
+
+def test_resolver_accepts_legal_and_rejects_out_of_range(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    legal = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    assert legal.status == "accepted"
+
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].position_node_id = "back"
+    out_of_range = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    assert out_of_range.status == "rejected"
+    assert out_of_range.reason == "target out of range"
+
+
+def test_resolver_checks_range_for_target_backing_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    combatant = state.encounter.combatants.pop("goblin1")
+    combatant.id = "goblin-combatant"
+    combatant.entity_id = "goblin1"
+    combatant.position_node_id = "back"
+    state.encounter.combatants[combatant.id] = combatant
+    state.monsters["goblin1"] = Monster(
+        id="goblin1",
+        name="Goblin",
+        abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "target out of range"
+
+
+def test_resolver_checks_line_of_sight_for_target_backing_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    combatant = state.encounter.combatants.pop("goblin1")
+    combatant.id = "goblin-combatant"
+    combatant.entity_id = "goblin1"
+    combatant.position_node_id = "back"
+    state.encounter.combatants[combatant.id] = combatant
+    state.monsters["goblin1"] = Monster(
+        id="goblin1",
+        name="Goblin",
+        abilities={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+    )
+    state.encounter.tactical_graph = TacticalGraph(
+        nodes={
+            "front": PositionNode("front", "Front"),
+            "back": PositionNode("back", "Back"),
+        },
+        edges=[PositionEdge("front", "back", 5, line_of_sight=False)],
+    ).to_dict()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "line of sight blocked"
+
+
+def test_resolver_extends_selected_eldritch_blast_range_with_eldritch_spear(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].actions = [
+        "srd.eldritch_blast",
+        "srd.eldritch_invocations",
+        "srd.magical_cunning",
+    ]
+    state.encounter.tactical_graph = TacticalGraph(
+        nodes={
+            "front": PositionNode("front", "Front"),
+            "far": PositionNode("far", "Far"),
+        },
+        edges=[PositionEdge("front", "far", 150)],
+    ).to_dict()
+    state.encounter.combatants["goblin1"].position_node_id = "far"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    base_range = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="eldritch blast",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.eldritch_blast",
+        )
+    )
+    assert base_range.status == "rejected"
+    assert base_range.reason == "target out of range"
+
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.eldritch_spear.cantrip": "srd.spell.eldritch_blast"
+    }
+    state.characters["pc1"].actions.append("srd.eldritch_spear")
+    extended_range = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="eldritch blast",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.eldritch_blast",
+        )
+    )
+    assert extended_range.status == "accepted"
+
+
+def test_resolver_accepts_selected_repelling_blast_push_destination(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    assert state.encounter.tactical_graph is not None
+    state.encounter.tactical_graph["nodes"]["far"] = {
+        "node_id": "far",
+        "name": "Far",
+        "tags": [],
+        "capacity": None,
+        "default_cover": "none",
+        "terrain": "normal",
+    }
+    state.encounter.tactical_graph["edges"].append(
+        {
+            "source": "cover",
+            "target": "far",
+            "distance_ft": 10,
+            "movement_cost": None,
+            "line_of_sight": True,
+            "cover": "none",
+            "difficult_terrain": False,
+        }
+    )
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.repelling_blast.cantrip": "srd.spell.eldritch_blast"
+    }
+    state.characters["pc1"].actions = [
+        "srd.eldritch_blast",
+        "srd.eldritch_invocations",
+        "srd.magical_cunning",
+        "srd.repelling_blast",
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="eldritch blast",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.eldritch_blast",
+            params={
+                "use_repelling_blast": True,
+                "repelling_blast_to_position_node_id": "far",
+            },
+        )
+    )
+    assert accepted.status == "accepted"
+
+    state.characters["pc1"].actions.remove("srd.repelling_blast")
+    state.characters["pc1"].feature_choices = {}
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="eldritch blast",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.eldritch_blast",
+            params={
+                "use_repelling_blast": True,
+                "repelling_blast_to_position_node_id": "far",
+            },
+        )
+    )
+    assert rejected.status == "rejected"
+    assert rejected.reason == "Repelling Blast requires the selected Warlock invocation"
+
+
+def test_resolver_rejects_repelling_blast_push_over_10_feet(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.repelling_blast.cantrip": "srd.spell.eldritch_blast"
+    }
+    state.characters["pc1"].actions = [
+        "srd.eldritch_blast",
+        "srd.eldritch_invocations",
+        "srd.magical_cunning",
+        "srd.repelling_blast",
+    ]
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="eldritch blast",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.eldritch_blast",
+            params={
+                "use_repelling_blast": True,
+                "repelling_blast_to_position_node_id": "back",
+            },
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Repelling Blast cannot exceed 10 feet"
+
+
+def test_resolver_accepts_legal_preserve_life_distribution(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 3}
+    state.characters["pc1"].subclasses = {"cleric": "life"}
+    state.characters["pc1"].actions.append("srd.preserve_life")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].hp_current = 1
+    state.characters["pc2"].hp_max = 8
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 8
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="preserve life",
+            target_ids=["pc2"],
+            candidate_action_id="srd.preserve_life",
+            params={"preserve_life_points": {"pc2": 3}},
+        )
+    )
+
+    assert result.status == "accepted"
+
+
+def test_resolver_rejects_preserve_life_above_half_hp(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 3}
+    state.characters["pc1"].subclasses = {"cleric": "life"}
+    state.characters["pc1"].actions.append("srd.preserve_life")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].hp_current = 1
+    state.characters["pc2"].hp_max = 8
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 8
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="preserve life",
+            target_ids=["pc2"],
+            candidate_action_id="srd.preserve_life",
+            params={"preserve_life_points": {"pc2": 4}},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Preserve Life cannot heal a target above half HP"
+
+
+def test_resolver_rejects_preserve_life_out_of_range(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 3}
+    state.characters["pc1"].subclasses = {"cleric": "life"}
+    state.characters["pc1"].actions.append("srd.preserve_life")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].hp_current = 1
+    state.characters["pc2"].hp_max = 8
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 8
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="preserve life",
+            target_ids=["pc2"],
+            candidate_action_id="srd.preserve_life",
+            params={"preserve_life_points": {"pc2": 3}},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "target out of range"
+
+
+def test_resolver_checks_mass_heal_point_pool(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"cleric": 17}
+    state.characters["pc1"].actions.append("srd.mass_heal")
+    state.characters["pc1"].spell_slots["9"] = 1
+    state.encounter.combatants["pc2"].hp_current = 1
+    state.encounter.combatants["pc2"].hp_max = 500
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mass heal",
+            target_ids=["pc2"],
+            candidate_action_id="srd.mass_heal",
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 499}},
+        )
+    )
+    over_allocated = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mass heal",
+            target_ids=["pc2"],
+            candidate_action_id="srd.mass_heal",
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 701}},
+        )
+    )
+    wrong_targets = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mass heal",
+            target_ids=["pc2", "goblin1"],
+            candidate_action_id="srd.mass_heal",
+            params={"slot_level": 9, "mass_heal_points": {"pc2": 499}},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert over_allocated.status == "rejected"
+    assert over_allocated.reason == "mass_heal_points exceed available healing pool"
+    assert wrong_targets.status == "rejected"
+    assert wrong_targets.reason == "mass_heal_points must be assigned to exactly the targets"
+
+
+def test_resolver_blocks_pvp_by_default(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["pc2"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "pvp is disabled"
+
+
+def test_resolver_blocks_pvp_for_target_backing_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    ally = state.encounter.combatants.pop("pc2")
+    ally.id = "ally-combatant"
+    ally.entity_id = "pc2"
+    state.encounter.combatants[ally.id] = ally
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["pc2"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "pvp is disabled"
+
+
+def test_resolver_filters_alias_conflicts_by_owned_actions(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(PlayerActionDraft(actor_id="pc1", verb="闪避"))
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.dodge"
+
+
+def test_resolver_rejects_hallucinated_action_id(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="imaginary",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.not_a_real_action",
+        )
+    )
+
+    assert result.status == "ambiguous"
+    assert result.reason == "no matching action"
+
+
+def test_resolver_rejects_insufficient_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].actions.append("srd.fireball")
+    state.characters["pc1"].spell_slots["3"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="火球",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.fireball",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "insufficient spell slot"
+
+
+def test_resolver_rejects_spell_slot_below_spell_base_level(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 7}
+    character.actions.append("srd.blight")
+    character.spell_slots["3"] = 1
+    character.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="枯萎术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.blight",
+            params={"slot_level": 3},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "spell requires level 4 slot or higher"
+
+
+def test_resolver_scales_spell_target_cap_with_requested_slot_level(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.hold_monster")
+    character.spell_slots["5"] = 1
+    character.spell_slots["6"] = 1
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    base_slot = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="怪物定身术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.hold_monster",
+            params={"slot_level": 5},
+        )
+    )
+    upcast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="怪物定身术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.hold_monster",
+            params={"slot_level": 6},
+        )
+    )
+
+    assert base_slot.status == "rejected"
+    assert base_slot.reason == "too many targets"
+    assert upcast.status == "accepted"
+    assert upcast.action_id == "srd.hold_monster"
+
+
+def test_resolver_scales_banishment_target_cap_with_requested_slot_level(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.banishment")
+    character.spell_slots["4"] = 1
+    character.spell_slots["5"] = 1
+    state.encounter.combatants["goblin2"] = Combatant(
+        id="goblin2",
+        entity_id="goblin2",
+        name="Goblin 2",
+        side="monsters",
+        hp_current=7,
+        hp_max=7,
+        armor_class=12,
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    base_slot = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="放逐术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.banishment",
+            params={"slot_level": 4},
+        )
+    )
+    upcast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="放逐术",
+            target_ids=["goblin1", "goblin2"],
+            candidate_action_id="srd.banishment",
+            params={"slot_level": 5},
+        )
+    )
+
+    assert base_slot.status == "rejected"
+    assert base_slot.reason == "too many targets"
+    assert upcast.status == "accepted"
+    assert upcast.action_id == "srd.banishment"
+
+
+def test_resolver_rejects_out_of_play_actor_and_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].status_effects.append(
+        {
+            "effect_id": "banished-goblin",
+            "source_action_id": "srd.banishment",
+            "target_id": "goblin1",
+            "condition": None,
+            "passive_modifiers": {"banished": True, "out_of_play": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    actor_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="shortsword",
+            target_ids=["pc1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    target_result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="shortsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+
+    assert actor_result.status == "rejected"
+    assert actor_result.reason == "actor is out of play due to srd.banishment"
+    assert target_result.status == "rejected"
+    assert target_result.reason == "target is out of play due to srd.banishment"
+
+
+def test_resolver_rejects_resilient_sphere_target_larger_than_large(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.resilient_sphere")
+    character.spell_slots["4"] = 1
+    state.encounter.combatants["goblin1"].size = "huge"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="弹力法球",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.resilient_sphere",
+            params={"slot_level": 4},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "target must be Large or smaller"
+
+
+def test_resolver_allows_resilient_sphere_on_willing_ally_without_pvp(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.resilient_sphere")
+    character.spell_slots["4"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="弹力法球",
+            target_ids=["pc2"],
+            candidate_action_id="srd.resilient_sphere",
+            params={"slot_level": 4, "target_willing": {"pc2": True}},
+        )
+    )
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.resilient_sphere"
+
+
+def test_resolver_checks_greater_restoration_choice_and_component_cost(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 9}
+    character.actions.append("srd.greater_restoration")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5},
+        )
+    )
+    no_gold = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5, "greater_restoration_choice": "exhaustion"},
+        )
+    )
+    character.gold = 100
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5, "greater_restoration_choice": "exhaustion"},
+        )
+    )
+    contact_other_plane_effect = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={
+                "slot_level": 5,
+                "greater_restoration_choice": "contact_other_plane_incapacitation",
+            },
+        )
+    )
+    invalid_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="高等复原术",
+            target_ids=["pc2"],
+            candidate_action_id="srd.greater_restoration",
+            params={"slot_level": 5, "greater_restoration_choice": "invented_condition"},
+        )
+    )
+
+    assert missing_choice.status == "rejected"
+    assert missing_choice.reason == "missing required parameter greater_restoration_choice"
+    assert no_gold.status == "rejected"
+    assert no_gold.reason == "insufficient gold"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.greater_restoration"
+    assert contact_other_plane_effect.status == "accepted"
+    assert contact_other_plane_effect.action_id == "srd.greater_restoration"
+    assert invalid_choice.status == "rejected"
+    assert invalid_choice.reason.startswith(
+        "unsupported Greater Restoration choice invented_condition"
+    )
+
+
+def test_resolver_accepts_contact_other_plane_self_cast_and_class_gate(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.contact_other_plane")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界探知",
+            target_ids=[],
+            candidate_action_id="srd.contact_other_plane",
+            params={"slot_level": 5},
+        )
+    )
+    too_many_targets = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界探知",
+            target_ids=["pc2"],
+            candidate_action_id="srd.contact_other_plane",
+            params={"slot_level": 5},
+        )
+    )
+
+    character.class_levels = {"cleric": 9}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界探知",
+            target_ids=[],
+            candidate_action_id="srd.contact_other_plane",
+            params={"slot_level": 5},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.contact_other_plane"
+    assert too_many_targets.status == "rejected"
+    assert too_many_targets.reason == "too many targets"
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of warlock, wizard"
+
+
+def test_resolver_accepts_legend_lore_self_cast_and_cost_gate(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 9}
+    character.actions.append("srd.legend_lore")
+    character.spell_slots["5"] = 1
+    character.gold = 250
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="通晓传奇",
+            target_ids=[],
+            candidate_action_id="srd.legend_lore",
+            params={"slot_level": 5},
+        )
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.legend_lore"
+
+    character.gold = 249
+    insufficient_gold = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="通晓传奇",
+            target_ids=[],
+            candidate_action_id="srd.legend_lore",
+            params={"slot_level": 5},
+        )
+    )
+    assert insufficient_gold.status == "rejected"
+    assert insufficient_gold.reason == "insufficient gold"
+
+    character.gold = 250
+    character.class_levels = {"druid": 9}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="通晓传奇",
+            target_ids=[],
+            candidate_action_id="srd.legend_lore",
+            params={"slot_level": 5},
+        )
+    )
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of bard, cleric, wizard"
+
+
+def test_resolver_validates_commune_with_nature_fact_choices(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 9}
+    character.actions.append("srd.commune_with_nature")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="问道自然",
+            candidate_action_id="srd.commune_with_nature",
+            params={"slot_level": 5},
+        )
+    )
+    assert missing.status == "rejected"
+    assert missing.reason == "missing required parameter commune_with_nature_facts"
+
+    too_few = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="问道自然",
+            candidate_action_id="srd.commune_with_nature",
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": ["settlements", "bodies_of_water"],
+            },
+        )
+    )
+    assert too_few.status == "rejected"
+    assert too_few.reason == "commune_with_nature_facts must contain exactly 3 choices"
+
+    invalid = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="问道自然",
+            candidate_action_id="srd.commune_with_nature",
+            params={
+                "slot_level": 5,
+                "commune_with_nature_facts": [
+                    "settlements",
+                    "weather",
+                    "bodies_of_water",
+                ],
+            },
+        )
+    )
+    assert invalid.status == "rejected"
+    assert invalid.reason.startswith("commune_with_nature_facts must contain only:")
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="问道自然",
+        candidate_action_id="srd.commune_with_nature",
+        params={
+            "slot_level": 5,
+            "commune_with_nature_facts": [
+                "SETTLEMENTS",
+                "portals_to_other_planes",
+                "bodies_of_water",
+            ],
+        },
+    )
+    accepted = resolver.resolve(draft)
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.commune_with_nature"
+    assert draft.params["commune_with_nature_facts"] == [
+        "settlements",
+        "portals_to_other_planes",
+        "bodies_of_water",
+    ]
+
+
+def test_resolver_validates_telepathic_bond_willing_targets_and_cap(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.telepathic_bond")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    unwilling = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="心灵联结",
+            target_ids=["pc2"],
+            candidate_action_id="srd.telepathic_bond",
+            params={"slot_level": 5},
+        )
+    )
+    assert unwilling.status == "rejected"
+    assert unwilling.reason == "target must be willing"
+
+    too_many = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="心灵联结",
+            target_ids=[
+                "pc1",
+                "pc2",
+                "target3",
+                "target4",
+                "target5",
+                "target6",
+                "target7",
+                "target8",
+                "target9",
+            ],
+            candidate_action_id="srd.telepathic_bond",
+            params={"slot_level": 5, "target_willing": True},
+        )
+    )
+    assert too_many.status == "rejected"
+    assert too_many.reason == "too many targets"
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="心灵联结",
+            target_ids=["pc1", "pc2"],
+            candidate_action_id="srd.telepathic_bond",
+            params={"slot_level": 5, "target_willing": True},
+        )
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.telepathic_bond"
+
+
+def test_resolver_accepts_conjure_minor_elementals_and_attack_damage_choice(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 7}
+    character.actions.append("srd.conjure_minor_elementals")
+    character.spell_slots["4"] = 1
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    state.encounter.combatants["goblin1"].position_node_id = "cover"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    cast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤次级元素",
+            target_ids=[],
+            candidate_action_id="srd.conjure_minor_elementals",
+            params={"slot_level": 4},
+        )
+    )
+    assert cast.status == "accepted"
+    assert cast.action_id == "srd.conjure_minor_elementals"
+
+    character.class_levels = {"cleric": 7}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤次级元素",
+            target_ids=[],
+            candidate_action_id="srd.conjure_minor_elementals",
+            params={"slot_level": 4},
+        )
+    )
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of druid, wizard"
+    character.class_levels = {"wizard": 7}
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "cme-test",
+            "source_action_id": "srd.conjure_minor_elementals",
+            "applied_by": "pc1",
+            "effect_type": "conjure_minor_elementals_emanation",
+            "scope": {"target": "self_centered_emanation", "radius_ft": 15},
+            "duration": {"until": "concentration_10_minutes"},
+            "metadata": {"extra_damage_dice_count": 2},
+        }
+    )
+
+    missing_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+        )
+    )
+    invalid_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"conjure_minor_elementals_damage_type": "thunder"},
+        )
+    )
+    accepted_attack = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="短剑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"conjure_minor_elementals_damage_type": "FIRE"},
+        )
+    )
+
+    assert missing_choice.status == "rejected"
+    assert (
+        missing_choice.reason == "missing required parameter conjure_minor_elementals_damage_type"
+    )
+    assert invalid_choice.status == "rejected"
+    assert invalid_choice.reason == (
+        "conjure_minor_elementals_damage_type must be one of: acid, cold, fire, lightning"
+    )
+    assert accepted_attack.status == "accepted"
+    assert accepted_attack.action_id == "srd.shortsword_attack"
+
+
+def test_resolver_validates_creation_material_and_class(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.creation")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_material = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={"slot_level": 5},
+        )
+    )
+    assert missing_material.status == "rejected"
+    assert missing_material.reason == "missing required parameter creation_material"
+
+    invalid_material = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={"slot_level": 5, "creation_material": "worked_steel"},
+        )
+    )
+    assert invalid_material.status == "rejected"
+    assert invalid_material.reason.startswith("creation_material must contain only:")
+
+    too_many_materials = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={
+                "slot_level": 5,
+                "creation_material": ["gems", "precious_metals"],
+            },
+        )
+    )
+    assert too_many_materials.status == "rejected"
+    assert too_many_materials.reason == "creation_material must contain exactly 1 choices"
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="创造术",
+        target_ids=[],
+        candidate_action_id="srd.creation",
+        params={"slot_level": 5, "creation_material": "GEMS"},
+    )
+    accepted = resolver.resolve(draft)
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.creation"
+    assert draft.params["creation_material"] == ["gems"]
+
+    character.class_levels = {"cleric": 9}
+    rejected_class = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="创造术",
+            target_ids=[],
+            candidate_action_id="srd.creation",
+            params={"slot_level": 5, "creation_material": "gems"},
+        )
+    )
+    assert rejected_class.status == "rejected"
+    assert rejected_class.reason == "requires one of sorcerer, wizard"
+
+
+def test_resolver_checks_dream_context(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.dream")
+    character.prepared_spells.append("srd.spell.dream")
+    character.spell_slots["5"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_same_plane = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="托梦术",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_messenger_willing_touched": True,
+            },
+        )
+    )
+    missing_messenger = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="托梦术",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+            },
+        )
+    )
+    accepted_plain = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="托梦术",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+            },
+        )
+    )
+    missing_target = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=[],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_target_asleep": True,
+                "dream_message_10_words_or_less": True,
+            },
+        )
+    )
+    missing_asleep = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_message_10_words_or_less": True,
+            },
+        )
+    )
+    missing_message_limit = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_target_asleep": True,
+            },
+        )
+    )
+    accepted_terrifying = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恐怖托梦",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dream",
+            params={
+                "slot_level": 5,
+                "dream_target_same_plane": True,
+                "dream_messenger_willing_touched": True,
+                "dream_terrifying": True,
+                "dream_target_asleep": True,
+                "dream_message_10_words_or_less": True,
+            },
+        )
+    )
+
+    assert missing_same_plane.status == "rejected"
+    assert (
+        missing_same_plane.reason == "Dream requires a known target on the same plane of existence"
+    )
+    assert missing_messenger.status == "rejected"
+    assert missing_messenger.reason == (
+        "Dream requires the messenger to be the caster or willing touched creature"
+    )
+    assert accepted_plain.status == "accepted"
+    assert accepted_plain.action_id == "srd.dream"
+    assert missing_target.status == "rejected"
+    assert missing_target.reason == (
+        "Terrifying Dream requires the sleeping target as an explicit target"
+    )
+    assert missing_asleep.status == "rejected"
+    assert (
+        missing_asleep.reason
+        == "Terrifying Dream can resolve immediately only if the target is asleep"
+    )
+    assert missing_message_limit.status == "rejected"
+    assert missing_message_limit.reason == (
+        "Terrifying Dream message must be no more than ten words"
+    )
+    assert accepted_terrifying.status == "accepted"
+    assert accepted_terrifying.action_id == "srd.dream"
+
+
+def test_resolver_validates_hallow_extra_effect_choices(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 9}
+    character.actions.append("srd.hallow")
+    character.spell_slots["5"] = 1
+    character.gold = 1000
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_damage_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣居",
+            target_ids=[],
+            candidate_action_id="srd.hallow",
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "resistance",
+                "hallow_extra_effect_creature_types": ["humanoid"],
+            },
+        )
+    )
+    assert missing_damage_type.status == "rejected"
+    assert (
+        missing_damage_type.reason == "missing required parameter hallow_extra_effect_damage_type"
+    )
+
+    invalid_creature_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣居",
+            target_ids=[],
+            candidate_action_id="srd.hallow",
+            params={
+                "slot_level": 5,
+                "hallow_ward_creature_types": ["fiend"],
+                "hallow_extra_effect": "fear",
+                "hallow_extra_effect_creature_types": ["modron"],
+            },
+        )
+    )
+    assert invalid_creature_type.status == "rejected"
+    assert invalid_creature_type.reason.startswith(
+        "hallow_extra_effect_creature_types must contain only:"
+    )
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="圣居",
+        target_ids=[],
+        candidate_action_id="srd.hallow",
+        params={
+            "slot_level": 5,
+            "hallow_ward_creature_types": ["Fiend"],
+            "hallow_extra_effect": "Resistance",
+            "hallow_extra_effect_creature_types": ["Humanoid"],
+            "hallow_extra_effect_damage_type": "Fire",
+        },
+    )
+    accepted = resolver.resolve(draft)
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.hallow"
+    assert draft.params["hallow_ward_creature_types"] == ["fiend"]
+    assert draft.params["hallow_extra_effect"] == ["resistance"]
+    assert draft.params["hallow_extra_effect_creature_types"] == ["humanoid"]
+    assert draft.params["hallow_extra_effect_damage_type"] == "fire"
+
+
+def test_resolver_rejects_font_of_inspiration_when_bardic_inspiration_full(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"bard": 5}
+    character.abilities["cha"] = 16
+    character.actions.append("srd.font_of_inspiration_restore_bardic_inspiration_slot_1")
+    character.resources["srd.resource.bardic_inspiration"] = 3
+    character.spell_slots["1"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    full = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复吟游激励",
+            candidate_action_id="srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+        )
+    )
+
+    assert full.status == "rejected"
+    assert full.reason == "resource srd.resource.bardic_inspiration would exceed maximum 3"
+
+    character.resources["srd.resource.bardic_inspiration"] = 2
+    available = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复吟游激励",
+            candidate_action_id="srd.font_of_inspiration_restore_bardic_inspiration_slot_1",
+        )
+    )
+
+    assert available.status == "accepted"
+
+
+def test_resolver_checks_cunning_strike_poison_requires_poisoners_kit(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 5}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_kit = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狡诈毒击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"use_sneak_attack": True, "cunning_strike": "poison"},
+        )
+    )
+
+    assert missing_kit.status == "rejected"
+    assert missing_kit.reason == "Cunning Strike Poison requires a Poisoner's Kit"
+
+    character.inventory["srd.poisoners_kit"] = 1
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狡诈毒击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"use_sneak_attack": True, "cunning_strike": "poison"},
+        )
+    )
+
+    assert accepted.status == "accepted"
+
+
+def test_resolver_checks_supreme_sneak_stealth_attack_preconditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 9}
+    character.subclasses = {"rogue": "thief"}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_hide = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="至高潜行",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "stealth_attack",
+                "cunning_strike_stealth_attack_end_turn_cover": "three_quarters",
+            },
+        )
+    )
+
+    assert missing_hide.status == "rejected"
+    assert missing_hide.reason == (
+        "Supreme Sneak Stealth Attack requires the Hide action's condition"
+    )
+
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "hide-test",
+            "condition": "hidden",
+            "source_action_id": "srd.hide",
+            "duration": {"until": "revealed_or_attacks_or_casts"},
+        }
+    )
+    missing_cover = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="至高潜行",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"use_sneak_attack": True, "cunning_strike": "stealth_attack"},
+        )
+    )
+
+    assert missing_cover.status == "rejected"
+    assert missing_cover.reason == (
+        "Supreme Sneak Stealth Attack requires end-turn cover of "
+        "Three-Quarters Cover or Total Cover"
+    )
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="至高潜行",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "stealth_attack",
+                "cunning_strike_stealth_attack_end_turn_cover": "total",
+            },
+        )
+    )
+
+    assert accepted.status == "accepted"
+
+
+def test_resolver_rejects_cunning_strike_withdraw_over_half_speed(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"rogue": 5}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    too_far = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狡诈撤离",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strike": "withdraw",
+                "cunning_strike_withdraw_to_position_node_id": "back",
+            },
+        )
+    )
+
+    assert too_far.status == "rejected"
+    assert too_far.reason == "Cunning Strike Withdraw movement cannot exceed half Speed"
+
+
+def test_resolver_rejects_two_cunning_strikes_before_rogue_level_eleven(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 5}
+    character.equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="精通狡诈打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={"use_sneak_attack": True, "cunning_strikes": ["poison", "trip"]},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Improved Cunning Strike requires Rogue level 11"
+
+
+def test_resolver_rejects_more_than_two_cunning_strikes(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 11}
+    character.equipment.append("srd.poisoners_kit")
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="精通狡诈打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortsword_attack",
+            params={
+                "use_sneak_attack": True,
+                "cunning_strikes": ["poison", "trip", "withdraw"],
+                "cunning_strike_withdraw_to_position_node_id": "cover",
+            },
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Improved Cunning Strike allows at most two effects"
+
+
+def test_resolver_accepts_uncanny_dodge_on_visible_attack_hit_context(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"rogue": 5}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="强盗弯刀",
+            target_ids=["pc1"],
+            candidate_action_id="srd.bandit_scimitar",
+            params={"use_uncanny_dodge": True},
+        )
+    )
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.bandit_scimitar"
+
+
+def test_resolver_rejects_uncanny_dodge_without_reaction(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 5}
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 1,
+        "reaction": 0,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="强盗弯刀",
+            target_ids=["pc1"],
+            candidate_action_id="srd.bandit_scimitar",
+            params={"use_uncanny_dodge": True},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "insufficient reaction economy"
+
+
+def test_resolver_rejects_uncanny_dodge_for_non_rogue_target(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="强盗弯刀",
+            target_ids=["pc1"],
+            candidate_action_id="srd.bandit_scimitar",
+            params={"use_uncanny_dodge": True},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Uncanny Dodge requires Rogue level 5"
+
+
+def test_resolver_rejects_spellcasting_blocked_by_passive_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].actions.append("srd.cure_wounds")
+    state.characters["pc1"].spell_slots["1"] = 1
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "rage-test",
+            "source_action_id": "srd.rage",
+            "condition": "raging",
+            "passive_modifiers": {"blocks_spellcasting": True},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="治疗术",
+            target_ids=["pc1"],
+            candidate_action_id="srd.cure_wounds",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "actor cannot cast spells while affected by srd.rage"
+
+
+def test_resolver_rejects_action_economy_blocked_by_passive_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 3}
+    state.characters["pc1"].actions.append("srd.steady_aim")
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "confusion-test",
+            "source_action_id": "srd.confusion",
+            "passive_modifiers": {"blocked_action_economies": ["bonus_action", "reaction"]},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="稳定瞄准",
+            candidate_action_id="srd.steady_aim",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "actor cannot take bonus_action while affected by srd.confusion"
+
+
+def test_resolver_gates_conjure_woodland_beings_bonus_disengage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤林地生物：撤离",
+            candidate_action_id="srd.conjure_woodland_beings_disengage",
+        )
+    )
+
+    assert missing.status == "rejected"
+    assert missing.reason == (
+        "srd.conjure_woodland_beings_disengage requires active effect from "
+        "srd.conjure_woodland_beings"
+    )
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "conjure-woodland-beings-test",
+            "source_action_id": "srd.conjure_woodland_beings",
+            "applied_by": "pc1",
+            "effect_type": "conjure_woodland_beings_emanation",
+            "concentration": True,
+            "scope": {"target": "self_centered_emanation", "radius_ft": 10},
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤林地生物：撤离",
+            candidate_action_id="srd.conjure_woodland_beings_disengage",
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.conjure_woodland_beings_disengage"
+
+
+def test_resolver_checks_conjure_fey_context_and_followup_gate(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"druid": 11}
+    character.actions.extend(["srd.conjure_fey", "srd.conjure_fey_attack"])
+    character.prepared_spells.append("srd.spell.conjure_fey")
+    character.spell_slots["6"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_space = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤妖精",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey",
+            params={"conjure_fey_target_within_5_ft": True},
+        )
+    )
+
+    assert missing_space.status == "rejected"
+    assert missing_space.reason == "Conjure Fey requires a visible unoccupied space within 60 feet"
+
+    accepted_cast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="召唤妖精",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert accepted_cast.status == "accepted"
+    assert accepted_cast.action_id == "srd.conjure_fey"
+
+    missing_effect = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="妖精灵体攻击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey_attack",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_teleport_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert missing_effect.status == "rejected"
+    assert (
+        missing_effect.reason
+        == "srd.conjure_fey_attack requires active effect from srd.conjure_fey"
+    )
+
+    state.world.active_effects.append(
+        {
+            "effect_id": "conjure-fey-test",
+            "source_action_id": "srd.conjure_fey",
+            "applied_by": "pc1",
+            "effect_type": "conjure_fey_spirit",
+            "concentration": True,
+            "scope": {"target": "visible_unoccupied_space", "range_ft": 60},
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+
+    missing_teleport = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="妖精灵体攻击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey_attack",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert missing_teleport.status == "rejected"
+    assert missing_teleport.reason == (
+        "Conjure Fey requires the spirit to teleport to a visible unoccupied space within 30 feet"
+    )
+
+    accepted_attack = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="妖精灵体攻击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.conjure_fey_attack",
+            params={
+                "conjure_fey_visible_unoccupied_space": True,
+                "conjure_fey_teleport_visible_unoccupied_space": True,
+                "conjure_fey_target_within_5_ft": True,
+            },
+        )
+    )
+
+    assert accepted_attack.status == "accepted"
+    assert accepted_attack.action_id == "srd.conjure_fey_attack"
+
+
+def test_resolver_checks_instinctive_pounce_movement_preconditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 7}
+    character.actions.append("srd.rage")
+    character.resources["srd.resource.rage"] = 1
+    state.encounter.combatants["pc1"].speed_ft = 30
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴并跃扑",
+            target_ids=[],
+            candidate_action_id="srd.rage",
+            params={"instinctive_pounce_to_position_node_id": "cover"},
+        )
+    )
+    too_far = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴并跃扑",
+            target_ids=[],
+            candidate_action_id="srd.rage",
+            params={"instinctive_pounce_to_position_node_id": "back"},
+        )
+    )
+    character.class_levels = {"barbarian": 6}
+    too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="狂暴并跃扑",
+            target_ids=[],
+            candidate_action_id="srd.rage",
+            params={"instinctive_pounce_to_position_node_id": "cover"},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert too_far.status == "rejected"
+    assert too_far.reason == "Instinctive Pounce movement cannot exceed half Speed"
+    assert too_low.status == "rejected"
+    assert too_low.reason == "Instinctive Pounce requires Barbarian level 7"
+
+
+def test_resolver_checks_brutal_strike_preconditions(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    assert state.encounter.tactical_graph is not None
+    state.encounter.tactical_graph["nodes"]["far"] = {
+        "node_id": "far",
+        "name": "Far",
+        "tags": [],
+        "capacity": None,
+        "default_cover": "none",
+        "terrain": "normal",
+    }
+    state.encounter.tactical_graph["edges"].append(
+        {
+            "source": "cover",
+            "target": "far",
+            "distance_ft": 15,
+            "movement_cost": None,
+            "line_of_sight": True,
+            "cover": "none",
+            "difficult_terrain": False,
+        }
+    )
+    character = state.characters["pc1"]
+    character.class_levels = {"barbarian": 9}
+    character.actions.extend(["srd.reckless_attack", "srd.longsword_attack", "srd.brutal_strike"])
+    compendium = CompendiumLoader("rules_data").load()
+    tools = EngineTools(state, compendium, AuditLog())
+    tools.perform_action("pc1", "srd.reckless_attack", [], idempotency_key="resolver-brutal")
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effect": "forceful_blow",
+                "brutal_strike_forceful_to_position_node_id": "far",
+            },
+        )
+    )
+    invalid_destination = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effect": "forceful_blow",
+                "brutal_strike_forceful_to_position_node_id": "front",
+            },
+        )
+    )
+    character.class_levels = {"barbarian": 8}
+    too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_brutal_strike": True, "brutal_strike_effect": "hamstring_blow"},
+        )
+    )
+    character.class_levels = {"barbarian": 12}
+    improved_too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_brutal_strike": True, "brutal_strike_effect": "staggering_blow"},
+        )
+    )
+    character.class_levels = {"barbarian": 13}
+    improved_accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_brutal_strike": True, "brutal_strike_effect": "sundering_blow"},
+        )
+    )
+    character.class_levels = {"barbarian": 16}
+    dual_too_low = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": ["hamstring_blow", "staggering_blow"],
+            },
+        )
+    )
+    character.class_levels = {"barbarian": 17}
+    dual_accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": ["hamstring_blow", "staggering_blow"],
+            },
+        )
+    )
+    duplicate = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": ["hamstring", "hamstring_blow"],
+            },
+        )
+    )
+    too_many = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="残暴打击",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={
+                "use_brutal_strike": True,
+                "brutal_strike_effects": [
+                    "forceful_blow",
+                    "hamstring_blow",
+                    "staggering_blow",
+                ],
+            },
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert invalid_destination.status == "rejected"
+    assert invalid_destination.reason == (
+        "Brutal Strike Forceful Blow destination must be away from the Barbarian"
+    )
+    assert too_low.status == "rejected"
+    assert too_low.reason == "Brutal Strike requires Barbarian level 9"
+    assert improved_too_low.status == "rejected"
+    assert improved_too_low.reason == "Improved Brutal Strike requires Barbarian level 13"
+    assert improved_accepted.status == "accepted"
+    assert dual_too_low.status == "rejected"
+    assert dual_too_low.reason == "Improved Brutal Strike requires Barbarian level 17"
+    assert dual_accepted.status == "accepted"
+    assert duplicate.status == "rejected"
+    assert duplicate.reason == "duplicate Brutal Strike effect: hamstring_blow"
+    assert too_many.status == "rejected"
+    assert too_many.reason == "Improved Brutal Strike allows at most two effects"
+
+
+def test_resolver_checks_dynamic_resource_cost_params(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"paladin": 1}
+    state.characters["pc1"].actions.append("srd.lay_on_hands")
+    state.characters["pc1"].resources["srd.resource.lay_on_hands"] = 5
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣疗",
+            target_ids=["pc1"],
+            candidate_action_id="srd.lay_on_hands",
+            params={"lay_on_hands_points": 5},
+        )
+    )
+    too_much = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣疗",
+            target_ids=["pc1"],
+            candidate_action_id="srd.lay_on_hands",
+            params={"lay_on_hands_points": 6},
+        )
+    )
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣疗",
+            target_ids=["pc1"],
+            candidate_action_id="srd.lay_on_hands",
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert too_much.status == "rejected"
+    assert too_much.reason == "insufficient resource srd.resource.lay_on_hands"
+    assert missing.status == "rejected"
+    assert missing.reason == "missing required parameter lay_on_hands_points"
+
+
+def test_resolver_checks_restoring_touch_conditions_and_points(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    paladin = state.characters["pc1"]
+    paladin.class_levels = {"paladin": 14}
+    paladin.actions.append("srd.restoring_touch")
+    paladin.resources["srd.resource.lay_on_hands"] = 10
+    state.encounter.combatants["pc2"].status_effects.append(
+        {"effect_id": "blinded-test", "condition": "blinded"}
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 5, "restoring_touch_conditions": ["blinded"]},
+        )
+    )
+    too_few_points = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 4, "restoring_touch_conditions": ["blinded"]},
+        )
+    )
+    unsupported_condition = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 5, "restoring_touch_conditions": ["poisoned"]},
+        )
+    )
+    missing_condition_on_target = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 5, "restoring_touch_conditions": ["stunned"]},
+        )
+    )
+    pool_short = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="恢复之触",
+            target_ids=["pc2"],
+            candidate_action_id="srd.restoring_touch",
+            params={"lay_on_hands_points": 11, "restoring_touch_conditions": ["blinded"]},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert too_few_points.status == "rejected"
+    assert too_few_points.reason == "Restoring Touch requires 5 Lay On Hands points per condition"
+    assert unsupported_condition.status == "rejected"
+    assert unsupported_condition.reason.startswith("restoring_touch_conditions must contain only:")
+    assert missing_condition_on_target.status == "rejected"
+    assert (
+        missing_condition_on_target.reason == "Restoring Touch target lacks condition(s): stunned"
+    )
+    assert pool_short.status == "rejected"
+    assert pool_short.reason == "insufficient resource srd.resource.lay_on_hands"
+
+
+def test_resolver_enforces_exclude_self_target_policy(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"bard": 1}
+    state.characters["pc1"].actions.append("srd.bardic_inspiration")
+    state.characters["pc1"].resources["srd.resource.bardic_inspiration"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    self_target = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="吟游灵感",
+            target_ids=["pc1"],
+            candidate_action_id="srd.bardic_inspiration",
+        )
+    )
+    ally_target = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="吟游灵感",
+            target_ids=["pc2"],
+            candidate_action_id="srd.bardic_inspiration",
+        )
+    )
+
+    assert self_target.status == "rejected"
+    assert self_target.reason == "target cannot be self"
+    assert ally_target.status == "accepted"
+
+
+def test_resolver_checks_favored_enemy_resource_instead_of_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"ranger": 1}
+    state.characters["pc1"].actions.append("srd.favored_enemy_hunters_mark")
+    state.characters["pc1"].resources["srd.resource.favored_enemy_hunters_mark"] = 0
+    state.characters["pc1"].spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    no_resource = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="宿敌猎人印记",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.favored_enemy_hunters_mark",
+        )
+    )
+    state.characters["pc1"].resources["srd.resource.favored_enemy_hunters_mark"] = 1
+    has_resource = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="宿敌猎人印记",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.favored_enemy_hunters_mark",
+        )
+    )
+
+    assert no_resource.status == "rejected"
+    assert no_resource.reason == "insufficient resource srd.resource.favored_enemy_hunters_mark"
+    assert has_resource.status == "accepted"
+
+
+def test_resolver_checks_faithful_steed_resource_instead_of_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"paladin": 5}
+    state.characters["pc1"].actions.append("srd.faithful_steed_find_steed")
+    state.characters["pc1"].resources["srd.resource.faithful_steed"] = 0
+    state.characters["pc1"].spell_slots["2"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    no_resource = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="免法术位寻找坐骑",
+            target_ids=[],
+            candidate_action_id="srd.faithful_steed_find_steed",
+        )
+    )
+    state.characters["pc1"].resources["srd.resource.faithful_steed"] = 1
+    has_resource = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="免法术位寻找坐骑",
+            target_ids=[],
+            candidate_action_id="srd.faithful_steed_find_steed",
+        )
+    )
+
+    assert no_resource.status == "rejected"
+    assert no_resource.reason == "insufficient resource srd.resource.faithful_steed"
+    assert has_resource.status == "accepted"
+
+
+def test_resolver_accepts_armor_of_shadows_without_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"warlock": 1}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.armor_of_shadows": "selected"
+    }
+    state.characters["pc1"].actions.extend(
+        ["srd.armor_of_shadows", "srd.armor_of_shadows_mage_armor"]
+    )
+    state.characters["pc1"].spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="armor of shadows",
+            target_ids=[],
+            candidate_action_id="srd.armor_of_shadows_mage_armor",
+        )
+    )
+
+    assert result.status == "accepted"
+
+
+def test_resolver_accepts_fiendish_vigor_without_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.fiendish_vigor": "selected"
+    }
+    state.characters["pc1"].actions.extend(["srd.fiendish_vigor", "srd.fiendish_vigor_false_life"])
+    state.characters["pc1"].spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="fiendish vigor",
+            target_ids=[],
+            candidate_action_id="srd.fiendish_vigor_false_life",
+        )
+    )
+
+    assert result.status == "accepted"
+
+
+def test_resolver_accepts_mask_of_many_faces_without_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.mask_of_many_faces": "selected"
+    }
+    state.characters["pc1"].actions.extend(
+        ["srd.mask_of_many_faces", "srd.mask_of_many_faces_disguise_self"]
+    )
+    state.characters["pc1"].spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="mask of many faces",
+            target_ids=[],
+            candidate_action_id="srd.mask_of_many_faces_disguise_self",
+        )
+    )
+
+    assert result.status == "accepted"
+
+
+def test_resolver_accepts_misty_visions_without_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.misty_visions": "selected"
+    }
+    state.characters["pc1"].actions.extend(["srd.misty_visions", "srd.misty_visions_silent_image"])
+    state.characters["pc1"].spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="misty visions",
+            target_ids=[],
+            candidate_action_id="srd.misty_visions_silent_image",
+        )
+    )
+
+    assert result.status == "accepted"
+
+
+def test_resolver_accepts_otherworldly_leap_without_spell_slot(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"warlock": 2}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.otherworldly_leap": "selected"
+    }
+    state.characters["pc1"].actions.extend(["srd.otherworldly_leap", "srd.otherworldly_leap_jump"])
+    state.characters["pc1"].spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="otherworldly leap",
+            target_ids=[],
+            candidate_action_id="srd.otherworldly_leap_jump",
+        )
+    )
+
+    assert result.status == "accepted"
+
+
+def test_resolver_accepts_pact_of_the_chain_find_familiar_without_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 1}
+    character.feature_choices = {"warlock.eldritch_invocation.pact_of_the_chain": "selected"}
+    character.actions.extend(
+        ["srd.find_familiar", "srd.pact_of_the_chain", "srd.pact_of_the_chain_find_familiar"]
+    )
+    character.known_spells = ["srd.spell.find_familiar"]
+    character.spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    ordinary = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="find familiar",
+            target_ids=[],
+            candidate_action_id="srd.find_familiar",
+        )
+    )
+    assert ordinary.status == "rejected"
+    assert ordinary.reason == "insufficient spell slot"
+
+    pact = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the chain find familiar",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_chain_find_familiar",
+        )
+    )
+    assert pact.status == "accepted"
+    assert pact.action_id == "srd.pact_of_the_chain_find_familiar"
+
+
+def test_resolver_requires_investment_chain_master_familiar_speed_choice(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {
+        "warlock.eldritch_invocation.pact_of_the_chain": "selected",
+        "warlock.eldritch_invocation.investment_of_the_chain_master": "selected",
+    }
+    character.actions.extend(
+        [
+            "srd.pact_of_the_chain",
+            "srd.pact_of_the_chain_find_familiar",
+            "srd.investment_of_the_chain_master",
+        ]
+    )
+    character.known_spells = ["srd.spell.find_familiar"]
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the chain find familiar",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_chain_find_familiar",
+        )
+    )
+    invalid_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the chain find familiar",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_chain_find_familiar",
+            params={"investment_familiar_speed": "burrow"},
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the chain find familiar",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_chain_find_familiar",
+            params={"investment_familiar_speed": "fly"},
+        )
+    )
+
+    assert missing_choice.status == "rejected"
+    assert (
+        missing_choice.reason
+        == "Investment of the Chain Master requires investment_familiar_speed fly or swim"
+    )
+    assert invalid_choice.status == "rejected"
+    assert (
+        invalid_choice.reason
+        == "Investment of the Chain Master requires investment_familiar_speed fly or swim"
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.pact_of_the_chain_find_familiar"
+
+
+def test_resolver_accepts_pact_of_the_tome_prepared_ritual_without_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 1}
+    character.feature_choices = {
+        "warlock.eldritch_invocation.pact_of_the_tome": "selected",
+        "warlock.eldritch_invocation.pact_of_the_tome.cantrip.1": "srd.spell.fire_bolt",
+        "warlock.eldritch_invocation.pact_of_the_tome.cantrip.2": "srd.spell.guidance",
+        "warlock.eldritch_invocation.pact_of_the_tome.cantrip.3": "srd.spell.mage_hand",
+        "warlock.eldritch_invocation.pact_of_the_tome.ritual.1": "srd.spell.detect_magic",
+        "warlock.eldritch_invocation.pact_of_the_tome.ritual.2": "srd.spell.speak_with_animals",
+    }
+    character.actions = [
+        "srd.pact_of_the_tome",
+        "srd.fire_bolt",
+        "srd.guidance",
+        "srd.mage_hand",
+        "srd.detect_magic",
+        "srd.speak_with_animals",
+    ]
+    character.prepared_spells = [
+        "srd.spell.fire_bolt",
+        "srd.spell.guidance",
+        "srd.spell.mage_hand",
+        "srd.spell.detect_magic",
+        "srd.spell.speak_with_animals",
+    ]
+    character.spell_slots["1"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    ordinary = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="detect magic",
+            target_ids=[],
+            candidate_action_id="srd.detect_magic",
+        )
+    )
+    assert ordinary.status == "rejected"
+    assert ordinary.reason == "insufficient spell slot"
+
+    ritual = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="detect magic ritual",
+            target_ids=[],
+            candidate_action_id="srd.detect_magic",
+            params={"slot_level": 1, "as_ritual": True},
+        )
+    )
+    assert ritual.status == "accepted"
+    assert ritual.action_id == "srd.detect_magic"
+
+
+def test_resolver_checks_pact_of_the_blade_weapon_selection_and_granted_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 1}
+    character.feature_choices = {"warlock.eldritch_invocation.pact_of_the_blade": "selected"}
+    character.actions = ["srd.pact_of_the_blade", "srd.pact_of_the_blade_weapon"]
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_selection = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the blade",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_blade_weapon",
+        )
+    )
+    unsupported_selection = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the blade",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_blade_weapon",
+            params={"pact_weapon_action_id": "srd.shortbow_attack"},
+        )
+    )
+    valid_selection = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="pact of the blade",
+            target_ids=[],
+            candidate_action_id="srd.pact_of_the_blade_weapon",
+            params={"pact_weapon_action_id": "srd.longsword_attack"},
+        )
+    )
+    before_binding = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+        )
+    )
+    assert state.encounter is not None
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "test-pact-weapon",
+            "source_action_id": "srd.pact_of_the_blade_weapon",
+            "condition": "pact_weapon",
+            "passive_modifiers": {
+                "pact_weapon": True,
+                "pact_weapon_action_id": "srd.longsword_attack",
+            },
+        }
+    )
+    after_binding = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+        )
+    )
+
+    assert missing_selection.status == "rejected"
+    assert missing_selection.reason == "missing required parameter pact_weapon_action_id"
+    assert unsupported_selection.status == "rejected"
+    assert (
+        unsupported_selection.reason
+        == "Pact of the Blade weapon must be an implemented SRD melee weapon"
+    )
+    assert valid_selection.status == "accepted"
+    assert before_binding.status == "rejected"
+    assert before_binding.reason == "actor does not own action"
+    assert after_binding.status == "accepted"
+    assert after_binding.action_id == "srd.longsword_attack"
+
+
+def test_resolver_allows_thirsting_blade_extra_attack_only_after_pact_weapon_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {
+        "warlock.eldritch_invocation.pact_of_the_blade": "selected",
+        "warlock.eldritch_invocation.thirsting_blade": "selected",
+    }
+    character.actions = [
+        "srd.pact_of_the_blade",
+        "srd.pact_of_the_blade_weapon",
+        "srd.thirsting_blade",
+    ]
+    state.encounter.action_budgets["pc1"] = {
+        "action": 0,
+        "bonus_action": 1,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "pact-weapon",
+            "source_action_id": "srd.pact_of_the_blade_weapon",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "pact_weapon",
+            "passive_modifiers": {
+                "pact_weapon": True,
+                "pact_weapon_action_id": "srd.longsword_attack",
+            },
+            "duration": {"until": "pact_ends_or_replaced_or_warlock_dies"},
+            "tick_on": "weapon_attack",
+            "stacking_policy": "replace_condition",
+            "audit": {},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    no_prior_attack = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_thirsting_blade_extra_attack": True},
+        )
+    )
+    assert no_prior_attack.status == "rejected"
+    assert no_prior_attack.reason == (
+        "Thirsting Blade extra attack requires a prior pact weapon attack this turn"
+    )
+
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "thirsting-prior-attack",
+            "source_action_id": "srd.longsword_attack",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "thirsting_blade_pact_weapon_attack_this_turn",
+            "duration": {"until": "start_of_next_turn"},
+            "tick_on": "self_turn_start",
+            "stacking_policy": "append",
+            "audit": {
+                "pact_weapon_action_id": "srd.longsword_attack",
+                "attacked_target_id": "goblin1",
+            },
+        }
+    )
+    without_thirsting_param = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+        )
+    )
+    assert without_thirsting_param.status == "rejected"
+    assert without_thirsting_param.reason == "insufficient action economy"
+
+    extra_attack = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_thirsting_blade_extra_attack": True},
+        )
+    )
+    assert extra_attack.status == "accepted"
+    assert extra_attack.action_id == "srd.longsword_attack"
+
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "thirsting-used",
+            "source_action_id": "srd.thirsting_blade",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "thirsting_blade_extra_attack_used",
+            "duration": {"until": "start_of_next_turn"},
+            "tick_on": "self_turn_start",
+            "stacking_policy": "append",
+            "audit": {"pact_weapon_action_id": "srd.longsword_attack"},
+        }
+    )
+    repeated = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_thirsting_blade_extra_attack": True},
+        )
+    )
+    assert repeated.status == "rejected"
+    assert repeated.reason == "Thirsting Blade extra attack already used this turn"
+
+
+def test_resolver_checks_eldritch_smite_pact_weapon_slot_and_prone_size(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {
+        "warlock.eldritch_invocation.pact_of_the_blade": "selected",
+        "warlock.eldritch_invocation.eldritch_smite": "selected",
+    }
+    character.actions = [
+        "srd.pact_of_the_blade",
+        "srd.pact_of_the_blade_weapon",
+        "srd.eldritch_smite",
+    ]
+    character.pact_spell_slots = {"3": 1}
+    character.pact_spell_slots_max = {"3": 2}
+    state.encounter.combatants["goblin1"].size = "huge"
+    pact_weapon_effect = {
+        "effect_id": "pact-weapon",
+        "source_action_id": "srd.pact_of_the_blade_weapon",
+        "target_id": "pc1",
+        "applied_by": "pc1",
+        "condition": "pact_weapon",
+        "passive_modifiers": {
+            "pact_weapon": True,
+            "pact_weapon_action_id": "srd.longsword_attack",
+        },
+        "duration": {"until": "pact_ends_or_replaced_or_warlock_dies"},
+        "tick_on": "weapon_attack",
+        "stacking_policy": "replace_condition",
+        "audit": {},
+    }
+    state.encounter.combatants["pc1"].status_effects.append(pact_weapon_effect)
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_eldritch_smite": True, "eldritch_smite_prone": True},
+        )
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.longsword_attack"
+
+    character.pact_spell_slots = {"3": 0}
+    no_slot = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_eldritch_smite": True},
+        )
+    )
+    assert no_slot.status == "rejected"
+    assert no_slot.reason == "insufficient Pact Magic spell slot"
+    character.pact_spell_slots = {"3": 1}
+
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "eldritch-smite-used",
+            "source_action_id": "srd.eldritch_smite",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "eldritch_smite_used",
+            "duration": {"until": "start_of_next_turn"},
+            "tick_on": "self_turn_start",
+            "stacking_policy": "append",
+            "audit": {"pact_weapon_action_id": "srd.longsword_attack"},
+        }
+    )
+    repeated = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_eldritch_smite": True},
+        )
+    )
+    assert repeated.status == "rejected"
+    assert repeated.reason == "Eldritch Smite already used this turn"
+    state.encounter.combatants["pc1"].status_effects = [pact_weapon_effect]
+
+    state.encounter.combatants["goblin1"].size = "gargantuan"
+    too_large = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_eldritch_smite": True, "eldritch_smite_prone": True},
+        )
+    )
+    assert too_large.status == "rejected"
+    assert too_large.reason == "Eldritch Smite Prone target must be Huge or smaller"
+
+    state.encounter.combatants["pc1"].status_effects = []
+    character.actions.append("srd.longsword_attack")
+    no_pact_weapon = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="longsword",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.longsword_attack",
+            params={"use_eldritch_smite": True},
+        )
+    )
+    assert no_pact_weapon.status == "rejected"
+    assert no_pact_weapon.reason == "Eldritch Smite requires the selected pact weapon"
+
+
+def test_resolver_accepts_master_of_myriad_forms_alter_self_without_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {"warlock.eldritch_invocation.master_of_myriad_forms": "selected"}
+    character.actions.extend(
+        ["srd.alter_self", "srd.master_of_myriad_forms", "srd.master_of_myriad_forms_alter_self"]
+    )
+    character.spell_slots["2"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    ordinary = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="alter self",
+            target_ids=[],
+            candidate_action_id="srd.alter_self",
+        )
+    )
+    assert ordinary.status == "rejected"
+    assert ordinary.reason == "insufficient spell slot"
+
+    master = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="master of myriad forms alter self",
+            target_ids=[],
+            candidate_action_id="srd.master_of_myriad_forms_alter_self",
+        )
+    )
+    assert master.status == "accepted"
+    assert master.action_id == "srd.master_of_myriad_forms_alter_self"
+
+
+def test_resolver_accepts_ascendant_step_levitate_without_spell_slot(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {"warlock.eldritch_invocation.ascendant_step": "selected"}
+    character.actions.extend(["srd.levitate", "srd.ascendant_step", "srd.ascendant_step_levitate"])
+    character.spell_slots["2"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    ordinary = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="levitate",
+            target_ids=["pc1"],
+            candidate_action_id="srd.levitate",
+        )
+    )
+    ascendant = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="ascendant step levitate",
+            target_ids=[],
+            candidate_action_id="srd.ascendant_step_levitate",
+        )
+    )
+
+    assert ordinary.status == "rejected"
+    assert ordinary.reason == "insufficient spell slot"
+    assert ascendant.status == "accepted"
+    assert ascendant.action_id == "srd.ascendant_step_levitate"
+
+
+def test_resolver_checks_one_with_shadows_lighting_instead_of_spell_slot(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {"warlock.eldritch_invocation.one_with_shadows": "selected"}
+    character.actions.extend(
+        ["srd.invisibility", "srd.one_with_shadows", "srd.one_with_shadows_invisibility"]
+    )
+    character.spell_slots["2"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    ordinary = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="invisibility",
+            target_ids=["pc1"],
+            candidate_action_id="srd.invisibility",
+        )
+    )
+    missing_light = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="one with shadows invisibility",
+            target_ids=[],
+            candidate_action_id="srd.one_with_shadows_invisibility",
+        )
+    )
+    one_with_shadows = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="one with shadows invisibility",
+            target_ids=[],
+            candidate_action_id="srd.one_with_shadows_invisibility",
+            params={"in_dim_light_or_darkness": True},
+        )
+    )
+
+    assert ordinary.status == "rejected"
+    assert ordinary.reason == "insufficient spell slot"
+    assert missing_light.status == "rejected"
+    assert missing_light.reason == "One with Shadows requires Dim Light or Darkness"
+    assert one_with_shadows.status == "accepted"
+    assert one_with_shadows.action_id == "srd.one_with_shadows_invisibility"
+
+
+def test_resolver_checks_gift_of_depths_resource_instead_of_spell_slot(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {"warlock.eldritch_invocation.gift_of_the_depths": "selected"}
+    character.actions.extend(
+        [
+            "srd.water_breathing",
+            "srd.gift_of_the_depths",
+            "srd.gift_of_the_depths_water_breathing",
+        ]
+    )
+    character.spell_slots["3"] = 0
+    character.resources["srd.resource.gift_of_the_depths"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    ordinary = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="water breathing",
+            target_ids=["pc1"],
+            candidate_action_id="srd.water_breathing",
+        )
+    )
+    no_resource = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="gift of the depths water breathing",
+            target_ids=["pc1"],
+            candidate_action_id="srd.gift_of_the_depths_water_breathing",
+        )
+    )
+    character.resources["srd.resource.gift_of_the_depths"] = 1
+    gift = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="gift of the depths water breathing",
+            target_ids=["pc1"],
+            candidate_action_id="srd.gift_of_the_depths_water_breathing",
+        )
+    )
+
+    assert ordinary.status == "rejected"
+    assert ordinary.reason == "insufficient spell slot"
+    assert no_resource.status == "rejected"
+    assert no_resource.reason == "insufficient resource srd.resource.gift_of_the_depths"
+    assert gift.status == "accepted"
+    assert gift.action_id == "srd.gift_of_the_depths_water_breathing"
+
+
+def test_resolver_checks_gaze_of_two_minds_willing_touch_target(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"warlock": 5}
+    character.feature_choices = {"warlock.eldritch_invocation.gaze_of_two_minds": "selected"}
+    character.actions.extend(["srd.gaze_of_two_minds", "srd.gaze_of_two_minds_touch"])
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_willing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="gaze of two minds",
+            target_ids=["pc2"],
+            candidate_action_id="srd.gaze_of_two_minds_touch",
+        )
+    )
+    assert state.encounter is not None
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    out_of_range = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="gaze of two minds",
+            target_ids=["pc2"],
+            candidate_action_id="srd.gaze_of_two_minds_touch",
+            params={"target_willing": True},
+        )
+    )
+    state.encounter.combatants["pc2"].position_node_id = "front"
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="gaze of two minds",
+            target_ids=["pc2"],
+            candidate_action_id="srd.gaze_of_two_minds_touch",
+            params={"target_willing": True},
+        )
+    )
+
+    assert missing_willing.status == "rejected"
+    assert missing_willing.reason == "target must be willing"
+    assert out_of_range.status == "rejected"
+    assert out_of_range.reason == "target out of range"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.gaze_of_two_minds_touch"
+
+
+def test_resolver_rejects_armor_of_shadows_while_wearing_armor(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"warlock": 1}
+    state.characters["pc1"].feature_choices = {
+        "warlock.eldritch_invocation.armor_of_shadows": "selected"
+    }
+    state.characters["pc1"].actions.extend(
+        ["srd.armor_of_shadows", "srd.armor_of_shadows_mage_armor"]
+    )
+    state.characters["pc1"].equipment = ["srd.leather_armor"]
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="armor of shadows",
+            target_ids=[],
+            candidate_action_id="srd.armor_of_shadows_mage_armor",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Mage Armor target must not be wearing armor"
+
+
+def test_resolver_checks_channel_divinity_resource(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.divine_spark_heal")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 0
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    no_resource = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="神圣火花治疗",
+            target_ids=["pc2"],
+            candidate_action_id="srd.divine_spark_heal",
+        )
+    )
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 1
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="神圣火花治疗",
+            target_ids=["pc2"],
+            candidate_action_id="srd.divine_spark_heal",
+        )
+    )
+
+    assert no_resource.status == "rejected"
+    assert no_resource.reason == "insufficient resource srd.resource.channel_divinity"
+    assert accepted.status == "accepted"
+
+
+def test_resolver_checks_turn_undead_creature_type_policy(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="驱散亡灵",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.turn_undead",
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="驱散亡灵",
+            target_ids=["skeleton1"],
+            candidate_action_id="srd.turn_undead",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be undead"
+    assert accepted.status == "accepted"
+
+
+def test_resolver_checks_dominate_person_humanoid_policy(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.dominate_person")
+    character.spell_slots["5"] = 1
+    state.encounter.combatants["wolf1"] = Combatant(
+        id="wolf1",
+        entity_id="wolf1",
+        name="Wolf One",
+        side="monsters",
+        hp_current=30,
+        hp_max=30,
+        armor_class=13,
+        creature_type="beast",
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="支配人类",
+            target_ids=["wolf1"],
+            candidate_action_id="srd.dominate_person",
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="支配人类",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dominate_person",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be humanoid"
+    assert accepted.status == "accepted"
+
+
+def test_resolver_allows_dominate_monster_for_any_creature_type(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 15}
+    character.actions.append("srd.dominate_monster")
+    character.spell_slots["8"] = 1
+    state.encounter.combatants["wolf1"] = Combatant(
+        id="wolf1",
+        entity_id="wolf1",
+        name="Wolf One",
+        side="monsters",
+        hp_current=30,
+        hp_max=30,
+        armor_class=13,
+        creature_type="beast",
+        position_node_id="cover",
+    )
+    state.encounter.combatants["goblin1"].creature_type = "construct"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    beast = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="支配怪物",
+            target_ids=["wolf1"],
+            candidate_action_id="srd.dominate_monster",
+        )
+    )
+    construct = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="支配怪物",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.dominate_monster",
+        )
+    )
+
+    assert beast.status == "accepted"
+    assert construct.status == "accepted"
+
+
+def test_resolver_accepts_countercharm_for_turn_undead_target_in_range(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    state.characters["pc2"].actions.append("srd.countercharm")
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="驱散亡灵时反迷惑",
+            target_ids=["skeleton1"],
+            candidate_action_id="srd.turn_undead",
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        )
+    )
+
+    assert result.status == "accepted"
+    assert result.action_id == "srd.turn_undead"
+
+
+def test_resolver_rejects_countercharm_without_bard_level_seven(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.turn_undead")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 6}
+    state.encounter.combatants["skeleton1"] = Combatant(
+        id="skeleton1",
+        entity_id="skeleton1",
+        name="Skeleton",
+        side="monsters",
+        hp_current=13,
+        hp_max=13,
+        armor_class=14,
+        creature_type="undead",
+        abilities={"str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5},
+        position_node_id="cover",
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="驱散亡灵时反迷惑",
+            target_ids=["skeleton1"],
+            candidate_action_id="srd.turn_undead",
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Countercharm requires Bard level 7"
+
+
+def test_resolver_rejects_countercharm_for_nonqualifying_save(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"cleric": 2}
+    state.characters["pc1"].actions.append("srd.divine_spark_necrotic")
+    state.characters["pc1"].resources["srd.resource.channel_divinity"] = 2
+    state.characters["pc2"].class_levels = {"bard": 7}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="神圣火花时反迷惑",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.divine_spark_necrotic",
+            params={"use_countercharm": True, "countercharm_bard_id": "pc2"},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Countercharm requires a save against Charmed or Frightened"
+
+
+def test_resolver_rejects_unmet_class_requirements(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"fighter": 1}
+    state.characters["pc1"].actions.append("srd.cunning_action_dash")
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="机敏疾走",
+            candidate_action_id="srd.cunning_action_dash",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "requires rogue level 2"
+
+
+def test_resolver_rejects_steady_aim_after_movement_used(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 3}
+    state.characters["pc1"].actions.append("srd.steady_aim")
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 1,
+        "reaction": 1,
+        "movement": 25,
+        "movement_used": 5,
+        "free": 1,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="稳定瞄准",
+            candidate_action_id="srd.steady_aim",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "requires no movement used this turn"
+
+
+def test_resolver_uses_encounter_budget_for_steady_aim_bonus_action(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].class_levels = {"rogue": 3}
+    state.characters["pc1"].actions.append("srd.steady_aim")
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 0,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="稳定瞄准",
+            candidate_action_id="srd.steady_aim",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "insufficient action economy"
+
+
+def test_resolver_accepts_fleet_step_when_bonus_action_is_spent(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 11}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.step_of_the_wind", "srd.fleet_step"])
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 0,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "effect_id": "fleet-step-window",
+            "source_ref": "SRD 5.2.1",
+            "source_action_id": "srd.fleet_step",
+            "target_id": "pc1",
+            "applied_by": "pc1",
+            "condition": "fleet_step_available",
+            "duration": {"until": "end_of_current_turn"},
+            "tick_on": "self_turn_end",
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="step",
+            candidate_action_id="srd.step_of_the_wind",
+            params={"use_fleet_step": True},
+        )
+    )
+    missing_param = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="step",
+            candidate_action_id="srd.step_of_the_wind",
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert missing_param.status == "rejected"
+    assert missing_param.reason == "insufficient action economy"
+
+
+def test_resolver_accepts_harmless_quivering_palm_release_without_action_budget(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"monk": 17}
+    character.subclasses = {"monk": "open_hand"}
+    character.actions.extend(["srd.quivering_palm", "srd.quivering_palm_release"])
+    state.encounter.action_budgets["pc1"] = {
+        "action": 0,
+        "bonus_action": 0,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.encounter.combatants["pc2"].status_effects.append(
+        {
+            "effect_id": "quivering-palm-window",
+            "source_ref": "SRD 5.2.1",
+            "source_action_id": "srd.quivering_palm",
+            "target_id": "pc2",
+            "applied_by": "pc1",
+            "condition": "quivering_palm",
+            "duration": {"until": "duration_monk_level_days", "days": 17},
+            "tick_on": None,
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="结束震颤掌",
+            target_ids=["pc2"],
+            candidate_action_id="srd.quivering_palm_release",
+            params={"harmless": True},
+        )
+    )
+    harmful = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="结束震颤掌",
+            target_ids=["pc2"],
+            candidate_action_id="srd.quivering_palm_release",
+            params={"same_plane": True},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert harmful.status == "rejected"
+    assert harmful.reason == "insufficient action economy"
+
+
+def test_resolver_rejects_font_of_magic_conversion_above_sorcery_point_cap(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"sorcerer": 2}
+    state.characters["pc1"].actions.append("srd.font_of_magic_convert_slot_1")
+    state.characters["pc1"].resources["srd.resource.sorcery_points"] = 2
+    state.characters["pc1"].spell_slots["1"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="转化1环法术位",
+            candidate_action_id="srd.font_of_magic_convert_slot_1",
+        )
+    )
+    state.characters["pc1"].resources["srd.resource.sorcery_points"] = 1
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="转化1环法术位",
+            candidate_action_id="srd.font_of_magic_convert_slot_1",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "resource srd.resource.sorcery_points would exceed maximum 2"
+    assert accepted.status == "accepted"
+
+
+def test_resolver_uses_highest_single_class_for_generic_level_requirements(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].class_levels = {"fighter": 4, "cleric": 1}
+    state.characters["pc1"].actions.append("srd.extra_attack")
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="额外攻击",
+            candidate_action_id="srd.extra_attack",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "requires class level 5"
+
+
+def test_resolver_requires_confirmation_for_aoe_friendly_fire(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].actions.append("srd.fireball")
+    state.characters["pc1"].spell_slots["3"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="火球",
+            target_ids=["goblin1", "pc2"],
+            candidate_action_id="srd.fireball",
+        )
+    )
+
+    assert result.status == "confirm_required"
+    assert result.confirm_required is True
+    assert result.reason == "friendly fire confirmation required"
+
+
+def test_resolver_honors_friendly_fire_off_for_aoe(make_state) -> None:
+    state = make_state()
+    state.config.friendly_fire = "off"
+    state.characters["pc1"].actions.append("srd.fireball")
+    state.characters["pc1"].spell_slots["3"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="火球",
+            target_ids=["goblin1", "pc2"],
+            candidate_action_id="srd.fireball",
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "friendly fire is disabled"
+
+
+def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_state) -> None:
+    state = make_state()
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    missing_item = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.potion_of_healing",
+        )
+    )
+    assert missing_item.status == "rejected"
+    assert missing_item.reason == "actor does not have item srd.potion_of_healing"
+
+    state.characters["pc1"].inventory["srd.potion_of_healing"] = 1
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.potion_of_healing",
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.use_potion_of_healing"
+
+    state.characters["pc1"].equipment.append("srd.belt_of_hill_giant_strength")
+    belt = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.belt_of_hill_giant_strength",
+        )
+    )
+
+    assert belt.status == "accepted"
+    assert belt.action_id == "srd.wear_belt_of_hill_giant_strength"
+
+    state.characters["pc1"].equipment.append("srd.boots_of_elvenkind")
+    equipped = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.boots_of_elvenkind",
+        )
+    )
+
+    assert equipped.status == "accepted"
+    assert equipped.action_id == "srd.wear_boots_of_elvenkind"
+    state.characters["pc1"].equipment.append("srd.boots_of_levitation")
+    state.characters["pc1"].spell_slots["2"] = 0
+    levitation_boots = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.boots_of_levitation",
+        )
+    )
+
+    assert levitation_boots.status == "accepted"
+    assert levitation_boots.action_id == "srd.boots_of_levitation_levitate"
+
+    state.characters["pc1"].equipment.append("srd.slippers_of_spider_climbing")
+    spider_slippers = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.slippers_of_spider_climbing",
+        )
+    )
+
+    assert spider_slippers.status == "accepted"
+    assert spider_slippers.action_id == "srd.wear_slippers_of_spider_climbing"
+
+    state.characters["pc1"].equipment.append("srd.bracers_of_defense")
+    bracers = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.bracers_of_defense",
+        )
+    )
+
+    assert bracers.status == "accepted"
+    assert bracers.action_id == "srd.wear_bracers_of_defense"
+
+    state.characters["pc1"].equipment.append("srd.cloak_of_protection")
+    cloak = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.cloak_of_protection",
+        )
+    )
+
+    assert cloak.status == "accepted"
+    assert cloak.action_id == "srd.wear_cloak_of_protection"
+
+    state.characters["pc1"].equipment.append("srd.cloak_of_the_manta_ray")
+    manta_cloak = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.cloak_of_the_manta_ray",
+        )
+    )
+
+    assert manta_cloak.status == "accepted"
+    assert manta_cloak.action_id == "srd.wear_cloak_of_the_manta_ray"
+
+    state.characters["pc1"].equipment.append("srd.eyes_of_the_eagle")
+    eyes = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.eyes_of_the_eagle",
+        )
+    )
+
+    assert eyes.status == "accepted"
+    assert eyes.action_id == "srd.wear_eyes_of_the_eagle"
+
+    state.characters["pc1"].equipment.append("srd.eyes_of_minute_seeing")
+    minute_eyes = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.eyes_of_minute_seeing",
+        )
+    )
+
+    assert minute_eyes.status == "accepted"
+    assert minute_eyes.action_id == "srd.wear_eyes_of_minute_seeing"
+
+    state.characters["pc1"].equipment.append("srd.gauntlets_of_ogre_power")
+    gauntlets = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.gauntlets_of_ogre_power",
+        )
+    )
+
+    assert gauntlets.status == "accepted"
+    assert gauntlets.action_id == "srd.wear_gauntlets_of_ogre_power"
+
+    state.characters["pc1"].equipment.append("srd.goggles_of_night")
+    goggles = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.goggles_of_night",
+        )
+    )
+
+    assert goggles.status == "accepted"
+    assert goggles.action_id == "srd.wear_goggles_of_night"
+
+    state.characters["pc1"].equipment.append("srd.headband_of_intellect")
+    headband = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.headband_of_intellect",
+        )
+    )
+
+    assert headband.status == "accepted"
+    assert headband.action_id == "srd.wear_headband_of_intellect"
+
+    state.characters["pc1"].equipment.append("srd.helm_of_comprehending_languages")
+    helm_languages = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.helm_of_comprehending_languages",
+        )
+    )
+
+    assert helm_languages.status == "accepted"
+    assert helm_languages.action_id == "srd.helm_of_comprehending_languages_comprehend_languages"
+
+    state.characters["pc1"].equipment.append("srd.necklace_of_adaptation")
+    necklace = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.necklace_of_adaptation",
+        )
+    )
+
+    assert necklace.status == "accepted"
+    assert necklace.action_id == "srd.wear_necklace_of_adaptation"
+
+    state.characters["pc1"].equipment.append("srd.amulet_of_proof_against_detection_and_location")
+    amulet_proof_detection = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.amulet_of_proof_against_detection_and_location",
+        )
+    )
+
+    assert amulet_proof_detection.status == "accepted"
+    assert (
+        amulet_proof_detection.action_id
+        == "srd.wear_amulet_of_proof_against_detection_and_location"
+    )
+
+    state.characters["pc1"].equipment.append("srd.periapt_of_proof_against_poison")
+    periapt_poison = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.periapt_of_proof_against_poison",
+        )
+    )
+
+    assert periapt_poison.status == "accepted"
+    assert periapt_poison.action_id == "srd.wear_periapt_of_proof_against_poison"
+
+    state.characters["pc1"].equipment.append("srd.stone_of_good_luck")
+    luckstone = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.stone_of_good_luck",
+        )
+    )
+
+    assert luckstone.status == "accepted"
+    assert luckstone.action_id == "srd.carry_stone_of_good_luck"
+
+    state.characters["pc1"].equipment.append("srd.ring_of_protection")
+    ring = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.ring_of_protection",
+        )
+    )
+
+    assert ring.status == "accepted"
+    assert ring.action_id == "srd.wear_ring_of_protection"
+
+
+def test_resolver_rejects_bracers_of_defense_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.bracers_of_defense"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.bracers_of_defense",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_bracers_of_defense"
+
+
+def test_resolver_rejects_boots_of_levitation_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.boots_of_levitation"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.boots_of_levitation",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.boots_of_levitation_levitate"
+
+
+def test_resolver_rejects_slippers_of_spider_climbing_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.slippers_of_spider_climbing"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.slippers_of_spider_climbing",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_slippers_of_spider_climbing"
+
+
+def test_resolver_rejects_cloak_of_protection_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.cloak_of_protection"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cloak_of_protection",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_cloak_of_protection"
+
+
+def test_resolver_rejects_cloak_of_the_manta_ray_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.cloak_of_the_manta_ray"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cloak_of_the_manta_ray",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_cloak_of_the_manta_ray"
+
+
+def test_resolver_rejects_eyes_of_the_eagle_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.eyes_of_the_eagle"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.eyes_of_the_eagle",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_eyes_of_the_eagle"
+
+
+def test_resolver_rejects_eyes_of_minute_seeing_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.eyes_of_minute_seeing"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.eyes_of_minute_seeing",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_eyes_of_minute_seeing"
+
+
+def test_resolver_rejects_goggles_of_night_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.goggles_of_night"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.goggles_of_night",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_goggles_of_night"
+
+
+def test_resolver_rejects_gauntlets_of_ogre_power_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.gauntlets_of_ogre_power"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.gauntlets_of_ogre_power",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_gauntlets_of_ogre_power"
+
+
+def test_resolver_rejects_headband_of_intellect_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.headband_of_intellect"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.headband_of_intellect",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_headband_of_intellect"
+
+
+def test_resolver_rejects_helm_of_comprehending_languages_non_self_target(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.helm_of_comprehending_languages"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.helm_of_comprehending_languages",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.helm_of_comprehending_languages_comprehend_languages"
+
+
+def test_resolver_rejects_necklace_of_adaptation_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.necklace_of_adaptation"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.necklace_of_adaptation",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_necklace_of_adaptation"
+
+
+def test_resolver_rejects_amulet_of_proof_against_detection_non_self_target(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.amulet_of_proof_against_detection_and_location"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.amulet_of_proof_against_detection_and_location",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_amulet_of_proof_against_detection_and_location"
+
+
+def test_resolver_rejects_periapt_of_proof_against_poison_non_self_target(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.periapt_of_proof_against_poison"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.periapt_of_proof_against_poison",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_periapt_of_proof_against_poison"
+
+
+def test_resolver_rejects_belt_of_giant_strength_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.belt_of_hill_giant_strength"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.belt_of_hill_giant_strength",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_belt_of_hill_giant_strength"
+
+
+def test_resolver_rejects_stone_of_good_luck_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.stone_of_good_luck"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.stone_of_good_luck",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.carry_stone_of_good_luck"
+
+
+def test_resolver_rejects_ring_of_protection_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.ring_of_protection"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.ring_of_protection",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_ring_of_protection"
+
+
+def test_resolver_rejects_ring_of_water_walking_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.ring_of_water_walking"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.ring_of_water_walking",
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.ring_of_water_walking",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.ring_of_water_walking_water_walk"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.ring_of_water_walking_water_walk"
+
+
+def test_resolver_rejects_ring_of_xray_vision_non_self_target(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.ring_of_xray_vision"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.ring_of_xray_vision",
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.ring_of_xray_vision",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.use_ring_of_xray_vision"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.use_ring_of_xray_vision"
+
+
+def test_resolver_accepts_robe_of_eyes_selected_item_actions_and_rejects_non_self(
+    make_state,
+) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.robe_of_eyes"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    light = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_eyes",
+            params={"item_action_id": "srd.robe_of_eyes_light_drawback"},
+        )
+    )
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc2"],
+            candidate_action_id="srd.robe_of_eyes",
+            params={"item_action_id": "srd.wear_robe_of_eyes"},
+        )
+    )
+
+    assert light.status == "accepted"
+    assert light.action_id == "srd.robe_of_eyes_light_drawback"
+    assert rejected.status == "rejected"
+    assert rejected.reason == "target must be self"
+    assert rejected.action_id == "srd.wear_robe_of_eyes"
+
+
+def test_resolver_enforces_robe_of_the_archmagi_class_attunement(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.inventory["srd.robe_of_the_archmagi"] = 1
+    character.class_levels = {"fighter": 5}
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    rejected = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_the_archmagi",
+        )
+    )
+    character.class_levels = {"wizard": 1}
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_the_archmagi",
+        )
+    )
+
+    assert rejected.status == "rejected"
+    assert rejected.reason == "requires one of sorcerer, warlock, wizard"
+    assert rejected.action_id == "srd.wear_robe_of_the_archmagi"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.wear_robe_of_the_archmagi"
+
+
+def test_resolver_validates_robe_of_useful_items_patch_selection(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.inventory["srd.robe_of_useful_items"] = 1
+    character.resources["srd.robe_of_useful_items.initialized"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_useful_items",
+            params={"item_action_id": "srd.detach_robe_of_useful_items_patch"},
+        )
+    )
+    invalid = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_useful_items",
+            params={
+                "item_action_id": "srd.detach_robe_of_useful_items_patch",
+                "robe_of_useful_items_patch": "imaginary_patch",
+            },
+        )
+    )
+    unavailable = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_useful_items",
+            params={
+                "item_action_id": "srd.detach_robe_of_useful_items_patch",
+                "robe_of_useful_items_patch": "dagger",
+            },
+        )
+    )
+    character.resources["srd.robe_of_useful_items.patch.dagger"] = 1
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.robe_of_useful_items",
+            params={
+                "item_action_id": "srd.detach_robe_of_useful_items_patch",
+                "robe_of_useful_items_patch": "dagger",
+            },
+        )
+    )
+
+    assert missing.status == "rejected"
+    assert missing.reason == "missing required parameter robe_of_useful_items_patch"
+    assert invalid.status == "rejected"
+    assert invalid.reason == "Robe of Useful Items patch is not in the SRD patch table"
+    assert unavailable.status == "rejected"
+    assert unavailable.reason == "Robe of Useful Items patch dagger is unavailable"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.detach_robe_of_useful_items_patch"
+
+
+def test_resolver_validates_rod_of_absorption_absorb_spell_params(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.inventory["srd.rod_of_absorption"] = 1
+    character.resources["srd.rod_of_absorption.initialized"] = 1
+    character.resources["srd.rod_of_absorption.stored_levels"] = 1
+    character.resources["srd.rod_of_absorption.lifetime_absorbed_levels"] = 49
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.rod_of_absorption",
+            params={"item_action_id": "srd.rod_of_absorption_absorb_spell"},
+        )
+    )
+    area = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.rod_of_absorption",
+            params={
+                "item_action_id": "srd.rod_of_absorption_absorb_spell",
+                "absorbed_spell_level": 1,
+                "targeting_only_you": True,
+                "creates_area_of_effect": True,
+            },
+        )
+    )
+    over_cap = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.rod_of_absorption",
+            params={
+                "item_action_id": "srd.rod_of_absorption_absorb_spell",
+                "absorbed_spell_level": 2,
+                "targeting_only_you": True,
+                "creates_area_of_effect": False,
+            },
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.rod_of_absorption",
+            params={
+                "item_action_id": "srd.rod_of_absorption_absorb_spell",
+                "absorbed_spell_level": 1,
+                "targeting_only_you": True,
+                "creates_area_of_effect": False,
+            },
+        )
+    )
+
+    assert missing.status == "rejected"
+    assert missing.reason == "missing required parameter absorbed_spell_level"
+    assert area.status == "rejected"
+    assert area.reason == "Rod of Absorption cannot absorb an area-of-effect spell"
+    assert over_cap.status == "rejected"
+    assert over_cap.reason == "Rod of Absorption cannot store that spell level"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.rod_of_absorption_absorb_spell"
+
+
+def test_resolver_validates_rod_of_alertness_protective_aura_targets_and_reuse(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.inventory["srd.rod_of_alertness"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    hostile = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.rod_of_alertness",
+            params={"item_action_id": "srd.rod_of_alertness_protective_aura"},
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1", "pc2"],
+            candidate_action_id="srd.rod_of_alertness",
+            params={"item_action_id": "srd.rod_of_alertness_protective_aura"},
+        )
+    )
+    character.resources["srd.rod_of_alertness.protective_aura_used_until_next_dawn"] = 1
+    repeated = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1", "pc2"],
+            candidate_action_id="srd.rod_of_alertness",
+            params={"item_action_id": "srd.rod_of_alertness_protective_aura"},
+        )
+    )
+
+    assert hostile.status == "rejected"
+    assert hostile.reason == "Rod of Alertness Protective Aura affects only you and your allies"
+    assert hostile.action_id == "srd.rod_of_alertness_protective_aura"
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.rod_of_alertness_protective_aura"
+    assert repeated.status == "rejected"
+    assert repeated.reason == (
+        "Rod of Alertness Protective Aura can't be used again until the next dawn"
+    )
+
+
+def test_resolver_accepts_rod_of_absorption_stored_energy_spell_slot(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.inventory["srd.rod_of_absorption"] = 1
+    character.spell_slots = {"1": 0, "3": 0, "6": 0}
+    character.spell_slots_max = {"1": 4, "3": 2, "6": 1}
+    character.resources["srd.rod_of_absorption.stored_levels"] = 5
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="cast_spell",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cure_wounds",
+            params={"slot_level": 3, "use_rod_of_absorption": True},
+        )
+    )
+    too_high_for_rod = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="cast_spell",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cure_wounds",
+            params={"slot_level": 6, "use_rod_of_absorption": True},
+        )
+    )
+    character.resources["srd.rod_of_absorption.stored_levels"] = 2
+    insufficient_energy = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="cast_spell",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cure_wounds",
+            params={"slot_level": 5, "use_rod_of_absorption": True},
+        )
+    )
+    character.inventory["srd.rod_of_absorption"] = 0
+    missing_rod = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="cast_spell",
+            target_ids=["pc2"],
+            candidate_action_id="srd.cure_wounds",
+            params={"slot_level": 1, "use_rod_of_absorption": True},
+        )
+    )
+
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.cure_wounds"
+    assert too_high_for_rod.status == "rejected"
+    assert too_high_for_rod.reason == "Rod of Absorption cannot create spell slots above level 5"
+    assert insufficient_energy.status == "rejected"
+    assert insufficient_energy.reason == "Rod of Absorption has insufficient stored spell energy"
+    assert missing_rod.status == "rejected"
+    assert missing_rod.reason == "Rod of Absorption requires holding the rod"
+
+
+def test_resolver_validates_potion_of_resistance_damage_type(make_state) -> None:
+    state = make_state()
+    state.characters["pc1"].inventory["srd.potion_of_resistance"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.potion_of_resistance",
+        )
+    )
+    assert missing.status == "rejected"
+    assert missing.reason == "missing required parameter damage_type"
+
+    invalid = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.potion_of_resistance",
+            params={"damage_type": "slashing"},
+        )
+    )
+    assert invalid.status == "rejected"
+    assert invalid.reason.startswith("damage_type must be one of:")
+
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="use_item",
+        target_ids=["pc1"],
+        candidate_action_id="srd.potion_of_resistance",
+        params={"damage_type": "FIRE"},
+    )
+    accepted = resolver.resolve(draft)
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.use_potion_of_resistance"
+    assert draft.params["damage_type"] == "fire"
+
+
+def test_resolver_checks_planar_binding_context_and_target_type(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 9}
+    character.actions.append("srd.planar_binding")
+    character.prepared_spells.append("srd.spell.planar_binding")
+    character.spell_slots["5"] = 1
+    character.gold = 1000
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "fiend"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_range_context = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={"slot_level": 5},
+        )
+    )
+    accepted_plain = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+            },
+        )
+    )
+    missing_source_effect = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+                "planar_binding_source_spell_effect_id": "missing-effect",
+            },
+        )
+    )
+    state.world.active_effects.append(
+        {
+            "effect_id": "summoning-spell-effect",
+            "source_ref": "SRD 5.2.1 Chapter 7: Spells",
+            "source_action_id": "srd.conjure_fey",
+            "duration": {"until": "concentration_10_minutes"},
+        }
+    )
+    accepted_with_source = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+                "planar_binding_source_spell_effect_id": "summoning-spell-effect",
+            },
+        )
+    )
+    target.creature_type = "humanoid"
+    invalid_target_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="异界誓缚",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.planar_binding",
+            params={
+                "slot_level": 5,
+                "planar_binding_target_within_range_entire_casting": True,
+            },
+        )
+    )
+
+    assert missing_range_context.status == "rejected"
+    assert missing_range_context.reason == (
+        "Planar Binding requires the target to remain within 60 feet for the entire 1-hour casting"
+    )
+    assert accepted_plain.status == "accepted"
+    assert accepted_plain.action_id == "srd.planar_binding"
+    assert missing_source_effect.status == "rejected"
+    assert missing_source_effect.reason == "Planar Binding source spell effect is not active"
+    assert accepted_with_source.status == "accepted"
+    assert accepted_with_source.action_id == "srd.planar_binding"
+    assert invalid_target_type.status == "rejected"
+    assert invalid_target_type.reason == "target must be celestial, elemental, fey, fiend"
+
+
+def test_resolver_checks_simulacrum_context_and_target_type(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"wizard": 13}
+    character.actions.append("srd.simulacrum")
+    character.prepared_spells.append("srd.spell.simulacrum")
+    character.spell_slots["7"] = 1
+    character.gold = 1500
+    target = state.encounter.combatants["goblin1"]
+    target.creature_type = "humanoid"
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    missing_context = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="拟像术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.simulacrum",
+            params={"slot_level": 7},
+        )
+    )
+    accepted = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="拟像术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.simulacrum",
+            params={
+                "slot_level": 7,
+                "simulacrum_target_within_10_ft_entire_casting": True,
+                "simulacrum_same_size_ice_or_snow_pile": True,
+                "simulacrum_completion_touch": True,
+            },
+        )
+    )
+    target.creature_type = "fiend"
+    invalid_target_type = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="拟像术",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.simulacrum",
+            params={
+                "slot_level": 7,
+                "simulacrum_target_within_10_ft_entire_casting": True,
+                "simulacrum_same_size_ice_or_snow_pile": True,
+                "simulacrum_completion_touch": True,
+            },
+        )
+    )
+
+    assert missing_context.status == "rejected"
+    assert missing_context.reason == (
+        "Simulacrum target must remain within 10 feet for the entire 12-hour casting"
+    )
+    assert accepted.status == "accepted"
+    assert accepted.action_id == "srd.simulacrum"
+    assert invalid_target_type.status == "rejected"
+    assert invalid_target_type.reason == "target must be beast, humanoid"
+
+
+def test_resolver_checks_holy_aura_chosen_creatures_are_in_emanation(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    character = state.characters["pc1"]
+    character.class_levels = {"cleric": 15}
+    character.actions.append("srd.holy_aura")
+    character.prepared_spells.append("srd.spell.holy_aura")
+    character.spell_slots["8"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions)
+
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    outside = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣洁灵光",
+            target_ids=["pc2"],
+            candidate_action_id="srd.holy_aura",
+            params={"slot_level": 8},
+        )
+    )
+    state.encounter.combatants["pc2"].position_node_id = "front"
+    inside = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣洁灵光",
+            target_ids=["pc1", "pc2"],
+            candidate_action_id="srd.holy_aura",
+            params={"slot_level": 8},
+        )
+    )
+    empty_choice = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="圣洁灵光",
+            target_ids=[],
+            candidate_action_id="srd.holy_aura",
+            params={"slot_level": 8},
+        )
+    )
+
+    assert outside.status == "rejected"
+    assert outside.reason == ("Holy Aura chosen creatures must be within the 30-foot Emanation")
+    assert inside.status == "accepted"
+    assert inside.action_id == "srd.holy_aura"
+    assert empty_choice.status == "accepted"
+    assert empty_choice.action_id == "srd.holy_aura"
+
+
+def test_resolver_rejects_fast_hands_for_item_that_is_already_bonus_action(
+    make_state,
+) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.class_levels = {"rogue": 3}
+    character.subclasses = {"rogue": "thief"}
+    character.actions.append("srd.fast_hands_magic_item")
+    character.inventory["srd.potion_of_healing"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    result = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="use_item",
+            target_ids=["pc1"],
+            candidate_action_id="srd.potion_of_healing",
+            params={"fast_hands": True},
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.reason == "Fast Hands requires a magic item action that normally uses an action"
+
+
+def test_resolver_accepts_action_provided_by_owned_weapon_item(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.actions = ["srd.cure_wounds"]
+    character.inventory["srd.quarterstaff"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    owned = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.quarterstaff_attack",
+        )
+    )
+    character.inventory["srd.quarterstaff"] = 0
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.quarterstaff_attack",
+        )
+    )
+
+    assert owned.status == "accepted"
+    assert missing.status == "rejected"
+    assert missing.reason == "actor does not own action"
+
+
+def test_resolver_requires_declared_ammunition_for_owned_ranged_weapon(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.actions = []
+    character.inventory["srd.shortbow"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortbow_attack",
+        )
+    )
+    character.inventory["srd.arrow"] = 1
+    available = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortbow_attack",
+        )
+    )
+
+    assert missing.status == "rejected"
+    assert missing.reason == "insufficient item srd.arrow"
+    assert available.status == "accepted"
+
+
+def test_resolver_requires_registered_quarterstaff_topple_mastery(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.actions = []
+    character.inventory["srd.quarterstaff"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="attack",
+        target_ids=["goblin1"],
+        candidate_action_id="srd.quarterstaff_attack",
+        params={"use_weapon_mastery": True},
+    )
+
+    missing = resolver.resolve(draft)
+    character.feature_choices["weapon_mastery.srd.quarterstaff"] = "Topple"
+    registered = resolver.resolve(draft)
+
+    assert missing.status == "rejected"
+    assert missing.reason == ("weapon mastery Topple is not registered for srd.quarterstaff")
+    assert registered.status == "accepted"

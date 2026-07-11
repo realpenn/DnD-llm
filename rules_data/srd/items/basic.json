@@ -1,0 +1,350 @@
+{
+  "items": [
+    {
+      "id": "srd.dagger",
+      "name": "Dagger",
+      "localization": { "en": "Dagger", "zh": "匕首", "aliases": ["短匕"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.dagger_attack", "srd.dagger_throw"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.shortsword",
+      "name": "Shortsword",
+      "localization": { "en": "Shortsword", "zh": "短剑", "aliases": ["短刃"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.shortsword_attack"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.longsword",
+      "name": "Longsword",
+      "localization": { "en": "Longsword", "zh": "长剑", "aliases": ["长刃"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.longsword_attack"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.shortbow",
+      "name": "Shortbow",
+      "localization": { "en": "Shortbow", "zh": "短弓", "aliases": ["弓"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.shortbow_attack"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.light_crossbow",
+      "name": "Light Crossbow",
+      "localization": { "en": "Light Crossbow", "zh": "轻弩", "aliases": ["弩"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.light_crossbow_attack"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.arrow",
+      "name": "Arrow",
+      "localization": { "en": "Arrow", "zh": "箭", "aliases": ["箭矢"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment, Ammunition",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ammunition",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.crossbow_bolt",
+      "name": "Crossbow Bolt",
+      "localization": { "en": "Crossbow Bolt", "zh": "弩矢", "aliases": ["弩箭"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment, Ammunition",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ammunition",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.quarterstaff",
+      "name": "Quarterstaff",
+      "localization": { "en": "Quarterstaff", "zh": "长棍", "aliases": ["木杖"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.quarterstaff_attack"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.mace",
+      "name": "Mace",
+      "localization": { "en": "Mace", "zh": "硬头锤", "aliases": ["钉头锤"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.mace_attack"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.spear",
+      "name": "Spear",
+      "localization": { "en": "Spear", "zh": "矛", "aliases": ["短矛"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.spear_attack", "srd.spear_throw"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.handaxe",
+      "name": "Handaxe",
+      "localization": { "en": "Handaxe", "zh": "手斧", "aliases": ["小斧"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "weapon",
+      "actions": ["srd.handaxe_attack", "srd.handaxe_throw"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.leather_armor",
+      "name": "Leather Armor",
+      "localization": { "en": "Leather Armor", "zh": "皮甲", "aliases": ["轻甲"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "armor",
+      "actions": [],
+      "properties": { "armor_category": "light" },
+      "quantity": 1
+    },
+    {
+      "id": "srd.chain_mail",
+      "name": "Chain Mail",
+      "localization": { "en": "Chain Mail", "zh": "锁子甲", "aliases": ["重甲"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "armor",
+      "actions": [],
+      "properties": { "armor_category": "heavy" },
+      "quantity": 1
+    },
+    {
+      "id": "srd.shield",
+      "name": "Shield",
+      "localization": { "en": "Shield", "zh": "盾牌", "aliases": ["盾"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "armor",
+      "actions": [],
+      "properties": { "armor_category": "shield" },
+      "quantity": 1
+    },
+    {
+      "id": "srd.potion_of_healing",
+      "name": "Potion of Healing",
+      "localization": { "en": "Potion of Healing", "zh": "治疗药水", "aliases": ["红药"] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "consumable",
+      "actions": ["srd.use_potion_of_healing"],
+      "quantity": 1
+    },
+    {
+      "id": "srd.rope_50ft",
+      "name": "Rope, 50 feet",
+      "localization": { "en": "Rope, 50 feet", "zh": "绳索（50尺）", "aliases": ["绳子"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.bullseye_lantern",
+      "name": "Bullseye Lantern",
+      "localization": {
+        "en": "Bullseye Lantern",
+        "zh": "牛眼提灯",
+        "aliases": ["Bullseye Lantern (filled and lit)"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "properties": { "robe_of_useful_items_patch": true, "filled_and_lit": true },
+      "quantity": 1
+    },
+    {
+      "id": "srd.mirror_steel",
+      "name": "Mirror",
+      "localization": { "en": "Mirror", "zh": "镜子", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "properties": { "robe_of_useful_items_patch": true },
+      "quantity": 1
+    },
+    {
+      "id": "srd.pole_10ft",
+      "name": "Pole",
+      "localization": { "en": "Pole", "zh": "杆", "aliases": ["10-foot pole"] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "properties": { "robe_of_useful_items_patch": true },
+      "quantity": 1
+    },
+    {
+      "id": "srd.sack",
+      "name": "Sack",
+      "localization": { "en": "Sack", "zh": "麻袋", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "properties": { "robe_of_useful_items_patch": true },
+      "quantity": 1
+    },
+    {
+      "id": "srd.portable_ram",
+      "name": "Portable Ram",
+      "localization": { "en": "Portable Ram", "zh": "便携攻城槌", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "properties": { "robe_of_useful_items_patch": true },
+      "quantity": 1
+    },
+    {
+      "id": "srd.silver_coffer_500gp",
+      "name": "Silver Coffer",
+      "localization": { "en": "Silver Coffer", "zh": "银匣", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "treasure",
+      "actions": [],
+      "properties": {
+        "robe_of_useful_items_patch": true,
+        "value_gp": 500,
+        "dimensions": "1 foot long, 6 inches wide and deep"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.gem_100gp",
+      "name": "Gem worth 100 GP",
+      "localization": { "en": "Gem worth 100 GP", "zh": "价值100金币的宝石", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "treasure",
+      "actions": [],
+      "properties": { "robe_of_useful_items_patch": true, "value_gp": 100 },
+      "quantity": 1
+    },
+    {
+      "id": "srd.spell_scroll_level_1_3",
+      "name": "Spell Scroll (Level 1-3)",
+      "localization": {
+        "en": "Spell Scroll (Level 1-3)",
+        "zh": "法术卷轴（1-3环）",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "scroll",
+      "actions": [],
+      "properties": {
+        "robe_of_useful_items_patch": true,
+        "spell_level_choices": [1, 2, 3]
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.torch",
+      "name": "Torch",
+      "localization": { "en": "Torch", "zh": "火把", "aliases": ["照明火把"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.rations_day",
+      "name": "Rations, 1 day",
+      "localization": { "en": "Rations, 1 day", "zh": "口粮（1日）", "aliases": ["干粮"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.healers_kit",
+      "name": "Healer's Kit",
+      "localization": { "en": "Healer's Kit", "zh": "医疗包", "aliases": ["治疗工具"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "adventuring_gear",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.thieves_tools",
+      "name": "Thieves' Tools",
+      "localization": { "en": "Thieves' Tools", "zh": "盗贼工具", "aliases": ["开锁工具"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "tool",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.poisoners_kit",
+      "name": "Poisoner's Kit",
+      "localization": { "en": "Poisoner's Kit", "zh": "制毒工具", "aliases": ["毒药工具"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment, Tools",
+      "rules_version": "srd-5.2.1",
+      "item_type": "tool",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.holy_symbol",
+      "name": "Holy Symbol",
+      "localization": { "en": "Holy Symbol", "zh": "圣徽", "aliases": ["神圣法器"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "spellcasting_focus",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.arcane_focus",
+      "name": "Arcane Focus",
+      "localization": { "en": "Arcane Focus", "zh": "奥术法器", "aliases": ["奥术焦点"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "spellcasting_focus",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.explorers_pack",
+      "name": "Explorer's Pack",
+      "localization": { "en": "Explorer's Pack", "zh": "探索者套组", "aliases": ["探险包"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment",
+      "rules_version": "srd-5.2.1",
+      "item_type": "equipment_pack",
+      "actions": [],
+      "quantity": 1
+    }
+  ]
+}

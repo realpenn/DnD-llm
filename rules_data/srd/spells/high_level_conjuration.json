@@ -1,0 +1,1933 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.cloudkill",
+      "name": "Cloudkill",
+      "localization": { "en": "Cloudkill", "zh": "死云术", "aliases": ["杀云术"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "conjuration",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.cloudkill",
+        "name": "Cloudkill",
+        "localization": { "en": "Cloudkill", "zh": "死云术", "aliases": ["杀云术"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["sorcerer", "wizard"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "5d8",
+            "damage_type": "poison",
+            "save_half": true,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "cloudkill_fog",
+            "scope": { "shape": "sphere", "radius_ft": 20, "range_ft": 120 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": {
+              "heavily_obscured": true,
+              "dispersed_by_strong_wind": true,
+              "moves_away_from_caster_ft_at_start_of_turn": 10,
+              "repeat_save_triggers": [
+                "sphere_moves_into_space",
+                "creature_enters_area",
+                "creature_ends_turn_in_area"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "con",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "5d8 poison",
+                "higher_level_damage_increase": "1d8 per slot above 5"
+              }
+            }
+          }
+        ],
+        "audit_label": "Cloudkill"
+      }
+    },
+    {
+      "id": "srd.spell.incendiary_cloud",
+      "name": "Incendiary Cloud",
+      "localization": {
+        "en": "Incendiary Cloud",
+        "zh": "焚云术",
+        "aliases": ["燃云术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "conjuration",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.incendiary_cloud",
+        "name": "Incendiary Cloud",
+        "localization": {
+          "en": "Incendiary Cloud",
+          "zh": "焚云术",
+          "aliases": ["燃云术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "components": ["V", "S"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "10d8",
+            "damage_type": "fire",
+            "save_half": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "incendiary_cloud",
+            "scope": { "shape": "sphere", "radius_ft": 20, "range_ft": 150 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "heavily_obscured": true,
+              "dispersed_by_strong_wind": true,
+              "moves_away_from_caster_ft_at_start_of_turn": 10,
+              "caster_chooses_movement_direction": true,
+              "repeat_save_triggers": [
+                "sphere_moves_into_space",
+                "creature_enters_area",
+                "creature_ends_turn_in_area"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "10d8 fire",
+                "save_half": true
+              },
+              "area_trigger_and_cloud_movement_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Incendiary Cloud"
+      }
+    },
+    {
+      "id": "srd.spell.teleportation_circle",
+      "name": "Teleportation Circle",
+      "localization": {
+        "en": "Teleportation Circle",
+        "zh": "传送法阵",
+        "aliases": ["传送圆"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "conjuration",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.teleportation_circle",
+        "name": "Teleportation Circle",
+        "localization": {
+          "en": "Teleportation Circle",
+          "zh": "传送法阵",
+          "aliases": ["传送圆"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10, "shape": "circle", "radius_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "rare inks worth 50+ GP",
+            "consumed": true
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5, "gold": 50 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "teleportation_circle_portal",
+            "scope": { "target": "point", "radius_ft": 5, "range_ft": 10 },
+            "duration": { "until": "end_of_next_turn", "remaining_ticks": 2 },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "requires_known_sigil_sequence": true,
+              "destination": "permanent_teleportation_circle",
+              "same_plane_required": true,
+              "portal_open_until_end_of_next_turn": true,
+              "entering_creature_appears_within_ft_of_destination_circle": 5,
+              "nearest_unoccupied_space_if_destination_occupied": true,
+              "initial_known_material_plane_destination_count": 2,
+              "learn_new_sigil_sequence_study_minutes": 1,
+              "permanent_circle_daily_castings_required": 365
+            }
+          }
+        ],
+        "audit_label": "Teleportation Circle"
+      }
+    },
+    {
+      "id": "srd.spell.dimension_door",
+      "name": "Dimension Door",
+      "localization": {
+        "en": "Dimension Door",
+        "zh": "任意门",
+        "aliases": ["次元门"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.dimension_door",
+        "name": "Dimension Door",
+        "localization": {
+          "en": "Dimension Door",
+          "zh": "任意门",
+          "aliases": ["次元门"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 500 },
+        "target_policy": { "min": 0, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "optional_companion_must_be_within_ft": 5
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "dimension_door_teleport",
+            "scope": { "target": "explicit", "range_ft": 500 },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "teleports_actor": true,
+              "destination_within_ft": 500,
+              "destination_can_be_seen_visualized_or_described": true,
+              "arrives_at_exact_spot_desired": true,
+              "optional_willing_companion": true,
+              "companion_must_be_within_ft": 5,
+              "companion_arrives_within_ft_of_destination": 5,
+              "occupied_or_filled_destination_causes_force_damage_and_fails": true,
+              "failed_teleport_force_damage": "4d6"
+            }
+          }
+        ],
+        "audit_label": "Dimension Door"
+      }
+    },
+    {
+      "id": "srd.spell.faithful_hound",
+      "name": "Faithful Hound",
+      "localization": {
+        "en": "Faithful Hound",
+        "zh": "忠诚猎犬",
+        "aliases": ["忠实猎犬"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.faithful_hound",
+        "name": "Faithful Hound",
+        "localization": {
+          "en": "Faithful Hound",
+          "zh": "忠诚猎犬",
+          "aliases": ["忠实猎犬"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a silver whistle",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "faithful_hound_watchdog",
+            "scope": { "target": "unoccupied_space_you_can_see", "range_ft": 30 },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "phantom_watchdog": true,
+              "ends_if_caster_more_than_ft_from_hound": 300,
+              "visible_only_to_caster": true,
+              "intangible": true,
+              "invulnerable": true,
+              "password_specified_on_cast": true,
+              "barks_when_small_or_larger_creature_without_password_within_ft": 30,
+              "truesight_ft": 30,
+              "start_of_caster_turn_bite_one_enemy_within_ft": 5,
+              "bite": {
+                "save": {
+                  "ability": "dex",
+                  "dc_from": { "spell_save_dc": "actor" },
+                  "success_avoids_damage": true
+                },
+                "damage": "4d8 force"
+              },
+              "can_move_with_magic_action": true,
+              "move_distance_ft": 30
+            }
+          }
+        ],
+        "audit_label": "Faithful Hound"
+      }
+    },
+    {
+      "id": "srd.spell.secret_chest",
+      "name": "Secret Chest",
+      "localization": {
+        "en": "Secret Chest",
+        "zh": "秘藏箱",
+        "aliases": ["隐秘箱", "秘密箱"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.secret_chest",
+        "name": "Secret Chest",
+        "localization": {
+          "en": "Secret Chest",
+          "zh": "秘藏箱",
+          "aliases": ["隐秘箱", "秘密箱"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a chest, 3 feet by 2 feet by 2 feet, constructed from rare materials worth 5,000+ GP, and a Tiny replica of the chest made from the same materials worth 50+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "secret_chest_ethereal_storage",
+            "scope": { "target": "touched_chest_and_replica" },
+            "duration": { "until": "dispelled" },
+            "metadata": {
+              "hides_chest_on_ethereal_plane": true,
+              "requires_touching_chest_and_tiny_replica": true,
+              "chest_dimensions_ft": { "length": 3, "width": 2, "height": 2 },
+              "max_contents_volume_cubic_ft": 12,
+              "contents_must_be_nonliving_material": true,
+              "recall_requires_magic_action_touch_replica": true,
+              "recalled_chest_appears_on_ground_unoccupied_space_within_ft": 5,
+              "send_back_requires_magic_action_touch_chest_and_replica": true,
+              "cumulative_end_chance_starts_after_days": 60,
+              "daily_cumulative_end_chance_percent": 5,
+              "ends_if_cast_again": true,
+              "ends_if_tiny_replica_destroyed": true,
+              "if_ends_while_chest_on_ethereal_plane_chest_remains_there_to_find": true
+            }
+          }
+        ],
+        "audit_label": "Secret Chest"
+      }
+    },
+    {
+      "id": "srd.spell.guardian_of_faith",
+      "name": "Guardian of Faith",
+      "localization": {
+        "en": "Guardian of Faith",
+        "zh": "信仰守卫",
+        "aliases": ["信仰守护者"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.guardian_of_faith",
+        "name": "Guardian of Faith",
+        "localization": {
+          "en": "Guardian of Faith",
+          "zh": "信仰守卫",
+          "aliases": ["信仰守护者"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "target_must_be_visible": true,
+          "space_must_be_unoccupied": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "guardian_of_faith",
+            "scope": {
+              "target": "unoccupied_space_you_can_see",
+              "range_ft": 30,
+              "size": "large"
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "spectral_guardian": true,
+              "size": "large",
+              "hovers": true,
+              "occupies_space": true,
+              "invulnerable": true,
+              "form_appropriate_for_deity_or_pantheon": true,
+              "trigger_targets": "enemy",
+              "trigger_range_ft": 10,
+              "repeat_save_triggers": [
+                "enemy_moves_within_10_ft_first_time_on_turn",
+                "enemy_starts_turn_within_10_ft"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "20 radiant",
+                "save_half": true
+              },
+              "vanishes_after_total_damage_dealt": 60
+            }
+          }
+        ],
+        "audit_label": "Guardian of Faith"
+      }
+    },
+    {
+      "id": "srd.spell.black_tentacles",
+      "name": "Black Tentacles",
+      "localization": {
+        "en": "Black Tentacles",
+        "zh": "黑触手",
+        "aliases": ["黑触手术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.black_tentacles",
+        "name": "Black Tentacles",
+        "localization": {
+          "en": "Black Tentacles",
+          "zh": "黑触手",
+          "aliases": ["黑触手术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90, "shape": "square", "size_ft": 20 },
+        "target_policy": { "min": 0, "max": 16, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "spell_classes": ["wizard"],
+          "material_component": {
+            "description": "a tentacle",
+            "consumed": false
+          },
+          "ground_you_can_see": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "str", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "3d6",
+            "damage_type": "bludgeoning",
+            "requires_failed_save": true
+          },
+          {
+            "type": "condition",
+            "condition": "restrained",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "black_tentacles": true,
+              "area_escape_check": {
+                "action": "action",
+                "ability": "str",
+                "skill": "athletics",
+                "dc_from": { "spell_save_dc": "actor" },
+                "ends_condition": "restrained"
+              }
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "black_tentacles_area",
+            "scope": {
+              "target": "ground_area",
+              "range_ft": 90,
+              "shape": "square",
+              "size_ft": 20
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "ground_you_can_see": true,
+              "difficult_terrain": true,
+              "repeat_save_triggers": [
+                "creature_enters_area",
+                "creature_ends_turn_in_area"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "str",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "3d6 bludgeoning",
+                "failed_condition": "restrained"
+              },
+              "restrained_escape_check": {
+                "action": "action",
+                "ability": "str",
+                "skill": "athletics",
+                "dc_from": { "spell_save_dc": "actor" },
+                "ends_condition": "restrained"
+              }
+            }
+          }
+        ],
+        "audit_label": "Black Tentacles"
+      }
+    },
+    {
+      "id": "srd.spell.conjure_woodland_beings",
+      "name": "Conjure Woodland Beings",
+      "localization": {
+        "en": "Conjure Woodland Beings",
+        "zh": "召唤林地生物",
+        "aliases": ["召唤林地生物术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.conjure_woodland_beings",
+        "name": "Conjure Woodland Beings",
+        "localization": {
+          "en": "Conjure Woodland Beings",
+          "zh": "召唤林地生物",
+          "aliases": ["召唤林地生物术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "ranger"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "ranger"],
+          "components": ["V", "S"],
+          "self_centered_emanation_radius_ft": 10,
+          "bonus_action_disengage_action_id": "srd.conjure_woodland_beings_disengage",
+          "emanation_trigger_not_automated": true,
+          "nature_spirits_no_stat_block": true,
+          "spell_definition_id": "srd.spell.conjure_woodland_beings",
+          "spell_level": 4
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "5d8",
+            "damage_type": "force",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d8"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "conjure_woodland_beings_emanation",
+            "scope": {
+              "target": "self_centered_emanation",
+              "radius_ft": 10
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "nature_spirits": true,
+              "self_centered_emanation": true,
+              "wisdom_save": true,
+              "damage": "5d8 force",
+              "save_half": true,
+              "higher_level_damage_increase": "1d8 per slot above 4",
+              "repeat_save_triggers": [
+                "emanation_enters_visible_creature_space",
+                "visible_creature_enters_emanation",
+                "visible_creature_ends_turn_in_emanation"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "5d8 force",
+                "save_half": true,
+                "higher_level_damage_increase": "1d8 per slot above 4"
+              },
+              "bonus_action_disengage_action_id": "srd.conjure_woodland_beings_disengage",
+              "emanation_trigger_not_automated": true,
+              "nature_spirits_no_stat_block": true
+            }
+          }
+        ],
+        "audit_label": "Conjure Woodland Beings"
+      }
+    },
+    {
+      "id": "srd.spell.insect_plague",
+      "name": "Insect Plague",
+      "localization": {
+        "en": "Insect Plague",
+        "zh": "虫群瘟疫",
+        "aliases": ["虫灾术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "conjuration",
+      "classes": ["cleric", "druid", "sorcerer"],
+      "action": {
+        "id": "srd.insect_plague",
+        "name": "Insect Plague",
+        "localization": {
+          "en": "Insect Plague",
+          "zh": "虫群瘟疫",
+          "aliases": ["虫灾术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 300, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["cleric", "druid", "sorcerer"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a locust",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "4d10",
+            "damage_type": "piercing",
+            "save_half": true,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d10"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "insect_plague_swarm",
+            "scope": { "shape": "sphere", "radius_ft": 20, "range_ft": 300 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "lightly_obscured": true,
+              "difficult_terrain": true,
+              "repeat_save_triggers": [
+                "creature_enters_area",
+                "creature_ends_turn_in_area"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "con",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "4d10 piercing",
+                "higher_level_damage_increase": "1d10 per slot above 5"
+              }
+            }
+          }
+        ],
+        "audit_label": "Insect Plague"
+      }
+    },
+    {
+      "id": "srd.spell.conjure_minor_elementals",
+      "name": "Conjure Minor Elementals",
+      "localization": {
+        "en": "Conjure Minor Elementals",
+        "zh": "召唤次级元素",
+        "aliases": ["召唤小元素", "召唤次级元素术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "conjuration",
+      "classes": ["druid", "wizard"],
+      "action": {
+        "id": "srd.conjure_minor_elementals",
+        "name": "Conjure Minor Elementals",
+        "localization": {
+          "en": "Conjure Minor Elementals",
+          "zh": "召唤次级元素",
+          "aliases": ["召唤小元素", "召唤次级元素术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 15 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "wizard"],
+          "components": ["V", "S"],
+          "self_centered_emanation_radius_ft": 15,
+          "extra_damage_base": "2d8",
+          "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+          "extra_damage_type_param": "conjure_minor_elementals_damage_type",
+          "extra_damage_requires_attack_hit": true,
+          "extra_damage_requires_target_in_emanation": true,
+          "extra_damage_target_range_ft": 15,
+          "difficult_terrain_for_enemies": true,
+          "elemental_spirits_no_stat_block": true,
+          "spell_definition_id": "srd.spell.conjure_minor_elementals",
+          "spell_level": 4
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "conjure_minor_elementals_emanation",
+            "scope": {
+              "target": "self_centered_emanation",
+              "radius_ft": 15
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata_from_slot": {
+              "extra_damage_dice_count": {
+                "base_spell_slot_level": 4,
+                "base_value": 2,
+                "value_per_slot_above": 1
+              }
+            },
+            "metadata": {
+              "elemental_spirits_from_elemental_planes": true,
+              "self_centered_emanation": true,
+              "emanation_radius_ft": 15,
+              "extra_damage_die": "d8",
+              "base_extra_damage": "2d8",
+              "higher_level_damage_increase": "1d8 per slot above 4",
+              "extra_damage_triggers": [
+                "caster_attack_hits_creature_in_emanation"
+              ],
+              "extra_damage_types": ["acid", "cold", "fire", "lightning"],
+              "damage_type_chosen_when_attack_is_made": true,
+              "damage_type_param": "conjure_minor_elementals_damage_type",
+              "ground_in_emanation_is_difficult_terrain_for_enemies": true,
+              "spirit_stat_blocks_not_created": true,
+              "area_damage_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Conjure Minor Elementals"
+      }
+    },
+    {
+      "id": "srd.spell.conjure_fey",
+      "name": "Conjure Fey",
+      "localization": {
+        "en": "Conjure Fey",
+        "zh": "召唤妖精",
+        "aliases": ["召唤妖精术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "conjuration",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.conjure_fey",
+        "name": "Conjure Fey",
+        "localization": {
+          "en": "Conjure Fey",
+          "zh": "召唤妖精",
+          "aliases": ["召唤妖精术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "special": "visible_unoccupied_space_within_60_feet" },
+        "target_policy": { "min": 0, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "spell_classes": ["druid"],
+          "components": ["V", "S"],
+          "summon_range_ft": 60,
+          "summon_space": "visible_unoccupied_space",
+          "conjure_fey_visible_unoccupied_space_param": "conjure_fey_visible_unoccupied_space",
+          "conjure_fey_target_within_5_ft_param": "conjure_fey_target_within_5_ft",
+          "initial_attack_optional": true,
+          "bonus_action_attack_action_id": "srd.conjure_fey_attack",
+          "fey_spirit_size": "Medium",
+          "fey_spirit_origin": "Feywild",
+          "fey_spirit_no_stat_block": true,
+          "spell_definition_id": "srd.spell.conjure_fey",
+          "spell_level": 6
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit", "optional": true },
+          { "type": "attack_roll", "spell_attack": "actor" },
+          {
+            "type": "damage",
+            "dice": "3d12",
+            "damage_type": "psychic",
+            "requires_hit": true,
+            "bonus_from": { "spellcasting_ability_modifier": "actor" },
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "1d12"
+          },
+          {
+            "type": "condition",
+            "condition": "frightened",
+            "requires_hit": true,
+            "passive_modifiers": {
+              "frightened_sources": ["caster", "fey_spirit"]
+            },
+            "duration": {
+              "until": "start_of_next_turn",
+              "turn_owner_id_from": "actor"
+            },
+            "tick_on": "self_turn_start"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "conjure_fey_spirit",
+            "scope": {
+              "target": "visible_unoccupied_space",
+              "range_ft": 60
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata_from_slot": {
+              "psychic_damage_dice_count": {
+                "base_spell_slot_level": 6,
+                "base_value": 3,
+                "value_per_slot_above": 1
+              }
+            },
+            "metadata": {
+              "spirit_size": "Medium",
+              "spirit_origin": "Feywild",
+              "creature_type": "fey",
+              "appearance_chosen_by_caster": true,
+              "visible_unoccupied_space_required": true,
+              "initial_attack_optional": true,
+              "attack_type": "melee_spell_attack",
+              "attack_target_range_ft_from_spirit": 5,
+              "damage": "3d12 + spellcasting ability modifier psychic",
+              "higher_level_damage_increase": "1d12 per slot above 6",
+              "frightened_until": "start_of_caster_next_turn",
+              "frightened_sources": ["caster", "fey_spirit"],
+              "bonus_action_attack_action_id": "srd.conjure_fey_attack",
+              "bonus_action_teleport_ft": 30,
+              "spirit_stat_block_not_created": true
+            }
+          }
+        ],
+        "audit_label": "Conjure Fey"
+      }
+    },
+    {
+      "id": "srd.spell.transport_via_plants",
+      "name": "Transport via Plants",
+      "localization": {
+        "en": "Transport via Plants",
+        "zh": "植物传送",
+        "aliases": ["借植物传送"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "conjuration",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.transport_via_plants",
+        "name": "Transport via Plants",
+        "localization": {
+          "en": "Transport via Plants",
+          "zh": "植物传送",
+          "aliases": ["借植物传送"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid"]
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "transport_via_plants_link",
+            "scope": { "target": "large_or_larger_inanimate_plant", "range_ft": 10 },
+            "duration": { "until": "duration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "destination": "another_plant",
+              "same_plane_required": true,
+              "destination_must_have_been_seen_or_touched_before": true,
+              "any_creature_can_use": true,
+              "movement_cost_ft": 5,
+              "enter_target_plant_and_exit_destination_plant": true
+            }
+          }
+        ],
+        "audit_label": "Transport via Plants"
+      }
+    },
+    {
+      "id": "srd.spell.heroes_feast",
+      "name": "Heroes' Feast",
+      "localization": {
+        "en": "Heroes' Feast",
+        "zh": "英雄宴",
+        "aliases": ["英雄盛宴", "Heroes’ Feast"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "conjuration",
+      "classes": ["bard", "cleric", "druid"],
+      "action": {
+        "id": "srd.heroes_feast",
+        "name": "Heroes' Feast",
+        "localization": {
+          "en": "Heroes' Feast",
+          "zh": "英雄宴",
+          "aliases": ["英雄盛宴", "Heroes’ Feast"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 12, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "cleric", "druid"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "cleric", "druid"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "minutes": 10 },
+          "material_component": {
+            "description": "a gem-encrusted bowl worth 1,000+ GP",
+            "consumed": true
+          },
+          "feast_appears_in_adjacent_unoccupied_cube_ft": 10,
+          "partaking_time_hours": 1,
+          "max_partakers": 12,
+          "benefits_duration": "duration_24_hours",
+          "benefits_after_consuming_feast": true,
+          "requires_willing_target": true,
+          "hp_max_increase": "2d10",
+          "heals_same_amount_as_hp_max_increase": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_higher_level_spell_slot_effect": true,
+          "spell_definition_id": "srd.spell.heroes_feast",
+          "spell_level": 6
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6, "gold": 1000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "world_effect",
+            "effect_type": "heroes_feast",
+            "scope": {
+              "target": "adjacent_unoccupied_10_foot_cube_surface",
+              "range": "self"
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "feast_appears_on_surface": true,
+              "adjacent_unoccupied_cube_size_ft": 10,
+              "takes_1_hour_to_consume": true,
+              "disappears_after_consumption_hour": true,
+              "beneficial_effects_begin_after_1_hour": true,
+              "max_partakers": 12,
+              "partaker_target_ids_from_spell": true,
+              "partaker_effect_duration": "duration_24_hours",
+              "hp_max_increase": "2d10",
+              "heals_same_amount_as_hp_max_increase": true,
+              "feast_consumption_scheduler_not_automated": true,
+              "hp_max_expiry_rollback_not_automated": true
+            }
+          },
+          {
+            "type": "max_hp_delta",
+            "dice": "2d10",
+            "increase_current": true
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "heroes_feast": true,
+              "damage_resistances": ["poison"],
+              "condition_immunities": ["frightened", "poisoned"],
+              "benefits_after_consuming_feast_1_hour": true,
+              "hp_max_increase": "2d10",
+              "heals_same_amount_as_hp_max_increase": true,
+              "hp_max_expiry_rollback_not_automated": true
+            },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Heroes' Feast"
+      }
+    },
+    {
+      "id": "srd.spell.word_of_recall",
+      "name": "Word of Recall",
+      "localization": {
+        "en": "Word of Recall",
+        "zh": "回返真言",
+        "aliases": ["回返圣言"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "conjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.word_of_recall",
+        "name": "Word of Recall",
+        "localization": {
+          "en": "Word of Recall",
+          "zh": "回返真言",
+          "aliases": ["回返圣言"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 6, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "requires_willing_target": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "world_effect",
+            "effect_type": "word_of_recall_teleport",
+            "scope": { "target": "explicit", "range_ft": 5 },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "teleports_actor": true,
+              "max_willing_companions": 5,
+              "companions_must_be_within_ft": 5,
+              "requires_previously_designated_sanctuary": true,
+              "no_effect_without_prepared_sanctuary": true,
+              "appears_nearest_unoccupied_space_to_designated_spot": true,
+              "designates_sanctuary_by_casting_this_spell_there": true,
+              "destination": "previously_designated_sanctuary"
+            }
+          }
+        ],
+        "audit_label": "Word of Recall"
+      }
+    },
+    {
+      "id": "srd.spell.teleport",
+      "name": "Teleport",
+      "localization": {
+        "en": "Teleport",
+        "zh": "传送术",
+        "aliases": ["传送"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "conjuration",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.teleport",
+        "name": "Teleport",
+        "localization": {
+          "en": "Teleport",
+          "zh": "传送术",
+          "aliases": ["传送"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10 },
+        "target_policy": { "min": 0, "max": 8, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "components": ["V"],
+          "requires_willing_target": true,
+          "max_willing_creatures": 8,
+          "companions_must_be_seen_within_ft": 10,
+          "single_object_alternative": true,
+          "object_size_max": "large",
+          "object_cannot_be_held_or_carried_by_unwilling_creature": true,
+          "destination_must_be_known_to_caster": true,
+          "same_plane_required": true,
+          "familiarity_param": "teleport_familiarity",
+          "target_mode_param": "teleport_target_mode",
+          "familiarities": [
+            "permanent_circle",
+            "linked_object",
+            "very_familiar",
+            "seen_casually",
+            "viewed_once_or_described",
+            "false_destination"
+          ],
+          "mishap_damage": { "dice": "3d10", "damage_type": "force" },
+          "off_target_distance_dice": "2d12",
+          "off_target_direction_dice": "1d8",
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_concentration": true,
+          "no_material_component": true,
+          "no_higher_level_spell_slot_effect": true,
+          "destination_database_not_automated": true,
+          "similar_area_search_not_automated": true,
+          "map_movement_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          {
+            "type": "teleport_outcome",
+            "familiarity_param": "teleport_familiarity",
+            "target_mode_param": "teleport_target_mode",
+            "outcome_table": {
+              "permanent_circle": { "on_target": [1, 100] },
+              "linked_object": { "on_target": [1, 100] },
+              "very_familiar": {
+                "mishap": [1, 5],
+                "similar_area": [6, 13],
+                "off_target": [14, 24],
+                "on_target": [25, 100]
+              },
+              "seen_casually": {
+                "mishap": [1, 33],
+                "similar_area": [34, 43],
+                "off_target": [44, 53],
+                "on_target": [54, 100]
+              },
+              "viewed_once_or_described": {
+                "mishap": [1, 43],
+                "similar_area": [44, 53],
+                "off_target": [54, 73],
+                "on_target": [74, 100]
+              },
+              "false_destination": {
+                "mishap": [1, 50],
+                "similar_area": [51, 100]
+              }
+            },
+            "mishap_damage": { "dice": "3d10", "damage_type": "force" },
+            "off_target_distance_dice": "2d12",
+            "off_target_direction_dice": "1d8",
+            "direction_table": {
+              "1": "east",
+              "2": "southeast",
+              "3": "south",
+              "4": "southwest",
+              "5": "west",
+              "6": "northwest",
+              "7": "north",
+              "8": "northeast"
+            }
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "teleport_transport",
+            "scope": { "target": "explicit", "range_ft": 10 },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "teleports_actor": true,
+              "max_willing_creatures": 8,
+              "companions_must_be_seen_within_ft": 10,
+              "single_large_or_smaller_object_alternative": true,
+              "object_cannot_be_held_or_carried_by_unwilling_creature": true,
+              "destination_must_be_known_to_caster": true,
+              "same_plane_required": true,
+              "outcome_resolved_by_teleport_outcome_node": true,
+              "mishap_damage": "3d10 force",
+              "mishap_rerolls_until_non_mishap": true,
+              "off_target_distance": "2d12 miles",
+              "off_target_direction": "1d8",
+              "destination_database_not_automated": true,
+              "similar_area_search_not_automated": true,
+              "map_movement_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Teleport"
+      }
+    },
+    {
+      "id": "srd.spell.plane_shift",
+      "name": "Plane Shift",
+      "localization": {
+        "en": "Plane Shift",
+        "zh": "异界传送",
+        "aliases": ["位面传送", "异界传送术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "conjuration",
+      "classes": ["cleric", "druid", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.plane_shift",
+        "name": "Plane Shift",
+        "localization": {
+          "en": "Plane Shift",
+          "zh": "异界传送",
+          "aliases": ["位面传送", "异界传送术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 9, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["cleric", "druid", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a forked, metal rod worth 250+ GP and attuned to a plane of existence",
+            "consumed": false
+          },
+          "requires_willing_target": true,
+          "requires_self_target": true,
+          "max_willing_companions": 8,
+          "linked_hands_in_circle_required": true,
+          "destination_plane_must_be_different": true,
+          "destination_general_terms_allowed": true,
+          "gm_determines_arrival_in_or_near_destination": true,
+          "teleportation_circle_sigil_sequence_option": true,
+          "teleportation_circle_must_be_on_another_plane": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_concentration": true,
+          "no_material_consumption": true,
+          "no_higher_level_spell_slot_effect": true,
+          "attuned_rod_inventory_not_automated": true,
+          "destination_resolution_not_automated": true,
+          "map_movement_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "world_effect",
+            "effect_type": "plane_shift_transport",
+            "scope": { "target": "explicit", "range": "touch" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "transports_actor": true,
+              "max_willing_companions": 8,
+              "linked_hands_in_circle_required": true,
+              "destination_plane_must_be_different": true,
+              "destination_can_be_specified_in_general_terms": true,
+              "gm_determines_arrival_in_or_near_destination": true,
+              "teleportation_circle_sigil_sequence_option": true,
+              "teleportation_circle_must_be_on_another_plane": true,
+              "too_small_circle_places_creatures_in_closest_unoccupied_spaces": true,
+              "attuned_rod_inventory_not_automated": true,
+              "destination_resolution_not_automated": true,
+              "map_movement_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Plane Shift"
+      }
+    },
+    {
+      "id": "srd.spell.etherealness",
+      "name": "Etherealness",
+      "localization": {
+        "en": "Etherealness",
+        "zh": "以太化术",
+        "aliases": ["以太化"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "conjuration",
+      "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.etherealness",
+        "name": "Etherealness",
+        "localization": {
+          "en": "Etherealness",
+          "zh": "以太化术",
+          "aliases": ["以太化"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "self": true,
+          "harmful": false,
+          "base_spell_slot_level": 7,
+          "max_targets_per_slot_above": 3
+        },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "cleric", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "requires_self_target": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "world_effect",
+            "effect_type": "etherealness",
+            "scope": { "target": "explicit", "range_ft": 10 },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "border_ethereal": true,
+              "current_plane_must_border_ethereal": true,
+              "ends_instantly_if_cast_on_ethereal_or_nonbordering_plane": true,
+              "can_move_in_any_direction": true,
+              "vertical_movement_extra_cost_per_foot": 1,
+              "perceives_origin_plane_gray": true,
+              "origin_plane_vision_range_ft": 60,
+              "can_affect_only_ethereal_plane": true,
+              "can_be_affected_only_by_ethereal_plane": true,
+              "non_ethereal_creatures_cannot_perceive_or_interact_without_special_ability": true,
+              "returns_to_origin_plane_when_spell_ends": true,
+              "returns_to_corresponding_space": true,
+              "shunted_to_nearest_unoccupied_space_if_occupied": true,
+              "shunted_force_damage_per_ft": 2,
+              "willing_creatures_must_be_within_ft": 10,
+              "higher_level_targets_per_slot_above_7": 3,
+              "includes_self": true
+            }
+          }
+        ],
+        "audit_label": "Etherealness"
+      }
+    },
+    {
+      "id": "srd.spell.gate",
+      "name": "Gate",
+      "localization": {
+        "en": "Gate",
+        "zh": "异界之门",
+        "aliases": ["异界门"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "conjuration",
+      "classes": ["cleric", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.gate",
+        "name": "Gate",
+        "localization": {
+          "en": "Gate",
+          "zh": "异界之门",
+          "aliases": ["异界门"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["cleric", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a diamond worth 5,000+ GP",
+            "consumed": false
+          },
+          "destination_must_be_precise_location_on_different_plane": true,
+          "portal_must_open_in_unoccupied_visible_space": true,
+          "portal_diameter_min_ft": 5,
+          "portal_diameter_max_ft": 20,
+          "named_creature_option": true,
+          "named_creature_not_controlled": true,
+          "destination_resolution_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "gate_portal",
+            "scope": {
+              "target": "unoccupied_space_you_can_see",
+              "range_ft": 60,
+              "shape": "circle",
+              "diameter_min_ft": 5,
+              "diameter_max_ft": 20
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true,
+            "metadata": {
+              "links_to_precise_location_on_different_plane": true,
+              "destination_visible_through_portal": true,
+              "orientation_any_direction": true,
+              "front_and_back_on_each_plane": true,
+              "travel_only_through_front": true,
+              "front_entry_transports_to_other_plane": true,
+              "arrival_nearest_unoccupied_space_to_portal": true,
+              "deities_and_planar_rulers_can_prevent_opening": true,
+              "named_creature_option": true,
+              "specific_creature_name_required": true,
+              "pseudonym_title_or_nickname_does_not_work": true,
+              "named_creature_must_be_on_different_plane": true,
+              "portal_opens_next_to_named_creature": true,
+              "named_creature_transported_to_nearest_unoccupied_space_on_caster_side": true,
+              "named_creature_not_controlled": true,
+              "named_creature_behavior_gm_determined": true,
+              "destination_resolution_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Gate"
+      }
+    },
+    {
+      "id": "srd.spell.demiplane",
+      "name": "Demiplane",
+      "localization": {
+        "en": "Demiplane",
+        "zh": "半位面术",
+        "aliases": ["半位面"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "conjuration",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.demiplane",
+        "name": "Demiplane",
+        "localization": {
+          "en": "Demiplane",
+          "zh": "半位面术",
+          "aliases": ["半位面"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["sorcerer", "warlock", "wizard"],
+          "components": ["S"],
+          "target_must_be_visible": true,
+          "target_surface": "flat_solid_surface",
+          "door_size": "Medium",
+          "demiplane_room_size_ft": 30,
+          "demiplane_material_options": ["wood", "stone"],
+          "demiplane_connection_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "demiplane_door",
+            "scope": {
+              "target": "flat_solid_surface_you_can_see",
+              "range_ft": 60,
+              "door_size": "Medium"
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "shadowy_medium_door": true,
+              "door_can_be_opened_and_closed": true,
+              "leads_to_demiplane": true,
+              "demiplane_empty_room": true,
+              "demiplane_room_dimensions_ft": {
+                "length": 30,
+                "width": 30,
+                "height": 30
+              },
+              "demiplane_material_options": ["wood", "stone"],
+              "door_vanishes_when_spell_ends": true,
+              "objects_inside_remain_there": true,
+              "creatures_inside_remain_unless_they_opt_to_be_shunted": true,
+              "shunted_creatures_land_prone": true,
+              "shunted_to_unoccupied_spaces_closest_to_former_door": true,
+              "can_create_new_demiplane": true,
+              "can_connect_to_demiplane_created_by_previous_casting": true,
+              "can_connect_to_another_creatures_demiplane_if_nature_and_contents_known": true,
+              "demiplane_connection_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Demiplane"
+      }
+    },
+    {
+      "id": "srd.spell.maze",
+      "name": "Maze",
+      "localization": {
+        "en": "Maze",
+        "zh": "迷宫术",
+        "aliases": ["迷宫"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.maze",
+        "name": "Maze",
+        "localization": {
+          "en": "Maze",
+          "zh": "迷宫术",
+          "aliases": ["迷宫"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "spell_classes": ["wizard"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_must_be_creature": true,
+          "escape_action_id": "srd.maze_escape",
+          "escape_check": {
+            "action": "study",
+            "ability": "int",
+            "skill": "investigation",
+            "dc": 20
+          },
+          "banished_to_labyrinthine_demiplane": true,
+          "no_initial_saving_throw": true,
+          "no_incapacitated_condition_in_srd_5_2_1": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "maze": true,
+              "out_of_play": true,
+              "banished_to_labyrinthine_demiplane": true,
+              "remains_until_duration_or_escape": true,
+              "escape_action_id": "srd.maze_escape",
+              "escape_check": {
+                "action": "study",
+                "ability": "int",
+                "skill": "investigation",
+                "dc": 20
+              },
+              "returns_when_spell_ends": true,
+              "returns_to_space_left_or_nearest_unoccupied": true
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Maze"
+      }
+    },
+    {
+      "id": "srd.spell.tree_stride",
+      "name": "Tree Stride",
+      "localization": {
+        "en": "Tree Stride",
+        "zh": "树跃术",
+        "aliases": ["树间传送"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "conjuration",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.tree_stride",
+        "name": "Tree Stride",
+        "localization": {
+          "en": "Tree Stride",
+          "zh": "树跃术",
+          "aliases": ["树间传送"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["druid", "ranger"]
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "tree_stride": true,
+              "tree_stride_range_ft": 500,
+              "same_kind_living_tree_required": true,
+              "tree_must_be_at_least_actor_size": true,
+              "enter_tree_movement_cost_ft": 5,
+              "destination_exit_movement_cost_ft": 5,
+              "knows_same_kind_tree_locations_within_ft": 500,
+              "appears_within_ft_of_destination_tree": 5,
+              "returns_within_ft_of_entered_tree_if_no_movement_left": 5,
+              "uses_per_turn": 1,
+              "must_end_turn_outside_tree": true
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Tree Stride"
+      }
+    },
+    {
+      "id": "srd.spell.wall_of_thorns",
+      "name": "Wall of Thorns",
+      "localization": {
+        "en": "Wall of Thorns",
+        "zh": "荆棘墙",
+        "aliases": ["棘墙术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "conjuration",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.wall_of_thorns",
+        "name": "Wall of Thorns",
+        "localization": {
+          "en": "Wall of Thorns",
+          "zh": "荆棘墙",
+          "aliases": ["棘墙术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a handful of thorns",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "7d8",
+            "damage_type": "piercing",
+            "save_half": true,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "1d8"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "wall_of_thorns",
+            "scope": { "target": "solid_surface", "range_ft": 120 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "solid_surface_required": true,
+              "shape_options": ["wall", "circle"],
+              "wall_max_length_ft": 60,
+              "wall_max_height_ft": 10,
+              "wall_thickness_ft": 5,
+              "circle_diameter_ft": 20,
+              "circle_max_height_ft": 20,
+              "circle_thickness_ft": 5,
+              "blocks_line_of_sight": true,
+              "initial_save": {
+                "ability": "dex",
+                "damage": "7d8 piercing",
+                "save_half": true,
+                "higher_level_damage_increase": "1d8 per slot above 6"
+              },
+              "movement_cost_per_foot": 4,
+              "repeat_save_triggers": [
+                "creature_enters_wall",
+                "creature_ends_turn_in_wall"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "7d8 slashing",
+                "save_half": true,
+                "higher_level_damage_increase": "1d8 per slot above 6"
+              }
+            }
+          }
+        ],
+        "audit_label": "Wall of Thorns"
+      }
+    },
+    {
+      "id": "srd.spell.magnificent_mansion",
+      "name": "Magnificent Mansion",
+      "localization": {
+        "en": "Magnificent Mansion",
+        "zh": "豪华宅邸"
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "conjuration",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.magnificent_mansion",
+        "name": "Magnificent Mansion",
+        "localization": {
+          "en": "Magnificent Mansion",
+          "zh": "豪华宅邸"
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 300 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "components": ["V", "S", "M"],
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "a miniature door worth 15+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "magnificent_mansion",
+            "scope": { "target": "point", "range_ft": 300 },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "shimmering_door": true,
+              "door_width_ft": 5,
+              "door_height_ft": 10,
+              "designated_creatures_can_enter_while_open": true,
+              "caster_can_open_or_close_door_no_action_within_ft": 30,
+              "closed_door_imperceptible": true,
+              "extradimensional_dwelling": true,
+              "atmosphere": ["clean", "fresh", "warm"],
+              "floor_plan_chosen_by_caster": true,
+              "floor_plan_max_contiguous_cubes": 50,
+              "floor_plan_cube_size_ft": 10,
+              "dwelling_furnished_and_decorated_as_chosen": true,
+              "nine_course_banquet_food_max_people": 100,
+              "removed_furnishings_and_other_objects_dissipate": true,
+              "servant_count": 100,
+              "servants_near_transparent": true,
+              "servants_appearance_and_attire_chosen_by_caster": true,
+              "servants_invulnerable": true,
+              "servants_obey_caster_commands": true,
+              "servants_can_perform_human_tasks": true,
+              "servants_cannot_attack": true,
+              "servants_cannot_take_actions_that_directly_harm_another_creature": true,
+              "servants_cannot_leave_dwelling": true,
+              "spell_end_expels_creatures_and_objects_inside": true,
+              "expulsion_to_nearest_unoccupied_spaces_near_entrance": true
+            }
+          }
+        ],
+        "audit_label": "Magnificent Mansion"
+      }
+    }
+  ]
+}

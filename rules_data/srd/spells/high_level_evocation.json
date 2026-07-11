@@ -1,0 +1,1110 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.ice_storm",
+      "name": "Ice Storm",
+      "localization": { "en": "Ice Storm", "zh": "冰风暴", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.ice_storm",
+        "name": "Ice Storm",
+        "localization": { "en": "Ice Storm", "zh": "冰风暴", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 300, "shape": "cylinder", "radius_ft": 20, "height_ft": 40 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": { "spell_level": 4, "class_any": ["druid", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a mitten",
+            "consumed": false
+          },
+          "ground_in_cylinder_becomes_difficult_terrain_until_end_of_next_turn": true,
+          "higher_level_increases_bludgeoning_damage_only": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "2d10",
+            "damage_type": "bludgeoning",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d10"
+          },
+          { "type": "damage", "dice": "4d6", "damage_type": "cold", "save_half": true },
+          {
+            "type": "world_effect",
+            "effect_type": "difficult_terrain",
+            "scope": { "shape": "cylinder", "radius_ft": 20, "height_ft": 40 },
+            "duration": { "until": "end_of_next_turn" },
+            "metadata": {
+              "ground_in_cylinder": true,
+              "source": "hailstones"
+            }
+          }
+        ],
+        "audit_label": "Ice Storm"
+      }
+    },
+    {
+      "id": "srd.spell.fire_shield",
+      "name": "Fire Shield",
+      "localization": { "en": "Fire Shield", "zh": "火焰护盾", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.fire_shield",
+        "name": "Fire Shield",
+        "localization": { "en": "Fire Shield", "zh": "火焰护盾", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 4, "class_any": ["druid", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a bit of phosphorus or a firefly",
+            "consumed": false
+          },
+          "fire_shield_type_param": "fire_shield_type",
+          "allowed_fire_shield_types": ["warm", "chill"]
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "damage_resistances": { "param": "fire_shield_resistance_type" },
+              "fire_shield": true,
+              "fire_shield_type": { "param": "fire_shield_type" },
+              "bright_light_radius_ft": 10,
+              "dim_light_additional_ft": 10,
+              "melee_hit_retaliation_within_ft": 5,
+              "melee_hit_retaliation_damage": "2d8",
+              "melee_hit_retaliation_damage_type": {
+                "param": "fire_shield_retaliation_damage_type"
+              }
+            },
+            "duration": { "until": "duration_10_minutes" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Fire Shield"
+      }
+    },
+    {
+      "id": "srd.spell.vitriolic_sphere",
+      "name": "Vitriolic Sphere",
+      "localization": {
+        "en": "Vitriolic Sphere",
+        "zh": "强酸球",
+        "aliases": ["硫酸球"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.vitriolic_sphere",
+        "name": "Vitriolic Sphere",
+        "localization": {
+          "en": "Vitriolic Sphere",
+          "zh": "强酸球",
+          "aliases": ["硫酸球"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["sorcerer", "wizard"],
+          "material_component": {
+            "description": "a drop of bile",
+            "consumed": false
+          },
+          "delayed_failed_save_damage_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "10d4",
+            "damage_type": "acid",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "2d4"
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "vitriolic_sphere_delayed_acid_damage": "5d4",
+              "vitriolic_sphere_delayed_acid_damage_type": "acid",
+              "delayed_damage_trigger": "target_turn_end",
+              "delayed_damage_not_automated": true
+            },
+            "duration": { "until": "end_of_next_turn" },
+            "tick_on": "target_turn_end"
+          }
+        ],
+        "audit_label": "Vitriolic Sphere"
+      }
+    },
+    {
+      "id": "srd.spell.wall_of_fire",
+      "name": "Wall of Fire",
+      "localization": {
+        "en": "Wall of Fire",
+        "zh": "火墙术",
+        "aliases": ["火墙"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.wall_of_fire",
+        "name": "Wall of Fire",
+        "localization": {
+          "en": "Wall of Fire",
+          "zh": "火墙术",
+          "aliases": ["火墙"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a piece of charcoal",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "5d8",
+            "damage_type": "fire",
+            "save_half": true,
+            "base_spell_slot_level": 4,
+            "extra_dice_per_slot_above": "1d8"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "wall_of_fire",
+            "scope": { "target": "solid_surface", "range_ft": 120 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "solid_surface_required": true,
+              "opaque": true,
+              "shape_options": ["wall", "ringed_wall"],
+              "wall_max_length_ft": 60,
+              "wall_max_height_ft": 20,
+              "wall_thickness_ft": 1,
+              "ringed_wall_max_diameter_ft": 20,
+              "ringed_wall_max_height_ft": 20,
+              "ringed_wall_thickness_ft": 1,
+              "initial_save": {
+                "ability": "dex",
+                "damage": "5d8 fire",
+                "save_half": true,
+                "higher_level_damage_increase": "1d8 per slot above 4"
+              },
+              "damaging_side_selected_on_cast": true,
+              "damaging_side_range_ft": 10,
+              "other_side_deals_no_damage": true,
+              "repeat_damage_triggers": [
+                "creature_ends_turn_within_10_ft_of_damaging_side",
+                "creature_enters_wall_first_time_on_turn",
+                "creature_ends_turn_inside_wall"
+              ],
+              "repeat_damage_once_per_turn": true,
+              "repeat_damage": {
+                "damage": "5d8 fire",
+                "higher_level_damage_increase": "1d8 per slot above 4"
+              }
+            }
+          }
+        ],
+        "audit_label": "Wall of Fire"
+      }
+    },
+    {
+      "id": "srd.spell.cone_of_cold",
+      "name": "Cone of Cold",
+      "localization": { "en": "Cone of Cold", "zh": "寒冰锥", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.cone_of_cold",
+        "name": "Cone of Cold",
+        "localization": { "en": "Cone of Cold", "zh": "寒冰锥", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "cone", "length_ft": 60 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": { "spell_level": 5, "class_any": ["druid", "sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "a small crystal or glass cone",
+            "consumed": false
+          },
+          "creature_killed_becomes_frozen_statue_until_thaws": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "8d8",
+            "damage_type": "cold",
+            "save_half": true,
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8"
+          },
+          {
+            "type": "text_result",
+            "text": "A creature killed by Cone of Cold becomes a frozen statue until it thaws."
+          }
+        ],
+        "audit_label": "Cone of Cold"
+      }
+    },
+    {
+      "id": "srd.spell.wall_of_force",
+      "name": "Wall of Force",
+      "localization": { "en": "Wall of Force", "zh": "力墙术", "aliases": ["力场墙"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "evocation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.wall_of_force",
+        "name": "Wall of Force",
+        "localization": { "en": "Wall of Force", "zh": "力墙术", "aliases": ["力场墙"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a shard of glass",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "wall_of_force",
+            "scope": { "target": "point", "range_ft": 120 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "invisible": true,
+              "orientation_options": ["horizontal", "vertical", "angled"],
+              "can_be_free_floating": true,
+              "can_rest_on_solid_surface": true,
+              "hemispherical_dome_max_radius_ft": 10,
+              "globe_max_radius_ft": 10,
+              "flat_panel_count": 10,
+              "flat_panel_width_ft": 10,
+              "flat_panel_height_ft": 10,
+              "flat_panels_must_be_contiguous": true,
+              "thickness_inches": 0.25,
+              "pushes_creatures_to_chosen_side_if_cutting_space": true,
+              "blocks_physical_passage": true,
+              "immune_to_all_damage": true,
+              "not_dispelled_by_dispel_magic": true,
+              "destroyed_by_disintegrate": true,
+              "extends_into_ethereal_plane": true,
+              "blocks_ethereal_travel": true
+            }
+          }
+        ],
+        "audit_label": "Wall of Force"
+      }
+    },
+    {
+      "id": "srd.spell.wall_of_stone",
+      "name": "Wall of Stone",
+      "localization": { "en": "Wall of Stone", "zh": "石墙术", "aliases": ["石墙"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.wall_of_stone",
+        "name": "Wall of Stone",
+        "localization": { "en": "Wall of Stone", "zh": "石墙术", "aliases": ["石墙"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a cube of granite",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "wall_of_stone",
+            "scope": { "target": "point", "range_ft": 120 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "nonmagical": true,
+              "material": "solid_stone",
+              "standard_panel_count": 10,
+              "standard_panel_width_ft": 10,
+              "standard_panel_height_ft": 10,
+              "standard_panel_thickness_inches": 6,
+              "thin_panel_width_ft": 10,
+              "thin_panel_height_ft": 20,
+              "thin_panel_thickness_inches": 3,
+              "panels_must_be_contiguous": true,
+              "pushes_creatures_to_chosen_side_if_cutting_space": true,
+              "enclosed_creature_escape_save": {
+                "ability": "dex",
+                "on_success": "may_use_reaction_to_move_up_to_speed_out_of_enclosure"
+              },
+              "can_have_any_shape": true,
+              "cannot_occupy_creature_or_object_space": true,
+              "does_not_need_vertical_orientation_or_firm_foundation": true,
+              "must_merge_with_and_be_supported_by_existing_stone": true,
+              "can_bridge_chasm_or_create_ramp": true,
+              "span_over_20_ft_requires_halved_panels_for_support": true,
+              "can_create_crude_battlements": true,
+              "panel_ac": 15,
+              "panel_hp_per_inch_of_thickness": 30,
+              "damage_immunities": ["poison", "psychic"],
+              "panel_destroyed_at_0_hp": true,
+              "connected_panels_may_collapse_at_gm_discretion": true,
+              "permanent_if_concentration_full_duration": true,
+              "cannot_be_dispelled_when_permanent": true,
+              "disappears_when_spell_ends_unless_permanent": true
+            }
+          }
+        ],
+        "audit_label": "Wall of Stone"
+      }
+    },
+    {
+      "id": "srd.spell.wall_of_ice",
+      "name": "Wall of Ice",
+      "localization": { "en": "Wall of Ice", "zh": "冰墙术", "aliases": ["冰墙"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.wall_of_ice",
+        "name": "Wall of Ice",
+        "localization": { "en": "Wall of Ice", "zh": "冰墙术", "aliases": ["冰墙"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a piece of quartz",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "10d6",
+            "damage_type": "cold",
+            "save_half": true,
+            "base_spell_slot_level": 6,
+            "extra_dice_per_slot_above": "2d6"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "wall_of_ice",
+            "scope": { "target": "solid_surface", "range_ft": 120 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "solid_surface_required": true,
+              "shape_options": ["hemispherical_dome", "globe", "flat_panels"],
+              "hemispherical_dome_max_radius_ft": 10,
+              "globe_max_radius_ft": 10,
+              "flat_panel_count": 10,
+              "flat_panel_width_ft": 10,
+              "flat_panel_height_ft": 10,
+              "flat_panels_must_be_contiguous": true,
+              "thickness_ft": 1,
+              "pushes_creatures_to_chosen_side_if_cutting_space": true,
+              "initial_save": {
+                "ability": "dex",
+                "damage": "10d6 cold",
+                "save_half": true,
+                "higher_level_damage_increase": "2d6 per slot above 6"
+              },
+              "object_ac": 12,
+              "hp_per_10_ft_section": 30,
+              "damage_immunities": ["cold", "poison", "psychic"],
+              "damage_vulnerabilities": ["fire"],
+              "section_destroyed_at_0_hp": true,
+              "destroyed_section_leaves_frigid_air": true,
+              "frigid_air": {
+                "trigger": "creature_moves_through_first_time_on_turn",
+                "save": {
+                  "ability": "con",
+                  "damage": "5d6 cold",
+                  "save_half": true,
+                  "higher_level_damage_increase": "1d6 per slot above 6"
+                }
+              }
+            }
+          }
+        ],
+        "audit_label": "Wall of Ice"
+      }
+    },
+    {
+      "id": "srd.spell.blade_barrier",
+      "name": "Blade Barrier",
+      "localization": {
+        "en": "Blade Barrier",
+        "zh": "剑刃障壁",
+        "aliases": ["刀刃屏障"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.blade_barrier",
+        "name": "Blade Barrier",
+        "localization": {
+          "en": "Blade Barrier",
+          "zh": "剑刃障壁",
+          "aliases": ["刀刃屏障"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90 },
+        "target_policy": { "min": 0, "max": 20, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "damage",
+            "dice": "6d10",
+            "damage_type": "force",
+            "save_half": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "blade_barrier",
+            "scope": { "target": "wall", "range_ft": 90 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "magical_energy_blades": true,
+              "shape_options": ["straight_wall", "ringed_wall"],
+              "straight_wall_max_length_ft": 100,
+              "straight_wall_max_height_ft": 20,
+              "wall_thickness_ft": 5,
+              "ringed_wall_max_diameter_ft": 60,
+              "ringed_wall_max_height_ft": 20,
+              "ringed_wall_thickness_ft": 5,
+              "provides_cover": "three_quarters",
+              "difficult_terrain": true,
+              "initial_save": {
+                "ability": "dex",
+                "damage": "6d10 force",
+                "save_half": true
+              },
+              "repeat_save_triggers": [
+                "creature_enters_wall_space",
+                "creature_ends_turn_in_wall_space"
+              ],
+              "repeat_save_once_per_turn": true,
+              "repeat_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "damage": "6d10 force",
+                "save_half": true
+              }
+            }
+          }
+        ],
+        "audit_label": "Blade Barrier"
+      }
+    },
+    {
+      "id": "srd.spell.sunbeam",
+      "name": "Sunbeam",
+      "localization": { "en": "Sunbeam", "zh": "阳炎射线", "aliases": ["阳炎光束"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.sunbeam",
+        "name": "Sunbeam",
+        "localization": { "en": "Sunbeam", "zh": "阳炎射线", "aliases": ["阳炎光束"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "line", "length_ft": 60, "width_ft": 5 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric", "druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a magnifying glass",
+            "consumed": false
+          },
+          "line_width_ft": 5,
+          "line_length_ft": 60,
+          "radiant_line_action_id": "srd.sunbeam_radiant_line",
+          "bright_light_radius_ft": 30,
+          "dim_light_additional_ft": 30,
+          "light_is_sunlight": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "6d8", "damage_type": "radiant", "save_half": true },
+          {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": true,
+            "duration": {
+              "until": "start_of_next_turn",
+              "turn_owner_id_from": "actor"
+            },
+            "tick_on": "self_turn_start"
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "sunbeam_radiance",
+            "scope": { "target": "self" },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "sunbeam_active": true,
+              "radiance_mote_above_caster": true,
+              "bright_light_radius_ft": 30,
+              "dim_light_additional_ft": 30,
+              "light_is_sunlight": true,
+              "can_create_new_line_with_magic_action": true,
+              "radiant_line_action_id": "srd.sunbeam_radiant_line",
+              "line_width_ft": 5,
+              "line_length_ft": 60
+            }
+          },
+          {
+            "type": "text_result",
+            "text": "A 5-foot-wide, 60-foot-long Line of sunlight radiance flashes from the caster; a brilliant mote sheds sunlight while the spell lasts."
+          }
+        ],
+        "audit_label": "Sunbeam"
+      }
+    },
+    {
+      "id": "srd.spell.chain_lightning",
+      "name": "Chain Lightning",
+      "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.chain_lightning",
+        "name": "Chain Lightning",
+        "localization": { "en": "Chain Lightning", "zh": "连锁闪电", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150 },
+        "target_policy": {
+          "min": 1,
+          "max": 4,
+          "harmful": true,
+          "base_spell_slot_level": 6,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": { "spell_level": 6, "class_any": ["sorcerer", "wizard"] },
+        "properties": {
+          "material_component": {
+            "description": "three silver pins",
+            "consumed": false
+          },
+          "primary_target_must_be_visible_within_range": true,
+          "secondary_bolts_leap_from_first_target": true,
+          "secondary_targets_must_be_within_ft_of_first_target": 30,
+          "targets_can_be_creatures_or_objects": true,
+          "target_can_be_hit_by_only_one_bolt": true,
+          "higher_level_additional_targets_per_slot_above_6": 1
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "10d8", "damage_type": "lightning", "save_half": true }
+        ],
+        "audit_label": "Chain Lightning"
+      }
+    },
+    {
+      "id": "srd.spell.fire_storm",
+      "name": "Fire Storm",
+      "localization": { "en": "Fire Storm", "zh": "火焰风暴", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "sorcerer"],
+      "action": {
+        "id": "srd.fire_storm",
+        "name": "Fire Storm",
+        "localization": { "en": "Fire Storm", "zh": "火焰风暴", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "area" },
+        "target_policy": { "min": 1, "max": 20, "harmful": true },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["cleric", "druid", "sorcerer"]
+        },
+        "properties": {
+          "area_shape": {
+            "shape": "contiguous_cubes",
+            "max_cubes": 10,
+            "cube_size_ft": 10,
+            "cube_contiguity": "contiguous_with_at_least_one_other_cube"
+          },
+          "flammable_objects_not_worn_or_carried_start_burning": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "7d10", "damage_type": "fire", "save_half": true },
+          {
+            "type": "text_result",
+            "text": "The fire storm uses up to ten contiguous 10-foot cubes; flammable objects not worn or carried in the area start burning."
+          }
+        ],
+        "audit_label": "Fire Storm"
+      }
+    },
+    {
+      "id": "srd.spell.forcecage",
+      "name": "Forcecage",
+      "localization": {
+        "en": "Forcecage",
+        "zh": "力场牢笼",
+        "aliases": ["力牢术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "evocation",
+      "classes": ["bard", "warlock", "wizard"],
+      "action": {
+        "id": "srd.forcecage",
+        "name": "Forcecage",
+        "localization": {
+          "en": "Forcecage",
+          "zh": "力场牢笼",
+          "aliases": ["力牢术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 100, "shape": "cube" },
+        "target_policy": { "min": 0, "max": 0, "harmful": true },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "warlock", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "ruby dust worth 1,500+ GP",
+            "consumed": true
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7, "gold": 1500 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "forcecage_prison",
+            "scope": { "target": "area", "range_ft": 100, "shape": "cube" },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "immobile": true,
+              "invisible": true,
+              "composed_of_magical_force": true,
+              "form_options": ["cage", "solid_box"],
+              "cage_max_side_ft": 20,
+              "cage_bar_diameter_inches": 0.5,
+              "cage_bar_spacing_inches": 0.5,
+              "solid_box_max_side_ft": 10,
+              "solid_box_blocks_matter": true,
+              "solid_box_blocks_spells_in_or_out": true,
+              "creatures_completely_inside_area_are_trapped": true,
+              "pushes_partial_or_too_large_creatures_outward": true,
+              "cannot_leave_by_nonmagical_means": true,
+              "teleport_or_interplanar_exit_requires_save": {
+                "ability": "cha",
+                "dc_from": { "spell_save_dc": "actor" },
+                "success": "magic_can_exit_cage",
+                "failure": "does_not_exit_and_spell_or_effect_is_wasted"
+              },
+              "extends_into_ethereal_plane": true,
+              "blocks_ethereal_travel": true,
+              "not_dispelled_by_dispel_magic": true
+            }
+          }
+        ],
+        "audit_label": "Forcecage"
+      }
+    },
+    {
+      "id": "srd.spell.sunburst",
+      "name": "Sunburst",
+      "localization": {
+        "en": "Sunburst",
+        "zh": "阳炎爆",
+        "aliases": ["阳炎术", "日爆术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.sunburst",
+        "name": "Sunburst",
+        "localization": {
+          "en": "Sunburst",
+          "zh": "阳炎爆",
+          "aliases": ["阳炎术", "日爆术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 1, "max": 32, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a piece of sunstone",
+            "consumed": false
+          },
+          "sunlight_sphere_radius_ft": 60,
+          "dispels_spell_created_darkness_in_area": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "con", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "12d6", "damage_type": "radiant", "save_half": true },
+          {
+            "type": "condition",
+            "condition": "blinded",
+            "requires_failed_save": true,
+            "duration": {
+              "until": "duration_1_minute",
+              "repeat_save": {
+                "ability": "con",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end"
+              }
+            },
+            "tick_on": "target_turn_end"
+          },
+          {
+            "type": "text_result",
+            "text": "Brilliant sunlight fills a 60-foot-radius Sphere and dispels Darkness in the area that was created by any spell."
+          }
+        ],
+        "audit_label": "Sunburst"
+      }
+    },
+    {
+      "id": "srd.spell.meteor_swarm",
+      "name": "Meteor Swarm",
+      "localization": { "en": "Meteor Swarm", "zh": "流星爆", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "evocation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.meteor_swarm",
+        "name": "Meteor Swarm",
+        "localization": { "en": "Meteor Swarm", "zh": "流星爆", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5280, "shape": "sphere", "radius_ft": 40 },
+        "target_policy": { "min": 1, "max": 24, "harmful": true },
+        "requirements": { "spell_level": 9, "class_any": ["sorcerer", "wizard"] },
+        "properties": {
+          "spell_classes": ["sorcerer", "wizard"],
+          "points": 4,
+          "points_must_be_visible": true,
+          "sphere_radius_ft": 40,
+          "creature_in_multiple_spheres_affected_once": true,
+          "nonmagical_objects_not_worn_or_carried_take_damage": true,
+          "flammable_objects_not_worn_or_carried_start_burning": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          { "type": "damage", "dice": "20d6", "damage_type": "fire", "save_half": true },
+          { "type": "damage", "dice": "20d6", "damage_type": "bludgeoning", "save_half": true }
+        ],
+        "audit_label": "Meteor Swarm"
+      }
+    },
+    {
+      "id": "srd.spell.prismatic_spray",
+      "name": "Prismatic Spray",
+      "localization": { "en": "Prismatic Spray", "zh": "棱彩喷射", "aliases": [] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "evocation",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.prismatic_spray",
+        "name": "Prismatic Spray",
+        "localization": { "en": "Prismatic Spray", "zh": "棱彩喷射", "aliases": [] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "cone", "length_ft": 60 },
+        "target_policy": { "min": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "components": ["V", "S"],
+          "duration": "instantaneous",
+          "metadata": {
+            "per_target_color_roll": "1d8",
+            "per_target_color_roll_independent": true,
+            "prismatic_rays": [
+              {
+                "roll": 1,
+                "color": "red",
+                "failed_save": { "damage": "12d6", "damage_type": "fire" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 2,
+                "color": "orange",
+                "failed_save": { "damage": "12d6", "damage_type": "acid" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 3,
+                "color": "yellow",
+                "failed_save": { "damage": "12d6", "damage_type": "lightning" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 4,
+                "color": "green",
+                "failed_save": { "damage": "12d6", "damage_type": "poison" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 5,
+                "color": "blue",
+                "failed_save": { "damage": "12d6", "damage_type": "cold" },
+                "successful_save": { "damage": "half" }
+              },
+              {
+                "roll": 6,
+                "color": "indigo",
+                "failed_save": {
+                  "condition": "restrained",
+                  "repeat_save": {
+                    "ability": "con",
+                    "trigger": "end_of_each_turn",
+                    "successes_needed": 3,
+                    "failures_needed": 3,
+                    "successes_end_condition": true,
+                    "successes_and_failures_need_not_be_consecutive": true,
+                    "three_failures_condition": "petrified",
+                    "petrified_until_freed_by_effect_like": "Greater Restoration"
+                  }
+                }
+              },
+              {
+                "roll": 7,
+                "color": "violet",
+                "failed_save": {
+                  "condition": "blinded",
+                  "repeat_save": {
+                    "ability": "wis",
+                    "trigger": "start_of_caster_next_turn",
+                    "on_success": "blinded_ends",
+                    "on_failure": {
+                      "blinded_ends": true,
+                      "teleport_to_another_plane": true,
+                      "plane_chosen_by": "GM"
+                    }
+                  }
+                }
+              },
+              {
+                "roll": 8,
+                "color": "special",
+                "rays": 2,
+                "roll_count": 2,
+                "reroll_results": [8]
+              }
+            ],
+            "automated_results": [1, 2, 3, 4, 5],
+            "not_automated_results": [6, 7, 8],
+            "special_two_ray_resolution_not_automated": true,
+            "indigo_repeat_save_counter_not_automated": true,
+            "violet_repeat_save_and_planar_teleport_not_automated": true
+          }
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "text_result",
+            "text": "For each target, roll 1d8 independently. Results 1-5 resolve their corresponding ray and damage automatically; results 6-8 remain explicitly marked as not automated, including the Special two-ray rerolls and Indigo/Violet follow-up effects."
+          }
+        ],
+        "audit_label": "Prismatic Spray"
+      }
+    }
+  ]
+}

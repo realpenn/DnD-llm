@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "srd-5.2.1-structured-data",
+      "title": "Structured SRD 5.2.1 rule data",
+      "license": "CC-BY-4.0-compatible source attribution required",
+      "source_url": "https://www.dndbeyond.com/sources/dnd/free-rules",
+      "applies_to": [
+        "rules_data/srd/actions",
+        "rules_data/srd/classes",
+        "rules_data/srd/conditions",
+        "rules_data/srd/hazards",
+        "rules_data/srd/items",
+        "rules_data/srd/monsters",
+        "rules_data/srd/spells"
+      ],
+      "notes": "Structured SRD-derived rules used by compendium coverage and simulator tests."
+    },
+    {
+      "id": "starter-campaign-pack",
+      "title": "Starter campaign pack",
+      "license": "CC-BY-4.0",
+      "source_url": "local:rules_data/campaigns/starter/pack.json",
+      "applies_to": [
+        "rules_data/campaigns/starter",
+        "rules_data/campaigns/events"
+      ],
+      "notes": "Project-authored sample campaign content."
+    }
+  ]
+}

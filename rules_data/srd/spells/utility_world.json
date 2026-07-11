@@ -1,0 +1,906 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.alarm",
+      "name": "Alarm",
+      "localization": { "en": "Alarm", "zh": "警报术", "aliases": ["警戒术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "abjuration",
+      "classes": ["ranger", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.alarm",
+        "name": "Alarm",
+        "localization": { "en": "Alarm", "zh": "警报术", "aliases": ["警戒术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "alarm_ward",
+            "scope": { "target": "warded_area", "radius_ft": 20 },
+            "duration": { "until": "duration_8_hours" },
+            "metadata": { "trigger": "creature_enters_area" }
+          }
+        ],
+        "audit_label": "Alarm"
+      }
+    },
+    {
+      "id": "srd.spell.arcane_lock",
+      "name": "Arcane Lock",
+      "localization": { "en": "Arcane Lock", "zh": "秘法锁", "aliases": ["奥术锁"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "abjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.arcane_lock",
+        "name": "Arcane Lock",
+        "localization": { "en": "Arcane Lock", "zh": "秘法锁", "aliases": ["奥术锁"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "arcane_lock",
+            "scope": { "target": "object_or_portal" },
+            "duration": { "until": "dispelled" },
+            "metadata": { "unlock_dc_bonus": 10 }
+          }
+        ],
+        "audit_label": "Arcane Lock"
+      }
+    },
+    {
+      "id": "srd.spell.comprehend_languages",
+      "name": "Comprehend Languages",
+      "localization": { "en": "Comprehend Languages", "zh": "通晓语言", "aliases": ["理解语言"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.comprehend_languages",
+        "name": "Comprehend Languages",
+        "localization": { "en": "Comprehend Languages", "zh": "通晓语言", "aliases": ["理解语言"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "comprehend_languages",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "language_mode": "understand_literal_meaning" }
+          }
+        ],
+        "audit_label": "Comprehend Languages"
+      }
+    },
+    {
+      "id": "srd.spell.continual_flame",
+      "name": "Continual Flame",
+      "localization": { "en": "Continual Flame", "zh": "不灭明焰", "aliases": ["恒焰术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "wizard"],
+      "action": {
+        "id": "srd.continual_flame",
+        "name": "Continual Flame",
+        "localization": { "en": "Continual Flame", "zh": "不灭明焰", "aliases": ["恒焰术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "magical_light",
+            "scope": { "target": "object", "bright_ft": 20, "dim_ft": 20 },
+            "duration": { "until": "dispelled" },
+            "metadata": { "heat": false, "requires_concentration": false }
+          }
+        ],
+        "audit_label": "Continual Flame"
+      }
+    },
+    {
+      "id": "srd.spell.dancing_lights",
+      "name": "Dancing Lights",
+      "localization": { "en": "Dancing Lights", "zh": "舞光术", "aliases": ["跳舞灯"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.dancing_lights",
+        "name": "Dancing Lights",
+        "localization": { "en": "Dancing Lights", "zh": "舞光术", "aliases": ["跳舞灯"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "mobile_lights",
+            "scope": { "target": "nearby_points", "count": 4, "dim_ft": 10 },
+            "duration": { "until": "concentration_1_minute" },
+            "metadata": { "concentration": true }
+          }
+        ],
+        "audit_label": "Dancing Lights"
+      }
+    },
+    {
+      "id": "srd.spell.darkness",
+      "name": "Darkness",
+      "localization": { "en": "Darkness", "zh": "黑暗术", "aliases": ["魔法黑暗"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.darkness",
+        "name": "Darkness",
+        "localization": { "en": "Darkness", "zh": "黑暗术", "aliases": ["魔法黑暗"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 15 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "magical_darkness",
+            "scope": { "target": "point_or_object", "radius_ft": 15 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "blocks_darkvision": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Darkness"
+      }
+    },
+    {
+      "id": "srd.spell.daylight",
+      "name": "Daylight",
+      "localization": { "en": "Daylight", "zh": "昼明术", "aliases": ["日光术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "evocation",
+      "classes": ["cleric", "druid", "paladin", "ranger", "sorcerer"],
+      "action": {
+        "id": "srd.daylight",
+        "name": "Daylight",
+        "localization": { "en": "Daylight", "zh": "昼明术", "aliases": ["日光术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "bright_light",
+            "scope": { "target": "point_or_object", "bright_ft": 60, "dim_ft": 60 },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "dispels_lower_darkness": true }
+          }
+        ],
+        "audit_label": "Daylight"
+      }
+    },
+    {
+      "id": "srd.spell.detect_evil_and_good",
+      "name": "Detect Evil and Good",
+      "localization": { "en": "Detect Evil and Good", "zh": "侦测善恶", "aliases": ["侦测善恶术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.detect_evil_and_good",
+        "name": "Detect Evil and Good",
+        "localization": { "en": "Detect Evil and Good", "zh": "侦测善恶", "aliases": ["侦测善恶术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "detect_creature_types",
+            "scope": { "target": "self", "radius_ft": 30 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "creature_types": ["aberration", "celestial", "elemental", "fey", "fiend", "undead"] }
+          }
+        ],
+        "audit_label": "Detect Evil and Good"
+      }
+    },
+    {
+      "id": "srd.spell.detect_magic",
+      "name": "Detect Magic",
+      "localization": { "en": "Detect Magic", "zh": "侦测魔法", "aliases": ["探魔"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": [
+        "bard",
+        "cleric",
+        "druid",
+        "paladin",
+        "ranger",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "ritual": true,
+      "action": {
+        "id": "srd.detect_magic",
+        "name": "Detect Magic",
+        "localization": { "en": "Detect Magic", "zh": "侦测魔法", "aliases": ["探魔"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "detect_magic",
+            "scope": { "target": "self", "radius_ft": 30 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "reveals_school": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Detect Magic"
+      }
+    },
+    {
+      "id": "srd.spell.detect_poison_and_disease",
+      "name": "Detect Poison and Disease",
+      "localization": { "en": "Detect Poison and Disease", "zh": "侦测毒性和疾病", "aliases": ["侦测毒病"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": ["cleric", "druid", "paladin", "ranger"],
+      "ritual": true,
+      "action": {
+        "id": "srd.detect_poison_and_disease",
+        "name": "Detect Poison and Disease",
+        "localization": { "en": "Detect Poison and Disease", "zh": "侦测毒性和疾病", "aliases": ["侦测毒病"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "detect_poison_and_disease",
+            "scope": { "target": "self", "radius_ft": 30 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "detects": ["poison", "poisonous_creature", "disease"] }
+          }
+        ],
+        "audit_label": "Detect Poison and Disease"
+      }
+    },
+    {
+      "id": "srd.spell.disguise_self",
+      "name": "Disguise Self",
+      "localization": { "en": "Disguise Self", "zh": "易容术", "aliases": ["伪装自己"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.disguise_self",
+        "name": "Disguise Self",
+        "localization": { "en": "Disguise Self", "zh": "易容术", "aliases": ["伪装自己"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "illusory_disguise",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "requires_investigation_to_notice": true }
+          }
+        ],
+        "audit_label": "Disguise Self"
+      }
+    },
+    {
+      "id": "srd.spell.floating_disk",
+      "name": "Floating Disk",
+      "localization": { "en": "Floating Disk", "zh": "浮碟术", "aliases": ["漂浮圆盘"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "conjuration",
+      "classes": ["wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.floating_disk",
+        "name": "Floating Disk",
+        "localization": { "en": "Floating Disk", "zh": "浮碟术", "aliases": ["漂浮圆盘"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "floating_disk",
+            "scope": { "target": "self_following_disk" },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "carry_capacity_lb": 500 }
+          }
+        ],
+        "audit_label": "Floating Disk"
+      }
+    },
+    {
+      "id": "srd.spell.fog_cloud",
+      "name": "Fog Cloud",
+      "localization": { "en": "Fog Cloud", "zh": "云雾术", "aliases": ["雾云"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "conjuration",
+      "classes": ["druid", "ranger", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.fog_cloud",
+        "name": "Fog Cloud",
+        "localization": { "en": "Fog Cloud", "zh": "云雾术", "aliases": ["雾云"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "heavily_obscured_area",
+            "scope": { "target": "point", "radius_ft": 20 },
+            "duration": { "until": "concentration_1_hour" },
+            "metadata": { "concentration": true, "dispersed_by_wind": true }
+          }
+        ],
+        "audit_label": "Fog Cloud"
+      }
+    },
+    {
+      "id": "srd.spell.identify",
+      "name": "Identify",
+      "localization": { "en": "Identify", "zh": "鉴定术", "aliases": ["辨识魔法"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": ["bard", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.identify",
+        "name": "Identify",
+        "localization": { "en": "Identify", "zh": "鉴定术", "aliases": ["辨识魔法"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "identify_magic_item",
+            "scope": { "target": "touched_object" },
+            "duration": { "until": "instant" },
+            "metadata": { "reveals_properties": true }
+          }
+        ],
+        "audit_label": "Identify"
+      }
+    },
+    {
+      "id": "srd.spell.light",
+      "name": "Light",
+      "localization": { "en": "Light", "zh": "光亮术", "aliases": ["光亮"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["bard", "cleric", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.light",
+        "name": "Light",
+        "localization": { "en": "Light", "zh": "光亮术", "aliases": ["光亮"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "object_light",
+            "scope": { "target": "object", "bright_ft": 20, "dim_ft": 20 },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "can_cover_to_block": true }
+          }
+        ],
+        "audit_label": "Light"
+      }
+    },
+    {
+      "id": "srd.spell.mage_hand",
+      "name": "Mage Hand",
+      "localization": { "en": "Mage Hand", "zh": "法师之手", "aliases": ["魔法手"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "conjuration",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.mage_hand",
+        "name": "Mage Hand",
+        "localization": { "en": "Mage Hand", "zh": "法师之手", "aliases": ["魔法手"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "spectral_hand",
+            "scope": { "target": "nearby_space", "range_ft": 30 },
+            "duration": { "until": "duration_1_minute" },
+            "metadata": { "manipulation_limit_lb": 10 }
+          }
+        ],
+        "audit_label": "Mage Hand"
+      }
+    },
+    {
+      "id": "srd.spell.mending",
+      "name": "Mending",
+      "localization": { "en": "Mending", "zh": "修复术", "aliases": ["修补"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["bard", "cleric", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.mending",
+        "name": "Mending",
+        "localization": { "en": "Mending", "zh": "修复术", "aliases": ["修补"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "repair_object",
+            "scope": { "target": "touched_object" },
+            "duration": { "until": "instant" },
+            "metadata": { "repair_small_break_or_tear": true }
+          }
+        ],
+        "audit_label": "Mending"
+      }
+    },
+    {
+      "id": "srd.spell.message",
+      "name": "Message",
+      "localization": { "en": "Message", "zh": "传讯术", "aliases": ["密语"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["bard", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.message",
+        "name": "Message",
+        "localization": { "en": "Message", "zh": "传讯术", "aliases": ["密语"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "private_message",
+            "scope": { "target": "chosen_creature", "range_ft": 120 },
+            "duration": { "until": "instant" },
+            "metadata": { "reply_allowed": true }
+          }
+        ],
+        "audit_label": "Message"
+      }
+    },
+    {
+      "id": "srd.spell.minor_illusion",
+      "name": "Minor Illusion",
+      "localization": { "en": "Minor Illusion", "zh": "次级幻影", "aliases": ["小幻术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.minor_illusion",
+        "name": "Minor Illusion",
+        "localization": { "en": "Minor Illusion", "zh": "次级幻影", "aliases": ["小幻术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "minor_illusion",
+            "scope": { "target": "point", "range_ft": 30 },
+            "duration": { "until": "duration_1_minute" },
+            "metadata": { "illusion_kind": "sound_or_image" }
+          }
+        ],
+        "audit_label": "Minor Illusion"
+      }
+    },
+    {
+      "id": "srd.spell.prestidigitation",
+      "name": "Prestidigitation",
+      "localization": { "en": "Prestidigitation", "zh": "魔法伎俩", "aliases": ["戏法伎俩"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.prestidigitation",
+        "name": "Prestidigitation",
+        "localization": { "en": "Prestidigitation", "zh": "魔法伎俩", "aliases": ["戏法伎俩"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "minor_magical_trick",
+            "scope": { "target": "nearby_object_or_space", "range_ft": 10 },
+            "duration": { "until": "varies_by_effect" },
+            "metadata": { "minor_sensory_or_cleaning_or_mark": true }
+          }
+        ],
+        "audit_label": "Prestidigitation"
+      }
+    },
+    {
+      "id": "srd.spell.purify_food_and_drink",
+      "name": "Purify Food and Drink",
+      "localization": { "en": "Purify Food and Drink", "zh": "净化饮食", "aliases": ["净化食物和水"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "paladin"],
+      "ritual": true,
+      "action": {
+        "id": "srd.purify_food_and_drink",
+        "name": "Purify Food and Drink",
+        "localization": { "en": "Purify Food and Drink", "zh": "净化饮食", "aliases": ["净化食物和水"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10, "shape": "sphere", "radius_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "purify_food_and_drink",
+            "scope": { "target": "food_and_drink", "radius_ft": 5 },
+            "duration": { "until": "instant" },
+            "metadata": { "removes_poison_and_disease": true }
+          }
+        ],
+        "audit_label": "Purify Food and Drink"
+      }
+    },
+    {
+      "id": "srd.spell.silent_image",
+      "name": "Silent Image",
+      "localization": { "en": "Silent Image", "zh": "无声幻影", "aliases": ["静默影像"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.silent_image",
+        "name": "Silent Image",
+        "localization": { "en": "Silent Image", "zh": "无声幻影", "aliases": ["静默影像"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "silent_illusion",
+            "scope": { "target": "point", "range_ft": 60, "cube_ft": 15 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "visual_only": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Silent Image"
+      }
+    },
+    {
+      "id": "srd.spell.spare_the_dying",
+      "name": "Spare the Dying",
+      "localization": { "en": "Spare the Dying", "zh": "维生术", "aliases": ["稳定濒死"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "necromancy",
+      "classes": ["cleric", "druid"],
+      "action": {
+        "id": "srd.spare_the_dying",
+        "name": "Spare the Dying",
+        "localization": { "en": "Spare the Dying", "zh": "维生术", "aliases": ["稳定濒死"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 15 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "death_saves_stabilized": true },
+            "duration": { "until": "target_takes_damage_or_healing" },
+            "tick_on": "death_save"
+          }
+        ],
+        "audit_label": "Spare the Dying"
+      }
+    },
+    {
+      "id": "srd.spell.speak_with_animals",
+      "name": "Speak with Animals",
+      "localization": { "en": "Speak with Animals", "zh": "动物交谈", "aliases": ["动物交谈术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": ["bard", "druid", "ranger", "warlock"],
+      "ritual": true,
+      "action": {
+        "id": "srd.speak_with_animals",
+        "name": "Speak with Animals",
+        "localization": { "en": "Speak with Animals", "zh": "动物交谈", "aliases": ["动物交谈术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "speak_with_animals",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_10_minutes" },
+            "metadata": { "communication_target": "beasts" }
+          }
+        ],
+        "audit_label": "Speak with Animals"
+      }
+    },
+    {
+      "id": "srd.spell.thaumaturgy",
+      "name": "Thaumaturgy",
+      "localization": { "en": "Thaumaturgy", "zh": "奇术", "aliases": ["神迹戏法"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.thaumaturgy",
+        "name": "Thaumaturgy",
+        "localization": { "en": "Thaumaturgy", "zh": "奇术", "aliases": ["神迹戏法"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "minor_divine_wonder",
+            "scope": { "target": "nearby_space", "range_ft": 30 },
+            "duration": { "until": "duration_1_minute" },
+            "metadata": { "minor_manifestation": true }
+          }
+        ],
+        "audit_label": "Thaumaturgy"
+      }
+    },
+    {
+      "id": "srd.spell.unseen_servant",
+      "name": "Unseen Servant",
+      "localization": { "en": "Unseen Servant", "zh": "隐形仆役", "aliases": ["无形仆役"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "conjuration",
+      "classes": ["bard", "warlock", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.unseen_servant",
+        "name": "Unseen Servant",
+        "localization": { "en": "Unseen Servant", "zh": "隐形仆役", "aliases": ["无形仆役"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "unseen_servant",
+            "scope": { "target": "empty_space", "range_ft": 60 },
+            "duration": { "until": "duration_1_hour" },
+            "metadata": { "simple_tasks": true }
+          }
+        ],
+        "audit_label": "Unseen Servant"
+      }
+    }
+  ]
+}

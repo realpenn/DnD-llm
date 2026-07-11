@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConditionDefinition",
+  "type": "object",
+  "required": ["id", "name", "localization", "source", "rules_version"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "localization": { "type": "object" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "effects": { "type": "object" }
+  }
+}

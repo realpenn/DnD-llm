@@ -1,0 +1,61 @@
+{
+  "items": [
+    {
+      "id": "srd.rod_of_absorption",
+      "name": "Rod of Absorption",
+      "localization": {
+        "en": "Rod of Absorption",
+        "zh": "吸收法杖",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Absorption",
+      "rules_version": "srd-5.2.1",
+      "item_type": "rod",
+      "actions": [
+        "srd.initialize_rod_of_absorption_energy",
+        "srd.rod_of_absorption_absorb_spell"
+      ],
+      "properties": {
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "held_item": true,
+        "max_lifetime_absorbed_levels": 50,
+        "max_created_spell_slot_level": 5
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.rod_of_alertness",
+      "name": "Rod of Alertness",
+      "localization": {
+        "en": "Rod of Alertness",
+        "zh": "警觉法杖",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Rod of Alertness",
+      "rules_version": "srd-5.2.1",
+      "item_type": "rod",
+      "actions": [
+        "srd.hold_rod_of_alertness",
+        "srd.rod_of_alertness_detect_evil_and_good",
+        "srd.rod_of_alertness_detect_magic",
+        "srd.rod_of_alertness_detect_poison_and_disease",
+        "srd.rod_of_alertness_see_invisibility",
+        "srd.rod_of_alertness_protective_aura"
+      ],
+      "properties": {
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "held_item": true,
+        "spells": [
+          "srd.spell.detect_evil_and_good",
+          "srd.spell.detect_magic",
+          "srd.spell.detect_poison_and_disease",
+          "srd.spell.see_invisibility"
+        ],
+        "protective_aura_once_until_next_dawn": true
+      },
+      "quantity": 1
+    }
+  ]
+}

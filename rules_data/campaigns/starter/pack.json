@@ -1,0 +1,144 @@
+{
+  "campaign_id": "starter",
+  "title": "边境遗迹",
+  "version": "0.1.0",
+  "rules_version": "srd-5.2.1",
+  "start_zone_id": "start",
+  "outline": {
+    "mainline": "边境营地请求队伍调查遗迹入口的异动，并确认塌陷宝库是否安全。",
+    "chapters": [
+      {
+        "id": "camp_to_ruins",
+        "title": "从营地到遗迹",
+        "zone_ids": ["start", "ruins"]
+      },
+      {
+        "id": "collapsed_vault",
+        "title": "塌陷宝库",
+        "zone_ids": ["vault"]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "mara",
+        "name": "Mara",
+        "role": "营地联络人"
+      }
+    ],
+    "objectives": [
+      "调查遗迹入口。",
+      "处理遗迹入口的 Kobold watch。",
+      "确认塌陷宝库是否仍可通行。"
+    ],
+    "endings": [
+      "队伍带回遗迹安全情报。",
+      "队伍撤回营地并报告需要更多支援。"
+    ]
+  },
+  "zones": {
+    "start": {
+      "name": "营地",
+      "edges": ["ruins"],
+      "event_ids": []
+    },
+    "ruins": {
+      "name": "遗迹入口",
+      "edges": ["start", "vault"],
+      "event_ids": ["starter.loose_stones"],
+      "encounter_id": "kobold_watch",
+      "tactical_graph": {
+        "nodes": {
+          "front": {
+            "node_id": "front",
+            "name": "前线",
+            "tags": ["entry"],
+            "capacity": null,
+            "default_cover": "none",
+            "terrain": "normal"
+          },
+          "cover": {
+            "node_id": "cover",
+            "name": "碎墙掩体",
+            "tags": ["cover"],
+            "capacity": null,
+            "default_cover": "half",
+            "terrain": "normal"
+          },
+          "back": {
+            "node_id": "back",
+            "name": "后排",
+            "tags": ["rear"],
+            "capacity": null,
+            "default_cover": "none",
+            "terrain": "normal"
+          }
+        },
+        "edges": [
+          {
+            "source": "front",
+            "target": "cover",
+            "distance_ft": 15,
+            "movement_cost": null,
+            "line_of_sight": true,
+            "cover": "half",
+            "difficult_terrain": false
+          },
+          {
+            "source": "cover",
+            "target": "back",
+            "distance_ft": 15,
+            "movement_cost": null,
+            "line_of_sight": true,
+            "cover": "half",
+            "difficult_terrain": false
+          },
+          {
+            "source": "front",
+            "target": "back",
+            "distance_ft": 30,
+            "movement_cost": null,
+            "line_of_sight": true,
+            "cover": "none",
+            "difficult_terrain": false
+          }
+        ]
+      }
+    },
+    "vault": {
+      "name": "塌陷宝库",
+      "edges": ["ruins"],
+      "event_ids": []
+    }
+  },
+  "encounters": {
+    "kobold_watch": {
+      "name": "Kobold Watch",
+      "budget": {
+        "party_size": 4,
+        "party_level": 1,
+        "difficulty": "low"
+      },
+      "reward_id": "starter.first_victory",
+      "monsters": [
+        {
+          "monster_id": "srd.kobold",
+          "name": "Kobold Warrior",
+          "count": 1,
+          "cr": 0.125,
+          "actions": ["srd.kobold_dagger"]
+        }
+      ]
+    }
+  },
+  "rewards": {
+    "starter.first_victory": {
+      "gold": 12,
+      "experience": 50,
+      "items": []
+    }
+  },
+  "events": {},
+  "attribution": [
+    "Includes mechanics compatible with SRD 5.2.1 under CC-BY-4.0; see NOTICE."
+  ]
+}

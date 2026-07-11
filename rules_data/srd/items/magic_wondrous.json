@@ -1,0 +1,499 @@
+{
+  "items": [
+    {
+      "id": "srd.amulet_of_proof_against_detection_and_location",
+      "name": "Amulet of Proof against Detection and Location",
+      "localization": {
+        "en": "Amulet of Proof against Detection and Location",
+        "zh": "防侦测与定位护符",
+        "aliases": ["Proof against Detection and Location Amulet"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Amulet of Proof against Detection and Location",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_amulet_of_proof_against_detection_and_location"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_hill_giant_strength",
+      "name": "Belt of Giant Strength (hill)",
+      "localization": {
+        "en": "Belt of Giant Strength (hill)",
+        "zh": "山丘巨人力量腰带",
+        "aliases": ["Hill Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_hill_giant_strength"],
+      "properties": {
+        "giant_type": "hill",
+        "strength_score": 21,
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_frost_giant_strength",
+      "name": "Belt of Giant Strength (frost)",
+      "localization": {
+        "en": "Belt of Giant Strength (frost)",
+        "zh": "霜巨人力量腰带",
+        "aliases": ["Frost Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_frost_giant_strength"],
+      "properties": {
+        "giant_type": "frost",
+        "strength_score": 23,
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_stone_giant_strength",
+      "name": "Belt of Giant Strength (stone)",
+      "localization": {
+        "en": "Belt of Giant Strength (stone)",
+        "zh": "石巨人力量腰带",
+        "aliases": ["Stone Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_stone_giant_strength"],
+      "properties": {
+        "giant_type": "stone",
+        "strength_score": 23,
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_fire_giant_strength",
+      "name": "Belt of Giant Strength (fire)",
+      "localization": {
+        "en": "Belt of Giant Strength (fire)",
+        "zh": "火巨人力量腰带",
+        "aliases": ["Fire Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_fire_giant_strength"],
+      "properties": {
+        "giant_type": "fire",
+        "strength_score": 25,
+        "rarity": "very_rare",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_cloud_giant_strength",
+      "name": "Belt of Giant Strength (cloud)",
+      "localization": {
+        "en": "Belt of Giant Strength (cloud)",
+        "zh": "云巨人力量腰带",
+        "aliases": ["Cloud Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_cloud_giant_strength"],
+      "properties": {
+        "giant_type": "cloud",
+        "strength_score": 27,
+        "rarity": "legendary",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.belt_of_storm_giant_strength",
+      "name": "Belt of Giant Strength (storm)",
+      "localization": {
+        "en": "Belt of Giant Strength (storm)",
+        "zh": "风暴巨人力量腰带",
+        "aliases": ["Storm Giant Strength Belt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Belt of Giant Strength",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_belt_of_storm_giant_strength"],
+      "properties": {
+        "giant_type": "storm",
+        "strength_score": 29,
+        "rarity": "legendary",
+        "requires_attunement": true,
+        "worn_slot": "waist"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.boots_of_elvenkind",
+      "name": "Boots of Elvenkind",
+      "localization": {
+        "en": "Boots of Elvenkind",
+        "zh": "精灵靴",
+        "aliases": ["Elvenkind Boots"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Boots of Elvenkind",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_boots_of_elvenkind"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "feet"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.boots_of_levitation",
+      "name": "Boots of Levitation",
+      "localization": {
+        "en": "Boots of Levitation",
+        "zh": "浮空靴",
+        "aliases": ["Levitation Boots"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Boots of Levitation",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.boots_of_levitation_levitate"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "feet"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.bracers_of_defense",
+      "name": "Bracers of Defense",
+      "localization": {
+        "en": "Bracers of Defense",
+        "zh": "防御护腕",
+        "aliases": ["Defense Bracers"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Bracers of Defense",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_bracers_of_defense"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "wrists"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.cloak_of_protection",
+      "name": "Cloak of Protection",
+      "localization": {
+        "en": "Cloak of Protection",
+        "zh": "防护斗篷",
+        "aliases": ["Protection Cloak"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Cloak of Protection",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_cloak_of_protection"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "shoulders"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.cloak_of_the_manta_ray",
+      "name": "Cloak of the Manta Ray",
+      "localization": {
+        "en": "Cloak of the Manta Ray",
+        "zh": "蝠鲼斗篷",
+        "aliases": ["Manta Ray Cloak"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Cloak of the Manta Ray",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_cloak_of_the_manta_ray"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "shoulders"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.eyes_of_the_eagle",
+      "name": "Eyes of the Eagle",
+      "localization": {
+        "en": "Eyes of the Eagle",
+        "zh": "鹰眼镜片",
+        "aliases": ["Eagle Eyes"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Eyes of the Eagle",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_eyes_of_the_eagle"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.eyes_of_minute_seeing",
+      "name": "Eyes of Minute Seeing",
+      "localization": {
+        "en": "Eyes of Minute Seeing",
+        "zh": "显微镜片",
+        "aliases": ["Minute Seeing Eyes"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Eyes of Minute Seeing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_eyes_of_minute_seeing"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.gauntlets_of_ogre_power",
+      "name": "Gauntlets of Ogre Power",
+      "localization": {
+        "en": "Gauntlets of Ogre Power",
+        "zh": "食人魔力量护手",
+        "aliases": ["Ogre Power Gauntlets"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Gauntlets of Ogre Power",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_gauntlets_of_ogre_power"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "hands"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.goggles_of_night",
+      "name": "Goggles of Night",
+      "localization": {
+        "en": "Goggles of Night",
+        "zh": "夜视镜",
+        "aliases": ["Night Goggles"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Goggles of Night",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_goggles_of_night"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "eyes"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.headband_of_intellect",
+      "name": "Headband of Intellect",
+      "localization": {
+        "en": "Headband of Intellect",
+        "zh": "智力头带",
+        "aliases": ["Intellect Headband"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Headband of Intellect",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_headband_of_intellect"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "head"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.helm_of_comprehending_languages",
+      "name": "Helm of Comprehending Languages",
+      "localization": {
+        "en": "Helm of Comprehending Languages",
+        "zh": "通晓语言头盔",
+        "aliases": ["Comprehending Languages Helm"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Helm of Comprehending Languages",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.helm_of_comprehending_languages_comprehend_languages"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "head"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.necklace_of_adaptation",
+      "name": "Necklace of Adaptation",
+      "localization": {
+        "en": "Necklace of Adaptation",
+        "zh": "适应项链",
+        "aliases": ["Adaptation Necklace"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Necklace of Adaptation",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_necklace_of_adaptation"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.periapt_of_proof_against_poison",
+      "name": "Periapt of Proof against Poison",
+      "localization": {
+        "en": "Periapt of Proof against Poison",
+        "zh": "防毒护符",
+        "aliases": ["Proof against Poison Periapt"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Periapt of Proof against Poison",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_periapt_of_proof_against_poison"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "neck"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.robe_of_eyes",
+      "name": "Robe of Eyes",
+      "localization": {
+        "en": "Robe of Eyes",
+        "zh": "眼魔法袍",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Eyes",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": [
+        "srd.wear_robe_of_eyes",
+        "srd.robe_of_eyes_light_drawback",
+        "srd.robe_of_eyes_daylight_drawback"
+      ],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "body"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.robe_of_the_archmagi",
+      "name": "Robe of the Archmagi",
+      "localization": {
+        "en": "Robe of the Archmagi",
+        "zh": "大法师法袍",
+        "aliases": ["Archmagi Robe"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of the Archmagi",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_robe_of_the_archmagi"],
+      "properties": {
+        "rarity": "legendary",
+        "requires_attunement": true,
+        "attunement_class_any": ["sorcerer", "warlock", "wizard"],
+        "worn_slot": "body"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.robe_of_useful_items",
+      "name": "Robe of Useful Items",
+      "localization": {
+        "en": "Robe of Useful Items",
+        "zh": "实用物品法袍",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Robe of Useful Items",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": [
+        "srd.initialize_robe_of_useful_items_patches",
+        "srd.detach_robe_of_useful_items_patch"
+      ],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "body"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.slippers_of_spider_climbing",
+      "name": "Slippers of Spider Climbing",
+      "localization": {
+        "en": "Slippers of Spider Climbing",
+        "zh": "蛛行拖鞋",
+        "aliases": ["Spider Climbing Slippers"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Slippers of Spider Climbing",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.wear_slippers_of_spider_climbing"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "worn_slot": "feet"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.stone_of_good_luck",
+      "name": "Stone of Good Luck (Luckstone)",
+      "localization": {
+        "en": "Stone of Good Luck (Luckstone)",
+        "zh": "幸运石",
+        "aliases": ["Luckstone"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Stone of Good Luck (Luckstone)",
+      "rules_version": "srd-5.2.1",
+      "item_type": "wondrous_item",
+      "actions": ["srd.carry_stone_of_good_luck"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": true,
+        "carried_on_person": true
+      },
+      "quantity": 1
+    }
+  ]
+}

@@ -1,0 +1,1698 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.freedom_of_movement",
+      "name": "Freedom of Movement",
+      "localization": {
+        "en": "Freedom of Movement",
+        "zh": "行动自如",
+        "aliases": ["自由行动", "行动自由"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid", "ranger"],
+      "action": {
+        "id": "srd.freedom_of_movement",
+        "name": "Freedom of Movement",
+        "localization": {
+          "en": "Freedom of Movement",
+          "zh": "行动自如",
+          "aliases": ["自由行动", "行动自由"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": false,
+          "base_spell_slot_level": 4,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "cleric", "druid", "ranger"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "material_component": {
+            "description": "a leather strap",
+            "consumed": false
+          },
+          "higher_level_additional_targets_per_slot_above_4": 1
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "freedom_of_movement": true,
+              "difficult_terrain_unaffected": true,
+              "magical_speed_reduction_immunity": true,
+              "magical_paralyzed_restrained_immunity": true,
+              "swim_speed_equals_speed": true,
+              "nonmagical_restraints_escape_movement_cost_ft": 5
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Freedom of Movement"
+      }
+    },
+    {
+      "id": "srd.spell.private_sanctum",
+      "name": "Private Sanctum",
+      "localization": {
+        "en": "Private Sanctum",
+        "zh": "秘法密室",
+        "aliases": ["私人圣所", "私密圣所"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.private_sanctum",
+        "name": "Private Sanctum",
+        "localization": {
+          "en": "Private Sanctum",
+          "zh": "秘法密室",
+          "aliases": ["私人圣所", "私密圣所"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "cube", "min_side_ft": 5 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "material_component": {
+            "description": "a thin sheet of lead",
+            "consumed": false
+          },
+          "protections_param": "private_sanctum_protections",
+          "allowed_list_params": {
+            "private_sanctum_protections": [
+              "blocks_sound_through_barrier",
+              "blocks_vision_through_barrier_including_darkvision",
+              "blocks_divination_sensors_entering_or_appearing_inside",
+              "blocks_divination_targeting_creatures_inside",
+              "blocks_teleport_into_or_out_of_area",
+              "blocks_planar_travel_within_area"
+            ]
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "private_sanctum_ward",
+            "scope": {
+              "target": "warded_area",
+              "range_ft": 120,
+              "shape": "cube",
+              "min_side_ft": 5
+            },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "selected_protections": { "param_list": "private_sanctum_protections" },
+              "allowed_protections": [
+                "blocks_sound_through_barrier",
+                "blocks_vision_through_barrier_including_darkvision",
+                "blocks_divination_sensors_entering_or_appearing_inside",
+                "blocks_divination_targeting_creatures_inside",
+                "blocks_teleport_into_or_out_of_area",
+                "blocks_planar_travel_within_area"
+              ],
+              "choose_any_listed_protections_on_cast": true,
+              "permanent_if_cast_daily_same_location_days": 365
+            },
+            "metadata_from_slot": {
+              "max_cube_side_ft": {
+                "base_spell_slot_level": 4,
+                "base_value": 100,
+                "value_per_slot_above": 100
+              }
+            }
+          }
+        ],
+        "audit_label": "Private Sanctum"
+      }
+    },
+    {
+      "id": "srd.spell.resilient_sphere",
+      "name": "Resilient Sphere",
+      "localization": {
+        "en": "Resilient Sphere",
+        "zh": "弹力法球",
+        "aliases": ["弹性法球", "坚韧法球"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.resilient_sphere",
+        "name": "Resilient Sphere",
+        "localization": {
+          "en": "Resilient Sphere",
+          "zh": "弹力法球",
+          "aliases": ["弹性法球", "坚韧法球"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a glass sphere",
+            "consumed": false
+          },
+          "target_size_max": "large",
+          "allows_willing_target": true,
+          "can_enclose_large_or_smaller_creature_or_object": true,
+          "object_targets_recorded_as_metadata_only": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "saving_throw",
+            "ability": "dex",
+            "dc_from": { "spell_save_dc": "actor" },
+            "auto_fail_willing_targets": true
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "resilient_sphere": true,
+              "enclosed_in_resilient_sphere": true,
+              "can_enclose_large_or_smaller_creature_or_object": true,
+              "barrier_blocks_physical_objects_energy_and_spell_effects": true,
+              "barrier_blocks_in_or_out": true,
+              "inside_can_breathe": true,
+              "barrier_immune_to_all_damage": true,
+              "outside_origin_attacks_and_effects_cannot_damage_inside": true,
+              "inside_creature_cannot_damage_outside": true,
+              "sphere_weightless": true,
+              "sphere_just_large_enough_for_contents": true,
+              "enclosed_creature_can_action_roll_sphere_up_to_half_speed": true,
+              "globe_can_be_picked_up_and_moved": true,
+              "disintegrate_targeting_globe_destroys_it": true
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Resilient Sphere"
+      }
+    },
+    {
+      "id": "srd.spell.banishment",
+      "name": "Banishment",
+      "localization": {
+        "en": "Banishment",
+        "zh": "放逐术",
+        "aliases": ["放逐"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.banishment",
+        "name": "Banishment",
+        "localization": {
+          "en": "Banishment",
+          "zh": "放逐术",
+          "aliases": ["放逐"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "base_spell_slot_level": 4,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "paladin", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "paladin", "sorcerer", "warlock", "wizard"],
+          "target_must_be_visible": true,
+          "material_component": {
+            "description": "a pentacle",
+            "consumed": false
+          },
+          "higher_level_additional_targets_per_slot_above_4": 1
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "cha", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "banished": true,
+              "out_of_play": true,
+              "banished_to_harmless_demiplane": true,
+              "returns_when_spell_ends": true,
+              "returns_to_space_left_or_nearest_unoccupied": true,
+              "does_not_return_if_full_duration_creature_types": [
+                "aberration",
+                "celestial",
+                "elemental",
+                "fey",
+                "fiend"
+              ],
+              "full_duration_transport_destination": "random_location_on_gm_chosen_associated_plane"
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          },
+          {
+            "type": "condition",
+            "condition": "incapacitated",
+            "requires_failed_save": true,
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Banishment"
+      }
+    },
+    {
+      "id": "srd.spell.aura_of_life",
+      "name": "Aura of Life",
+      "localization": {
+        "en": "Aura of Life",
+        "zh": "生命灵光",
+        "aliases": ["生命光环"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.aura_of_life",
+        "name": "Aura of Life",
+        "localization": {
+          "en": "Aura of Life",
+          "zh": "生命灵光",
+          "aliases": ["生命光环"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "paladin"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "paladin"],
+          "components": ["V"],
+          "self_centered_emanation_radius_ft": 30
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "world_effect",
+            "effect_type": "aura_of_life",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 30 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "self_centered_emanation": true,
+              "caster_and_allies_in_aura_gain_necrotic_resistance": true,
+              "caster_and_allies_in_aura_hp_max_cannot_be_reduced": true,
+              "ally_at_0_hp_starts_turn_in_aura_regains_hp": 1,
+              "dynamic_aura_membership_not_automated": true,
+              "turn_start_healing_not_automated": true
+            },
+            "concentration": true
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "aura_of_life": true,
+              "damage_resistances": ["necrotic"],
+              "prevents_hp_max_reduction": true
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Aura of Life"
+      }
+    },
+    {
+      "id": "srd.spell.death_ward",
+      "name": "Death Ward",
+      "localization": {
+        "en": "Death Ward",
+        "zh": "防死结界",
+        "aliases": ["死亡结界", "死亡防护"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.death_ward",
+        "name": "Death Ward",
+        "localization": {
+          "en": "Death Ward",
+          "zh": "防死结界",
+          "aliases": ["死亡结界", "死亡防护"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "paladin"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "paladin"],
+          "target_type": "creature",
+          "target_must_be_touched": true,
+          "first_drop_to_0_hp_sets_hp_to_1_and_ends": true,
+          "negates_instant_death_without_damage_and_ends": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "death_ward": true,
+              "first_drop_to_0_hp_sets_hp_to_1": true,
+              "negates_instant_death_without_damage": true
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Death Ward"
+      }
+    },
+    {
+      "id": "srd.spell.mass_cure_wounds",
+      "name": "Mass Cure Wounds",
+      "localization": {
+        "en": "Mass Cure Wounds",
+        "zh": "群体治疗术",
+        "aliases": ["群体疗伤"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid"],
+      "action": {
+        "id": "srd.mass_cure_wounds",
+        "name": "Mass Cure Wounds",
+        "localization": {
+          "en": "Mass Cure Wounds",
+          "zh": "群体治疗术",
+          "aliases": ["群体疗伤"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 30 },
+        "target_policy": { "min": 1, "max": 6, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "cleric", "druid"]
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "healing",
+            "dice": "5d8",
+            "bonus_from": { "spellcasting_ability_modifier": "actor" },
+            "base_spell_slot_level": 5,
+            "extra_dice_per_slot_above": "1d8"
+          }
+        ],
+        "audit_label": "Mass Cure Wounds"
+      }
+    },
+    {
+      "id": "srd.spell.greater_restoration",
+      "name": "Greater Restoration",
+      "localization": {
+        "en": "Greater Restoration",
+        "zh": "高等复原术",
+        "aliases": ["高等复原"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid", "paladin", "ranger"],
+      "action": {
+        "id": "srd.greater_restoration",
+        "name": "Greater Restoration",
+        "localization": {
+          "en": "Greater Restoration",
+          "zh": "高等复原术",
+          "aliases": ["高等复原"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "cleric", "druid", "paladin", "ranger"]
+        },
+        "properties": {
+          "greater_restoration": true,
+          "greater_restoration_choices": [
+            "exhaustion",
+            "charmed_or_petrified",
+            "curse",
+            "ability_score_reduction",
+            "hp_max_reduction",
+            "contact_other_plane_incapacitation"
+          ]
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5, "gold": 100 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "greater_restoration",
+            "choice_param": "greater_restoration_choice",
+            "choices": [
+              "exhaustion",
+              "charmed_or_petrified",
+              "curse",
+              "ability_score_reduction",
+              "hp_max_reduction",
+              "contact_other_plane_incapacitation"
+            ]
+          }
+        ],
+        "audit_label": "Greater Restoration"
+      }
+    },
+    {
+      "id": "srd.spell.hallow",
+      "name": "Hallow",
+      "localization": {
+        "en": "Hallow",
+        "zh": "圣居",
+        "aliases": ["圣化术", "圣化"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.hallow",
+        "name": "Hallow",
+        "localization": {
+          "en": "Hallow",
+          "zh": "圣居",
+          "aliases": ["圣化术", "圣化"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true, "shape": "sphere", "radius_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 24 },
+          "material_component": {
+            "description": "incense worth 1,000+ GP",
+            "consumed": true
+          },
+          "ward_creature_types_param": "hallow_ward_creature_types",
+          "extra_effect_param": "hallow_extra_effect",
+          "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+          "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+          "extra_effect_allowed_creature_types": [
+            "aberration",
+            "beast",
+            "celestial",
+            "construct",
+            "dragon",
+            "elemental",
+            "fey",
+            "fiend",
+            "giant",
+            "humanoid",
+            "monstrosity",
+            "ooze",
+            "plant",
+            "undead"
+          ],
+          "extra_effect_allowed_damage_types": [
+            "acid",
+            "bludgeoning",
+            "cold",
+            "fire",
+            "force",
+            "lightning",
+            "necrotic",
+            "piercing",
+            "poison",
+            "psychic",
+            "radiant",
+            "slashing",
+            "thunder"
+          ],
+          "allowed_list_params": {
+            "hallow_ward_creature_types": [
+              "aberration",
+              "celestial",
+              "elemental",
+              "fey",
+              "fiend",
+              "undead"
+            ],
+            "hallow_extra_effect": [
+              "courage",
+              "darkness",
+              "daylight",
+              "peaceful_rest",
+              "extradimensional_interference",
+              "fear",
+              "resistance",
+              "silence",
+              "tongues",
+              "vulnerability"
+            ]
+          },
+          "required_list_param_counts": {
+            "hallow_extra_effect": 1
+          },
+          "no_damage": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5, "gold": 1000 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "hallow_ward",
+            "scope": {
+              "target": "touched_point_area",
+              "shape": "sphere",
+              "radius_ft": 60
+            },
+            "duration": { "until": "until_dispelled" },
+            "metadata": {
+              "holy_or_unholy_power": true,
+              "fails_if_area_includes_existing_hallow": true,
+              "hallowed_ward_creature_types": { "param_list": "hallow_ward_creature_types" },
+              "warded_creature_types_cannot_willingly_enter_area": true,
+              "ward_suppresses_possession_charmed_and_frightened_from_warded_types": true,
+              "selected_extra_effect": { "param_list": "hallow_extra_effect" },
+              "selected_extra_effect_creature_types": {
+                "optional_param_list": "hallow_extra_effect_creature_types"
+              },
+              "selected_extra_effect_damage_type": {
+                "optional_param": "hallow_extra_effect_damage_type"
+              },
+              "allowed_extra_effects": [
+                "courage",
+                "darkness",
+                "daylight",
+                "peaceful_rest",
+                "extradimensional_interference",
+                "fear",
+                "resistance",
+                "silence",
+                "tongues",
+                "vulnerability"
+              ],
+              "courage_prevents_frightened": true,
+              "darkness_fills_area_and_blocks_lower_level_magical_light": true,
+              "daylight_fills_area_and_blocks_lower_level_magical_darkness": true,
+              "peaceful_rest_prevents_interred_dead_becoming_undead": true,
+              "extradimensional_interference_blocks_teleportation_and_interplanar_travel": true,
+              "fear_gives_frightened_condition": true,
+              "resistance_grants_chosen_damage_resistance": true,
+              "silence_blocks_sound_in_or_out": true,
+              "tongues_allows_communication": true,
+              "vulnerability_grants_chosen_damage_vulnerability": true,
+              "extra_effect_creature_types_param": "hallow_extra_effect_creature_types",
+              "extra_effect_damage_type_param": "hallow_extra_effect_damage_type",
+              "area_membership_and_extra_effect_application_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Hallow"
+      }
+    },
+    {
+      "id": "srd.spell.planar_binding",
+      "name": "Planar Binding",
+      "localization": {
+        "en": "Planar Binding",
+        "zh": "异界誓缚",
+        "aliases": ["异界束缚"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid", "warlock", "wizard"],
+      "action": {
+        "id": "srd.planar_binding",
+        "name": "Planar Binding",
+        "localization": {
+          "en": "Planar Binding",
+          "zh": "异界誓缚",
+          "aliases": ["异界束缚"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "creature_types": ["celestial", "elemental", "fey", "fiend"]
+        },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "cleric", "druid", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "cleric", "druid", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "hours": 1 },
+          "material_component": {
+            "description": "a jewel worth 1,000+ GP",
+            "consumed": true
+          },
+          "planar_binding_target_within_range_entire_casting_param": "planar_binding_target_within_range_entire_casting",
+          "planar_binding_source_spell_effect_id_param": "planar_binding_source_spell_effect_id",
+          "spell_definition_id": "srd.spell.planar_binding",
+          "spell_level": 5
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5, "gold": 1000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "cha", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "extend_effect_duration",
+            "effect_id_param": "planar_binding_source_spell_effect_id",
+            "optional": true,
+            "source_kind": "spell",
+            "duration": {
+              "until": "duration_24_hours",
+              "duration_from_slot": {
+                "base_spell_slot_level": 5,
+                "by_slot_level": {
+                  "6": "duration_10_days",
+                  "7": "duration_30_days",
+                  "8": "duration_180_days",
+                  "9": "duration_366_days"
+                }
+              }
+            }
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "planar_binding": true,
+              "bound_to_serve_caster": true,
+              "follows_commands_best_ability": true,
+              "hostile_twists_commands_toward_own_objectives": true,
+              "report_same_plane_to_caster": true,
+              "report_different_plane_to_binding_place": true,
+              "command_ai_not_automated": true
+            },
+            "duration": {
+              "until": "duration_24_hours",
+              "duration_from_slot": {
+                "base_spell_slot_level": 5,
+                "by_slot_level": {
+                  "6": "duration_10_days",
+                  "7": "duration_30_days",
+                  "8": "duration_180_days",
+                  "9": "duration_366_days"
+                }
+              }
+            },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Planar Binding"
+      }
+    },
+    {
+      "id": "srd.spell.antilife_shell",
+      "name": "Antilife Shell",
+      "localization": {
+        "en": "Antilife Shell",
+        "zh": "反生命法罩",
+        "aliases": ["反生命护罩", "反生命壳"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "abjuration",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.antilife_shell",
+        "name": "Antilife Shell",
+        "localization": {
+          "en": "Antilife Shell",
+          "zh": "反生命法罩",
+          "aliases": ["反生命护罩", "反生命壳"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "components": ["V", "S"],
+          "self_centered_emanation_radius_ft": 10
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "world_effect",
+            "effect_type": "antilife_shell",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 10 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "self_centered_emanation": true,
+              "blocks_creatures_other_than_constructs_and_undead": true,
+              "prevents_passing_or_reaching_through": true,
+              "constructs_and_undead_unaffected": true,
+              "affected_creatures_can_cast_spells_through_barrier": true,
+              "affected_creatures_can_attack_with_ranged_or_reach_weapons_through_barrier": true,
+              "ends_if_caster_moves_and_forces_affected_creature_through_barrier": true,
+              "barrier_collision_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Antilife Shell"
+      }
+    },
+    {
+      "id": "srd.spell.globe_of_invulnerability",
+      "name": "Globe of Invulnerability",
+      "localization": {
+        "en": "Globe of Invulnerability",
+        "zh": "法术无效结界",
+        "aliases": ["无敌法球", "防护法球"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "abjuration",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.globe_of_invulnerability",
+        "name": "Globe of Invulnerability",
+        "localization": {
+          "en": "Globe of Invulnerability",
+          "zh": "法术无效结界",
+          "aliases": ["无敌法球", "防护法球"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["sorcerer", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a glass bead",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "globe_of_invulnerability",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 10 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "immobile": true,
+              "shimmering_barrier": true,
+              "spells_must_be_cast_from_outside_barrier": true,
+              "protected_targets": "creatures_and_objects_within_barrier",
+              "outside_spell_can_target_inside_but_has_no_effect": true,
+              "area_inside_excluded_from_outside_spell_areas": true
+            },
+            "metadata_from_slot": {
+              "blocks_spell_level_lte": {
+                "base_spell_slot_level": 6,
+                "base_value": 5,
+                "value_per_slot_above": 1
+              }
+            }
+          }
+        ],
+        "audit_label": "Globe of Invulnerability"
+      }
+    },
+    {
+      "id": "srd.spell.forbiddance",
+      "name": "Forbiddance",
+      "localization": {
+        "en": "Forbiddance",
+        "zh": "禁制术",
+        "aliases": ["禁制"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "ritual": true,
+      "action": {
+        "id": "srd.forbiddance",
+        "name": "Forbiddance",
+        "localization": {
+          "en": "Forbiddance",
+          "zh": "禁制术",
+          "aliases": ["禁制"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "material_component": {
+            "description": "ruby dust worth 1,000+ GP",
+            "consumed": false,
+            "consumed_on_permanent_cast": true
+          },
+          "allowed_damage_types": ["necrotic", "radiant"],
+          "damage_type_param": "forbiddance_damage_type",
+          "allowed_creature_types": [
+            "aberration",
+            "celestial",
+            "elemental",
+            "fey",
+            "fiend",
+            "undead"
+          ],
+          "creature_types_param": "forbiddance_creature_types",
+          "password_param": "forbiddance_password"
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "forbiddance_ward",
+            "scope": {
+              "target": "touched_area",
+              "max_floor_area_sq_ft": 40000,
+              "height_ft": 30
+            },
+            "duration": { "until": "duration_1_day" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "blocks_teleport_into_area": true,
+              "blocks_portals_into_area": true,
+              "proofs_against_planar_travel": true,
+              "blocked_planar_routes": [
+                "astral_plane",
+                "ethereal_plane",
+                "feywild",
+                "shadowfell",
+                "plane_shift"
+              ],
+              "chosen_creature_types": { "param_list": "forbiddance_creature_types" },
+              "damage_type": { "param": "forbiddance_damage_type" },
+              "damage": "5d10",
+              "repeat_damage_triggers": [
+                "chosen_creature_enters_area_first_time_on_turn",
+                "chosen_creature_ends_turn_in_area"
+              ],
+              "password_prevents_spell_damage_when_spoken_on_entry": true,
+              "password_param": "forbiddance_password",
+              "area_cannot_overlap_another_forbiddance": true,
+              "permanent_if_cast_daily_same_location_days": 30,
+              "material_components_consumed_on_permanent_cast": true
+            }
+          }
+        ],
+        "audit_label": "Forbiddance"
+      }
+    },
+    {
+      "id": "srd.spell.symbol",
+      "name": "Symbol",
+      "localization": {
+        "en": "Symbol",
+        "zh": "符文",
+        "aliases": ["魔法符文"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "druid", "wizard"],
+      "action": {
+        "id": "srd.symbol",
+        "name": "Symbol",
+        "localization": {
+          "en": "Symbol",
+          "zh": "符文",
+          "aliases": ["魔法符文"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "cleric", "druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "cleric", "druid", "wizard"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "powdered diamond worth 1,000+ GP",
+            "consumed": true
+          },
+          "inscription_targets": ["surface", "closable_object"],
+          "glyph_max_diameter_ft": 10,
+          "object_moved_more_than_ft_breaks_glyph": 10,
+          "symbol_effect_param": "symbol_effect",
+          "allowed_list_params": {
+            "symbol_effect": ["death", "discord", "fear", "pain", "sleep", "stunning"]
+          },
+          "required_list_param_counts": { "symbol_effect": 1 },
+          "notice_check": {
+            "ability": "wis",
+            "skill": "perception",
+            "dc_from": { "spell_save_dc": "actor" }
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7, "gold": 1000 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "symbol_ward",
+            "scope": { "target": "surface_or_closable_object" },
+            "duration": { "until": "triggered_or_dispelled" },
+            "metadata": {
+              "harmful_glyph": true,
+              "glyph_max_diameter_ft": 10,
+              "object_moved_more_than_ft_breaks_glyph": 10,
+              "broken_glyph_ends_spell_without_triggering": true,
+              "nearly_imperceptible": true,
+              "notice_check": {
+                "ability": "wis",
+                "skill": "perception",
+                "dc_from": { "spell_save_dc": "actor" }
+              },
+              "trigger_set_on_cast": true,
+              "surface_common_triggers": [
+                "touching_or_stepping_on_glyph",
+                "removing_covering_object",
+                "approaching_within_chosen_distance"
+              ],
+              "closable_object_common_triggers": [
+                "opening_object",
+                "seeing_glyph"
+              ],
+              "creature_type_trigger_filters": true,
+              "password_can_prevent_triggering": true,
+              "selected_effect": { "param_list": "symbol_effect" },
+              "activation": {
+                "scope": { "shape": "sphere", "radius_ft": 60 },
+                "light": "dim",
+                "duration": { "until": "duration_10_minutes" },
+                "targets": [
+                  "creature_in_sphere_when_glyph_activates",
+                  "creature_enters_sphere_first_time_on_turn",
+                  "creature_ends_turn_in_sphere"
+                ],
+                "targeted_once_per_turn": true
+              },
+              "effects": [
+                {
+                  "name": "death",
+                  "saving_throw": { "ability": "con" },
+                  "on_failed": {
+                    "damage": "10d10",
+                    "damage_type": "necrotic"
+                  },
+                  "on_success": { "damage": "half" }
+                },
+                {
+                  "name": "discord",
+                  "saving_throw": { "ability": "wis" },
+                  "on_failed": {
+                    "conditions": ["incapacitated"],
+                    "disadvantage": ["attack_rolls", "ability_checks"],
+                    "duration": { "until": "duration_1_minute" },
+                    "communication": "incapable_of_meaningful_communication"
+                  }
+                },
+                {
+                  "name": "fear",
+                  "saving_throw": { "ability": "wis" },
+                  "on_failed": {
+                    "condition": "frightened",
+                    "duration": { "until": "duration_1_minute" },
+                    "must_move_at_least_ft_away_from_glyph_each_turn_if_able": 30
+                  }
+                },
+                {
+                  "name": "pain",
+                  "saving_throw": { "ability": "con" },
+                  "on_failed": {
+                    "condition": "incapacitated",
+                    "duration": { "until": "duration_1_minute" }
+                  }
+                },
+                {
+                  "name": "sleep",
+                  "saving_throw": { "ability": "wis" },
+                  "on_failed": {
+                    "condition": "unconscious",
+                    "duration": { "until": "duration_10_minutes" },
+                    "wakes_on": ["taking_damage", "creature_uses_action_to_shake_awake"]
+                  }
+                },
+                {
+                  "name": "stunning",
+                  "saving_throw": { "ability": "wis" },
+                  "on_failed": {
+                    "condition": "stunned",
+                    "duration": { "until": "duration_1_minute" }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "audit_label": "Symbol"
+      }
+    },
+    {
+      "id": "srd.spell.antimagic_field",
+      "name": "Antimagic Field",
+      "localization": {
+        "en": "Antimagic Field",
+        "zh": "反魔法场",
+        "aliases": ["反魔法力场", "反魔法领域"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "abjuration",
+      "classes": ["cleric", "wizard"],
+      "action": {
+        "id": "srd.antimagic_field",
+        "name": "Antimagic Field",
+        "localization": {
+          "en": "Antimagic Field",
+          "zh": "反魔法场",
+          "aliases": ["反魔法力场", "反魔法领域"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "iron filings",
+            "consumed": false
+          },
+          "self_centered_emanation_radius_ft": 10,
+          "dynamic_aura_membership_not_automated": true,
+          "magic_item_suppression_not_automated": true,
+          "teleport_and_planar_travel_blocking_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "world_effect",
+            "effect_type": "antimagic_field",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 10 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "self_centered_emanation": true,
+              "blocks_spellcasting_inside_aura": true,
+              "blocks_magic_actions_inside_aura": true,
+              "blocks_new_magical_effects_inside_aura": true,
+              "blocks_magic_targeting_or_affecting_inside_aura": true,
+              "suppresses_magic_item_properties_inside_aura": true,
+              "blocks_area_effects_extending_into_aura": true,
+              "blocks_teleport_into_or_out_of_aura": true,
+              "blocks_planar_travel_into_or_out_of_aura": true,
+              "portals_close_temporarily_inside_aura": true,
+              "ongoing_spells_suppressed_except_artifact_or_deity": true,
+              "suppressed_effect_duration_still_counts_down": true,
+              "dispel_magic_has_no_effect_on_aura": true,
+              "different_antimagic_fields_do_not_nullify_each_other": true,
+              "dynamic_aura_membership_not_automated": true,
+              "magic_item_suppression_not_automated": true,
+              "teleport_and_planar_travel_blocking_not_automated": true
+            }
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "antimagic_field": true,
+              "blocks_spellcasting": true,
+              "blocks_magic_actions": true,
+              "blocks_new_magical_effects": true,
+              "inside_antimagic_field": true,
+              "magic_item_properties_suppressed": true,
+              "teleport_and_planar_travel_blocked": true
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Antimagic Field"
+      }
+    },
+    {
+      "id": "srd.spell.holy_aura",
+      "name": "Holy Aura",
+      "localization": {
+        "en": "Holy Aura",
+        "zh": "圣洁灵光",
+        "aliases": ["神圣灵光"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.holy_aura",
+        "name": "Holy Aura",
+        "localization": {
+          "en": "Holy Aura",
+          "zh": "圣洁灵光",
+          "aliases": ["神圣灵光"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "emanation", "radius_ft": 30 },
+        "target_policy": { "min": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a reliquary worth 1,000+ GP",
+            "consumed": false
+          },
+          "self_centered_emanation_radius_ft": 30,
+          "dynamic_chosen_creatures": true,
+          "no_higher_level_spell_slot_effect": true,
+          "spell_definition_id": "srd.spell.holy_aura",
+          "spell_level": 8
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit", "optional": true },
+          {
+            "type": "world_effect",
+            "effect_type": "holy_aura",
+            "scope": { "target": "self_centered_emanation", "radius_ft": 30 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true,
+            "metadata": {
+              "chosen_creature_ids": { "action_target_ids": true },
+              "spell_save_dc": { "spell_save_dc": "actor" },
+              "emanation_moves_with_caster": true,
+              "origin_included_only_if_chosen": true,
+              "all_saving_throws_advantage": true,
+              "other_creatures_attack_rolls_disadvantage": true,
+              "fiend_or_undead_melee_hit_requires_con_save": true,
+              "failed_save_condition": "blinded",
+              "blinded_until_end_of_attacker_next_turn": true,
+              "dynamic_aura_membership_fully_automated": true
+            }
+          }
+        ],
+        "audit_label": "Holy Aura"
+      }
+    },
+    {
+      "id": "srd.spell.mind_blank",
+      "name": "Mind Blank",
+      "localization": {
+        "en": "Mind Blank",
+        "zh": "心灵屏障",
+        "aliases": ["心灵空白"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "abjuration",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.mind_blank",
+        "name": "Mind Blank",
+        "localization": {
+          "en": "Mind Blank",
+          "zh": "心灵屏障",
+          "aliases": ["心灵空白"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "components": ["V", "S"],
+          "target_type": "creature",
+          "target_must_be_touched": true,
+          "requires_willing_target": true,
+          "unaffected_by_emotion_sensing": true,
+          "unaffected_by_alignment_sensing": true,
+          "unaffected_by_read_thoughts": true,
+          "unaffected_by_magical_location_detection": true,
+          "no_spell_can_gather_information_about_target": true,
+          "no_spell_can_observe_target_remotely": true,
+          "no_spell_can_control_targets_mind": true,
+          "wish_is_not_exception": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "mind_blank": true,
+              "damage_immunities": ["psychic"],
+              "condition_immunities": ["charmed"],
+              "unaffected_by_emotion_sensing": true,
+              "unaffected_by_alignment_sensing": true,
+              "unaffected_by_read_thoughts": true,
+              "unaffected_by_magical_location_detection": true,
+              "spell_information_gathering_blocked": true,
+              "remote_observation_blocked": true,
+              "mind_control_blocked": true,
+              "wish_is_not_exception": true,
+              "information_observation_and_mind_control_resolution_not_automated": true
+            },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Mind Blank"
+      }
+    },
+    {
+      "id": "srd.spell.prismatic_wall",
+      "name": "Prismatic Wall",
+      "localization": {
+        "en": "Prismatic Wall",
+        "zh": "棱彩墙",
+        "aliases": ["虹彩墙"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "abjuration",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.prismatic_wall",
+        "name": "Prismatic Wall",
+        "localization": {
+          "en": "Prismatic Wall",
+          "zh": "棱彩墙",
+          "aliases": ["虹彩墙"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "wizard"],
+          "components": ["V", "S"],
+          "shape_options": ["wall", "globe"],
+          "no_higher_level_spell_slot_effect": true,
+          "spell_definition_id": "srd.spell.prismatic_wall",
+          "spell_level": 9
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "prismatic_wall",
+            "scope": { "target": "point", "range_ft": 60 },
+            "duration": { "until": "duration_10_minutes" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "spell_save_dc": { "spell_save_dc": "actor" },
+              "opaque": true,
+              "shape_options": ["wall", "globe"],
+              "vertical_wall": true,
+              "wall_max_length_ft": 90,
+              "wall_max_height_ft": 30,
+              "wall_thickness_inches": 1,
+              "globe_max_diameter_ft": 30,
+              "bright_light_radius_ft": 100,
+              "dim_light_additional_ft": 100,
+              "if_positioned_in_creature_space": "spell_ends_instantly_without_effect",
+              "caster_and_designated_creatures_can_pass_through_and_be_near_without_harm": true,
+              "designated_creatures_selected_on_cast": true,
+              "other_creature_near_wall_trigger_distance_ft": 20,
+              "other_creature_near_wall_triggers": [
+                "creature_moves_within_20_ft_of_wall",
+                "creature_starts_turn_within_20_ft_of_wall"
+              ],
+              "near_wall_save": {
+                "ability": "con",
+                "dc_from": { "spell_save_dc": "actor" },
+                "on_failed": {
+                  "condition": "blinded",
+                  "duration": { "until": "duration_1_minute" }
+                }
+              },
+              "seven_layers": true,
+              "reaches_into_or_passes_through_one_layer_at_a_time": true,
+              "passes_through_all_layers_in_order": true,
+              "layer_save": {
+                "ability": "dex",
+                "dc_from": { "spell_save_dc": "actor" },
+                "on_failed": "apply_layer_effects"
+              },
+              "wall_ac": 10,
+              "layer_destruction_order": [
+                "red",
+                "orange",
+                "yellow",
+                "green",
+                "blue",
+                "indigo",
+                "violet"
+              ],
+              "destroyed_layer_is_gone_for_duration": true,
+              "antimagic_field_has_no_effect": true,
+              "dispel_magic_affects_only_violet_layer": true,
+              "layers": [
+                {
+                  "order": 1,
+                  "color": "red",
+                  "failed_save": { "damage": "12d6", "damage_type": "fire" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "nonmagical_ranged_attacks_cannot_pass_through": true,
+                    "destroyed_if_takes_damage": {
+                      "damage_type": "cold",
+                      "minimum_damage": 25
+                    }
+                  }
+                },
+                {
+                  "order": 2,
+                  "color": "orange",
+                  "failed_save": { "damage": "12d6", "damage_type": "acid" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "magical_ranged_attacks_cannot_pass_through": true,
+                    "destroyed_by_strong_wind": true,
+                    "strong_wind_example": "Gust of Wind"
+                  }
+                },
+                {
+                  "order": 3,
+                  "color": "yellow",
+                  "failed_save": { "damage": "12d6", "damage_type": "lightning" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "destroyed_if_takes_damage": {
+                      "damage_type": "force",
+                      "minimum_damage": 60
+                    }
+                  }
+                },
+                {
+                  "order": 4,
+                  "color": "green",
+                  "failed_save": { "damage": "12d6", "damage_type": "poison" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "destroyed_by_passwall_or_equal_or_higher_level_portal_spell_on_solid_surface": true
+                  }
+                },
+                {
+                  "order": 5,
+                  "color": "blue",
+                  "failed_save": { "damage": "12d6", "damage_type": "cold" },
+                  "successful_save": { "damage": "half" },
+                  "additional_effects": {
+                    "destroyed_if_takes_damage": {
+                      "damage_type": "fire",
+                      "minimum_damage": 25
+                    }
+                  }
+                },
+                {
+                  "order": 6,
+                  "color": "indigo",
+                  "failed_save": {
+                    "condition": "restrained",
+                    "repeat_save": {
+                      "ability": "con",
+                      "trigger": "end_of_each_turn",
+                      "successes_needed": 3,
+                      "failures_needed": 3,
+                      "successes_end_condition": true,
+                      "successes_and_failures_need_not_be_consecutive": true,
+                      "three_failures_condition": "petrified",
+                      "petrified_until_freed_by_effect_like": "Greater Restoration"
+                    }
+                  },
+                  "additional_effects": {
+                    "spells_cannot_be_cast_through": true,
+                    "destroyed_by_bright_light_shed_by_daylight": true
+                  }
+                },
+                {
+                  "order": 7,
+                  "color": "violet",
+                  "failed_save": {
+                    "condition": "blinded",
+                    "repeat_save": {
+                      "ability": "wis",
+                      "trigger": "start_of_caster_next_turn",
+                      "on_success": "blinded_ends",
+                      "on_failure": {
+                        "blinded_ends": true,
+                        "teleport_to_another_plane": true,
+                        "plane_chosen_by": "GM"
+                      }
+                    }
+                  },
+                  "additional_effects": {
+                    "destroyed_by": "Dispel Magic"
+                  }
+                }
+              ],
+              "wall_position_and_shape_resolution_not_automated": true,
+              "occupied_space_cast_failure_not_automated": true,
+              "designated_creature_selection_not_automated": true,
+              "near_wall_trigger_and_save_not_automated": true,
+              "layer_traversal_and_dex_saves_not_automated": true,
+              "layer_destruction_and_ac_resolution_not_automated": true,
+              "indigo_and_violet_repeat_save_resolution_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Prismatic Wall"
+      }
+    },
+    {
+      "id": "srd.spell.mass_heal",
+      "name": "Mass Heal",
+      "localization": {
+        "en": "Mass Heal",
+        "zh": "群体医疗术",
+        "aliases": ["群体医疗"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "abjuration",
+      "classes": ["cleric"],
+      "action": {
+        "id": "srd.mass_heal",
+        "name": "Mass Heal",
+        "localization": {
+          "en": "Mass Heal",
+          "zh": "群体医疗术",
+          "aliases": ["群体医疗"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "spell_classes": ["cleric"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "healing_pool": 700,
+          "healing_pool_points_param": "mass_heal_points",
+          "removed_conditions": ["blinded", "deafened", "poisoned"],
+          "no_construct_or_undead_exclusion_in_srd_5_2_1": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "healing_pool",
+            "max_points": 700,
+            "points_param": "mass_heal_points"
+          },
+          {
+            "type": "remove_condition",
+            "conditions": ["blinded", "deafened", "poisoned"],
+            "targets_from": "healing_pool"
+          }
+        ],
+        "audit_label": "Mass Heal"
+      }
+    }
+  ]
+}

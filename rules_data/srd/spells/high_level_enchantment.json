@@ -1,0 +1,1017 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.charm_monster",
+      "name": "Charm Monster",
+      "localization": {
+        "en": "Charm Monster",
+        "zh": "怪物魅惑术",
+        "aliases": ["怪物魅惑"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "enchantment",
+      "classes": ["bard", "druid", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.charm_monster",
+        "name": "Charm Monster",
+        "localization": {
+          "en": "Charm Monster",
+          "zh": "怪物魅惑术",
+          "aliases": ["怪物魅惑"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "base_spell_slot_level": 4,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "druid", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "druid", "sorcerer", "warlock", "wizard"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "saving_throw_advantage_if_caster_or_allies_fighting_target": true,
+          "target_friendly_to_applier": true,
+          "target_knows_charmed_when_spell_ends": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "target_friendly_to_applier": true,
+              "target_knows_charmed_when_spell_ends": true
+            },
+            "duration": {
+              "until": "duration_1_hour_or_harmed",
+              "break_on_damage": true,
+              "break_on_damage_by": "applied_by_or_allies"
+            },
+            "tick_on": "duration_or_damage"
+          }
+        ],
+        "audit_label": "Charm Monster"
+      }
+    },
+    {
+      "id": "srd.spell.confusion",
+      "name": "Confusion",
+      "localization": {
+        "en": "Confusion",
+        "zh": "困惑术",
+        "aliases": ["混乱术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "enchantment",
+      "classes": ["bard", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.confusion",
+        "name": "Confusion",
+        "localization": {
+          "en": "Confusion",
+          "zh": "困惑术",
+          "aliases": ["混乱术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90, "shape": "sphere", "radius_ft": 10 },
+        "target_policy": { "min": 1, "max": 8, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "druid", "sorcerer", "wizard"],
+          "material_component": {
+            "description": "three nut shells",
+            "consumed": false
+          },
+          "base_sphere_radius_ft": 10,
+          "sphere_radius_increase_ft_per_slot_above_4": 5,
+          "target_turn_start_behavior_roll": "1d10",
+          "behavior_roll_not_automated": true,
+          "behavior_table": [
+            {
+              "min": 1,
+              "max": 1,
+              "behavior": "no_action_uses_all_movement_random_direction",
+              "direction_roll": "1d4",
+              "directions": { "1": "north", "2": "east", "3": "south", "4": "west" }
+            },
+            { "min": 2, "max": 6, "behavior": "no_movement_or_actions" },
+            {
+              "min": 7,
+              "max": 8,
+              "behavior": "attack_action_one_melee_attack_random_creature_within_reach_or_no_action"
+            },
+            { "min": 9, "max": 10, "behavior": "target_chooses_behavior" }
+          ]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "confusion": true,
+              "area_shape": "sphere",
+              "sphere_radius_ft": {
+                "slot_scaled": {
+                  "base_value": 10,
+                  "base_spell_slot_level": 4,
+                  "value_per_slot_above": 5
+                }
+              },
+              "blocked_action_economies": ["bonus_action", "reaction"],
+              "target_turn_start_behavior_roll": "1d10",
+              "behavior_roll_not_automated": true,
+              "behavior_table": [
+                {
+                  "min": 1,
+                  "max": 1,
+                  "behavior": "no_action_uses_all_movement_random_direction",
+                  "direction_roll": "1d4",
+                  "directions": { "1": "north", "2": "east", "3": "south", "4": "west" }
+                },
+                { "min": 2, "max": 6, "behavior": "no_movement_or_actions" },
+                {
+                  "min": 7,
+                  "max": 8,
+                  "behavior": "attack_action_one_melee_attack_random_creature_within_reach_or_no_action"
+                },
+                { "min": 9, "max": 10, "behavior": "target_chooses_behavior" }
+              ]
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end"
+              }
+            },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Confusion"
+      }
+    },
+    {
+      "id": "srd.spell.dominate_beast",
+      "name": "Dominate Beast",
+      "localization": {
+        "en": "Dominate Beast",
+        "zh": "支配野兽",
+        "aliases": ["支配野兽术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "enchantment",
+      "classes": ["druid", "ranger", "sorcerer"],
+      "action": {
+        "id": "srd.dominate_beast",
+        "name": "Dominate Beast",
+        "localization": {
+          "en": "Dominate Beast",
+          "zh": "支配野兽",
+          "aliases": ["支配野兽术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "creature_types": ["beast"]
+        },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "ranger", "sorcerer"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "ranger", "sorcerer"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_type": "beast",
+          "saving_throw_advantage_if_caster_or_allies_fighting_target": true,
+          "telepathic_link_same_plane": true,
+          "commands_no_action_on_caster_turn": true,
+          "target_obeys_commands_best_ability": true,
+          "target_self_protects_without_new_direction": true,
+          "can_command_target_reaction_by_spending_caster_reaction": true,
+          "command_ai_not_automated": true,
+          "reaction_command_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "dominate_beast": true,
+              "telepathic_link_same_plane": true,
+              "commands_no_action_on_caster_turn": true,
+              "target_obeys_commands_best_ability": true,
+              "target_self_protects_without_new_direction": true,
+              "can_command_target_reaction_by_spending_caster_reaction": true,
+              "command_ai_not_automated": true,
+              "reaction_command_not_automated": true
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "damage"
+              },
+              "duration_from_slot": {
+                "base_spell_slot_level": 4,
+                "by_slot_level": {
+                  "5": "concentration_10_minutes",
+                  "6": "concentration_1_hour",
+                  "7": "concentration_8_hours",
+                  "8": "concentration_8_hours",
+                  "9": "concentration_8_hours"
+                }
+              }
+            },
+            "tick_on": "damage",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Dominate Beast"
+      }
+    },
+    {
+      "id": "srd.spell.dominate_person",
+      "name": "Dominate Person",
+      "localization": {
+        "en": "Dominate Person",
+        "zh": "支配人类",
+        "aliases": ["支配人类术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.dominate_person",
+        "name": "Dominate Person",
+        "localization": {
+          "en": "Dominate Person",
+          "zh": "支配人类",
+          "aliases": ["支配人类术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "creature_types": ["humanoid"]
+        },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "wizard"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_type": "humanoid",
+          "saving_throw_advantage_if_caster_or_allies_fighting_target": true,
+          "telepathic_link_same_plane": true,
+          "commands_no_action_on_caster_turn": true,
+          "target_obeys_commands_best_ability": true,
+          "target_self_protects_without_new_direction": true,
+          "can_command_target_reaction_by_spending_caster_reaction": true,
+          "command_ai_not_automated": true,
+          "reaction_command_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "dominate_person": true,
+              "telepathic_link_same_plane": true,
+              "commands_no_action_on_caster_turn": true,
+              "target_obeys_commands_best_ability": true,
+              "target_self_protects_without_new_direction": true,
+              "can_command_target_reaction_by_spending_caster_reaction": true,
+              "command_ai_not_automated": true,
+              "reaction_command_not_automated": true
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "damage"
+              },
+              "duration_from_slot": {
+                "base_spell_slot_level": 5,
+                "by_slot_level": {
+                  "6": "concentration_10_minutes",
+                  "7": "concentration_1_hour",
+                  "8": "concentration_8_hours",
+                  "9": "concentration_8_hours"
+                }
+              }
+            },
+            "tick_on": "damage",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Dominate Person"
+      }
+    },
+    {
+      "id": "srd.spell.dominate_monster",
+      "name": "Dominate Monster",
+      "localization": {
+        "en": "Dominate Monster",
+        "zh": "支配怪物",
+        "aliases": ["支配怪物术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.dominate_monster",
+        "name": "Dominate Monster",
+        "localization": {
+          "en": "Dominate Monster",
+          "zh": "支配怪物",
+          "aliases": ["支配怪物术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true
+        },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+          "components": ["V", "S"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "saving_throw_advantage_if_caster_or_allies_fighting_target": true,
+          "telepathic_link_same_plane": true,
+          "commands_no_action_on_caster_turn": true,
+          "target_obeys_commands_best_ability": true,
+          "target_self_protects_without_new_direction": true,
+          "can_command_target_reaction_by_spending_caster_reaction": true,
+          "command_ai_not_automated": true,
+          "reaction_command_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "dominate_monster": true,
+              "telepathic_link_same_plane": true,
+              "commands_no_action_on_caster_turn": true,
+              "target_obeys_commands_best_ability": true,
+              "target_self_protects_without_new_direction": true,
+              "can_command_target_reaction_by_spending_caster_reaction": true,
+              "command_ai_not_automated": true,
+              "reaction_command_not_automated": true
+            },
+            "duration": {
+              "until": "concentration_1_hour",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "damage"
+              },
+              "duration_from_slot": {
+                "base_spell_slot_level": 8,
+                "by_slot_level": {
+                  "9": "concentration_8_hours"
+                }
+              }
+            },
+            "tick_on": "damage",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Dominate Monster"
+      }
+    },
+    {
+      "id": "srd.spell.compulsion",
+      "name": "Compulsion",
+      "localization": {
+        "en": "Compulsion",
+        "zh": "强制术",
+        "aliases": ["强迫术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "enchantment",
+      "classes": ["bard"],
+      "action": {
+        "id": "srd.compulsion",
+        "name": "Compulsion",
+        "localization": {
+          "en": "Compulsion",
+          "zh": "强制术",
+          "aliases": ["强迫术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard"]
+        },
+        "properties": {
+          "spell_classes": ["bard"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "creatures_of_your_choice_in_range": true,
+          "forced_movement_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "compulsion": true,
+              "direction_designated_by_bonus_action": true,
+              "direction_relative_to_caster": "horizontal",
+              "must_use_as_much_movement_as_possible": true,
+              "move_on_next_turn": true,
+              "safest_route_required": true,
+              "forced_movement_not_automated": true,
+              "repeat_save_after_moving": true,
+              "repeat_save_trigger_approximated_as": "target_turn_end"
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_turn_end"
+              }
+            },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Compulsion"
+      }
+    },
+    {
+      "id": "srd.spell.hold_monster",
+      "name": "Hold Monster",
+      "localization": {
+        "en": "Hold Monster",
+        "zh": "怪物定身术",
+        "aliases": ["怪物定身"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.hold_monster",
+        "name": "Hold Monster",
+        "localization": {
+          "en": "Hold Monster",
+          "zh": "怪物定身术",
+          "aliases": ["怪物定身"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "base_spell_slot_level": 5,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "paralyzed",
+            "requires_failed_save": true,
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true
+              }
+            },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Hold Monster"
+      }
+    },
+    {
+      "id": "srd.spell.irresistible_dance",
+      "name": "Irresistible Dance",
+      "localization": {
+        "en": "Irresistible Dance",
+        "zh": "难抗之舞",
+        "aliases": ["不可抗拒之舞"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "enchantment",
+      "classes": ["bard", "wizard"],
+      "action": {
+        "id": "srd.irresistible_dance",
+        "name": "Irresistible Dance",
+        "localization": {
+          "en": "Irresistible Dance",
+          "zh": "难抗之舞",
+          "aliases": ["不可抗拒之舞"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "wizard"]
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "passive_effect",
+            "requires_successful_save": true,
+            "passive_modifiers": {
+              "must_spend_all_movement_dancing_in_place": true
+            },
+            "duration": { "until": "end_of_next_turn" },
+            "tick_on": "target_turn_end",
+            "concentration": true
+          },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "must_spend_all_movement_dancing_in_place": true,
+              "saving_throw_disadvantage_abilities": ["dex"],
+              "attack_roll_disadvantage": true,
+              "incoming_attack_advantage": true
+            },
+            "duration": {
+              "until": "concentration_1_minute",
+              "repeat_save": {
+                "ability": "wis",
+                "dc_from": { "spell_save_dc": "actor" },
+                "end_on_success": true,
+                "trigger": "target_action"
+              }
+            },
+            "tick_on": "target_action",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Irresistible Dance"
+      }
+    },
+    {
+      "id": "srd.spell.mass_suggestion",
+      "name": "Mass Suggestion",
+      "localization": {
+        "en": "Mass Suggestion",
+        "zh": "群体暗示术",
+        "aliases": ["群体建议术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.mass_suggestion",
+        "name": "Mass Suggestion",
+        "localization": {
+          "en": "Mass Suggestion",
+          "zh": "群体暗示术",
+          "aliases": ["群体建议术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 12, "harmful": true },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a snake's tongue",
+            "consumed": false
+          },
+          "suggestion_word_limit": 25,
+          "targets_must_hear_and_understand": true,
+          "suggestion_must_sound_achievable": true,
+          "suggestion_cannot_obviously_damage_targets_or_allies": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "condition",
+            "condition": "charmed",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "compelled_suggestion": true,
+              "mass_suggestion": true,
+              "suggestion_word_limit": 25,
+              "targets_must_hear_and_understand": true,
+              "suggestion_must_sound_achievable": true,
+              "suggestion_cannot_obviously_damage_targets_or_allies": true,
+              "pursues_suggestion_to_best_ability": true,
+              "ends_when_suggested_activity_completed": true
+            },
+            "duration": {
+              "until": "duration_24_hours_or_harmed",
+              "break_on_damage": true,
+              "break_on_damage_by": "applied_by_or_allies",
+              "duration_from_slot": {
+                "base_spell_slot_level": 6,
+                "by_slot_level": {
+                  "7": "duration_10_days_or_harmed",
+                  "8": "duration_30_days_or_harmed",
+                  "9": "duration_366_days_or_harmed"
+                }
+              }
+            },
+            "tick_on": "duration_or_damage"
+          }
+        ],
+        "audit_label": "Mass Suggestion"
+      }
+    },
+    {
+      "id": "srd.spell.glibness",
+      "name": "Glibness",
+      "localization": {
+        "en": "Glibness",
+        "zh": "花言巧语",
+        "aliases": ["巧言术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "enchantment",
+      "classes": ["bard", "warlock"],
+      "action": {
+        "id": "srd.glibness",
+        "name": "Glibness",
+        "localization": {
+          "en": "Glibness",
+          "zh": "花言巧语",
+          "aliases": ["巧言术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["bard", "warlock"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "warlock"],
+          "components": ["V"],
+          "charisma_check_minimum_d20": 15,
+          "magic_truth_detection_indicates_truthful": true,
+          "truth_detection_resolution_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "glibness": true,
+              "charisma_check_minimum_d20": 15,
+              "magic_truth_detection_indicates_truthful": true,
+              "truth_detection_resolution_not_automated": true
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Glibness"
+      }
+    },
+    {
+      "id": "srd.spell.power_word_stun",
+      "name": "Power Word Stun",
+      "localization": {
+        "en": "Power Word Stun",
+        "zh": "律令震慑",
+        "aliases": ["律令震慑术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.power_word_stun",
+        "name": "Power Word Stun",
+        "localization": {
+          "en": "Power Word Stun",
+          "zh": "律令震慑",
+          "aliases": ["律令震慑术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+          "components": ["V"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "stun_hit_point_threshold": 150,
+          "high_hp_speed_zero_until_caster_next_turn": true,
+          "no_initial_saving_throw": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "branch",
+            "condition": "target_hp_at_or_below",
+            "hp": 150,
+            "if_true": [
+              {
+                "type": "condition",
+                "condition": "stunned",
+                "duration": {
+                  "until": "repeat_save_success",
+                  "repeat_save": {
+                    "ability": "con",
+                    "dc_from": { "spell_save_dc": "actor" },
+                    "end_on_success": true,
+                    "trigger": "target_turn_end"
+                  }
+                },
+                "tick_on": "target_turn_end"
+              }
+            ],
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": {
+                  "power_word_stun_high_hp_speed_zero": true,
+                  "speed_multiplier": 0
+                },
+                "duration": {
+                  "until": "start_of_next_turn",
+                  "turn_owner_id_from": "actor"
+                },
+                "tick_on": "self_turn_start"
+              }
+            ]
+          }
+        ],
+        "audit_label": "Power Word Stun"
+      }
+    },
+    {
+      "id": "srd.spell.power_word_kill",
+      "name": "Power Word Kill",
+      "localization": {
+        "en": "Power Word Kill",
+        "zh": "律令死亡",
+        "aliases": ["律令死亡术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.power_word_kill",
+        "name": "Power Word Kill",
+        "localization": {
+          "en": "Power Word Kill",
+          "zh": "律令死亡",
+          "aliases": ["律令死亡术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["bard", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "sorcerer", "warlock", "wizard"],
+          "components": ["V"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "kill_hit_point_threshold": 100,
+          "high_hp_damage": { "dice": "12d12", "damage_type": "psychic" },
+          "no_initial_saving_throw": true,
+          "no_no_effect_high_hp_branch": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "branch",
+            "condition": "target_hp_at_or_below",
+            "hp": 100,
+            "if_true": [
+              {
+                "type": "instant_death",
+                "reason": "power_word_kill",
+                "death_ward_negated_reason": "power_word_kill"
+              }
+            ],
+            "if_false": [
+              {
+                "type": "damage",
+                "dice": "12d12",
+                "damage_type": "psychic"
+              }
+            ]
+          }
+        ],
+        "audit_label": "Power Word Kill"
+      }
+    },
+    {
+      "id": "srd.spell.power_word_heal",
+      "name": "Power Word Heal",
+      "localization": {
+        "en": "Power Word Heal",
+        "zh": "律令治疗",
+        "aliases": ["律令治疗术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "enchantment",
+      "classes": ["bard", "cleric"],
+      "action": {
+        "id": "srd.power_word_heal",
+        "name": "Power Word Heal",
+        "localization": {
+          "en": "Power Word Heal",
+          "zh": "律令治疗",
+          "aliases": ["律令治疗术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["bard", "cleric"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "cleric"],
+          "components": ["V"],
+          "target_must_be_visible": true,
+          "target_type": "creature",
+          "restores_all_hit_points": true,
+          "removed_conditions": ["charmed", "frightened", "paralyzed", "poisoned", "stunned"],
+          "prone_can_use_reaction_to_stand": true,
+          "prone_stand_up_not_automatic": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "restore_all_hit_points" },
+          {
+            "type": "remove_condition",
+            "conditions": ["charmed", "frightened", "paralyzed", "poisoned", "stunned"]
+          },
+          {
+            "type": "optional_reaction_remove_condition",
+            "condition": "prone",
+            "param": "power_word_heal_stand_up"
+          }
+        ],
+        "audit_label": "Power Word Heal"
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActionDefinition",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "localization",
+    "source",
+    "rules_version",
+    "action_type",
+    "action_economy",
+    "range",
+    "target_policy",
+    "automation"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "localization": { "type": "object" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "action_type": { "type": "string" },
+    "action_economy": { "type": "string" },
+    "range": { "type": "object" },
+    "target_policy": { "type": "object" },
+    "requirements": { "type": "object" },
+    "properties": { "type": "object" },
+    "friendly_fire_policy": { "type": "string" },
+    "cost": { "type": "object" },
+    "automation": { "type": "array" },
+    "audit_label": { "type": "string" }
+  }
+}

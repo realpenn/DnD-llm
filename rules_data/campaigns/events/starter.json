@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "id": "starter.loose_stones",
+      "name": "Loose Stones",
+      "source": "Starter campaign pack",
+      "rules_version": "srd-5.2.1",
+      "trigger": {
+        "type": "zone_entry",
+        "zone_id": "ruins"
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "saving_throw",
+          "ability": "dex",
+          "dc_ref": "starter.loose_stones.dex_save",
+          "dc_table": {
+            "starter.loose_stones.dex_save": 12
+          }
+        },
+        {
+          "type": "damage",
+          "dice": "1d6",
+          "damage_type": "bludgeoning",
+          "save_half": true
+        },
+        { "type": "text_result", "text": "Loose stones tumble from the ruined archway." }
+      ],
+      "audit_label": "Loose Stones"
+    }
+  ]
+}

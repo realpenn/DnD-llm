@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EventDefinition",
+  "type": "object",
+  "required": ["id", "name", "source", "rules_version", "trigger", "automation"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "trigger": { "type": "object" },
+    "automation": { "type": "array" },
+    "audit_label": { "type": "string" }
+  }
+}

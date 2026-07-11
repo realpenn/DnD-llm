@@ -1,0 +1,421 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.alter_self",
+      "name": "Alter Self",
+      "localization": { "en": "Alter Self", "zh": "变身术", "aliases": ["自我变形"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.alter_self",
+        "name": "Alter Self",
+        "localization": { "en": "Alter Self", "zh": "变身术", "aliases": ["自我变形"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "alter_self_modes": ["aquatic_adaptation", "change_appearance", "natural_weapons"]
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Alter Self"
+      }
+    },
+    {
+      "id": "srd.spell.barkskin",
+      "name": "Barkskin",
+      "localization": { "en": "Barkskin", "zh": "树肤术", "aliases": ["树皮术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.barkskin",
+        "name": "Barkskin",
+        "localization": { "en": "Barkskin", "zh": "树肤术", "aliases": ["树皮术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "armor_class_minimum": 16 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "defense",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Barkskin"
+      }
+    },
+    {
+      "id": "srd.spell.calm_emotions",
+      "name": "Calm Emotions",
+      "localization": { "en": "Calm Emotions", "zh": "安定心神", "aliases": ["安抚情绪"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "enchantment",
+      "classes": ["bard", "cleric"],
+      "action": {
+        "id": "srd.calm_emotions",
+        "name": "Calm Emotions",
+        "localization": { "en": "Calm Emotions", "zh": "安定心神", "aliases": ["安抚情绪"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 6, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "remove_condition", "conditions": ["charmed", "frightened"] },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "hostility_suppressed": true },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "social_interaction",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Calm Emotions"
+      }
+    },
+    {
+      "id": "srd.spell.detect_thoughts",
+      "name": "Detect Thoughts",
+      "localization": { "en": "Detect Thoughts", "zh": "侦测思想", "aliases": ["读心"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "divination",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.detect_thoughts",
+        "name": "Detect Thoughts",
+        "localization": { "en": "Detect Thoughts", "zh": "侦测思想", "aliases": ["读心"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "radius_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "detect_thoughts",
+            "scope": { "target": "self", "radius_ft": 30 },
+            "duration": { "until": "concentration_1_minute" },
+            "metadata": { "surface_thoughts": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Detect Thoughts"
+      }
+    },
+    {
+      "id": "srd.spell.feather_fall",
+      "name": "Feather Fall",
+      "localization": { "en": "Feather Fall", "zh": "羽落术", "aliases": ["轻落术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "transmutation",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.feather_fall",
+        "name": "Feather Fall",
+        "localization": { "en": "Feather Fall", "zh": "羽落术", "aliases": ["轻落术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "reaction",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 5, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "fall_rate_ft_per_round": 60, "fall_damage_prevented": true },
+            "duration": { "until": "landing_or_1_minute" },
+            "tick_on": "falling"
+          }
+        ],
+        "audit_label": "Feather Fall"
+      }
+    },
+    {
+      "id": "srd.spell.goodberry",
+      "name": "Goodberry",
+      "localization": { "en": "Goodberry", "zh": "神莓术", "aliases": ["好莓"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "conjuration",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.goodberry",
+        "name": "Goodberry",
+        "localization": { "en": "Goodberry", "zh": "神莓术", "aliases": ["好莓"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "conjured_goodberries",
+            "scope": { "target": "caster_inventory", "count": 10 },
+            "duration": { "until": "duration_24_hours" },
+            "metadata": { "healing_each": 1, "nourishment": true }
+          }
+        ],
+        "audit_label": "Goodberry"
+      }
+    },
+    {
+      "id": "srd.spell.knock",
+      "name": "Knock",
+      "localization": { "en": "Knock", "zh": "敲击术", "aliases": ["开锁术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.knock",
+        "name": "Knock",
+        "localization": { "en": "Knock", "zh": "敲击术", "aliases": ["开锁术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "unlock_object",
+            "scope": { "target": "object_or_portal", "range_ft": 60 },
+            "duration": { "until": "instant" },
+            "metadata": { "audible_ft": 300 }
+          }
+        ],
+        "audit_label": "Knock"
+      }
+    },
+    {
+      "id": "srd.spell.see_invisibility",
+      "name": "See Invisibility",
+      "localization": { "en": "See Invisibility", "zh": "识破隐形", "aliases": ["看见隐形"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "divination",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.see_invisibility",
+        "name": "See Invisibility",
+        "localization": { "en": "See Invisibility", "zh": "识破隐形", "aliases": ["看见隐形"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "see_invisibility": true, "see_ethereal": true },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "perception"
+          }
+        ],
+        "audit_label": "See Invisibility"
+      }
+    },
+    {
+      "id": "srd.spell.spider_climb",
+      "name": "Spider Climb",
+      "localization": { "en": "Spider Climb", "zh": "蛛行术", "aliases": ["蜘蛛攀爬"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.spider_climb",
+        "name": "Spider Climb",
+        "localization": { "en": "Spider Climb", "zh": "蛛行术", "aliases": ["蜘蛛攀爬"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "climb_speed_equals_walking_speed": true },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "movement",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Spider Climb"
+      }
+    },
+    {
+      "id": "srd.spell.tongues",
+      "name": "Tongues",
+      "localization": { "en": "Tongues", "zh": "巧言术", "aliases": ["通晓语言术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "divination",
+      "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.tongues",
+        "name": "Tongues",
+        "localization": { "en": "Tongues", "zh": "巧言术", "aliases": ["通晓语言术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "understand_spoken_language": true, "be_understood_by_speakers": true },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "communication"
+          }
+        ],
+        "audit_label": "Tongues"
+      }
+    },
+    {
+      "id": "srd.spell.water_breathing",
+      "name": "Water Breathing",
+      "localization": { "en": "Water Breathing", "zh": "水下呼吸", "aliases": ["水呼吸"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["druid", "ranger", "sorcerer", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.water_breathing",
+        "name": "Water Breathing",
+        "localization": { "en": "Water Breathing", "zh": "水下呼吸", "aliases": ["水呼吸"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 10, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "can_breathe_underwater": true },
+            "duration": { "until": "duration_24_hours" },
+            "tick_on": "environment"
+          }
+        ],
+        "audit_label": "Water Breathing"
+      }
+    },
+    {
+      "id": "srd.spell.water_walk",
+      "name": "Water Walk",
+      "localization": { "en": "Water Walk", "zh": "水上行走", "aliases": ["水面行走"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "ranger", "sorcerer"],
+      "ritual": true,
+      "action": {
+        "id": "srd.water_walk",
+        "name": "Water Walk",
+        "localization": { "en": "Water Walk", "zh": "水上行走", "aliases": ["水面行走"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 10, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "walk_on_liquid_surface": true },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "movement"
+          }
+        ],
+        "audit_label": "Water Walk"
+      }
+    }
+  ]
+}

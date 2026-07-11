@@ -1,0 +1,81 @@
+{
+  "items": [
+    {
+      "id": "srd.ring_of_protection",
+      "name": "Ring of Protection",
+      "localization": {
+        "en": "Ring of Protection",
+        "zh": "防护戒指",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Protection",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ring",
+      "actions": ["srd.wear_ring_of_protection"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "ring"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.ring_of_swimming",
+      "name": "Ring of Swimming",
+      "localization": {
+        "en": "Ring of Swimming",
+        "zh": "游泳戒指",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Swimming",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ring",
+      "actions": ["srd.wear_ring_of_swimming"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "ring"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.ring_of_water_walking",
+      "name": "Ring of Water Walking",
+      "localization": {
+        "en": "Ring of Water Walking",
+        "zh": "水上行走戒指",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Water Walking",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ring",
+      "actions": ["srd.ring_of_water_walking_water_walk"],
+      "properties": {
+        "rarity": "uncommon",
+        "requires_attunement": false,
+        "worn_slot": "ring",
+        "spell_definition_id": "srd.spell.water_walk"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "srd.ring_of_xray_vision",
+      "name": "Ring of X-ray Vision",
+      "localization": {
+        "en": "Ring of X-ray Vision",
+        "zh": "X光视觉戒指",
+        "aliases": []
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of X-ray Vision",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ring",
+      "actions": ["srd.use_ring_of_xray_vision"],
+      "properties": {
+        "rarity": "rare",
+        "requires_attunement": true,
+        "worn_slot": "ring"
+      },
+      "quantity": 1
+    }
+  ]
+}

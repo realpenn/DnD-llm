@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MonsterDefinition",
+  "type": "object",
+  "required": ["id", "name", "localization", "source", "rules_version", "armor_class", "hit_points", "speed_ft", "cr", "abilities"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "localization": { "type": "object" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "armor_class": { "type": "integer" },
+    "hit_points": { "type": "integer" },
+    "speed_ft": { "type": "integer" },
+    "cr": { "type": "number" },
+    "abilities": { "type": "object" },
+    "size": { "type": "string" },
+    "creature_type": { "type": "string" },
+    "actions": { "type": "array" },
+    "resistances": { "type": "array" },
+    "immunities": { "type": "array" },
+    "vulnerabilities": { "type": "array" },
+    "condition_immunities": { "type": "array" },
+    "traits": { "type": "array" }
+  }
+}

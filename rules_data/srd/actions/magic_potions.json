@@ -1,0 +1,1071 @@
+{
+  "items": [
+    {
+      "id": "srd.use_potion_of_greater_healing",
+      "name": "Use Potion of Greater Healing",
+      "localization": {
+        "en": "Use Potion of Greater Healing",
+        "zh": "使用强效治疗药水",
+        "aliases": ["喝强效治疗药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_greater_healing" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_greater_healing": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "healing", "dice": "4d4+4" },
+        { "type": "text_result", "text": "A potion of greater healing restores hit points." }
+      ],
+      "audit_label": "Use Potion of Greater Healing"
+    },
+    {
+      "id": "srd.use_potion_of_growth",
+      "name": "Use Potion of Growth",
+      "localization": {
+        "en": "Use Potion of Growth",
+        "zh": "使用生长药水",
+        "aliases": ["喝生长药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Growth and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_growth" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_growth": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "size_change": "enlarge",
+            "size_category_delta": 1,
+            "ability_check_advantage_abilities": ["str"],
+            "saving_throw_advantage_abilities": ["str"],
+            "enlarge_weapon_damage_bonus": "1d4"
+          },
+          "duration": { "until": "duration_10_minutes" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains the enlarge effect of Enlarge/Reduce for 10 minutes without Concentration." }
+      ],
+      "audit_label": "Use Potion of Growth"
+    },
+    {
+      "id": "srd.use_potion_of_diminution",
+      "name": "Use Potion of Diminution",
+      "localization": {
+        "en": "Use Potion of Diminution",
+        "zh": "使用缩小药水",
+        "aliases": ["喝缩小药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Diminution and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_diminution" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_diminution": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "size_change": "reduce",
+            "size_category_delta": -1,
+            "ability_check_disadvantage_abilities": ["str"],
+            "saving_throw_disadvantage_abilities": ["str"],
+            "reduce_weapon_damage_penalty": "1d4"
+          },
+          "duration": { "until": "duration_1d4_hours" },
+          "duration_roll": { "dice": "1d4", "unit": "hours", "ticks_per_unit": 600 },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains the reduce effect of Enlarge/Reduce for 1d4 hours without Concentration." }
+      ],
+      "audit_label": "Use Potion of Diminution"
+    },
+    {
+      "id": "srd.use_potion_of_superior_healing",
+      "name": "Use Potion of Superior Healing",
+      "localization": {
+        "en": "Use Potion of Superior Healing",
+        "zh": "使用优效治疗药水",
+        "aliases": ["喝优效治疗药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_superior_healing" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_superior_healing": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "healing", "dice": "8d4+8" },
+        { "type": "text_result", "text": "A potion of superior healing restores hit points." }
+      ],
+      "audit_label": "Use Potion of Superior Healing"
+    },
+    {
+      "id": "srd.use_potion_of_supreme_healing",
+      "name": "Use Potion of Supreme Healing",
+      "localization": {
+        "en": "Use Potion of Supreme Healing",
+        "zh": "使用极效治疗药水",
+        "aliases": ["喝极效治疗药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potions of Healing and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_supreme_healing" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_supreme_healing": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "healing", "dice": "10d4+20" },
+        { "type": "text_result", "text": "A potion of supreme healing restores hit points." }
+      ],
+      "audit_label": "Use Potion of Supreme Healing"
+    },
+    {
+      "id": "srd.use_elixir_of_health",
+      "name": "Use Elixir of Health",
+      "localization": {
+        "en": "Use Elixir of Health",
+        "zh": "使用强效治疗灵药",
+        "aliases": ["饮用强效治疗灵药"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Elixir of Health and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.elixir_of_health" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.elixir_of_health": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "remove_condition",
+          "conditions": ["blinded", "deafened", "paralyzed", "poisoned"],
+          "effect_markers": ["magical_contagion"]
+        },
+        { "type": "text_result", "text": "The elixir cures all magical contagions and ends the Blinded, Deafened, Paralyzed, and Poisoned conditions." }
+      ],
+      "audit_label": "Use Elixir of Health"
+    },
+    {
+      "id": "srd.use_potion_of_animal_friendship",
+      "name": "Use Potion of Animal Friendship",
+      "localization": {
+        "en": "Use Potion of Animal Friendship",
+        "zh": "使用动物友谊药水",
+        "aliases": ["喝动物友谊药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Animal Friendship and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 30 },
+      "target_policy": {
+        "min": 1,
+        "max": 3,
+        "harmful": true,
+        "creature_types": ["beast"]
+      },
+      "requirements": { "item": "srd.potion_of_animal_friendship" },
+      "properties": {
+        "spell_definition_id": "srd.spell.animal_friendship",
+        "spell_level": 3,
+        "save_dc": 13
+      },
+      "friendly_fire_policy": "confirm",
+      "cost": { "items": { "srd.potion_of_animal_friendship": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "saving_throw",
+          "ability": "wis",
+          "dc_ref": "srd.potion_of_animal_friendship.wis_save",
+          "dc_table": { "srd.potion_of_animal_friendship.wis_save": 13 }
+        },
+        {
+          "type": "condition",
+          "condition": "charmed",
+          "duration": {
+            "until": "duration_24_hours_or_harmed",
+            "break_on_damage": true,
+            "break_on_damage_by": "applied_by_or_allies"
+          },
+          "tick_on": "duration_or_damage",
+          "requires_failed_save": true
+        },
+        { "type": "text_result", "text": "The drinker casts the level 3 version of Animal Friendship from the potion (save DC 13), targeting up to three Beasts." }
+      ],
+      "audit_label": "Use Potion of Animal Friendship"
+    },
+    {
+      "id": "srd.apply_oil_of_sharpness",
+      "name": "Apply Oil of Sharpness",
+      "localization": {
+        "en": "Apply Oil of Sharpness",
+        "zh": "涂抹锐锋之油",
+        "aliases": ["使用锐锋之油"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Sharpness",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.oil_of_sharpness" },
+      "properties": {
+        "oil_of_sharpness": true,
+        "application_time_minutes": 1,
+        "weapon_bonus": 3,
+        "ammunition_count": 20,
+        "allowed_weapon_action_ids": [
+          "srd.longsword_attack",
+          "srd.shortsword_attack"
+        ],
+        "ammunition_supported_by_current_rules": false
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.oil_of_sharpness": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "weapon_enhancement_bonus": 3,
+            "weapon_bonus_action_id": { "param": "oil_of_sharpness_action_id" },
+            "coated_weapon_is_magical": true,
+            "oil_of_sharpness": true
+          },
+          "duration": { "until": "oil_sharpness_replaced_or_weapon_lost" },
+          "tick_on": "weapon_attack",
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "After 1 minute of application, the coated nonmagical Slashing or Piercing melee weapon functions as a +3 Weapon." }
+      ],
+      "audit_label": "Apply Oil of Sharpness"
+    },
+    {
+      "id": "srd.apply_oil_of_etherealness",
+      "name": "Apply Oil of Etherealness",
+      "localization": {
+        "en": "Apply Oil of Etherealness",
+        "zh": "涂抹以太化之油",
+        "aliases": ["使用以太化之油"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Etherealness",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.oil_of_etherealness" },
+      "properties": {
+        "oil_of_etherealness": true,
+        "application_time_minutes": 10,
+        "base_vial_target_size": "medium",
+        "additional_vial_per_size_category_above_medium": 1,
+        "spell_definition_id": "srd.spell.etherealness"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {
+        "resource_params": {
+          "srd.oil_of_etherealness": "oil_of_etherealness_vials"
+        }
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "world_effect",
+          "effect_type": "etherealness",
+          "scope": { "target": "explicit" },
+          "duration": { "until": "duration_1_hour" },
+          "metadata": {
+            "spell_definition_id": "srd.spell.etherealness",
+            "equipment_worn_and_carried_included": true,
+            "application_time_minutes": 10,
+            "concentration": false
+          }
+        },
+        { "type": "text_result", "text": "After 10 minutes of application, the target gains the effect of the Etherealness spell for 1 hour." }
+      ],
+      "audit_label": "Apply Oil of Etherealness"
+    },
+    {
+      "id": "srd.apply_oil_of_slipperiness",
+      "name": "Apply Oil of Slipperiness",
+      "localization": {
+        "en": "Apply Oil of Slipperiness",
+        "zh": "涂抹滑溜之油",
+        "aliases": ["使用滑溜之油"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Slipperiness",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.oil_of_slipperiness" },
+      "properties": {
+        "oil_of_slipperiness": true,
+        "oil_application_mode": "creature",
+        "application_time_minutes": 10,
+        "base_vial_target_size": "medium",
+        "additional_vial_per_size_category_above_medium": 1,
+        "spell_definition_id": "srd.spell.freedom_of_movement"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {
+        "resource_params": {
+          "srd.oil_of_slipperiness": "oil_of_slipperiness_vials"
+        }
+      },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "freedom_of_movement": true,
+            "difficult_terrain_unaffected": true,
+            "magical_speed_reduction_immunity": true,
+            "magical_paralyzed_restrained_immunity": true,
+            "swim_speed_equals_speed": true,
+            "nonmagical_restraints_escape_movement_cost_ft": 5
+          },
+          "duration": { "until": "duration_8_hours" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "After 10 minutes of application, the target gains the effect of the Freedom of Movement spell for 8 hours." }
+      ],
+      "audit_label": "Apply Oil of Slipperiness"
+    },
+    {
+      "id": "srd.pour_oil_of_slipperiness_on_ground",
+      "name": "Pour Oil of Slipperiness on Ground",
+      "localization": {
+        "en": "Pour Oil of Slipperiness on Ground",
+        "zh": "将滑溜之油倒在地上",
+        "aliases": ["倾倒滑溜之油"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Oil of Slipperiness",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "action",
+      "range": { "normal_ft": 5, "shape": "square", "size_ft": 10 },
+      "target_policy": { "min": 0, "max": 0, "harmful": true },
+      "requirements": { "item": "srd.oil_of_slipperiness" },
+      "properties": {
+        "oil_of_slipperiness": true,
+        "oil_application_mode": "ground",
+        "magic_action": true,
+        "spell_definition_id": "srd.spell.grease",
+        "ground_effect_area_size_ft": 10
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.oil_of_slipperiness": 1 } },
+      "automation": [
+        {
+          "type": "world_effect",
+          "effect_type": "grease_area",
+          "scope": { "target": "ground_area", "shape": "square", "size_ft": 10 },
+          "duration": { "until": "duration_8_hours" },
+          "metadata": {
+            "spell_definition_id": "srd.spell.grease",
+            "duplicates_spell_effect": true,
+            "concentration": false
+          }
+        },
+        { "type": "text_result", "text": "The oil covers a 10-foot square on the ground, duplicating the effect of the Grease spell in that area for 8 hours." }
+      ],
+      "audit_label": "Pour Oil of Slipperiness on Ground"
+    },
+    {
+      "id": "srd.use_potion_of_climbing",
+      "name": "Use Potion of Climbing",
+      "localization": {
+        "en": "Use Potion of Climbing",
+        "zh": "使用攀爬药水",
+        "aliases": ["喝攀爬药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Climbing and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_climbing" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_climbing": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "climb_speed_equals_speed": true,
+            "ability_check_advantage_skills": [
+              { "ability": "str", "skill": "athletics" }
+            ]
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains a Climb Speed equal to its Speed and Advantage on Strength (Athletics) checks to climb for 1 hour." }
+      ],
+      "audit_label": "Use Potion of Climbing"
+    },
+    {
+      "id": "srd.use_potion_of_clairvoyance",
+      "name": "Use Potion of Clairvoyance",
+      "localization": {
+        "en": "Use Potion of Clairvoyance",
+        "zh": "使用鹰眼药水",
+        "aliases": ["喝鹰眼药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Clairvoyance and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_clairvoyance" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_clairvoyance": 1 } },
+      "automation": [
+        {
+          "type": "world_effect",
+          "effect_type": "clairvoyant_sensor",
+          "scope": { "target": "known_or_obvious_location", "range_ft": 5280 },
+          "duration": { "until": "duration_10_minutes" },
+          "metadata": { "choose_sight_or_hearing": true, "concentration": false }
+        },
+        { "type": "text_result", "text": "The drinker gains the effect of the Clairvoyance spell for 10 minutes without Concentration." }
+      ],
+      "audit_label": "Use Potion of Clairvoyance"
+    },
+    {
+      "id": "srd.use_potion_of_flying",
+      "name": "Use Potion of Flying",
+      "localization": {
+        "en": "Use Potion of Flying",
+        "zh": "使用飞行药水",
+        "aliases": ["喝飞行药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Flying and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_flying" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_flying": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "fly_speed_equals_speed": true,
+            "can_hover": true,
+            "fall_if_airborne_on_expiry": true
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains a Fly Speed equal to its Speed and can hover for 1 hour; if airborne when the effect ends, it falls unless another effect keeps it aloft." }
+      ],
+      "audit_label": "Use Potion of Flying"
+    },
+    {
+      "id": "srd.use_potion_of_gaseous_form",
+      "name": "Use Potion of Gaseous Form",
+      "localization": {
+        "en": "Use Potion of Gaseous Form",
+        "zh": "使用气化形体药水",
+        "aliases": ["喝气化形体药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Gaseous Form and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_gaseous_form" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_gaseous_form": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "gaseous_form": true,
+            "fly_speed_ft": 10,
+            "can_hover": true,
+            "can_enter_creature_space": true,
+            "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+            "condition_immunities": ["prone"],
+            "saving_throw_advantage_abilities": ["str", "dex", "con"],
+            "can_pass_through_narrow_openings": true,
+            "liquids_treated_as_solid": true,
+            "cannot_talk": true,
+            "cannot_manipulate_objects": true,
+            "cannot_drop_or_use_carried_objects": true,
+            "blocks_attacks": true,
+            "blocks_spellcasting": true,
+            "can_end_as_bonus_action": true
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains the effect of Gaseous Form for 1 hour without Concentration, or until it ends the effect as a Bonus Action." }
+      ],
+      "audit_label": "Use Potion of Gaseous Form"
+    },
+    {
+      "id": "srd.use_potion_of_invisibility",
+      "name": "Use Potion of Invisibility",
+      "localization": {
+        "en": "Use Potion of Invisibility",
+        "zh": "使用隐形药水",
+        "aliases": ["喝隐形药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Invisibility and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_invisibility" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_invisibility": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "condition",
+          "condition": "invisible",
+          "duration": { "until": "duration_1_hour_or_attack_damage_spell" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target has the Invisible condition for 1 hour, ending early if it makes an attack roll, deals damage, or casts a spell." }
+      ],
+      "audit_label": "Use Potion of Invisibility"
+    },
+    {
+      "id": "srd.use_potion_of_heroism",
+      "name": "Use Potion of Heroism",
+      "localization": {
+        "en": "Use Potion of Heroism",
+        "zh": "使用英雄气概药水",
+        "aliases": ["喝英雄气概药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Heroism and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_heroism" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_heroism": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "temp_hp",
+          "amount": 10,
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "attack_roll_bonus_dice": "1d4",
+            "saving_throw_bonus_dice": "1d4"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains 10 Temporary Hit Points and the effect of Bless for 1 hour without Concentration." }
+      ],
+      "audit_label": "Use Potion of Heroism"
+    },
+    {
+      "id": "srd.use_potion_of_invulnerability",
+      "name": "Use Potion of Invulnerability",
+      "localization": {
+        "en": "Use Potion of Invulnerability",
+        "zh": "使用无敌药水",
+        "aliases": ["喝无敌药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Invulnerability and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_invulnerability" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_invulnerability": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "all_damage_resistance": true },
+          "duration": { "until": "duration_1_minute" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target has Resistance to all damage for 1 minute." }
+      ],
+      "audit_label": "Use Potion of Invulnerability"
+    },
+    {
+      "id": "srd.use_potion_of_mind_reading",
+      "name": "Use Potion of Mind Reading",
+      "localization": {
+        "en": "Use Potion of Mind Reading",
+        "zh": "使用读心药水",
+        "aliases": ["喝读心药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Mind Reading and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_mind_reading" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_mind_reading": 1 } },
+      "automation": [
+        {
+          "type": "world_effect",
+          "effect_type": "detect_thoughts",
+          "scope": { "target": "self", "radius_ft": 30 },
+          "duration": { "until": "duration_10_minutes" },
+          "metadata": {
+            "surface_thoughts": true,
+            "save_dc": 13,
+            "concentration": false
+          }
+        },
+        { "type": "text_result", "text": "The drinker gains the effect of Detect Thoughts (save DC 13) for 10 minutes without Concentration." }
+      ],
+      "audit_label": "Use Potion of Mind Reading"
+    },
+    {
+      "id": "srd.use_potion_of_poison",
+      "name": "Use Potion of Poison",
+      "localization": {
+        "en": "Use Potion of Poison",
+        "zh": "使用毒药水",
+        "aliases": ["喝毒药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Poison and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": { "item": "srd.potion_of_poison" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_poison": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "damage", "dice": "4d6", "damage_type": "poison" },
+        {
+          "type": "saving_throw",
+          "ability": "con",
+          "dc_ref": "srd.potion_of_poison.con_save",
+          "dc_table": { "srd.potion_of_poison.con_save": 13 }
+        },
+        {
+          "type": "condition",
+          "condition": "poisoned",
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start",
+          "requires_failed_save": true
+        },
+        { "type": "text_result", "text": "The drinker takes Poison damage and may gain the Poisoned condition." }
+      ],
+      "audit_label": "Use Potion of Poison"
+    },
+    {
+      "id": "srd.use_potion_of_speed",
+      "name": "Use Potion of Speed",
+      "localization": {
+        "en": "Use Potion of Speed",
+        "zh": "使用速度药水",
+        "aliases": ["喝速度药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Speed and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_speed" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_speed": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "armor_class_bonus": 2,
+            "speed_multiplier": 2,
+            "extra_action_limited": true,
+            "no_haste_lethargy_on_expiry": true
+          },
+          "duration": { "until": "duration_1_minute" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target gains the effect of Haste for 1 minute without Concentration and without the usual lethargy when it ends." }
+      ],
+      "audit_label": "Use Potion of Speed"
+    },
+    {
+      "id": "srd.use_potion_of_water_breathing",
+      "name": "Use Potion of Water Breathing",
+      "localization": {
+        "en": "Use Potion of Water Breathing",
+        "zh": "使用水下呼吸药水",
+        "aliases": ["喝水下呼吸药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Water Breathing and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_water_breathing" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_water_breathing": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "can_breathe_underwater": true },
+          "duration": { "until": "duration_24_hours" },
+          "tick_on": "environment"
+        },
+        { "type": "text_result", "text": "The target can breathe underwater for 24 hours." }
+      ],
+      "audit_label": "Use Potion of Water Breathing"
+    },
+    {
+      "id": "srd.use_potion_of_vitality",
+      "name": "Use Potion of Vitality",
+      "localization": {
+        "en": "Use Potion of Vitality",
+        "zh": "使用活力药水",
+        "aliases": ["喝活力药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Vitality and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_vitality" },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_vitality": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "remove_condition", "conditions": ["exhaustion", "poisoned"] },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "hit_die_healing_maximized": true },
+          "duration": { "until": "duration_24_hours" },
+          "tick_on": "environment",
+          "persistent": true
+        },
+        { "type": "text_result", "text": "The target loses all Exhaustion levels, ends the Poisoned condition, and maximizes Hit Point Dice healing for 24 hours." }
+      ],
+      "audit_label": "Use Potion of Vitality"
+    },
+    {
+      "id": "srd.use_potion_of_hill_giant_strength",
+      "name": "Use Potion of Hill Giant Strength",
+      "localization": {
+        "en": "Use Potion of Hill Giant Strength",
+        "zh": "使用丘陵巨人力量药水",
+        "aliases": ["喝丘陵巨人力量药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_hill_giant_strength" },
+      "properties": {
+        "giant_type": "hill",
+        "strength_score": 21,
+        "rarity": "uncommon"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_hill_giant_strength": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 21 },
+            "giant_strength_type": "hill"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target's Strength score becomes 21 for 1 hour unless it is already 21 or higher." }
+      ],
+      "audit_label": "Use Potion of Hill Giant Strength"
+    },
+    {
+      "id": "srd.use_potion_of_frost_giant_strength",
+      "name": "Use Potion of Frost Giant Strength",
+      "localization": {
+        "en": "Use Potion of Frost Giant Strength",
+        "zh": "使用霜巨人力量药水",
+        "aliases": ["喝霜巨人力量药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_frost_giant_strength" },
+      "properties": {
+        "giant_type": "frost",
+        "strength_score": 23,
+        "rarity": "rare"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_frost_giant_strength": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 23 },
+            "giant_strength_type": "frost"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target's Strength score becomes 23 for 1 hour unless it is already 23 or higher." }
+      ],
+      "audit_label": "Use Potion of Frost Giant Strength"
+    },
+    {
+      "id": "srd.use_potion_of_stone_giant_strength",
+      "name": "Use Potion of Stone Giant Strength",
+      "localization": {
+        "en": "Use Potion of Stone Giant Strength",
+        "zh": "使用石巨人力量药水",
+        "aliases": ["喝石巨人力量药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_stone_giant_strength" },
+      "properties": {
+        "giant_type": "stone",
+        "strength_score": 23,
+        "rarity": "rare"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_stone_giant_strength": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 23 },
+            "giant_strength_type": "stone"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target's Strength score becomes 23 for 1 hour unless it is already 23 or higher." }
+      ],
+      "audit_label": "Use Potion of Stone Giant Strength"
+    },
+    {
+      "id": "srd.use_potion_of_fire_giant_strength",
+      "name": "Use Potion of Fire Giant Strength",
+      "localization": {
+        "en": "Use Potion of Fire Giant Strength",
+        "zh": "使用火巨人力量药水",
+        "aliases": ["喝火巨人力量药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_fire_giant_strength" },
+      "properties": {
+        "giant_type": "fire",
+        "strength_score": 25,
+        "rarity": "rare"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_fire_giant_strength": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 25 },
+            "giant_strength_type": "fire"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target's Strength score becomes 25 for 1 hour unless it is already 25 or higher." }
+      ],
+      "audit_label": "Use Potion of Fire Giant Strength"
+    },
+    {
+      "id": "srd.use_potion_of_cloud_giant_strength",
+      "name": "Use Potion of Cloud Giant Strength",
+      "localization": {
+        "en": "Use Potion of Cloud Giant Strength",
+        "zh": "使用云巨人力量药水",
+        "aliases": ["喝云巨人力量药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_cloud_giant_strength" },
+      "properties": {
+        "giant_type": "cloud",
+        "strength_score": 27,
+        "rarity": "very_rare"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_cloud_giant_strength": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 27 },
+            "giant_strength_type": "cloud"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target's Strength score becomes 27 for 1 hour unless it is already 27 or higher." }
+      ],
+      "audit_label": "Use Potion of Cloud Giant Strength"
+    },
+    {
+      "id": "srd.use_potion_of_storm_giant_strength",
+      "name": "Use Potion of Storm Giant Strength",
+      "localization": {
+        "en": "Use Potion of Storm Giant Strength",
+        "zh": "使用风暴巨人力量药水",
+        "aliases": ["喝风暴巨人力量药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Giant Strength and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_storm_giant_strength" },
+      "properties": {
+        "giant_type": "storm",
+        "strength_score": 29,
+        "rarity": "legendary"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_storm_giant_strength": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "ability_score_set": { "str": 29 },
+            "giant_strength_type": "storm"
+          },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target's Strength score becomes 29 for 1 hour unless it is already 29 or higher." }
+      ],
+      "audit_label": "Use Potion of Storm Giant Strength"
+    },
+    {
+      "id": "srd.use_potion_of_resistance",
+      "name": "Use Potion of Resistance",
+      "localization": {
+        "en": "Use Potion of Resistance",
+        "zh": "使用抗力药水",
+        "aliases": ["喝抗力药水"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Potion of Resistance and Magic Item Categories: Potions",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "bonus_action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.potion_of_resistance" },
+      "properties": {
+        "allowed_damage_types": [
+          "acid",
+          "cold",
+          "fire",
+          "force",
+          "lightning",
+          "necrotic",
+          "poison",
+          "psychic",
+          "radiant",
+          "thunder"
+        ]
+      },
+      "friendly_fire_policy": "raw",
+      "cost": { "items": { "srd.potion_of_resistance": 1 } },
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "damage_resistances": { "param": "damage_type" } },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "self_turn_start"
+        },
+        { "type": "text_result", "text": "The target has Resistance to the chosen SRD damage type for 1 hour." }
+      ],
+      "audit_label": "Use Potion of Resistance"
+    }
+  ]
+}

@@ -1,0 +1,1001 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.earthquake",
+      "name": "Earthquake",
+      "localization": {
+        "en": "Earthquake",
+        "zh": "地震术",
+        "aliases": ["地震"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "sorcerer"],
+      "action": {
+        "id": "srd.earthquake",
+        "name": "Earthquake",
+        "localization": {
+          "en": "Earthquake",
+          "zh": "地震术",
+          "aliases": ["地震"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 500, "shape": "circle", "radius_ft": 100 },
+        "target_policy": { "min": 0, "harmful": true },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "druid", "sorcerer"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "sorcerer"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a fractured rock",
+            "consumed": false
+          },
+          "area_shape": "circle",
+          "area_radius_ft": 100,
+          "ground_target_required": true,
+          "ground_creatures_only": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          {
+            "type": "saving_throw",
+            "ability": "dex",
+            "dc_from": { "spell_save_dc": "actor" },
+            "break_target_concentration_on_failed": true
+          },
+          {
+            "type": "condition",
+            "condition": "prone",
+            "requires_failed_save": true,
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          },
+          {
+            "type": "world_effect",
+            "effect_type": "earthquake",
+            "scope": { "shape": "circle", "radius_ft": 100, "range_ft": 500 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "ground_is_difficult_terrain": true,
+              "ground_creatures_make_save": true,
+              "save_ability": "dex",
+              "save_triggers": ["spell_cast", "caster_turn_end"],
+              "failed_save_applies_prone": true,
+              "failed_save_breaks_target_concentration": true,
+              "fissures": {
+                "count": "1d6",
+                "created_at": "end_of_casting_turn",
+                "locations_chosen_by_caster": true,
+                "cannot_be_under_structures": true,
+                "depth": "1d10x10 feet",
+                "width_ft": 10,
+                "extends_from_one_area_edge_to_another": true,
+                "creature_in_fissure_space_makes_dex_save": true,
+                "failed_save_falls_in": true,
+                "successful_save_moves_with_fissure_edge": true
+              },
+              "structures": {
+                "must_contact_ground": true,
+                "damage": 50,
+                "damage_type": "bludgeoning",
+                "damage_triggers": ["spell_cast", "caster_turn_end"],
+                "drops_to_zero_hit_points_collapses": true
+              },
+              "collapse": {
+                "affected_distance_from_structure": "half_structure_height",
+                "save_ability": "dex",
+                "failed_save_damage": "12d6",
+                "failed_save_damage_type": "bludgeoning",
+                "failed_save_applies_prone": true,
+                "failed_save_applies_buried": true,
+                "escape_action": "Strength (Athletics)",
+                "escape_dc": 20,
+                "successful_save_takes_half_damage": true
+              },
+              "area_query_not_automated": true,
+              "grounded_creature_filter_not_automated": true,
+              "caster_turn_end_repeat_save_not_automated": true,
+              "fissure_geometry_and_fall_resolution_not_automated": true,
+              "structure_registry_hit_points_and_collapse_not_automated": true,
+              "buried_condition_and_escape_action_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Earthquake"
+      }
+    },
+    {
+      "id": "srd.spell.stone_shape",
+      "name": "Stone Shape",
+      "localization": {
+        "en": "Stone Shape",
+        "zh": "塑石术",
+        "aliases": ["石形术", "塑造石头"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "wizard"],
+      "action": {
+        "id": "srd.stone_shape",
+        "name": "Stone Shape",
+        "localization": {
+          "en": "Stone Shape",
+          "zh": "塑石术",
+          "aliases": ["石形术", "塑造石头"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "druid", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "soft clay",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "stone_shape",
+            "scope": { "target": "touched_stone" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "target_material": "stone",
+              "stone_object_max_size": "medium",
+              "stone_section_max_dimension_ft": 5,
+              "forms_into_shape_of_choice": true,
+              "srd_example_outputs": [
+                "weapon",
+                "statue",
+                "coffer",
+                "small_passage_through_wall",
+                "sealed_stone_door_or_frame"
+              ],
+              "small_passage_wall_thickness_ft": 5,
+              "created_object_max_hinges": 2,
+              "created_object_can_have_latch": true,
+              "finer_mechanical_detail_not_possible": true
+            }
+          }
+        ],
+        "audit_label": "Stone Shape"
+      }
+    },
+    {
+      "id": "srd.spell.fabricate",
+      "name": "Fabricate",
+      "localization": {
+        "en": "Fabricate",
+        "zh": "造物术",
+        "aliases": ["制造术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.fabricate",
+        "name": "Fabricate",
+        "localization": {
+          "en": "Fabricate",
+          "zh": "造物术",
+          "aliases": ["制造术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "fabricated_object",
+            "scope": { "target": "visible_raw_materials", "range_ft": 120 },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "converts_raw_materials_into_products_of_same_material": true,
+              "requires_sufficient_quantity_of_material": true,
+              "examples": [
+                "wooden_bridge_from_clump_of_trees",
+                "rope_from_patch_of_hemp",
+                "clothes_from_flax_or_wool"
+              ],
+              "large_or_smaller_object_max_cube_ft": 10,
+              "alternative_eight_connected_5_ft_cubes": true,
+              "metal_stone_or_mineral_object_max_size": "medium",
+              "metal_stone_or_mineral_object_max_cube_ft": 5,
+              "quality_based_on_raw_materials": true,
+              "cannot_create_creatures": true,
+              "cannot_create_magic_items": true,
+              "high_skill_items_require_matching_artisans_tools_proficiency": true,
+              "high_skill_item_examples": ["weapons", "armor"]
+            }
+          }
+        ],
+        "audit_label": "Fabricate"
+      }
+    },
+    {
+      "id": "srd.spell.stoneskin",
+      "name": "Stoneskin",
+      "localization": {
+        "en": "Stoneskin",
+        "zh": "石肤术",
+        "aliases": ["石肤"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "transmutation",
+      "classes": ["druid", "ranger", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.stoneskin",
+        "name": "Stoneskin",
+        "localization": {
+          "en": "Stoneskin",
+          "zh": "石肤术",
+          "aliases": ["石肤"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["druid", "ranger", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "material_component": {
+            "description": "diamond dust worth 100+ GP",
+            "consumed": true
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4, "gold": 100 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "damage_resistances": ["bludgeoning", "piercing", "slashing"]
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Stoneskin"
+      }
+    },
+    {
+      "id": "srd.spell.passwall",
+      "name": "Passwall",
+      "localization": { "en": "Passwall", "zh": "穿墙术", "aliases": ["穿墙"] },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.passwall",
+        "name": "Passwall",
+        "localization": { "en": "Passwall", "zh": "穿墙术", "aliases": ["穿墙"] },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a pinch of sesame seeds",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "passwall_passage",
+            "scope": { "target": "point_on_surface", "range_ft": 30 },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "surface_types": ["wooden", "plaster", "stone"],
+              "surface_examples": ["wall", "ceiling", "floor"],
+              "max_width_ft": 5,
+              "max_height_ft": 8,
+              "max_depth_ft": 20,
+              "creates_no_structural_instability": true,
+              "ejects_occupants_to_nearest_unoccupied_space_on_expiry": true
+            }
+          }
+        ],
+        "audit_label": "Passwall"
+      }
+    },
+    {
+      "id": "srd.spell.move_earth",
+      "name": "Move Earth",
+      "localization": {
+        "en": "Move Earth",
+        "zh": "移土术",
+        "aliases": ["移动土地"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "transmutation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.move_earth",
+        "name": "Move Earth",
+        "localization": {
+          "en": "Move Earth",
+          "zh": "移土术",
+          "aliases": ["移动土地"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "square", "max_side_ft": 40 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a miniature shovel",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "move_earth_terrain_reshaping",
+            "scope": { "target": "terrain_area", "range_ft": 120, "max_side_ft": 40 },
+            "duration": { "until": "concentration_2_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "terrain_types": ["dirt", "sand", "clay"],
+              "max_area_side_ft": 40,
+              "allowed_shapes": [
+                "raise_elevation",
+                "lower_elevation",
+                "create_trench",
+                "fill_trench",
+                "erect_wall",
+                "flatten_wall",
+                "form_pillar"
+              ],
+              "max_change_fraction_of_largest_dimension": 0.5,
+              "changes_complete_after_minutes": 10,
+              "creatures_cannot_usually_be_trapped_or_injured_by_slow_movement": true,
+              "can_choose_new_area_every_minutes": 10,
+              "cannot_manipulate_natural_stone_or_stone_construction": true,
+              "rocks_and_structures_shift_to_accommodate_new_terrain": true,
+              "unstable_structures_might_collapse": true,
+              "does_not_directly_affect_plant_growth": true,
+              "moved_earth_carries_plants_along": true
+            }
+          }
+        ],
+        "audit_label": "Move Earth"
+      }
+    },
+    {
+      "id": "srd.spell.reverse_gravity",
+      "name": "Reverse Gravity",
+      "localization": {
+        "en": "Reverse Gravity",
+        "zh": "反转重力",
+        "aliases": ["反重力"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "transmutation",
+      "classes": ["druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.reverse_gravity",
+        "name": "Reverse Gravity",
+        "localization": {
+          "en": "Reverse Gravity",
+          "zh": "反转重力",
+          "aliases": ["反重力"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 100, "shape": "cylinder", "radius_ft": 50, "height_ft": 100 },
+        "target_policy": { "min": 1, "max": 20, "harmful": true },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["druid", "sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "sorcerer", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a lodestone and iron filings",
+            "consumed": false
+          },
+          "area_shape": "cylinder",
+          "area_radius_ft": 50,
+          "area_height_ft": 100,
+          "fixed_object_reach_prerequisite_not_automated": true
+        },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "area" },
+          { "type": "saving_throw", "ability": "dex", "dc_from": { "spell_save_dc": "actor" } },
+          {
+            "type": "world_effect",
+            "effect_type": "reverse_gravity_cylinder",
+            "scope": { "shape": "cylinder", "radius_ft": 50, "height_ft": 100, "range_ft": 100 },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "reverses_gravity": true,
+              "unanchored_creatures_and_objects_fall_upward": true,
+              "creature_can_make_dexterity_save_to_grab_reachable_fixed_object": true,
+              "successful_save_avoids_fall_upward": true,
+              "ceiling_or_anchored_object_collision_as_downward_fall": true,
+              "reaches_cylinder_top_if_unobstructed": true,
+              "hovers_at_top_for_duration_if_unobstructed": true,
+              "affected_objects_and_creatures_fall_downward_when_spell_ends": true,
+              "fixed_object_reach_prerequisite_not_automated": true,
+              "object_and_collision_resolution_not_automated": true
+            }
+          },
+          {
+            "type": "passive_effect",
+            "requires_failed_save": true,
+            "passive_modifiers": {
+              "reverse_gravity": true,
+              "falls_upward": true,
+              "reaches_cylinder_top_if_unobstructed": true,
+              "hovers_at_top_for_duration_if_unobstructed": true,
+              "falls_downward_when_spell_ends": true,
+              "ceiling_or_anchored_object_collision_as_downward_fall": true,
+              "object_and_collision_resolution_not_automated": true
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Reverse Gravity"
+      }
+    },
+    {
+      "id": "srd.spell.sequester",
+      "name": "Sequester",
+      "localization": {
+        "en": "Sequester",
+        "zh": "封藏术",
+        "aliases": ["隐封术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "transmutation",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.sequester",
+        "name": "Sequester",
+        "localization": {
+          "en": "Sequester",
+          "zh": "封藏术",
+          "aliases": ["隐封术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "spell_classes": ["wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "gem dust worth 5,000+ GP",
+            "consumed": true
+          },
+          "target_must_be_touched": true,
+          "target_can_be_object_or_willing_creature": true,
+          "requires_willing_target": true,
+          "early_end_condition_param": "sequester_end_condition",
+          "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+          "object_target_resolution_not_automated": true,
+          "early_end_condition_listener_not_automated": true,
+          "divination_detection_blocking_not_automated": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7, "gold": 5000 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "condition",
+            "condition": "invisible",
+            "duration": { "until": "until_dispelled", "break_on_damage": true },
+            "tick_on": "damage_or_dispel"
+          },
+          {
+            "type": "condition",
+            "condition": "unconscious",
+            "duration": { "until": "until_dispelled", "break_on_damage": true },
+            "tick_on": "damage_or_dispel"
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "sequestered": true,
+              "cant_be_targeted_by_divination_spells": true,
+              "cant_be_detected_by_magic": true,
+              "cant_be_viewed_remotely_with_magic": true,
+              "suspended_animation": true,
+              "does_not_age": true,
+              "does_not_need_food_water_or_air": true,
+              "early_end_condition": { "optional_param": "sequester_end_condition" },
+              "early_end_condition_must_occur_or_be_visible_within_mile": 1,
+              "object_target_resolution_not_automated": true,
+              "early_end_condition_listener_not_automated": true,
+              "divination_detection_blocking_not_automated": true
+            },
+            "duration": { "until": "until_dispelled", "break_on_damage": true },
+            "tick_on": "damage_or_dispel"
+          }
+        ],
+        "audit_label": "Sequester"
+      }
+    },
+    {
+      "id": "srd.spell.control_weather",
+      "name": "Control Weather",
+      "localization": {
+        "en": "Control Weather",
+        "zh": "操控天气",
+        "aliases": ["控制天气"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 8,
+      "school": "transmutation",
+      "classes": ["cleric", "druid", "wizard"],
+      "action": {
+        "id": "srd.control_weather",
+        "name": "Control Weather",
+        "localization": {
+          "en": "Control Weather",
+          "zh": "操控天气",
+          "aliases": ["控制天气"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 8,
+          "class_any": ["cleric", "druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["cleric", "druid", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "burning incense",
+            "consumed": false
+          },
+          "casting_time": { "minutes": 10 },
+          "must_be_outdoors_to_cast": true,
+          "ends_early_if_caster_goes_indoors": true,
+          "weather_radius_miles": 5,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 8 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "control_weather",
+            "scope": { "target": "weather_within_radius", "range": "self", "radius_miles": 5 },
+            "duration": { "until": "concentration_8_hours" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "must_be_outdoors_to_cast": true,
+              "ends_early_if_caster_goes_indoors": true,
+              "current_weather_determined_by_gm": true,
+              "can_change": ["precipitation", "temperature", "wind"],
+              "new_conditions_take_effect_minutes": "1d4*10",
+              "can_change_again_after_new_conditions_take_effect": true,
+              "weather_returns_to_normal_gradually_when_spell_ends": true,
+              "change_stage_by_one_up_or_down": true,
+              "wind_direction_can_change": true,
+              "precipitation_stages": [
+                "clear",
+                "light_clouds",
+                "overcast_or_ground_fog",
+                "rain_hail_or_snow",
+                "torrential_rain_driving_hail_or_blizzard"
+              ],
+              "temperature_stages": [
+                "heat_wave",
+                "hot",
+                "warm",
+                "cool",
+                "cold",
+                "freezing"
+              ],
+              "wind_stages": [
+                "calm",
+                "moderate_wind",
+                "strong_wind",
+                "gale",
+                "storm"
+              ],
+              "weather_change_scheduler_not_automated": true,
+              "derived_weather_hazards_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Control Weather"
+      }
+    },
+    {
+      "id": "srd.spell.wind_walk",
+      "name": "Wind Walk",
+      "localization": {
+        "en": "Wind Walk",
+        "zh": "风行术",
+        "aliases": ["风行"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "transmutation",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.wind_walk",
+        "name": "Wind Walk",
+        "localization": {
+          "en": "Wind Walk",
+          "zh": "风行术",
+          "aliases": ["风行"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 11, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["druid"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "requires_willing_target": true,
+          "material_component": {
+            "description": "a candle",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "wind_walk_cloud_form": true,
+              "gaseous_form": true,
+              "fly_speed_ft": 300,
+              "can_hover": true,
+              "condition_immunities": ["prone"],
+              "damage_resistances": ["bludgeoning", "piercing", "slashing"],
+              "allowed_action_ids": ["srd.dash"],
+              "allowed_unimplemented_magic_actions": [
+                "begin_reverting_to_normal_form"
+              ],
+              "revert_to_normal_form": {
+                "action_economy": "magic_action",
+                "transformation_duration": "duration_1_minute",
+                "condition_during_transformation": "stunned"
+              },
+              "revert_to_cloud_form": {
+                "action_economy": "magic_action",
+                "transformation_duration": "duration_1_minute"
+              },
+              "cloud_form_end_descent": {
+                "descent_ft_per_round": 60,
+                "duration_rounds": 10,
+                "lands_safely_if_reaches_ground": true,
+                "falls_remaining_distance_after_rounds": 10
+              }
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Wind Walk"
+      }
+    },
+    {
+      "id": "srd.spell.regenerate",
+      "name": "Regenerate",
+      "localization": {
+        "en": "Regenerate",
+        "zh": "再生术",
+        "aliases": ["再生"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 7,
+      "school": "transmutation",
+      "classes": ["bard", "cleric", "druid"],
+      "action": {
+        "id": "srd.regenerate",
+        "name": "Regenerate",
+        "localization": {
+          "en": "Regenerate",
+          "zh": "再生术",
+          "aliases": ["再生"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 7,
+          "class_any": ["bard", "cleric", "druid"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "cleric", "druid"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "a prayer wheel",
+            "consumed": false
+          },
+          "target_type": "creature",
+          "initial_healing": "4d8+15",
+          "regenerate_hit_points_at_turn_start": 1,
+          "severed_body_parts_regrow_after_minutes": 2,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 7 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "healing",
+            "dice": "4d8+15"
+          },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "regenerate": true,
+              "regenerate_hit_points_at_turn_start": 1,
+              "severed_body_parts_regrow_after_minutes": 2,
+              "severed_body_parts_regrow_after_rounds": 20,
+              "severed_body_parts_regrow": true,
+              "severed_body_part_tracking_not_automated": true
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "target_turn_start"
+          }
+        ],
+        "audit_label": "Regenerate"
+      }
+    },
+    {
+      "id": "srd.spell.shapechange",
+      "name": "Shapechange",
+      "localization": {
+        "en": "Shapechange",
+        "zh": "形体变化",
+        "aliases": ["形体改变", "变形术"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "transmutation",
+      "classes": ["druid", "wizard"],
+      "action": {
+        "id": "srd.shapechange",
+        "name": "Shapechange",
+        "localization": {
+          "en": "Shapechange",
+          "zh": "形体变化",
+          "aliases": ["形体改变", "变形术"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["druid", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["druid", "wizard"],
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "a jade circlet worth 1,500+ GP",
+            "consumed": false
+          },
+          "shapechange_form_param": "shapechange_form_id",
+          "shapechange_seen_param": "shapechange_seen",
+          "shapechange_equipment_handling_param": "shapechange_equipment_handling",
+          "shapechange_equipment_handling_options": ["drop", "fit_new_form"],
+          "shapechange_change_form_action_id": "srd.shapechange_change_form",
+          "shapechange_form_cr_must_not_exceed_level_or_cr": true,
+          "shapechange_requires_seen_form": true,
+          "shapechange_forbidden_creature_types": ["construct", "undead"],
+          "temporary_hit_points_equal_first_form_hit_points": true,
+          "temporary_hit_points_vanish_when_spell_ends": true,
+          "can_change_form_with_magic_action": true,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "shapechange_form",
+            "mode": "initial",
+            "form_param": "shapechange_form_id",
+            "seen_param": "shapechange_seen",
+            "equipment_handling_param": "shapechange_equipment_handling",
+            "resolved_param_prefix": "shapechange_form_",
+            "change_form_action_id": "srd.shapechange_change_form",
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Shapechange"
+      }
+    },
+    {
+      "id": "srd.spell.time_stop",
+      "name": "Time Stop",
+      "localization": {
+        "en": "Time Stop",
+        "zh": "时间停止",
+        "aliases": ["时间暂停", "时停"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.time_stop",
+        "name": "Time Stop",
+        "localization": {
+          "en": "Time Stop",
+          "zh": "时间停止",
+          "aliases": ["时间暂停", "时停"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["sorcerer", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["sorcerer", "wizard"],
+          "components": ["V"],
+          "extra_turns_roll": "1d4+1",
+          "extra_turns_are_consecutive": true,
+          "time_passes_for_other_creatures": false,
+          "caster_can_use_actions_and_move_normally": true,
+          "ends_if_action_or_created_effect_affects_other_creature": true,
+          "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": true,
+          "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+          "no_damage": true,
+          "no_saving_throw": true,
+          "no_attack_roll": true,
+          "no_concentration": true,
+          "no_higher_level_spell_slot_effect": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "time_stop_window",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_1d4_plus_1_turns" },
+            "duration_roll": { "dice": "1d4+1", "unit": "turns", "ticks_per_unit": 1 },
+            "tick_on": "self_turn_start",
+            "metadata": {
+              "time_stop": true,
+              "extra_turns_roll": "1d4+1",
+              "extra_turns_are_consecutive": true,
+              "time_passes_for_other_creatures": false,
+              "caster_can_use_actions_and_move_normally": true,
+              "ends_if_action_or_created_effect_affects_other_creature": true,
+              "ends_if_action_or_created_effect_affects_object_worn_or_carried_by_other": true,
+              "ends_if_caster_moves_more_than_ft_from_casting_location": 1000,
+              "turn_scheduler_not_automated": true,
+              "effect_target_detection_not_automated": true,
+              "cast_location_distance_tracking_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Time Stop"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ClassDefinition",
+  "type": "object",
+  "required": ["id", "name", "localization", "source", "rules_version", "hit_die", "primary_abilities", "saving_throw_proficiencies", "levels"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "localization": { "type": "object" },
+    "source": { "type": "string" },
+    "rules_version": { "type": "string" },
+    "hit_die": { "type": "string" },
+    "primary_abilities": { "type": "array" },
+    "saving_throw_proficiencies": { "type": "array" },
+    "levels": { "type": "object" },
+    "subclasses": { "type": "object" }
+  }
+}

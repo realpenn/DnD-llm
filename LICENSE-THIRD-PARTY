@@ -4,8 +4,8 @@ Third-Party Notices
 Current repository state:
 
 - No third-party source code is vendored in this repository.
-- No SRD rule data files are currently vendored beyond project specification
-  text. When SRD-derived rule data is added, it must follow LICENSE-CONTENT.md.
+- SRD-derived rule data is included under `rules_data/srd/**` and follows
+  LICENSE-CONTENT.md.
 
 Planned or referenced third-party materials:
 

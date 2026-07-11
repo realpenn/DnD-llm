@@ -1,0 +1,487 @@
+{
+  "items": [
+    {
+      "id": "srd.bandit_scimitar",
+      "name": "Bandit Scimitar",
+      "localization": {
+        "en": "Bandit Scimitar",
+        "zh": "强盗弯刀",
+        "aliases": ["强盗弯刀攻击", "强盗近战"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit, Actions: Scimitar",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 3 },
+        {
+          "type": "damage",
+          "dice": "1d6+1",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The bandit's scimitar attack is resolved." }
+      ],
+      "audit_label": "Bandit Scimitar"
+    },
+    {
+      "id": "srd.bandit_light_crossbow",
+      "name": "Bandit Light Crossbow",
+      "localization": {
+        "en": "Bandit Light Crossbow",
+        "zh": "强盗轻弩",
+        "aliases": ["强盗轻弩攻击", "强盗远程"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit, Actions: Light Crossbow",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 80, "long_ft": 320 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 3 },
+        {
+          "type": "damage",
+          "dice": "1d8+1",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The bandit's light crossbow attack is resolved." }
+      ],
+      "audit_label": "Bandit Light Crossbow"
+    },
+    {
+      "id": "srd.bandit_captain_scimitar",
+      "name": "Bandit Captain Scimitar",
+      "localization": {
+        "en": "Bandit Captain Scimitar",
+        "zh": "强盗首领弯刀",
+        "aliases": ["强盗首领弯刀攻击", "强盗队长弯刀"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit Captain, Actions: Scimitar",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The bandit captain's scimitar attack is resolved." }
+      ],
+      "audit_label": "Bandit Captain Scimitar"
+    },
+    {
+      "id": "srd.bandit_captain_pistol",
+      "name": "Bandit Captain Pistol",
+      "localization": {
+        "en": "Bandit Captain Pistol",
+        "zh": "强盗首领手枪",
+        "aliases": ["强盗首领手枪攻击", "强盗队长手枪"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit Captain, Actions: Pistol",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 30, "long_ft": 90 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d10+3",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The bandit captain's pistol attack is resolved." }
+      ],
+      "audit_label": "Bandit Captain Pistol"
+    },
+    {
+      "id": "srd.bandit_captain_multiattack",
+      "name": "Bandit Captain Multiattack",
+      "localization": {
+        "en": "Bandit Captain Multiattack",
+        "zh": "强盗首领多重攻击",
+        "aliases": ["强盗队长多重攻击"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit Captain, Actions: Multiattack (p. 261)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "properties": {
+        "multiattack_count": 2,
+        "allowed_attack_action_ids": [
+          "srd.bandit_captain_scimitar",
+          "srd.bandit_captain_pistol"
+        ],
+        "default_attack_action_id": "srd.bandit_captain_scimitar"
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        {
+          "type": "text_result",
+          "text": "The captain makes two attacks using Scimitar and Pistol in any combination; this executable default resolves two Scimitar attacks."
+        }
+      ],
+      "audit_label": "Bandit Captain Multiattack"
+    },
+    {
+      "id": "srd.bandit_captain_parry",
+      "name": "Bandit Captain Parry",
+      "localization": {
+        "en": "Bandit Captain Parry",
+        "zh": "强盗首领招架",
+        "aliases": ["强盗队长招架"]
+      },
+      "source": "SRD 5.2.1 Monsters: Bandit Captain, Reactions: Parry (p. 261)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_reaction",
+      "action_economy": "reaction",
+      "range": { "self": true },
+      "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+      "requirements": { "trigger": "hit_by_melee_attack_roll_while_holding_weapon" },
+      "properties": {
+        "armor_class_bonus_against_triggering_attack": 2,
+        "can_turn_hit_into_miss": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "text_result",
+          "text": "The captain adds 2 to its AC against the triggering melee attack, possibly causing it to miss."
+        }
+      ],
+      "audit_label": "Bandit Captain Parry"
+    },
+    {
+      "id": "srd.cultist_ritual_sickle",
+      "name": "Cultist Ritual Sickle",
+      "localization": {
+        "en": "Cultist Ritual Sickle",
+        "zh": "邪教徒仪式镰刀",
+        "aliases": ["邪教徒镰刀", "仪式镰刀"]
+      },
+      "source": "SRD 5.2.1 Monsters: Cultist, Actions: Ritual Sickle",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 3 },
+        {
+          "type": "damage",
+          "dice": "1d4+1",
+          "damage_type": "slashing",
+          "requires_hit": true
+        },
+        {
+          "type": "damage",
+          "amount": 1,
+          "damage_type": "necrotic",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The cultist's ritual sickle attack is resolved." }
+      ],
+      "audit_label": "Cultist Ritual Sickle"
+    },
+    {
+      "id": "srd.giant_rat_bite",
+      "name": "Giant Rat Bite",
+      "localization": {
+        "en": "Giant Rat Bite",
+        "zh": "巨鼠啮咬",
+        "aliases": ["巨鼠撕咬", "巨鼠咬击"]
+      },
+      "source": "SRD 5.2.1 Animals: Giant Rat, Actions: Bite",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d4+3",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The giant rat's bite attack is resolved." }
+      ],
+      "audit_label": "Giant Rat Bite"
+    },
+    {
+      "id": "srd.kobold_dagger",
+      "name": "Kobold Warrior Dagger",
+      "localization": {
+        "en": "Kobold Warrior Dagger",
+        "zh": "狗头人战士匕首",
+        "aliases": ["狗头人匕首", "狗头人投匕"]
+      },
+      "source": "SRD 5.2.1 Monsters: Kobold Warrior, Actions: Dagger",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "reach_ft": 5, "normal_ft": 20, "long_ft": 60 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 4 },
+        {
+          "type": "damage",
+          "dice": "1d4+2",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The kobold warrior's dagger attack is resolved." }
+      ],
+      "audit_label": "Kobold Warrior Dagger"
+    },
+    {
+      "id": "srd.warrior_infantry_spear",
+      "name": "Warrior Infantry Spear",
+      "localization": {
+        "en": "Warrior Infantry Spear",
+        "zh": "步兵战士长矛",
+        "aliases": ["战士长矛", "步兵长矛"]
+      },
+      "source": "SRD 5.2.1 Monsters: Warrior Infantry, Actions: Spear",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "reach_ft": 5, "normal_ft": 20, "long_ft": 60 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 3 },
+        {
+          "type": "damage",
+          "dice": "1d6+1",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The warrior infantry's spear attack is resolved." }
+      ],
+      "audit_label": "Warrior Infantry Spear"
+    },
+    {
+      "id": "srd.warrior_infantry_pack_tactics",
+      "name": "Warrior Infantry Pack Tactics",
+      "localization": {
+        "en": "Warrior Infantry Pack Tactics",
+        "zh": "步兵战士集群战术",
+        "aliases": ["步兵集群战术"]
+      },
+      "source": "SRD 5.2.1 Monsters: Warrior Infantry, Traits: Pack Tactics (pp. 336-337)",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_trait",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+      "requirements": {},
+      "properties": {
+        "grants_attack_roll_advantage": true,
+        "requires_ally_within_target_ft": 5,
+        "ally_must_not_be_incapacitated": true
+      },
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        {
+          "type": "text_result",
+          "text": "The warrior has Advantage on an attack roll when a non-Incapacitated ally is within 5 feet of the target."
+        }
+      ],
+      "audit_label": "Warrior Infantry Pack Tactics"
+    },
+    {
+      "id": "srd.skeleton_shortsword",
+      "name": "Skeleton Shortsword",
+      "localization": {
+        "en": "Skeleton Shortsword",
+        "zh": "骷髅短剑",
+        "aliases": ["骷髅短剑攻击", "骷髅近战"]
+      },
+      "source": "SRD 5.2.1 Monsters: Skeleton, Actions: Shortsword",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The skeleton's shortsword attack is resolved." }
+      ],
+      "audit_label": "Skeleton Shortsword"
+    },
+    {
+      "id": "srd.skeleton_shortbow",
+      "name": "Skeleton Shortbow",
+      "localization": {
+        "en": "Skeleton Shortbow",
+        "zh": "骷髅短弓",
+        "aliases": ["骷髅短弓攻击", "骷髅远程"]
+      },
+      "source": "SRD 5.2.1 Monsters: Skeleton, Actions: Shortbow",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 80, "long_ft": 320 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 5 },
+        {
+          "type": "damage",
+          "dice": "1d6+3",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The skeleton's shortbow attack is resolved." }
+      ],
+      "audit_label": "Skeleton Shortbow"
+    },
+    {
+      "id": "srd.wolf_bite",
+      "name": "Wolf Bite",
+      "localization": {
+        "en": "Wolf Bite",
+        "zh": "狼啮咬",
+        "aliases": ["狼咬击", "野狼撕咬"]
+      },
+      "source": "SRD 5.2.1 Animals: Wolf, Actions: Bite",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 4 },
+        {
+          "type": "damage",
+          "dice": "1d6+2",
+          "damage_type": "piercing",
+          "requires_hit": true
+        },
+        {
+          "type": "branch",
+          "condition": "last_attack_hit",
+          "if_true": [
+            {
+              "type": "text_result",
+              "text": "If the target is Medium or smaller, the wolf's bite also knocks it prone."
+            }
+          ],
+          "if_false": []
+        }
+      ],
+      "audit_label": "Wolf Bite"
+    },
+    {
+      "id": "srd.zombie_slam",
+      "name": "Zombie Slam",
+      "localization": {
+        "en": "Zombie Slam",
+        "zh": "僵尸猛击",
+        "aliases": ["僵尸拍击", "僵尸重击"]
+      },
+      "source": "SRD 5.2.1 Monsters: Zombie, Actions: Slam",
+      "rules_version": "srd-5.2.1",
+      "action_type": "monster_attack",
+      "action_economy": "action",
+      "range": { "normal_ft": 5 },
+      "target_policy": { "min": 1, "max": 1, "harmful": true },
+      "requirements": {},
+      "friendly_fire_policy": "raw",
+      "cost": {},
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        { "type": "attack_roll", "attack_bonus": 3 },
+        {
+          "type": "damage",
+          "dice": "1d8+1",
+          "damage_type": "bludgeoning",
+          "requires_hit": true
+        },
+        { "type": "text_result", "text": "The zombie's slam attack is resolved." }
+      ],
+      "audit_label": "Zombie Slam"
+    }
+  ]
+}

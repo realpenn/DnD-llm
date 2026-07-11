@@ -1,0 +1,1622 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.animate_dead",
+      "name": "Animate Dead",
+      "localization": { "en": "Animate Dead", "zh": "操纵死尸", "aliases": ["活化死尸"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "necromancy",
+      "classes": ["cleric", "wizard"],
+      "action": {
+        "id": "srd.animate_dead",
+        "name": "Animate Dead",
+        "localization": { "en": "Animate Dead", "zh": "操纵死尸", "aliases": ["活化死尸"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 10 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "animated_undead_servant",
+            "scope": { "target": "corpse_or_bone_pile", "range_ft": 10 },
+            "duration": { "until": "duration_24_hours" },
+            "metadata": { "servant_type": ["skeleton", "zombie"], "controlled": true }
+          }
+        ],
+        "audit_label": "Animate Dead"
+      }
+    },
+    {
+      "id": "srd.spell.bestow_curse",
+      "name": "Bestow Curse",
+      "localization": { "en": "Bestow Curse", "zh": "降咒", "aliases": ["施加诅咒"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "necromancy",
+      "classes": ["bard", "cleric", "wizard"],
+      "action": {
+        "id": "srd.bestow_curse",
+        "name": "Bestow Curse",
+        "localization": { "en": "Bestow Curse", "zh": "降咒", "aliases": ["施加诅咒"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": {
+                  "bestow_curse_choice": true,
+                  "ability_check_penalty": true,
+                  "extra_necrotic_damage": "1d8"
+                },
+                "duration": { "until": "concentration_1_minute" },
+                "tick_on": "target_roll_or_hit",
+                "concentration": true
+              }
+            ]
+          }
+        ],
+        "audit_label": "Bestow Curse"
+      }
+    },
+    {
+      "id": "srd.spell.blink",
+      "name": "Blink",
+      "localization": { "en": "Blink", "zh": "闪现术", "aliases": ["闪烁"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.blink",
+        "name": "Blink",
+        "localization": { "en": "Blink", "zh": "闪现术", "aliases": ["闪烁"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "blink_to_ethereal_on_turn_end": true },
+            "duration": { "until": "duration_1_minute" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Blink"
+      }
+    },
+    {
+      "id": "srd.spell.command",
+      "name": "Command",
+      "localization": { "en": "Command", "zh": "命令术", "aliases": ["命令"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "enchantment",
+      "classes": ["bard", "cleric", "paladin"],
+      "action": {
+        "id": "srd.command",
+        "name": "Command",
+        "localization": { "en": "Command", "zh": "命令术", "aliases": ["命令"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": {
+          "min": 1,
+          "max": 1,
+          "harmful": true,
+          "base_spell_slot_level": 1,
+          "max_targets_per_slot_above": 1
+        },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "condition",
+                "condition": "incapacitated",
+                "duration": { "until": "end_of_next_turn" },
+                "tick_on": "target_turn_end"
+              }
+            ]
+          }
+        ],
+        "audit_label": "Command"
+      }
+    },
+    {
+      "id": "srd.spell.conjure_animals",
+      "name": "Conjure Animals",
+      "localization": { "en": "Conjure Animals", "zh": "召唤动物", "aliases": ["动物召唤"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "conjuration",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.conjure_animals",
+        "name": "Conjure Animals",
+        "localization": { "en": "Conjure Animals", "zh": "召唤动物", "aliases": ["动物召唤"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "conjured_animals",
+            "scope": { "target": "unoccupied_spaces", "range_ft": 60 },
+            "duration": { "until": "concentration_1_hour" },
+            "metadata": { "beast_spirits": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Conjure Animals"
+      }
+    },
+    {
+      "id": "srd.spell.counterspell",
+      "name": "Counterspell",
+      "localization": { "en": "Counterspell", "zh": "法术反制", "aliases": ["反制法术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.counterspell",
+        "name": "Counterspell",
+        "localization": { "en": "Counterspell", "zh": "法术反制", "aliases": ["反制法术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "reaction",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "counterspell_attempt",
+            "scope": { "target": "triggering_spellcaster", "range_ft": 60 },
+            "duration": { "until": "instant" },
+            "metadata": { "reaction_to_spell": true, "ability_check_may_be_required": true }
+          }
+        ],
+        "audit_label": "Counterspell"
+      }
+    },
+    {
+      "id": "srd.spell.divine_smite",
+      "name": "Divine Smite",
+      "localization": { "en": "Divine Smite", "zh": "神圣斩", "aliases": ["至圣斩"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["paladin"],
+      "action": {
+        "id": "srd.divine_smite",
+        "name": "Divine Smite",
+        "localization": { "en": "Divine Smite", "zh": "神圣斩", "aliases": ["至圣斩"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "next_melee_hit_bonus_damage": "2d8", "damage_type": "radiant" },
+            "duration": { "until": "next_melee_hit_or_1_minute" },
+            "tick_on": "weapon_hit"
+          }
+        ],
+        "audit_label": "Divine Smite"
+      }
+    },
+    {
+      "id": "srd.spell.dragons_breath",
+      "name": "Dragon's Breath",
+      "localization": { "en": "Dragon's Breath", "zh": "龙息术", "aliases": ["龙之吐息"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.dragons_breath",
+        "name": "Dragon's Breath",
+        "localization": { "en": "Dragon's Breath", "zh": "龙息术", "aliases": ["龙之吐息"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "granted_breath_weapon": true,
+              "breath_damage": "3d6",
+              "breath_damage_types": ["acid", "cold", "fire", "lightning", "poison"]
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "action",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Dragon's Breath"
+      }
+    },
+    {
+      "id": "srd.spell.enhance_ability",
+      "name": "Enhance Ability",
+      "localization": { "en": "Enhance Ability", "zh": "强化属性", "aliases": ["增强属性"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["bard", "cleric", "druid", "ranger", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.enhance_ability",
+        "name": "Enhance Ability",
+        "localization": { "en": "Enhance Ability", "zh": "强化属性", "aliases": ["增强属性"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "chosen_ability_checks_advantage": true },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "ability_check",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Enhance Ability"
+      }
+    },
+    {
+      "id": "srd.spell.enlarge_reduce",
+      "name": "Enlarge/Reduce",
+      "localization": { "en": "Enlarge/Reduce", "zh": "变巨变小", "aliases": ["变大缩小"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["bard", "druid", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.enlarge_reduce",
+        "name": "Enlarge/Reduce",
+        "localization": { "en": "Enlarge/Reduce", "zh": "变巨变小", "aliases": ["变大缩小"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "size_change_choice": ["enlarge", "reduce"],
+              "weapon_damage_delta": "1d4",
+              "strength_checks_advantage": true
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "target_roll_or_damage",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Enlarge/Reduce"
+      }
+    },
+    {
+      "id": "srd.spell.ensnaring_strike",
+      "name": "Ensnaring Strike",
+      "localization": { "en": "Ensnaring Strike", "zh": "诱捕打击", "aliases": ["缠绕打击"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "conjuration",
+      "classes": ["ranger"],
+      "action": {
+        "id": "srd.ensnaring_strike",
+        "name": "Ensnaring Strike",
+        "localization": { "en": "Ensnaring Strike", "zh": "诱捕打击", "aliases": ["缠绕打击"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "next_weapon_hit_applies_condition": "restrained",
+              "ongoing_damage": "1d6",
+              "damage_type": "piercing"
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "weapon_hit",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Ensnaring Strike"
+      }
+    },
+    {
+      "id": "srd.spell.enthrall",
+      "name": "Enthrall",
+      "localization": { "en": "Enthrall", "zh": "迷魂术", "aliases": ["吸引注意"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "enchantment",
+      "classes": ["bard", "warlock"],
+      "action": {
+        "id": "srd.enthrall",
+        "name": "Enthrall",
+        "localization": { "en": "Enthrall", "zh": "迷魂术", "aliases": ["吸引注意"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 6, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": { "perception_checks_against_others_disadvantage": true },
+                "duration": { "until": "duration_1_minute" },
+                "tick_on": "perception"
+              }
+            ]
+          }
+        ],
+        "audit_label": "Enthrall"
+      }
+    },
+    {
+      "id": "srd.spell.faerie_fire",
+      "name": "Faerie Fire",
+      "localization": { "en": "Faerie Fire", "zh": "妖火", "aliases": ["精灵火"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["bard", "druid"],
+      "action": {
+        "id": "srd.faerie_fire",
+        "name": "Faerie Fire",
+        "localization": { "en": "Faerie Fire", "zh": "妖火", "aliases": ["精灵火"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "cube", "size_ft": 20 },
+        "target_policy": { "min": 1, "max": 6, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "dex", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": { "incoming_attacks_advantage": true, "negates_invisibility": true },
+                "duration": { "until": "concentration_1_minute" },
+                "tick_on": "attack_against_target",
+                "concentration": true
+              }
+            ]
+          }
+        ],
+        "audit_label": "Faerie Fire"
+      }
+    },
+    {
+      "id": "srd.spell.flame_blade",
+      "name": "Flame Blade",
+      "localization": { "en": "Flame Blade", "zh": "火焰刀", "aliases": ["焰刃"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["druid", "sorcerer"],
+      "action": {
+        "id": "srd.flame_blade",
+        "name": "Flame Blade",
+        "localization": { "en": "Flame Blade", "zh": "火焰刀", "aliases": ["焰刃"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "flame_blade",
+            "scope": { "target": "caster_hand" },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "melee_spell_attack_damage": "3d6", "damage_type": "fire", "concentration": true }
+          }
+        ],
+        "audit_label": "Flame Blade"
+      }
+    },
+    {
+      "id": "srd.spell.gaseous_form",
+      "name": "Gaseous Form",
+      "localization": { "en": "Gaseous Form", "zh": "气化形体", "aliases": ["化气术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.gaseous_form",
+        "name": "Gaseous Form",
+        "localization": { "en": "Gaseous Form", "zh": "气化形体", "aliases": ["化气术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "gaseous_form": true,
+              "fly_speed_ft": 10,
+              "resistance_to_nonmagical_damage": true
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "movement_or_damage",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Gaseous Form"
+      }
+    },
+    {
+      "id": "srd.spell.glyph_of_warding",
+      "name": "Glyph of Warding",
+      "localization": { "en": "Glyph of Warding", "zh": "守护刻文", "aliases": ["守护符文"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["bard", "cleric", "wizard"],
+      "action": {
+        "id": "srd.glyph_of_warding",
+        "name": "Glyph of Warding",
+        "localization": { "en": "Glyph of Warding", "zh": "守护刻文", "aliases": ["守护符文"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "glyph_of_warding",
+            "scope": { "target": "surface_or_object" },
+            "duration": { "until": "triggered_or_dispelled" },
+            "metadata": { "triggered_spell_or_explosive_runes": true }
+          }
+        ],
+        "audit_label": "Glyph of Warding"
+      }
+    },
+    {
+      "id": "srd.spell.gust_of_wind",
+      "name": "Gust of Wind",
+      "localization": { "en": "Gust of Wind", "zh": "造风术", "aliases": ["强风术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "evocation",
+      "classes": ["druid", "ranger", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.gust_of_wind",
+        "name": "Gust of Wind",
+        "localization": { "en": "Gust of Wind", "zh": "造风术", "aliases": ["强风术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true, "shape": "line", "length_ft": 60 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "gust_of_wind_line",
+            "scope": { "target": "line_from_self", "length_ft": 60, "width_ft": 10 },
+            "duration": { "until": "concentration_1_minute" },
+            "metadata": { "pushes_creatures": true, "disperses_gas": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Gust of Wind"
+      }
+    },
+    {
+      "id": "srd.spell.hex",
+      "name": "Hex",
+      "localization": { "en": "Hex", "zh": "脆弱诅咒", "aliases": ["妖术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "enchantment",
+      "classes": ["warlock"],
+      "action": {
+        "id": "srd.hex",
+        "name": "Hex",
+        "localization": { "en": "Hex", "zh": "脆弱诅咒", "aliases": ["妖术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "normal_ft": 90 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "chosen_ability_checks_disadvantage": true,
+              "attacker_bonus_damage": "1d6",
+              "damage_type": "necrotic"
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "target_check_or_attacker_hit",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Hex"
+      }
+    },
+    {
+      "id": "srd.spell.hideous_laughter",
+      "name": "Hideous Laughter",
+      "localization": { "en": "Hideous Laughter", "zh": "狂笑术", "aliases": ["塔莎狂笑"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "enchantment",
+      "classes": ["bard", "warlock", "wizard"],
+      "action": {
+        "id": "srd.hideous_laughter",
+        "name": "Hideous Laughter",
+        "localization": { "en": "Hideous Laughter", "zh": "狂笑术", "aliases": ["塔莎狂笑"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              { "type": "condition", "condition": "prone", "duration": { "until": "concentration_1_minute" }, "concentration": true },
+              { "type": "condition", "condition": "incapacitated", "duration": { "until": "concentration_1_minute" }, "concentration": true }
+            ]
+          }
+        ],
+        "audit_label": "Hideous Laughter"
+      }
+    },
+    {
+      "id": "srd.spell.hunters_mark",
+      "name": "Hunter's Mark",
+      "localization": { "en": "Hunter's Mark", "zh": "猎人印记", "aliases": ["猎人标记"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "divination",
+      "classes": ["ranger"],
+      "action": {
+        "id": "srd.hunters_mark",
+        "name": "Hunter's Mark",
+        "localization": { "en": "Hunter's Mark", "zh": "猎人印记", "aliases": ["猎人标记"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "normal_ft": 90 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "hunters_mark": true,
+              "attacker_bonus_damage": "1d6",
+              "damage_type": "force",
+              "tracking_advantage": true
+            },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "target_hit_or_tracking",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Hunter's Mark"
+      }
+    },
+    {
+      "id": "srd.spell.levitate",
+      "name": "Levitate",
+      "localization": { "en": "Levitate", "zh": "浮空术", "aliases": ["悬浮术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["sorcerer", "wizard"],
+      "action": {
+        "id": "srd.levitate",
+        "name": "Levitate",
+        "localization": { "en": "Levitate", "zh": "浮空术", "aliases": ["悬浮术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "levitated": true, "vertical_move_ft": 20 },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "movement",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Levitate"
+      }
+    },
+    {
+      "id": "srd.spell.major_image",
+      "name": "Major Image",
+      "localization": { "en": "Major Image", "zh": "强效幻影", "aliases": ["高等幻影"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.major_image",
+        "name": "Major Image",
+        "localization": { "en": "Major Image", "zh": "强效幻影", "aliases": ["高等幻影"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "major_image",
+            "scope": { "target": "space", "range_ft": 120, "cube_ft": 20 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "visual_sound_smell_temperature": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Major Image"
+      }
+    },
+    {
+      "id": "srd.spell.mirror_image",
+      "name": "Mirror Image",
+      "localization": { "en": "Mirror Image", "zh": "镜影术", "aliases": ["镜像术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.mirror_image",
+        "name": "Mirror Image",
+        "localization": { "en": "Mirror Image", "zh": "镜影术", "aliases": ["镜像术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "mirror_image_duplicates": 3 },
+            "duration": { "until": "duration_1_minute" },
+            "tick_on": "incoming_attack"
+          }
+        ],
+        "audit_label": "Mirror Image"
+      }
+    },
+    {
+      "id": "srd.spell.misty_step",
+      "name": "Misty Step",
+      "localization": { "en": "Misty Step", "zh": "迷踪步", "aliases": ["雾步"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "conjuration",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.misty_step",
+        "name": "Misty Step",
+        "localization": { "en": "Misty Step", "zh": "迷踪步", "aliases": ["雾步"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "self_teleport",
+            "scope": { "target": "visible_unoccupied_space", "range_ft": 30 },
+            "duration": { "until": "instant" },
+            "metadata": { "teleport_self": true }
+          }
+        ],
+        "audit_label": "Misty Step"
+      }
+    },
+    {
+      "id": "srd.spell.phantasmal_force",
+      "name": "Phantasmal Force",
+      "localization": { "en": "Phantasmal Force", "zh": "魅影之力", "aliases": ["幻影力量"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "illusion",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.phantasmal_force",
+        "name": "Phantasmal Force",
+        "localization": { "en": "Phantasmal Force", "zh": "魅影之力", "aliases": ["幻影力量"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "int", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": { "phantasmal_force": true, "ongoing_psychic_damage": "1d6" },
+                "duration": { "until": "concentration_1_minute" },
+                "tick_on": "target_turn",
+                "concentration": true
+              }
+            ]
+          }
+        ],
+        "audit_label": "Phantasmal Force"
+      }
+    },
+    {
+      "id": "srd.spell.plant_growth",
+      "name": "Plant Growth",
+      "localization": { "en": "Plant Growth", "zh": "植物滋长", "aliases": ["植物生长"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["bard", "druid", "ranger"],
+      "action": {
+        "id": "srd.plant_growth",
+        "name": "Plant Growth",
+        "localization": { "en": "Plant Growth", "zh": "植物滋长", "aliases": ["植物生长"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "plant_growth",
+            "scope": { "target": "vegetated_area", "range_ft": 150 },
+            "duration": { "until": "instant_or_1_year" },
+            "metadata": { "movement_cost_multiplier": 4, "enriches_land": true }
+          }
+        ],
+        "audit_label": "Plant Growth"
+      }
+    },
+    {
+      "id": "srd.spell.protection_from_evil_and_good",
+      "name": "Protection from Evil and Good",
+      "localization": { "en": "Protection from Evil and Good", "zh": "防护善恶", "aliases": ["善恶防护"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "abjuration",
+      "classes": ["cleric", "druid", "paladin", "warlock", "wizard"],
+      "action": {
+        "id": "srd.protection_from_evil_and_good",
+        "name": "Protection from Evil and Good",
+        "localization": { "en": "Protection from Evil and Good", "zh": "防护善恶", "aliases": ["善恶防护"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "protected_creature_types": ["aberration", "celestial", "elemental", "fey", "fiend", "undead"],
+              "incoming_attacks_disadvantage": true,
+              "charm_frighten_possess_immunity": true
+            },
+            "duration": { "until": "concentration_10_minutes" },
+            "tick_on": "incoming_attack_or_condition",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Protection from Evil and Good"
+      }
+    },
+    {
+      "id": "srd.spell.ray_of_enfeeblement",
+      "name": "Ray of Enfeeblement",
+      "localization": { "en": "Ray of Enfeeblement", "zh": "衰弱射线", "aliases": ["虚弱射线"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "necromancy",
+      "classes": ["warlock", "wizard"],
+      "action": {
+        "id": "srd.ray_of_enfeeblement",
+        "name": "Ray of Enfeeblement",
+        "localization": { "en": "Ray of Enfeeblement", "zh": "衰弱射线", "aliases": ["虚弱射线"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          {
+            "type": "branch",
+            "condition": "last_attack_hit",
+            "if_true": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": { "weapon_damage_halved": true },
+                "duration": { "until": "concentration_1_minute" },
+                "tick_on": "weapon_damage",
+                "concentration": true
+              }
+            ]
+          }
+        ],
+        "audit_label": "Ray of Enfeeblement"
+      }
+    },
+    {
+      "id": "srd.spell.remove_curse",
+      "name": "Remove Curse",
+      "localization": { "en": "Remove Curse", "zh": "移除诅咒", "aliases": ["解除诅咒"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin", "warlock", "wizard"],
+      "action": {
+        "id": "srd.remove_curse",
+        "name": "Remove Curse",
+        "localization": { "en": "Remove Curse", "zh": "移除诅咒", "aliases": ["解除诅咒"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "remove_curse",
+            "scope": { "target": "creature_or_object" },
+            "duration": { "until": "instant" },
+            "metadata": { "ends_curses_and_breaks_attunement": true }
+          }
+        ],
+        "audit_label": "Remove Curse"
+      }
+    },
+    {
+      "id": "srd.spell.revivify",
+      "name": "Revivify",
+      "localization": { "en": "Revivify", "zh": "回生术", "aliases": ["复活术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "necromancy",
+      "classes": ["cleric", "druid", "paladin", "ranger"],
+      "action": {
+        "id": "srd.revivify",
+        "name": "Revivify",
+        "localization": { "en": "Revivify", "zh": "回生术", "aliases": ["复活术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "healing", "amount": 1 },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "revived_from_recent_death": true },
+            "duration": { "until": "instant" },
+            "tick_on": "revival"
+          }
+        ],
+        "audit_label": "Revivify"
+      }
+    },
+    {
+      "id": "srd.spell.searing_smite",
+      "name": "Searing Smite",
+      "localization": { "en": "Searing Smite", "zh": "灼热斩", "aliases": ["炽焰斩"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "evocation",
+      "classes": ["paladin"],
+      "action": {
+        "id": "srd.searing_smite",
+        "name": "Searing Smite",
+        "localization": { "en": "Searing Smite", "zh": "灼热斩", "aliases": ["炽焰斩"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "next_weapon_hit_bonus_damage": "1d6", "damage_type": "fire", "ignites_target": true },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "weapon_hit",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Searing Smite"
+      }
+    },
+    {
+      "id": "srd.spell.shillelagh",
+      "name": "Shillelagh",
+      "localization": { "en": "Shillelagh", "zh": "橡棍术", "aliases": ["橡木棍"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "transmutation",
+      "classes": ["druid"],
+      "action": {
+        "id": "srd.shillelagh",
+        "name": "Shillelagh",
+        "localization": { "en": "Shillelagh", "zh": "橡棍术", "aliases": ["橡木棍"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "touch": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "raw",
+        "cost": {},
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "shillelagh_weapon",
+            "scope": { "target": "club_or_quarterstaff" },
+            "duration": { "until": "duration_1_minute" },
+            "metadata": { "damage_die": "1d8", "uses_spellcasting_ability": true }
+          }
+        ],
+        "audit_label": "Shillelagh"
+      }
+    },
+    {
+      "id": "srd.spell.shining_smite",
+      "name": "Shining Smite",
+      "localization": { "en": "Shining Smite", "zh": "辉耀斩", "aliases": ["闪耀斩"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["paladin"],
+      "action": {
+        "id": "srd.shining_smite",
+        "name": "Shining Smite",
+        "localization": { "en": "Shining Smite", "zh": "辉耀斩", "aliases": ["闪耀斩"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "bonus_action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "next_weapon_hit_bonus_damage": "2d6",
+              "damage_type": "radiant",
+              "target_sheds_light": true,
+              "negates_invisibility": true
+            },
+            "duration": { "until": "concentration_1_minute" },
+            "tick_on": "weapon_hit",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Shining Smite"
+      }
+    },
+    {
+      "id": "srd.spell.silence",
+      "name": "Silence",
+      "localization": { "en": "Silence", "zh": "沉默术", "aliases": ["静默术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "illusion",
+      "classes": ["bard", "cleric", "ranger"],
+      "ritual": true,
+      "action": {
+        "id": "srd.silence",
+        "name": "Silence",
+        "localization": { "en": "Silence", "zh": "沉默术", "aliases": ["静默术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "magical_silence",
+            "scope": { "target": "point", "radius_ft": 20 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "blocks_sound": true, "blocks_verbal_components": true, "concentration": true }
+          }
+        ],
+        "audit_label": "Silence"
+      }
+    },
+    {
+      "id": "srd.spell.sleep",
+      "name": "Sleep",
+      "localization": { "en": "Sleep", "zh": "睡眠术", "aliases": ["沉睡术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 1,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.sleep",
+        "name": "Sleep",
+        "localization": { "en": "Sleep", "zh": "睡眠术", "aliases": ["沉睡术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 90, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 1, "max": 6, "harmful": true },
+        "requirements": { "spell_level": 1 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 1 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "condition",
+            "condition": "unconscious",
+            "duration": { "until": "damage_or_1_minute" },
+            "tick_on": "damage_taken_or_duration"
+          }
+        ],
+        "audit_label": "Sleep"
+      }
+    },
+    {
+      "id": "srd.spell.slow",
+      "name": "Slow",
+      "localization": { "en": "Slow", "zh": "缓慢术", "aliases": ["迟缓术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "transmutation",
+      "classes": ["bard", "sorcerer", "wizard"],
+      "action": {
+        "id": "srd.slow",
+        "name": "Slow",
+        "localization": { "en": "Slow", "zh": "缓慢术", "aliases": ["迟缓术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120, "shape": "cube", "size_ft": 40 },
+        "target_policy": { "min": 1, "max": 6, "harmful": true },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": {
+                  "speed_multiplier": 0.5,
+                  "armor_class_bonus": -2,
+                  "dex_saves_penalty": true,
+                  "limited_action_options": true
+                },
+                "duration": { "until": "concentration_1_minute" },
+                "tick_on": "target_turn",
+                "concentration": true
+              }
+            ]
+          }
+        ],
+        "audit_label": "Slow"
+      }
+    },
+    {
+      "id": "srd.spell.sorcerous_burst",
+      "name": "Sorcerous Burst",
+      "localization": { "en": "Sorcerous Burst", "zh": "术法爆发", "aliases": ["术能爆发"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "evocation",
+      "classes": ["sorcerer"],
+      "action": {
+        "id": "srd.sorcerous_burst",
+        "name": "Sorcerous Burst",
+        "localization": { "en": "Sorcerous Burst", "zh": "术法爆发", "aliases": ["术能爆发"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d8", "damage_type": "force", "requires_hit": true }
+        ],
+        "audit_label": "Sorcerous Burst"
+      }
+    },
+    {
+      "id": "srd.spell.spike_growth",
+      "name": "Spike Growth",
+      "localization": { "en": "Spike Growth", "zh": "荆棘丛生", "aliases": ["尖刺生长"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "transmutation",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.spike_growth",
+        "name": "Spike Growth",
+        "localization": { "en": "Spike Growth", "zh": "荆棘丛生", "aliases": ["尖刺生长"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 150, "shape": "sphere", "radius_ft": 20 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "spike_growth",
+            "scope": { "target": "ground_area", "radius_ft": 20 },
+            "duration": { "until": "concentration_10_minutes" },
+            "metadata": { "difficult_terrain": true, "movement_damage": "2d4 piercing", "concentration": true }
+          }
+        ],
+        "audit_label": "Spike Growth"
+      }
+    },
+    {
+      "id": "srd.spell.suggestion",
+      "name": "Suggestion",
+      "localization": { "en": "Suggestion", "zh": "暗示术", "aliases": ["建议术"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "enchantment",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.suggestion",
+        "name": "Suggestion",
+        "localization": { "en": "Suggestion", "zh": "暗示术", "aliases": ["建议术"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "saving_throw", "ability": "wis", "difficulty_tier": "medium" },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_false": [
+              {
+                "type": "passive_effect",
+                "passive_modifiers": { "compelled_suggestion": true },
+                "duration": { "until": "concentration_8_hours" },
+                "tick_on": "target_decision",
+                "concentration": true
+              }
+            ]
+          }
+        ],
+        "audit_label": "Suggestion"
+      }
+    },
+    {
+      "id": "srd.spell.true_strike",
+      "name": "True Strike",
+      "localization": { "en": "True Strike", "zh": "克敌机先", "aliases": ["真知打击"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 0,
+      "school": "divination",
+      "classes": ["bard", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.true_strike",
+        "name": "True Strike",
+        "localization": { "en": "True Strike", "zh": "克敌机先", "aliases": ["真知打击"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 0 },
+        "friendly_fire_policy": "confirm",
+        "cost": {},
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "1d6", "damage_type": "radiant", "requires_hit": true }
+        ],
+        "audit_label": "True Strike"
+      }
+    },
+    {
+      "id": "srd.spell.vampiric_touch",
+      "name": "Vampiric Touch",
+      "localization": { "en": "Vampiric Touch", "zh": "吸血鬼之触", "aliases": ["吸血之触"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "necromancy",
+      "classes": ["sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.vampiric_touch",
+        "name": "Vampiric Touch",
+        "localization": { "en": "Vampiric Touch", "zh": "吸血鬼之触", "aliases": ["吸血之触"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": true },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "confirm",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          { "type": "attack_roll", "attack_bonus": 5 },
+          { "type": "damage", "dice": "3d6", "damage_type": "necrotic", "requires_hit": true },
+          { "type": "target", "mode": "self" },
+          { "type": "healing", "dice": "1d6" }
+        ],
+        "audit_label": "Vampiric Touch"
+      }
+    },
+    {
+      "id": "srd.spell.warding_bond",
+      "name": "Warding Bond",
+      "localization": { "en": "Warding Bond", "zh": "守护之链", "aliases": ["守护联结"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "abjuration",
+      "classes": ["cleric", "paladin"],
+      "action": {
+        "id": "srd.warding_bond",
+        "name": "Warding Bond",
+        "localization": { "en": "Warding Bond", "zh": "守护之链", "aliases": ["守护联结"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 5 },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "armor_class_bonus": 1,
+              "saving_throw_bonus": 1,
+              "all_damage_resistance": true,
+              "warding_bond_damage_share": true
+            },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "damage_or_save"
+          }
+        ],
+        "audit_label": "Warding Bond"
+      }
+    },
+    {
+      "id": "srd.spell.wind_wall",
+      "name": "Wind Wall",
+      "localization": { "en": "Wind Wall", "zh": "风墙术", "aliases": ["风之墙"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 3,
+      "school": "evocation",
+      "classes": ["druid", "ranger"],
+      "action": {
+        "id": "srd.wind_wall",
+        "name": "Wind Wall",
+        "localization": { "en": "Wind Wall", "zh": "风墙术", "aliases": ["风之墙"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 120 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 3 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 3 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "wind_wall",
+            "scope": { "target": "line_or_wall", "range_ft": 120 },
+            "duration": { "until": "concentration_1_minute" },
+            "metadata": { "blocks_projectiles": true, "initial_damage": "3d8 bludgeoning", "concentration": true }
+          }
+        ],
+        "audit_label": "Wind Wall"
+      }
+    },
+    {
+      "id": "srd.spell.zone_of_truth",
+      "name": "Zone of Truth",
+      "localization": { "en": "Zone of Truth", "zh": "诚实之域", "aliases": ["真言区"] },
+      "source": "SRD 5.2.1",
+      "rules_version": "srd-5.2.1",
+      "level": 2,
+      "school": "enchantment",
+      "classes": ["bard", "cleric", "paladin"],
+      "action": {
+        "id": "srd.zone_of_truth",
+        "name": "Zone of Truth",
+        "localization": { "en": "Zone of Truth", "zh": "诚实之域", "aliases": ["真言区"] },
+        "source": "SRD 5.2.1",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 60, "shape": "sphere", "radius_ft": 15 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": { "spell_level": 2 },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 2 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "zone_of_truth",
+            "scope": { "target": "point", "radius_ft": 15 },
+            "duration": { "until": "duration_10_minutes" },
+            "metadata": { "charisma_save_on_entry_or_turn": true, "cannot_speak_deliberate_lie": true }
+          }
+        ],
+        "audit_label": "Zone of Truth"
+      }
+    }
+  ]
+}

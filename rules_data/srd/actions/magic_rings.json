@@ -1,0 +1,163 @@
+{
+  "items": [
+    {
+      "id": "srd.wear_ring_of_protection",
+      "name": "Wear Ring of Protection",
+      "localization": {
+        "en": "Wear Ring of Protection",
+        "zh": "佩戴防护戒指",
+        "aliases": ["启用防护戒指"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Protection",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.ring_of_protection" },
+      "properties": {
+        "ring_of_protection": true,
+        "self_only": true,
+        "requires_attunement": true,
+        "worn_slot": "ring"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "armor_class_bonus": 1,
+            "saving_throw_bonus": 1
+          },
+          "duration": { "until": "while_wearing_ring_of_protection" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this ring, the target gains a +1 bonus to Armor Class and saving throws." }
+      ],
+      "audit_label": "Wear Ring of Protection"
+    },
+    {
+      "id": "srd.wear_ring_of_swimming",
+      "name": "Wear Ring of Swimming",
+      "localization": {
+        "en": "Wear Ring of Swimming",
+        "zh": "佩戴游泳戒指",
+        "aliases": ["启用游泳戒指"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Swimming",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "none",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "harmful": false },
+      "requirements": { "item": "srd.ring_of_swimming" },
+      "properties": {
+        "ring_of_swimming": true,
+        "requires_attunement": false,
+        "worn_slot": "ring"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "swim_speed_ft": 40 },
+          "duration": { "until": "while_wearing_ring_of_swimming" },
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this ring, the target has a Swim Speed of 40 feet." }
+      ],
+      "audit_label": "Wear Ring of Swimming"
+    },
+    {
+      "id": "srd.ring_of_water_walking_water_walk",
+      "name": "Ring of Water Walking: Water Walk",
+      "localization": {
+        "en": "Ring of Water Walking: Water Walk",
+        "zh": "水上行走戒指：水上行走",
+        "aliases": ["使用水上行走戒指"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of Water Walking",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "action",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.ring_of_water_walking" },
+      "properties": {
+        "ring_of_water_walking": true,
+        "spell_definition_id": "srd.spell.water_walk",
+        "self_only": true,
+        "requires_attunement": false,
+        "worn_slot": "ring"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": { "walk_on_liquid_surface": true },
+          "duration": { "until": "duration_1_hour" },
+          "tick_on": "movement",
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "While wearing this ring, the target casts Water Walk from it, targeting only themself." }
+      ],
+      "audit_label": "Ring of Water Walking: Water Walk"
+    },
+    {
+      "id": "srd.use_ring_of_xray_vision",
+      "name": "Use Ring of X-ray Vision",
+      "localization": {
+        "en": "Use Ring of X-ray Vision",
+        "zh": "使用X光视觉戒指",
+        "aliases": ["启用X光视觉戒指"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Magic Items A-Z, Ring of X-ray Vision",
+      "rules_version": "srd-5.2.1",
+      "action_type": "item",
+      "action_economy": "action",
+      "range": { "self": true },
+      "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+      "requirements": { "item": "srd.ring_of_xray_vision" },
+      "properties": {
+        "ring_of_xray_vision": true,
+        "self_only": true,
+        "magic_action": true,
+        "requires_attunement": true,
+        "worn_slot": "ring"
+      },
+      "friendly_fire_policy": "raw",
+      "automation": [
+        { "type": "target", "mode": "explicit" },
+        {
+          "type": "repeat_use_save_before_long_rest",
+          "marker": "ring_of_xray_vision_used_before_long_rest",
+          "ability": "con",
+          "dc_ref": "srd.ring_of_xray_vision.con_save",
+          "dc_table": { "srd.ring_of_xray_vision.con_save": 15 },
+          "failure_condition": "exhaustion"
+        },
+        {
+          "type": "passive_effect",
+          "passive_modifiers": {
+            "xray_vision_range_ft": 30,
+            "xray_vision_solid_objects_transparent": true,
+            "xray_vision_penetration": {
+              "stone_ft": 1,
+              "common_metal_in": 1,
+              "wood_or_dirt_ft": 3
+            },
+            "xray_vision_blocked_by_lead": true
+          },
+          "duration": { "until": "duration_1_minute" },
+          "tick_on": "self_turn_start",
+          "stacking_policy": "replace"
+        },
+        { "type": "text_result", "text": "The wearer gains X-ray vision with a range of 30 feet for 1 minute; repeated use before a Long Rest requires a DC 15 Constitution saving throw or 1 Exhaustion level." }
+      ],
+      "audit_label": "Use Ring of X-ray Vision"
+    }
+  ]
+}

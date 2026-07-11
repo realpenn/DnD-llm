@@ -1,0 +1,768 @@
+{
+  "items": [
+    {
+      "id": "srd.spell.arcane_eye",
+      "name": "Arcane Eye",
+      "localization": {
+        "en": "Arcane Eye",
+        "zh": "秘法眼",
+        "aliases": ["奥术眼", "秘法之眼"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "divination",
+      "classes": ["wizard"],
+      "action": {
+        "id": "srd.arcane_eye",
+        "name": "Arcane Eye",
+        "localization": {
+          "en": "Arcane Eye",
+          "zh": "秘法眼",
+          "aliases": ["奥术眼", "秘法之眼"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "a bit of bat fur",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "arcane_eye_sensor",
+            "scope": { "target": "point_within_range", "range_ft": 30 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "invisible": true,
+              "invulnerable": true,
+              "hovers": true,
+              "mentally_receives_visual_information": true,
+              "sees_in_every_direction": true,
+              "darkvision_ft": 30,
+              "movable_as_bonus_action": true,
+              "move_distance_ft": 30,
+              "movement_direction": "any_direction",
+              "solid_barrier_blocks_movement": true,
+              "can_pass_through_opening_min_diameter_in": 1
+            }
+          }
+        ],
+        "audit_label": "Arcane Eye"
+      }
+    },
+    {
+      "id": "srd.spell.locate_creature",
+      "name": "Locate Creature",
+      "localization": {
+        "en": "Locate Creature",
+        "zh": "定位生物",
+        "aliases": ["寻找生物"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "divination",
+      "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"],
+      "action": {
+        "id": "srd.locate_creature",
+        "name": "Locate Creature",
+        "localization": {
+          "en": "Locate Creature",
+          "zh": "定位生物",
+          "aliases": ["寻找生物"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "fur from a bloodhound",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "locate_creature",
+            "scope": { "target": "described_or_named_creature", "range_ft": 1000 },
+            "duration": { "until": "concentration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "describe_or_name_creature_familiar_to_you": true,
+              "senses_direction_to_creature_within_ft": 1000,
+              "knows_direction_of_movement_if_moving": true,
+              "can_locate_specific_known_creature": true,
+              "can_locate_nearest_creature_of_kind_seen_within_ft": 30,
+              "fails_if_creature_in_different_form": true,
+              "different_form_examples": ["flesh_to_stone", "polymorph"],
+              "lead_blocks_direct_path": true
+            }
+          }
+        ],
+        "audit_label": "Locate Creature"
+      }
+    },
+    {
+      "id": "srd.spell.divination",
+      "name": "Divination",
+      "localization": {
+        "en": "Divination",
+        "zh": "预言术",
+        "aliases": ["占卜术", "预言"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 4,
+      "school": "divination",
+      "classes": ["cleric", "druid", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.divination",
+        "name": "Divination",
+        "localization": {
+          "en": "Divination",
+          "zh": "预言术",
+          "aliases": ["占卜术", "预言"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "harmful": false },
+        "requirements": {
+          "spell_level": 4,
+          "class_any": ["cleric", "druid", "wizard"]
+        },
+        "properties": {
+          "material_component": {
+            "description": "incense worth 25+ GP",
+            "consumed": true
+          },
+          "question_scope": "specific_goal_event_or_activity_within_7_days",
+          "repeat_casting_failure_chance_increment_percent": 25
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 4, "gold": 25 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "divination_answer",
+            "scope": { "target": "self" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "contacts_god_or_gods_servants": true,
+              "question_about_specific_goal_event_or_activity_within_days": 7,
+              "gm_offers_truthful_reply": true,
+              "reply_may_be_short_phrase_or_cryptic_rhyme": true,
+              "does_not_account_for_changed_circumstances": true,
+              "changed_circumstance_example": "casting_other_spells",
+              "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25
+            }
+          }
+        ],
+        "audit_label": "Divination"
+      }
+    },
+    {
+      "id": "srd.spell.contact_other_plane",
+      "name": "Contact Other Plane",
+      "localization": {
+        "en": "Contact Other Plane",
+        "zh": "异界探知",
+        "aliases": ["联系异界", "异界联络"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["warlock", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.contact_other_plane",
+        "name": "Contact Other Plane",
+        "localization": {
+          "en": "Contact Other Plane",
+          "zh": "异界探知",
+          "aliases": ["联系异界", "异界联络"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["warlock", "wizard"]
+        },
+        "properties": {
+          "ritual": true,
+          "casting_time": { "minutes": 1 },
+          "components": ["V"],
+          "max_questions": 5,
+          "intelligence_save_dc": 15
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "saving_throw",
+            "ability": "int",
+            "dc_ref": "srd.contact_other_plane.int_save",
+            "dc_table": { "srd.contact_other_plane.int_save": 15 }
+          },
+          {
+            "type": "branch",
+            "condition": "last_save_success",
+            "if_true": [
+              {
+                "type": "world_effect",
+                "effect_type": "contact_other_plane_answer_window",
+                "scope": { "target": "self" },
+                "duration": { "until": "duration_1_minute" },
+                "tick_on": "self_turn_end",
+                "metadata": {
+                  "mentally_contacts_otherworldly_intelligence": true,
+                  "possible_entities": [
+                    "demigod",
+                    "long_dead_sage_spirit",
+                    "knowledgeable_entity_from_another_plane"
+                  ],
+                  "max_questions": 5,
+                  "questions_must_be_asked_before_spell_ends": true,
+                  "gm_answers_each_question_with_one_word": true,
+                  "example_answers": [
+                    "yes",
+                    "no",
+                    "maybe",
+                    "never",
+                    "irrelevant",
+                    "unclear"
+                  ],
+                  "unclear_if_entity_does_not_know_answer": true,
+                  "gm_may_offer_short_phrase_if_one_word_misleading": true,
+                  "answer_generation_not_automated": true,
+                  "entity_selection_not_automated": true
+                }
+              }
+            ],
+            "if_false": [
+              { "type": "damage", "dice": "6d6", "damage_type": "psychic" },
+              {
+                "type": "condition",
+                "condition": "incapacitated",
+                "duration": { "until": "long_rest" },
+                "passive_modifiers": {
+                  "contact_other_plane_incapacitation": true,
+                  "greater_restoration_ends_effect": true
+                }
+              }
+            ]
+          }
+        ],
+        "audit_label": "Contact Other Plane"
+      }
+    },
+    {
+      "id": "srd.spell.legend_lore",
+      "name": "Legend Lore",
+      "localization": {
+        "en": "Legend Lore",
+        "zh": "通晓传奇",
+        "aliases": ["传奇知识", "传奇学识"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["bard", "cleric", "wizard"],
+      "action": {
+        "id": "srd.legend_lore",
+        "name": "Legend Lore",
+        "localization": {
+          "en": "Legend Lore",
+          "zh": "通晓传奇",
+          "aliases": ["传奇知识", "传奇学识"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "cleric", "wizard"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 10 },
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "incense worth 250+ GP, consumed, and four ivory strips worth 50+ GP each",
+            "consumed": true,
+            "consumed_gold": 250,
+            "non_consumed_components": [
+              "four ivory strips worth 50+ GP each"
+            ]
+          },
+          "lore_target": "famous_person_place_or_object"
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5, "gold": 250 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "legend_lore_summary",
+            "scope": { "target": "self" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "name_or_describe_famous_person_place_or_object": true,
+              "gm_provides_brief_summary_of_significant_lore": true,
+              "lore_may_include_important_details_amusing_revelations_or_secret_lore": true,
+              "more_existing_knowledge_makes_result_more_precise_and_detailed": true,
+              "information_is_accurate": true,
+              "gm_may_couch_information_in_figurative_language_or_poetry": true,
+              "fails_if_chosen_thing_is_not_actually_famous": true,
+              "sad_trombone_on_non_famous_failure": true,
+              "lore_generation_not_automated": true,
+              "fame_determination_not_automated": true,
+              "non_consumed_material_components": [
+                "four ivory strips worth 50+ GP each"
+              ],
+              "consumed_material_component": "incense worth 250+ GP"
+            }
+          }
+        ],
+        "audit_label": "Legend Lore"
+      }
+    },
+    {
+      "id": "srd.spell.find_the_path",
+      "name": "Find the Path",
+      "localization": {
+        "en": "Find the Path",
+        "zh": "寻路术",
+        "aliases": ["寻找路径"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "divination",
+      "classes": ["bard", "cleric", "druid"],
+      "action": {
+        "id": "srd.find_the_path",
+        "name": "Find the Path",
+        "localization": {
+          "en": "Find the Path",
+          "zh": "寻路术",
+          "aliases": ["寻找路径"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 1, "max": 1, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "cleric", "druid"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "a set of divination tools worth 100+ GP",
+            "consumed": false
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6 },
+        "automation": [
+          { "type": "target", "mode": "self" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "find_the_path": true,
+              "senses_most_direct_physical_route": true,
+              "requires_familiar_named_location": true,
+              "fails_for_other_plane_destination": true,
+              "fails_for_moving_destination": true,
+              "fails_for_unspecific_destination": true,
+              "same_plane_required_to_know_distance_and_direction": true,
+              "knows_distance_and_direction_to_destination": true,
+              "knows_most_direct_path_when_choosing_paths": true
+            },
+            "duration": { "until": "concentration_1_day" },
+            "tick_on": "self_turn_end",
+            "concentration": true
+          }
+        ],
+        "audit_label": "Find the Path"
+      }
+    },
+    {
+      "id": "srd.spell.commune",
+      "name": "Commune",
+      "localization": {
+        "en": "Commune",
+        "zh": "通神术",
+        "aliases": ["神灵沟通", "询问神谕"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["cleric"],
+      "ritual": true,
+      "action": {
+        "id": "srd.commune",
+        "name": "Commune",
+        "localization": {
+          "en": "Commune",
+          "zh": "通神术",
+          "aliases": ["神灵沟通", "询问神谕"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["cleric"]
+        },
+        "properties": {
+          "casting_time": { "minutes": 1 },
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "incense",
+            "consumed": false
+          },
+          "max_yes_or_no_questions": 3,
+          "repeat_casting_failure_chance_increment_percent": 25
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "commune_answer_window",
+            "scope": { "target": "self" },
+            "duration": { "until": "duration_1_minute" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "contacts_deity_or_divine_proxy": true,
+              "max_yes_or_no_questions": 3,
+              "questions_must_be_asked_before_spell_ends": true,
+              "receives_correct_answer_for_each_question": true,
+              "divine_beings_not_necessarily_omniscient": true,
+              "unclear_answer_if_beyond_deity_knowledge": true,
+              "gm_may_offer_short_phrase_if_yes_no_misleading_or_contrary_to_deity_interests": true,
+              "repeat_casting_before_long_rest_cumulative_no_answer_chance_percent": 25,
+              "answer_generation_not_automated": true,
+              "repeat_casting_chance_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Commune"
+      }
+    },
+    {
+      "id": "srd.spell.commune_with_nature",
+      "name": "Commune with Nature",
+      "localization": {
+        "en": "Commune with Nature",
+        "zh": "问道自然",
+        "aliases": ["与自然交谈", "自然沟通"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["druid", "ranger"],
+      "ritual": true,
+      "action": {
+        "id": "srd.commune_with_nature",
+        "name": "Commune with Nature",
+        "localization": {
+          "en": "Commune with Nature",
+          "zh": "问道自然",
+          "aliases": ["与自然交谈", "自然沟通"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "self": true },
+        "target_policy": { "min": 0, "max": 0, "self": true, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["druid", "ranger"]
+        },
+        "properties": {
+          "ritual": true,
+          "casting_time": { "minutes": 1 },
+          "components": ["V", "S"],
+          "facts_param": "commune_with_nature_facts",
+          "allowed_list_params": {
+            "commune_with_nature_facts": [
+              "settlements",
+              "portals_to_other_planes",
+              "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+              "prevalent_plant_mineral_or_beast",
+              "bodies_of_water"
+            ]
+          },
+          "required_list_param_counts": {
+            "commune_with_nature_facts": 3
+          },
+          "max_facts": 3
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          {
+            "type": "world_effect",
+            "effect_type": "commune_with_nature_knowledge",
+            "scope": { "target": "self" },
+            "duration": { "until": "instant" },
+            "metadata": {
+              "communes_with_nature_spirits": true,
+              "outdoors_radius_miles": 3,
+              "natural_underground_radius_ft": 300,
+              "does_not_function_where_nature_replaced_by_construction": true,
+              "construction_examples": ["castles", "settlements"],
+              "facts_chosen": { "param_list": "commune_with_nature_facts" },
+              "max_facts": 3,
+              "available_facts": [
+                "settlements",
+                "portals_to_other_planes",
+                "one_cr_10_plus_celestial_elemental_fey_fiend_or_undead",
+                "prevalent_plant_mineral_or_beast",
+                "bodies_of_water"
+              ],
+              "prevalent_fact_requires_choice_of_plant_mineral_or_beast": true,
+              "cr_10_plus_creature_is_gm_choice": true,
+              "map_query_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Commune with Nature"
+      }
+    },
+    {
+      "id": "srd.spell.telepathic_bond",
+      "name": "Telepathic Bond",
+      "localization": {
+        "en": "Telepathic Bond",
+        "zh": "心灵联结",
+        "aliases": ["心灵纽带", "心灵链接"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 5,
+      "school": "divination",
+      "classes": ["bard", "wizard"],
+      "ritual": true,
+      "action": {
+        "id": "srd.telepathic_bond",
+        "name": "Telepathic Bond",
+        "localization": {
+          "en": "Telepathic Bond",
+          "zh": "心灵联结",
+          "aliases": ["心灵纽带", "心灵链接"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "normal_ft": 30 },
+        "target_policy": { "min": 1, "max": 8, "harmful": false },
+        "requirements": {
+          "spell_level": 5,
+          "class_any": ["bard", "wizard"]
+        },
+        "properties": {
+          "ritual": true,
+          "components": ["V", "S", "M"],
+          "material_component": {
+            "description": "two eggs",
+            "consumed": false
+          },
+          "requires_willing_target": true,
+          "max_willing_creatures": 8
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 5 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "world_effect",
+            "effect_type": "telepathic_bond",
+            "scope": { "target": "explicit", "range_ft": 30 },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end",
+            "metadata": {
+              "psychically_links_targets_to_each_other": true,
+              "max_willing_creatures": 8,
+              "targets_must_be_within_ft": 30,
+              "creatures_unable_to_communicate_in_any_languages_unaffected": true,
+              "targets_can_communicate_telepathically_through_bond": true,
+              "shared_language_not_required": true,
+              "communication_any_distance": true,
+              "communication_cannot_extend_to_other_planes": true,
+              "language_capability_not_automated": true,
+              "telepathic_message_routing_not_automated": true
+            }
+          }
+        ],
+        "audit_label": "Telepathic Bond"
+      }
+    },
+    {
+      "id": "srd.spell.true_seeing",
+      "name": "True Seeing",
+      "localization": {
+        "en": "True Seeing",
+        "zh": "真知术",
+        "aliases": ["真实视觉"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 6,
+      "school": "divination",
+      "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"],
+      "action": {
+        "id": "srd.true_seeing",
+        "name": "True Seeing",
+        "localization": {
+          "en": "True Seeing",
+          "zh": "真知术",
+          "aliases": ["真实视觉"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 6,
+          "class_any": ["bard", "cleric", "sorcerer", "warlock", "wizard"]
+        },
+        "properties": {
+          "requires_willing_target": true,
+          "material_component": {
+            "description": "mushroom powder worth 25+ GP",
+            "consumed": true
+          }
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 6, "gold": 25 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": { "truesight_ft": 120 },
+            "duration": { "until": "duration_1_hour" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "True Seeing"
+      }
+    },
+    {
+      "id": "srd.spell.foresight",
+      "name": "Foresight",
+      "localization": {
+        "en": "Foresight",
+        "zh": "预知术",
+        "aliases": ["先见之明"]
+      },
+      "source": "SRD 5.2.1 Chapter 7: Spells",
+      "rules_version": "srd-5.2.1",
+      "level": 9,
+      "school": "divination",
+      "classes": ["bard", "druid", "warlock", "wizard"],
+      "action": {
+        "id": "srd.foresight",
+        "name": "Foresight",
+        "localization": {
+          "en": "Foresight",
+          "zh": "预知术",
+          "aliases": ["先见之明"]
+        },
+        "source": "SRD 5.2.1 Chapter 7: Spells",
+        "rules_version": "srd-5.2.1",
+        "action_type": "spell",
+        "action_economy": "action",
+        "range": { "touch": true },
+        "target_policy": { "min": 1, "max": 1, "harmful": false },
+        "requirements": {
+          "spell_level": 9,
+          "class_any": ["bard", "druid", "warlock", "wizard"]
+        },
+        "properties": {
+          "spell_classes": ["bard", "druid", "warlock", "wizard"],
+          "components": ["V", "S", "M"],
+          "casting_time": { "minutes": 1 },
+          "material_component": {
+            "description": "a hummingbird feather",
+            "consumed": false
+          },
+          "target_must_be_touched": true,
+          "requires_willing_target": true,
+          "ends_existing_same_spell_from_caster": true
+        },
+        "friendly_fire_policy": "raw",
+        "cost": { "spell_slot_level": 9 },
+        "automation": [
+          { "type": "target", "mode": "explicit" },
+          {
+            "type": "passive_effect",
+            "passive_modifiers": {
+              "foresight": true,
+              "d20_tests_advantage": true,
+              "ability_check_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+              "saving_throw_advantage_abilities": ["str", "dex", "con", "int", "wis", "cha"],
+              "death_saves_advantage": true,
+              "attack_roll_advantage": true,
+              "initiative_advantage": true,
+              "initiative_advantage_source": "srd.foresight",
+              "incoming_attacks_disadvantage": true,
+              "ends_existing_same_spell_from_caster": true
+            },
+            "duration": { "until": "duration_8_hours" },
+            "tick_on": "self_turn_end"
+          }
+        ],
+        "audit_label": "Foresight"
+      }
+    }
+  ]
+}
