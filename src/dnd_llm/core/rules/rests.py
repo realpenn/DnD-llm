@@ -81,6 +81,7 @@ def short_rest(
     before_hp = character.hp_current
     before_resources = dict(character.resources)
     before_slots = dict(character.spell_slots)
+    before_pact_slots = dict(character.pact_spell_slots)
     exhaustion_before = exhaustion_level(character.status_effects)
     exhaustion_after = exhaustion_before
     spent: dict[str, int] = {}
@@ -155,6 +156,8 @@ def short_rest(
         "spell_slots_before": before_slots,
         "spell_slots_after": dict(character.spell_slots),
         "restored_spell_slots": restored_spell_slots,
+        "pact_spell_slots_before": before_pact_slots,
+        "pact_spell_slots_after": dict(character.pact_spell_slots),
         "healing_rolls": healing_entries,
         "dice_rolls": [roll.to_dict() for roll in healing_rolls],
         "exhaustion_before": exhaustion_before,
@@ -177,6 +180,7 @@ def long_rest(
     before_hp = character.hp_current
     before_temp_hp = character.temp_hp
     before_slots = dict(character.spell_slots)
+    before_pact_slots = dict(character.pact_spell_slots)
     before_hit_dice = dict(character.hit_dice)
     before_resources = dict(character.resources)
     exhaustion_before, exhaustion_after = lower_exhaustion(character.status_effects)
@@ -192,6 +196,9 @@ def long_rest(
     if restored_slots:
         character.spell_slots = dict(restored_slots)
         character.spell_slots_max = dict(restored_slots)
+    restored_pact_slots = warlock_pact_slot_maxima_for_class_levels(character.class_levels)
+    character.pact_spell_slots = dict(restored_pact_slots)
+    character.pact_spell_slots_max = dict(restored_pact_slots)
 
     maxima = _max_hit_dice(character)
     restored_hit_dice: dict[str, int] = {}
@@ -211,6 +218,8 @@ def long_rest(
         "temp_hp_after": character.temp_hp,
         "spell_slots_before": before_slots,
         "spell_slots_after": dict(character.spell_slots),
+        "pact_spell_slots_before": before_pact_slots,
+        "pact_spell_slots_after": dict(character.pact_spell_slots),
         "hit_dice_before": before_hit_dice,
         "hit_dice_after": dict(character.hit_dice),
         "restored_hit_dice": restored_hit_dice,
@@ -308,11 +317,11 @@ def _restore_short_rest_spell_slots(character: Character) -> dict[str, int]:
     restored: dict[str, int] = {}
     pact_slots = warlock_pact_slot_maxima_for_class_levels(character.class_levels)
     for slot_level, maximum in sorted(pact_slots.items(), key=lambda item: int(item[0])):
-        before = max(0, int(character.spell_slots.get(slot_level, 0)))
+        before = max(0, int(character.pact_spell_slots.get(slot_level, 0)))
         after = max(before, maximum)
-        character.spell_slots[slot_level] = after
-        character.spell_slots_max[slot_level] = max(
-            int(character.spell_slots_max.get(slot_level, 0)),
+        character.pact_spell_slots[slot_level] = after
+        character.pact_spell_slots_max[slot_level] = max(
+            int(character.pact_spell_slots_max.get(slot_level, 0)),
             maximum,
         )
         if after > before:

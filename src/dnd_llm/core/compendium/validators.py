@@ -138,7 +138,8 @@ class RuleDataValidator:
         schema_registry: SchemaRegistry | None = None,
         srd_catalog: SrdCatalog | None = None,
     ):
-        self.known_action_ids = known_action_ids or set()
+        self.known_action_ids = set(known_action_ids or set())
+        self._validate_action_references = known_action_ids is not None
         self.schema_registry = schema_registry or SchemaRegistry()
         self.srd_catalog = srd_catalog
 
@@ -516,7 +517,7 @@ class RuleDataValidator:
         action_id: str,
         report: ValidationReport,
     ) -> None:
-        if self.known_action_ids and action_id not in self.known_action_ids:
+        if self._validate_action_references and action_id not in self.known_action_ids:
             report.errors.append(f"{owner_id}: unknown action reference {action_id}")
 
     def _validate_source_metadata(

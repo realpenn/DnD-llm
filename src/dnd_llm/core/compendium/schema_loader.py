@@ -26,7 +26,7 @@ class SchemaRegistry:
     def validate(self, name: str, data: Any) -> list[str]:
         schema = self.schema(name)
         if schema is None:
-            return []
+            return [f"{name}: required schema is missing from {self.root}"]
         return _validate_value(data, schema, path=name)
 
 

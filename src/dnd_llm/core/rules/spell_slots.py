@@ -123,10 +123,6 @@ def spell_slot_maxima_for_class_levels(class_levels: dict[str, int]) -> dict[str
 
     effective_level = full_caster_level + sum((level + 1) // 2 for level in half_caster_levels)
     if effective_level <= 0:
-        # Character currently stores pure Warlock Pact slots in the shared slot map.
-        warlock_level = int(class_levels.get("warlock", 0))
-        if warlock_level > 0:
-            return dict(WARLOCK_PACT_SLOTS[min(20, warlock_level)])
         return {}
     maxima: dict[str, int] = {}
     _merge_slots(maxima, FULL_CASTER_SLOTS[min(20, effective_level)])

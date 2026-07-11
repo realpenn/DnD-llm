@@ -2054,12 +2054,11 @@ def _recalculate_progression_fields(character: Character) -> None:
         character.abilities,
     )
     spell_slots = spell_slot_maxima_for_class_levels(character.class_levels)
-    for slot_level, maximum in warlock_pact_slot_maxima_for_class_levels(
-        character.class_levels
-    ).items():
-        spell_slots[slot_level] = max(spell_slots.get(slot_level, 0), maximum)
+    pact_spell_slots = warlock_pact_slot_maxima_for_class_levels(character.class_levels)
     character.spell_slots = dict(spell_slots)
     character.spell_slots_max = dict(spell_slots)
+    character.pact_spell_slots = dict(pact_spell_slots)
+    character.pact_spell_slots_max = dict(pact_spell_slots)
     _sync_class_languages(character)
     _sync_always_prepared_spells(character)
     _sync_class_known_spells(character)

@@ -61,6 +61,39 @@ class _FixedRollService:
         )
 
 
+def test_effect_ticks_when_combatant_id_differs_from_entity_id(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    combatant = state.encounter.combatants.pop("pc1")
+    combatant.id = "combat-pc1"
+    state.encounter.combatants["combat-pc1"] = combatant
+    state.characters["pc1"].status_effects.append(
+        {
+            "effect_id": "alias-target-effect",
+            "source_action_id": "test.alias",
+            "target_id": "pc1",
+            "applied_by": "goblin1",
+            "condition": "poisoned",
+            "duration": {"remaining_ticks": 2},
+            "tick_on": "target_turn_start",
+            "concentration": False,
+            "stacking_policy": "replace",
+            "audit": {},
+        }
+    )
+
+    result = tick_effects(
+        state,
+        trigger="target_turn_start",
+        actor_id="combat-pc1",
+        roll_service=RollService(state),
+        cycle_id="alias-cycle",
+    )
+
+    assert result.ticked[0]["effect_id"] == "alias-target-effect"
+    assert state.characters["pc1"].status_effects[0]["duration"]["remaining_ticks"] == 1
+
+
 def test_dodge_expires_on_next_self_turn_start(make_state) -> None:
     state = make_state()
     assert state.encounter is not None

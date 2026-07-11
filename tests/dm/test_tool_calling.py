@@ -937,6 +937,34 @@ def test_attack_tool_call_preserves_weapon_params() -> None:
     }
 
 
+def test_tool_call_schema_rejects_missing_required_and_string_boolean() -> None:
+    with pytest.raises(DMToolCallError, match="missing required argument target_id"):
+        draft_from_tool_call(
+            actor_id="pc1",
+            player_text="attack",
+            tool_call=DMToolCall(
+                name="attack",
+                arguments={"attacker_id": "pc1", "action_id": "srd.dagger_attack"},
+            ),
+        )
+
+    with pytest.raises(DMToolCallError, match="as_ritual must be a boolean"):
+        draft_from_tool_call(
+            actor_id="pc1",
+            player_text="cast",
+            tool_call=DMToolCall(
+                name="cast_spell",
+                arguments={
+                    "caster_id": "pc1",
+                    "spell_id": "srd.cure_wounds",
+                    "targets": ["pc1"],
+                    "slot_level": 1,
+                    "as_ritual": "false",
+                },
+            ),
+        )
+
+
 @pytest.mark.parametrize(
     ("param_name", "value", "message"),
     [

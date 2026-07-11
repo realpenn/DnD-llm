@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,9 +19,17 @@ class TimeoutPolicy:
 
 
 class TimeoutController:
-    def __init__(self, policy: TimeoutPolicy | None = None):
+    def __init__(
+        self,
+        policy: TimeoutPolicy | None = None,
+        *,
+        backing: MutableMapping[str, int] | None = None,
+    ):
         self.policy = policy or TimeoutPolicy()
-        self.turn_started_at: dict[str, int] = {}
+        self.turn_started_at: MutableMapping[str, int] = backing if backing is not None else {}
+
+    def use_backing(self, backing: MutableMapping[str, int]) -> None:
+        self.turn_started_at = backing
 
     def mark_turn_start(self, combatant_id: str, now: int) -> None:
         self.turn_started_at[combatant_id] = now

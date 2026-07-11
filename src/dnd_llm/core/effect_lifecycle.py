@@ -76,7 +76,7 @@ def tick_effects(
     for owner_type, owner_id, effects in _effect_lists(state):
         retained: list[dict[str, Any]] = []
         for effect in effects:
-            if not _matches_trigger(effect, trigger=trigger, actor_id=actor_id):
+            if not _matches_trigger(state, effect, trigger=trigger, actor_id=actor_id):
                 retained.append(effect)
                 continue
             if cycle_id is not None and _effect_already_ticked_in_cycle(
@@ -571,7 +571,13 @@ def _effect_owner(state: GameState, owner_type: str, owner_id: str) -> Any:
     return None
 
 
-def _matches_trigger(effect: dict[str, Any], *, trigger: str, actor_id: str) -> bool:
+def _matches_trigger(
+    state: GameState,
+    effect: dict[str, Any],
+    *,
+    trigger: str,
+    actor_id: str,
+) -> bool:
     if effect.get("tick_on") != trigger:
         return False
     target_id = effect.get("target_id")
@@ -581,21 +587,42 @@ def _matches_trigger(effect: dict[str, Any], *, trigger: str, actor_id: str) -> 
         if isinstance(duration, dict):
             turn_owner_id = duration.get("turn_owner_id")
             if isinstance(turn_owner_id, str) and turn_owner_id:
-                return turn_owner_id == actor_id
+                return _same_actor(state, turn_owner_id, actor_id)
             if isinstance(duration.get("repeat_save"), dict):
-                return target_id == actor_id
+                return _same_actor(state, target_id, actor_id)
         modifiers = effect.get("passive_modifiers", {})
         if isinstance(modifiers, dict) and (
             isinstance(modifiers.get("ends_if_condition"), str)
             or isinstance(modifiers.get("ends_if_conditions"), list)
         ):
-            return target_id == actor_id
+            return _same_actor(state, target_id, actor_id)
         if isinstance(applied_by, str) and applied_by:
-            return applied_by == actor_id
-        return target_id == actor_id
+            return _same_actor(state, applied_by, actor_id)
+        return _same_actor(state, target_id, actor_id)
     if trigger.startswith("target_"):
-        return target_id == actor_id
+        return _same_actor(state, target_id, actor_id)
     return False
+
+
+def _same_actor(state: GameState, left: object, right: object) -> bool:
+    if not isinstance(left, str) or not isinstance(right, str):
+        return False
+    if left == right:
+        return True
+    return bool(_actor_aliases(state, left) & _actor_aliases(state, right))
+
+
+def _actor_aliases(state: GameState, actor_id: str) -> set[str]:
+    aliases = {actor_id}
+    if state.encounter is None:
+        return aliases
+    combatant = state.encounter.combatants.get(actor_id)
+    if combatant is not None:
+        aliases.add(combatant.entity_id)
+    for combatant_id, candidate in state.encounter.combatants.items():
+        if candidate.entity_id == actor_id:
+            aliases.add(combatant_id)
+    return aliases
 
 
 def _effect_already_ticked_in_cycle(

@@ -456,7 +456,6 @@ class ActionResolver:
                         action_id=action.id,
                     )
             else:
-                slots = getattr(resource_owner, "spell_slots", {})
                 try:
                     slot_level = self._spell_slot_level_to_spend(draft, action)
                 except ValueError as exc:
@@ -465,10 +464,19 @@ class ActionResolver:
                         reason=str(exc),
                         action_id=action.id,
                     )
-                if slots.get(str(slot_level), 0) <= 0:
+                if not isinstance(resource_owner, Character):
                     return ResolverResult(
-                        status="rejected", reason="insufficient spell slot", action_id=action.id
+                        status="rejected",
+                        reason="only characters spend spell slots",
+                        action_id=action.id,
                     )
+                pool_error = self._spell_slot_pool_error(
+                    resource_owner,
+                    str(slot_level),
+                    draft.params,
+                )
+                if pool_error is not None:
+                    return ResolverResult(status="rejected", reason=pool_error, action_id=action.id)
         rod_absorption_check = self._check_rod_of_absorption(draft, actor, action)
         if rod_absorption_check is not None:
             return rod_absorption_check
@@ -1643,9 +1651,33 @@ class ActionResolver:
         return slot_level
 
     @staticmethod
+    def _spell_slot_pool_error(
+        actor: Character,
+        key: str,
+        params: dict[str, Any],
+    ) -> str | None:
+        requested_pool = str(params.get("spell_slot_pool", "auto")).casefold()
+        if requested_pool not in {"auto", "spellcasting", "pact_magic"}:
+            return "spell_slot_pool must be auto, spellcasting, or pact_magic"
+        regular_available = int(actor.spell_slots.get(key, 0))
+        pact_available = int(actor.pact_spell_slots.get(key, 0))
+        if requested_pool == "spellcasting" and regular_available <= 0:
+            return f"no Spellcasting slot level {key} available"
+        if requested_pool == "pact_magic" and pact_available <= 0:
+            return f"no Pact Magic slot level {key} available"
+        if requested_pool == "auto" and regular_available <= 0 and pact_available <= 0:
+            return "insufficient spell slot"
+        return None
+
+    @staticmethod
     def _highest_own_spell_slot_level(actor: Character) -> int:
         levels: set[int] = set()
-        for slot_map in (actor.spell_slots_max, actor.spell_slots):
+        for slot_map in (
+            actor.spell_slots_max,
+            actor.spell_slots,
+            actor.pact_spell_slots_max,
+            actor.pact_spell_slots,
+        ):
             for level, count in slot_map.items():
                 try:
                     numeric_level = int(level)
@@ -1894,6 +1926,10 @@ class ActionResolver:
     ) -> str | None:
         if action.properties.get("can_be_used_out_of_play") is True:
             return None
+        if bool(getattr(actor, "dead", False)):
+            return "actor is dead"
+        if int(getattr(actor, "hp_current", 1)) <= 0:
+            return "actor is at 0 hit points"
         sources = self._out_of_play_sources(actor)
         if not sources:
             return None
@@ -3579,7 +3615,7 @@ class ActionResolver:
                 action_id=action.id,
             )
         pact_slot_level = self._pact_magic_slot_level(owner)
-        if pact_slot_level is None or owner.spell_slots.get(str(pact_slot_level), 0) <= 0:
+        if pact_slot_level is None or owner.pact_spell_slots.get(str(pact_slot_level), 0) <= 0:
             return ResolverResult(
                 status="rejected",
                 reason="insufficient Pact Magic spell slot",

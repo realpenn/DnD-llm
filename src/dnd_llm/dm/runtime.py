@@ -4,6 +4,10 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from dnd_llm.content.runtime import (
+    build_encounter_combatants,
+    encounter_id_for_state_zone,
+)
 from dnd_llm.core.automation.definitions import ActionDefinition
 from dnd_llm.core.compendium.localization import normalize_name
 from dnd_llm.core.models import Character, Combatant, Monster
@@ -26,6 +30,7 @@ from dnd_llm.dm.tool_calling import (
     dm_tool_schemas,
     draft_from_tool_call,
     extract_dm_tool_calls,
+    validate_dm_tool_call,
 )
 from dnd_llm.dm.usage import model_usage_from_response
 from dnd_llm.orchestrator.session import GameSession, SessionResult
@@ -198,6 +203,10 @@ class DMRuntime:
                 prompt_version="dm-runtime-v1",
             )
         else:
+            self._start_campaign_encounter_after_movement(
+                response,
+                idempotency_key=idempotency_key,
+            )
             self._capture_memory(
                 actor_id=actor_id,
                 text=text,
@@ -206,6 +215,66 @@ class DMRuntime:
                 visibility=visibility,
             )
         return response
+
+    def _start_campaign_encounter_after_movement(
+        self,
+        response: DMResponse,
+        *,
+        idempotency_key: str,
+    ) -> None:
+        pack = self.session.campaign_pack
+        if not response.accepted or pack is None or self.session.state.encounter is not None:
+            return
+        state_changes = response.engine_payload.get("state_changes", [])
+        if not any(
+            isinstance(change, dict) and change.get("type") == "move" for change in state_changes
+        ):
+            return
+        zone_id = self.session.state.world.current_zone_id
+        try:
+            encounter_id = encounter_id_for_state_zone(self.session.state, pack, zone_id)
+        except KeyError:
+            return
+        if encounter_id is None:
+            return
+        combatants = build_encounter_combatants(
+            pack=pack,
+            encounter_id=encounter_id,
+            party=self.session.state.characters,
+            compendium=self.session.compendium,
+        )
+        for combatant in combatants.values():
+            if combatant.side == "party" or combatant.entity_id in self.session.state.monsters:
+                continue
+            self.session.state.monsters[combatant.entity_id] = Monster(
+                id=combatant.entity_id,
+                name=combatant.name,
+                abilities=dict(combatant.abilities),
+                hp_current=combatant.hp_current,
+                hp_max=combatant.hp_max,
+                armor_class=combatant.armor_class,
+                size=combatant.size,
+                speed_ft=combatant.speed_ft,
+                creature_type=combatant.creature_type,
+                actions=list(combatant.actions),
+                status_effects=[dict(effect) for effect in combatant.status_effects],
+                resistances=list(combatant.resistances),
+                immunities=list(combatant.immunities),
+                vulnerabilities=list(combatant.vulnerabilities),
+                condition_immunities=list(combatant.condition_immunities),
+                traits=list(combatant.traits),
+            )
+        result = self.session.start_combat(
+            encounter_id=encounter_id,
+            combatants=combatants,
+            zone_id=zone_id,
+            idempotency_key=f"{idempotency_key}:campaign_encounter:{encounter_id}",
+        )
+        if isinstance(result, SessionResult):
+            response.engine_payload["campaign_encounter"] = {
+                "started": result.accepted,
+                **result.payload,
+            }
 
     def summarize_scene(self, scene_notes: str, *, idempotency_key: str) -> str:
         cached = self.session.queue.idempotency.get(idempotency_key)
@@ -319,6 +388,17 @@ class DMRuntime:
             )
             return None
         tool_call = tool_calls[0]
+        try:
+            validate_dm_tool_call(tool_call)
+        except DMToolCallError as exc:
+            self._audit_model_error(
+                idempotency_key=idempotency_key,
+                text=text,
+                reason=str(exc),
+                response={"tool_name": tool_call.name, "arguments": tool_call.arguments},
+                model_usage=model_usage,
+            )
+            return None
         try:
             draft = draft_from_tool_call(
                 actor_id=actor_id,
@@ -449,6 +529,20 @@ class DMRuntime:
             )
             return None, None, None
         tool_call = tool_calls[0]
+        try:
+            validate_dm_tool_call(tool_call)
+        except DMToolCallError as exc:
+            return (
+                None,
+                self._audit_model_error(
+                    idempotency_key=idempotency_key,
+                    text=text,
+                    reason=str(exc),
+                    response={"tool_name": tool_call.name, "arguments": tool_call.arguments},
+                    model_usage=model_usage,
+                ),
+                None,
+            )
         if tool_call.name in GM_DIRECT_DM_TOOL_NAMES and not allow_gm_tools:
             return (
                 None,
@@ -695,6 +789,11 @@ class DMRuntime:
                     temp_hp=entity.temp_hp,
                     status_effects=[dict(effect) for effect in entity.status_effects],
                     actions=list(entity.actions),
+                    resistances=list(entity.resistances),
+                    immunities=list(entity.immunities),
+                    vulnerabilities=list(entity.vulnerabilities),
+                    condition_immunities=list(entity.condition_immunities),
+                    traits=list(entity.traits),
                 )
                 continue
             raise DMToolCallError(f"unknown combat participant: {participant_id}")

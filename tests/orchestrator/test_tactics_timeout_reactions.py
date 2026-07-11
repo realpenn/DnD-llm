@@ -487,6 +487,28 @@ def test_player_action_records_timeout_start_for_next_turn(make_state) -> None:
     assert session.timeout.turn_started_at["goblin1"] == 123
 
 
+def test_turn_start_timestamp_round_trips_through_save(tmp_path, make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    audit = AuditLog()
+    session = GameSession(state, CompendiumLoader("rules_data").load(), audit)
+    session.mark_current_turn_started(456)
+
+    save_game(tmp_path / "slot", state, audit)
+    loaded_state, loaded_audit = load_game(tmp_path / "slot")
+    loaded_session = GameSession(
+        loaded_state,
+        CompendiumLoader("rules_data").load(),
+        loaded_audit,
+    )
+
+    current = loaded_state.encounter.current_combatant_id
+    assert current is not None
+    assert loaded_session.timeout.turn_started_at[current] == 456
+
+
 def test_timeout_takeover_uses_character_tactic_and_advances_turn(make_state) -> None:
     state = make_state()
     assert state.encounter is not None
@@ -494,6 +516,8 @@ def test_timeout_takeover_uses_character_tactic_and_advances_turn(make_state) ->
     state.encounter.turn_index = 0
     state.encounter.combatants["pc1"].position_node_id = "front"
     state.encounter.combatants["goblin1"].position_node_id = "front"
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
     state.characters["pc1"].actions = ["srd.longsword_attack", "srd.move"]
     session = GameSession(
         state,

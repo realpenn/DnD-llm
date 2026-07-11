@@ -42,6 +42,8 @@ class Character:
     resources: dict[str, int] = field(default_factory=dict)
     spell_slots: dict[str, int] = field(default_factory=dict)
     spell_slots_max: dict[str, int] = field(default_factory=dict)
+    pact_spell_slots: dict[str, int] = field(default_factory=dict)
+    pact_spell_slots_max: dict[str, int] = field(default_factory=dict)
     known_spells: list[str] = field(default_factory=list)
     prepared_spells: list[str] = field(default_factory=list)
     languages: list[str] = field(default_factory=list)
@@ -67,6 +69,28 @@ class Character:
         payload.setdefault("feature_choices", {})
         payload.setdefault("skill_expertise", [])
         payload.setdefault("languages", [])
+        if (
+            "pact_spell_slots" not in payload
+            and int(payload.get("class_levels", {}).get("warlock", 0)) > 0
+        ):
+            from .rules.spell_slots import (
+                spell_slot_maxima_for_class_levels,
+                warlock_pact_slot_maxima_for_class_levels,
+            )
+
+            class_levels = dict(payload.get("class_levels", {}))
+            pact_maxima = warlock_pact_slot_maxima_for_class_levels(class_levels)
+            regular_maxima = spell_slot_maxima_for_class_levels(class_levels)
+            if regular_maxima:
+                payload["pact_spell_slots"] = dict(pact_maxima)
+                payload["pact_spell_slots_max"] = dict(pact_maxima)
+            else:
+                payload["pact_spell_slots"] = dict(payload.get("spell_slots", pact_maxima))
+                payload["pact_spell_slots_max"] = dict(payload.get("spell_slots_max", pact_maxima))
+                payload["spell_slots"] = {}
+                payload["spell_slots_max"] = {}
+        payload.setdefault("pact_spell_slots", {})
+        payload.setdefault("pact_spell_slots_max", {})
         return cls(**payload)
 
 
@@ -89,6 +113,8 @@ class Monster:
     resistances: list[str] = field(default_factory=list)
     immunities: list[str] = field(default_factory=list)
     vulnerabilities: list[str] = field(default_factory=list)
+    condition_immunities: list[str] = field(default_factory=list)
+    traits: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return _clean(self)
@@ -119,6 +145,8 @@ class Combatant:
     resistances: list[str] = field(default_factory=list)
     immunities: list[str] = field(default_factory=list)
     vulnerabilities: list[str] = field(default_factory=list)
+    condition_immunities: list[str] = field(default_factory=list)
+    traits: list[str] = field(default_factory=list)
     actions: list[str] = field(default_factory=list)
     death_save_successes: int = 0
     death_save_failures: int = 0
@@ -145,6 +173,7 @@ class Encounter:
     pending_reactions: dict[str, dict[str, Any]] = field(default_factory=dict)
     status_effect_baselines: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     ammunition_inventory_baselines: dict[str, dict[str, int]] = field(default_factory=dict)
+    turn_started_at: dict[str, int] = field(default_factory=dict)
 
     @property
     def current_combatant_id(self) -> str | None:

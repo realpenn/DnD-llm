@@ -229,6 +229,11 @@ class MonsterDefinition:
     size: str = "medium"
     creature_type: str = "humanoid"
     actions: list[str] = field(default_factory=list)
+    resistances: list[str] = field(default_factory=list)
+    immunities: list[str] = field(default_factory=list)
+    vulnerabilities: list[str] = field(default_factory=list)
+    condition_immunities: list[str] = field(default_factory=list)
+    traits: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -245,6 +250,11 @@ class MonsterDefinition:
             "size": self.size,
             "creature_type": self.creature_type,
             "actions": self.actions,
+            "resistances": self.resistances,
+            "immunities": self.immunities,
+            "vulnerabilities": self.vulnerabilities,
+            "condition_immunities": self.condition_immunities,
+            "traits": self.traits,
         }
 
     @classmethod

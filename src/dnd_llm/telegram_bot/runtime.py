@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -72,9 +73,34 @@ class TelegramRuntime:
         self.campaign_chat_id = campaign_chat_id
         self.rate_limiter = rate_limiter or RateLimiter()
         self._message_cache: dict[str, list[OutgoingMessage]] = {}
+        self._lock = threading.RLock()
         self.commands.handlers.setdefault("/forceturn", self._default_forceturn)
 
     def handle_message(self, incoming: IncomingMessage, *, now: int) -> list[OutgoingMessage]:
+        with self._lock:
+            cache_key = self._message_cache_key(incoming)
+            if cache_key is not None and cache_key in self._message_cache:
+                return _copy_messages(self._message_cache[cache_key])
+            if not incoming.is_private and self.campaign_chat_id is None:
+                self.campaign_chat_id = incoming.chat_id
+            scheduled_before = self._tick_unlocked(now, drive_turns=False)
+            messages = self._handle_message_unlocked(incoming, now=now)
+            scheduled_after = self._tick_unlocked(now)
+            combined = [*scheduled_before, *messages, *scheduled_after]
+            if cache_key is not None:
+                self._message_cache[cache_key] = _copy_messages(combined)
+            return combined
+
+    def tick(self, *, now: int) -> list[OutgoingMessage]:
+        with self._lock:
+            return self._tick_unlocked(now)
+
+    def _handle_message_unlocked(
+        self,
+        incoming: IncomingMessage,
+        *,
+        now: int,
+    ) -> list[OutgoingMessage]:
         cache_key = self._message_cache_key(incoming)
         if cache_key is not None and cache_key in self._message_cache:
             return _copy_messages(self._message_cache[cache_key])
@@ -105,6 +131,129 @@ class TelegramRuntime:
         else:
             messages = self._handle_dm_intent(intent, incoming)
         return self._record_message_result(cache_key, messages)
+
+    def _tick_unlocked(
+        self,
+        now: int,
+        *,
+        drive_turns: bool = True,
+    ) -> list[OutgoingMessage]:
+        self.session.set_current_time(now)
+        group_chat_id = self.campaign_chat_id
+        messages: list[OutgoingMessage] = []
+        automatic_action_ran = False
+
+        encounter = self.session.state.encounter
+        reaction_due = encounter is not None and any(
+            int(window.get("timeout_at", now + 1)) <= now
+            for window in encounter.pending_reactions.values()
+        )
+        if reaction_due:
+            expired = self.session.expire_reactions(
+                now=now,
+                idempotency_key=f"telegram:auto:expire-reactions:{now}",
+            )
+            if isinstance(expired, SessionResult) and expired.accepted:
+                automatic_action_ran = True
+                if group_chat_id is not None:
+                    messages.append(
+                        OutgoingMessage(
+                            chat_id=group_chat_id,
+                            text="反应窗口已超时，未确认的反应已默认放弃。",
+                            metadata={"reaction_timeout": True, **expired.payload},
+                        )
+                    )
+
+        if not drive_turns:
+            return messages
+
+        encounter = self.session.state.encounter
+        max_steps = max(1, len(encounter.combatants) * 2) if encounter is not None else 1
+        for _ in range(max_steps):
+            encounter = self.session.state.encounter
+            if encounter is None or encounter.current_combatant_id is None:
+                break
+            if encounter.pending_reactions:
+                break
+            current_id = encounter.current_combatant_id
+            combatant = encounter.combatants[current_id]
+            if combatant.side == "party":
+                if not self.session.timeout.is_timed_out(current_id, now):
+                    break
+                result = self.session.run_timeout_takeover(
+                    now=now,
+                    idempotency_key=(
+                        "telegram:auto:timeout:"
+                        f"{encounter.id}:{encounter.round_number}:{current_id}:{now}"
+                    ),
+                )
+                if not isinstance(result, SessionResult) or not result.accepted:
+                    break
+                automatic_action_ran = True
+                if group_chat_id is not None:
+                    messages.append(
+                        OutgoingMessage(
+                            chat_id=group_chat_id,
+                            text=f"{combatant.name} 的回合已超时，系统已代为行动。",
+                            metadata={
+                                "timeout_takeover": True,
+                                "combatant_id": current_id,
+                                **result.payload,
+                            },
+                        )
+                    )
+            else:
+                result = self.session.run_current_monster_turn(
+                    "telegram:auto:monster:"
+                    f"{encounter.id}:{encounter.round_number}:{current_id}:"
+                    f"{self.session.state.event_counter}"
+                )
+                if not isinstance(result, SessionResult) or not result.accepted:
+                    break
+                automatic_action_ran = True
+                if group_chat_id is not None:
+                    action_id = str(result.payload.get("action_id", "行动"))
+                    action = self.session.compendium.actions.get(action_id)
+                    action_name = (
+                        str(action.localization.get("zh") or action.name)
+                        if action is not None
+                        else action_id
+                    )
+                    messages.append(
+                        OutgoingMessage(
+                            chat_id=group_chat_id,
+                            text=f"{combatant.name} 使用了 {action_name}。",
+                            metadata={
+                                "monster_turn": True,
+                                "combatant_id": current_id,
+                                **result.payload,
+                            },
+                        )
+                    )
+            self._sync_campaign_characters_from_state()
+            if group_chat_id is not None:
+                messages.extend(
+                    self._reaction_prompt_messages(
+                        group_chat_id=group_chat_id,
+                        reaction_windows=result.payload.get("reaction_windows", []),
+                    )
+                )
+            if (
+                self.session.state.encounter is not None
+                and self.session.state.encounter.pending_reactions
+            ):
+                break
+
+        if automatic_action_ran and group_chat_id is not None:
+            encounter = self.session.state.encounter
+            current = encounter.current_combatant_id if encounter is not None else None
+            turn_prompt = self._turn_prompt_message(
+                group_chat_id=group_chat_id,
+                payload={"next_combatant_id": current},
+            )
+            if turn_prompt is not None:
+                messages.append(turn_prompt)
+        return messages
 
     def _record_message_result(
         self,

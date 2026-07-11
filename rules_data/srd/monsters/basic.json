@@ -63,7 +63,8 @@
       "size": "small",
       "creature_type": "beast",
       "abilities": { "str": 7, "dex": 16, "con": 11, "int": 2, "wis": 10, "cha": 4 },
-      "actions": ["srd.giant_rat_bite"]
+      "actions": ["srd.giant_rat_bite"],
+      "traits": ["pack_tactics"]
     },
     {
       "id": "srd.kobold",
@@ -108,7 +109,10 @@
       "size": "medium",
       "creature_type": "undead",
       "abilities": { "str": 10, "dex": 16, "con": 15, "int": 6, "wis": 8, "cha": 5 },
-      "actions": ["srd.skeleton_shortsword", "srd.skeleton_shortbow"]
+      "actions": ["srd.skeleton_shortsword", "srd.skeleton_shortbow"],
+      "immunities": ["poison"],
+      "vulnerabilities": ["bludgeoning"],
+      "condition_immunities": ["exhaustion", "poisoned"]
     },
     {
       "id": "srd.wolf",
@@ -123,7 +127,8 @@
       "size": "medium",
       "creature_type": "beast",
       "abilities": { "str": 14, "dex": 15, "con": 12, "int": 3, "wis": 12, "cha": 6 },
-      "actions": ["srd.wolf_bite"]
+      "actions": ["srd.wolf_bite"],
+      "traits": ["pack_tactics"]
     },
     {
       "id": "srd.zombie",
@@ -138,7 +143,10 @@
       "size": "medium",
       "creature_type": "undead",
       "abilities": { "str": 13, "dex": 6, "con": 16, "int": 3, "wis": 6, "cha": 5 },
-      "actions": ["srd.zombie_slam"]
+      "actions": ["srd.zombie_slam"],
+      "immunities": ["poison"],
+      "condition_immunities": ["poisoned"],
+      "traits": ["undead_fortitude"]
     }
   ]
 }

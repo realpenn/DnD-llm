@@ -93,6 +93,10 @@ def test_local_party_playtest_reloads_in_fresh_process_and_continues_combat(
     assert isinstance(started, SessionResult)
     assert started.accepted is True
     assert state.encounter is not None
+    for combatant in state.encounter.combatants.values():
+        if combatant.side == "monsters":
+            combatant.hp_current = 30
+            combatant.hp_max = 30
 
     while state.encounter.current_combatant_id != "pc1":
         session.advance_turn(f"party-playtest:advance:{state.encounter.turn_index}")

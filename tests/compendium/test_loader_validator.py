@@ -10277,6 +10277,7 @@ def test_compendium_loads_srd_actions() -> None:
     } <= set(compendium.monsters)
     assert compendium.monsters["srd.giant_rat"].armor_class == 13
     assert compendium.monsters["srd.giant_rat"].abilities["dex"] == 16
+    assert compendium.monsters["srd.giant_rat"].traits == ["pack_tactics"]
     assert compendium.monsters["srd.bandit_captain"].armor_class == 15
     assert compendium.monsters["srd.bandit_captain"].hit_points == 52
     assert compendium.monsters["srd.bandit_captain"].actions == [
@@ -10300,14 +10301,18 @@ def test_compendium_loads_srd_actions() -> None:
         "srd.skeleton_shortsword",
         "srd.skeleton_shortbow",
     ]
+    assert compendium.monsters["srd.skeleton"].vulnerabilities == ["bludgeoning"]
+    assert compendium.monsters["srd.skeleton"].immunities == ["poison"]
     assert compendium.monsters["srd.wolf"].armor_class == 12
     assert compendium.monsters["srd.wolf"].creature_type == "beast"
     assert compendium.monsters["srd.wolf"].abilities["str"] == 14
     assert compendium.monsters["srd.wolf"].size == "medium"
     assert compendium.monsters["srd.wolf"].actions == ["srd.wolf_bite"]
+    assert compendium.monsters["srd.wolf"].traits == ["pack_tactics"]
     assert compendium.monsters["srd.zombie"].hit_points == 15
     assert compendium.monsters["srd.zombie"].creature_type == "undead"
     assert compendium.monsters["srd.zombie"].actions == ["srd.zombie_slam"]
+    assert compendium.monsters["srd.zombie"].traits == ["undead_fortitude"]
     assert compendium.monsters["srd.warrior_infantry"].hit_points == 9
     assert compendium.monsters["srd.warrior_infantry"].actions == [
         "srd.warrior_infantry_pack_tactics",
@@ -10482,6 +10487,7 @@ def test_compendium_loads_srd_actions() -> None:
 
 
 def test_loader_rejects_duplicate_ids_within_a_namespace(tmp_path: Path) -> None:
+    shutil.copytree("rules_data/schemas", tmp_path / "schemas")
     actions_dir = tmp_path / "srd" / "actions"
     actions_dir.mkdir(parents=True)
     action = {
@@ -10507,6 +10513,7 @@ def test_wheel_loader_rejects_external_unlisted_srd_id_but_allows_extension_name
     tmp_path: Path,
 ) -> None:
     external_root = tmp_path / "external-rules"
+    shutil.copytree("rules_data/schemas", external_root / "schemas")
     actions_dir = external_root / "srd" / "actions"
     actions_dir.mkdir(parents=True)
     imaginary_srd = {
@@ -10593,6 +10600,7 @@ def test_bundled_rules_copy_cannot_self_sign_an_added_srd_id(tmp_path: Path) -> 
 def test_loader_accepts_a_committed_legal_srd_payload_from_external_root(
     tmp_path: Path,
 ) -> None:
+    shutil.copytree("rules_data/schemas", tmp_path / "schemas")
     bundled_data = json.loads(Path("rules_data/srd/actions/basic.json").read_text(encoding="utf-8"))
     legal_action = next(item for item in bundled_data["items"] if item["id"] == "srd.move")
     actions_dir = tmp_path / "srd" / "actions"
@@ -10691,6 +10699,12 @@ def test_schema_registry_reports_required_and_type_errors() -> None:
     assert any("action.automation: expected array" in error for error in errors)
 
 
+def test_schema_registry_reports_missing_required_schema(tmp_path: Path) -> None:
+    errors = SchemaRegistry(tmp_path).validate("action", {"id": "extension.action"})
+
+    assert any("required schema is missing" in error for error in errors)
+
+
 def test_rule_data_validator_runs_json_schema_first() -> None:
     report = RuleDataValidator().validate_action({"id": "bad"})
 
@@ -10751,6 +10765,36 @@ def test_validator_rejects_bad_compendium_references() -> None:
         }
     )
     assert any("SRD spell level" in error for error in too_high_spell_report.errors)
+
+
+def test_empty_known_action_set_rejects_all_action_references() -> None:
+    report = RuleDataValidator(known_action_ids=set()).validate_monster(
+        {
+            "id": "extension.monster",
+            "name": "Extension Monster",
+            "localization": {"en": "Extension Monster", "zh": "扩展怪物"},
+            "source": "Extension rules",
+            "rules_version": "extension-1",
+            "armor_class": 10,
+            "hit_points": 5,
+            "speed_ft": 30,
+            "cr": 0,
+            "abilities": {
+                "str": 10,
+                "dex": 10,
+                "con": 10,
+                "int": 10,
+                "wis": 10,
+                "cha": 10,
+            },
+            "actions": ["extension.missing_action"],
+        }
+    )
+
+    assert not report.ok
+    assert any(
+        "unknown action reference extension.missing_action" in error for error in report.errors
+    )
 
 
 def test_validator_requires_level_three_subclasses_for_phase1_classes() -> None:

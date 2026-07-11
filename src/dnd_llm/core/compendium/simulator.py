@@ -40,22 +40,14 @@ class CompendiumSimulator:
             targets = _targets_for_action(action.target_policy)
             if action.action_type == "spell":
                 params = _spell_params_for_action(action)
-                if params:
-                    result = tools._execute_action(
-                        action_id=action_id,
-                        actor_id="pc_actor",
-                        targets=targets,
-                        params=params,
-                        idempotency_key=f"simulate:{action_id}",
-                    )
-                else:
-                    result = tools.cast_spell(
-                        "pc_actor",
-                        action_id,
-                        targets,
-                        action.cost.spell_slot_level or 1,
-                        idempotency_key=f"simulate:{action_id}",
-                    )
+                result = tools.cast_spell(
+                    "pc_actor",
+                    action_id,
+                    targets,
+                    action.cost.spell_slot_level or 1,
+                    params=params,
+                    idempotency_key=f"simulate:{action_id}",
+                )
             elif action.action_economy == "movement":
                 result = tools.move(
                     "pc_actor",

@@ -419,6 +419,15 @@ class MultiCampaignRuntime:
             runtime = self.runtime_for_group(incoming.chat_id)
         return self._handle_with_runtime_lock(runtime, incoming, now=now)
 
+    def tick(self, *, now: int) -> list[OutgoingMessage]:
+        with self._routing_lock:
+            runtimes = list(self._runtimes_by_group.values())
+        outgoing: list[OutgoingMessage] = []
+        for runtime in runtimes:
+            with self._runtime_lock_for(runtime):
+                outgoing.extend(runtime.telegram_runtime.tick(now=now))
+        return outgoing
+
     def _handle_private_message(
         self,
         incoming: IncomingMessage,

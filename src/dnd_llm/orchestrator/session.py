@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -98,16 +97,19 @@ class GameSession:
         )
         self.tactics = tactics or MonsterTacticsLibrary()
         self.reactions = reactions or ReactionManager()
-        self.timeout = timeout or TimeoutController()
+        timeout_backing = state.encounter.turn_started_at if state.encounter is not None else {}
+        self.timeout = timeout or TimeoutController(backing=timeout_backing)
+        if timeout is not None:
+            self.timeout.use_backing(timeout_backing)
         self.timeout_takeover_planner = timeout_takeover_planner
         self.monster_turn_planner = monster_turn_planner
-        self._current_time: int | None = None
+        self._current_time = 0
 
     def set_current_time(self, now: int) -> None:
         self._current_time = now
 
     def _interaction_now(self) -> int:
-        return self._current_time if self._current_time is not None else int(time.time())
+        return self._current_time
 
     def context_for(self, actor_id: str | None, *, query: str = "") -> ContextSlice:
         return build_context_slice(
@@ -431,6 +433,7 @@ class GameSession:
                 },
                 ammunition_inventory_baselines=self._ammunition_inventory_baselines(combatants),
             )
+            self.timeout.use_backing(self.state.encounter.turn_started_at)
             self.state.session_mode = "combat"
             self.economy.use_backing(self.state.encounter.action_budgets)
             initiative_order = roll_initiative(self.state, self.audit_log)
@@ -537,6 +540,7 @@ class GameSession:
         _sync_encounter_status_effects_to_backing(self.state)
         self.state.encounter = None
         self.economy.use_backing({})
+        self.timeout.use_backing({})
         self.state.session_mode = "exploration"
         result = {
             "ended_encounter_id": ended_encounter_id,
@@ -738,6 +742,13 @@ class GameSession:
             )
         before_round = self.state.encounter.round_number
         current = advance_encounter_turn(self.state.encounter)
+        attempts = 0
+        while current is not None and attempts < len(self.state.encounter.initiative_order):
+            combatant = self.state.encounter.combatants[current]
+            if combatant.side == "party" or (combatant.hp_current > 0 and not combatant.dead):
+                break
+            current = advance_encounter_turn(self.state.encounter)
+            attempts += 1
         if current is None:
             return SessionResult(accepted=False, payload={"reason": "empty initiative"})
         if self.state.encounter.round_number > before_round:
@@ -1066,6 +1077,7 @@ class GameSession:
                 draft.target_ids,
                 int(draft.params.get("slot_level", action.cost.spell_slot_level or 0)),
                 as_ritual=bool(draft.params.get("as_ritual", False)),
+                params=draft.params,
                 idempotency_key=idempotency_key,
             )
         elif action.action_economy == "movement":

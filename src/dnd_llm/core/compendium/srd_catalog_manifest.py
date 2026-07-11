@@ -3787,7 +3787,7 @@ SRD_CATALOG_MANIFEST: dict[str, dict[str, tuple[str, str, str]]] = {
         "srd.giant_rat": (
             "SRD 5.2.1 Animals: Giant Rat",
             "srd-5.2.1",
-            "4212fe2be066c28144df635b28dc5f30fb7247047662faf9b979fd8eb3f809f4",
+            "18173337a1fe5a8615241ad538a41c3ab17cb5476580e036e584d273f84208e0",
         ),
         "srd.kobold": (
             "SRD 5.2.1 Monsters: Kobold Warrior",
@@ -3797,7 +3797,7 @@ SRD_CATALOG_MANIFEST: dict[str, dict[str, tuple[str, str, str]]] = {
         "srd.skeleton": (
             "SRD 5.2.1 Monsters: Skeleton",
             "srd-5.2.1",
-            "5e05b979b217be72151902c3236650994f1740d43aa8af83db061e7c75ede408",
+            "dba2277a66bc5a48e8eb3244e68a36d9829b48e2bdec5bfdf637a6843fa15081",
         ),
         "srd.warrior_infantry": (
             "SRD 5.2.1 Monsters: Warrior Infantry",
@@ -3807,12 +3807,12 @@ SRD_CATALOG_MANIFEST: dict[str, dict[str, tuple[str, str, str]]] = {
         "srd.wolf": (
             "SRD 5.2.1 Animals: Wolf",
             "srd-5.2.1",
-            "503b8aed1761d5e4786cafef807c3b7ac2ba5f22c210418781fadba2736e4e45",
+            "c7d82302de7cb81882348be479d942c4710e225e2301f1f5619d5605f99eeb87",
         ),
         "srd.zombie": (
             "SRD 5.2.1 Monsters: Zombie",
             "srd-5.2.1",
-            "4fea3bc4bc20603aa0b674b9cb6bd268cba12245522701ab49c391d7c16961c2",
+            "a6ced5060d32fce3ae2b4be1cb24985caa2665427fac2d9b58d2be31d69c5ca2",
         ),
     },
     "spell": {

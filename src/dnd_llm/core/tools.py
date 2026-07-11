@@ -523,19 +523,21 @@ class EngineTools:
         *,
         as_ritual: bool = False,
         use_rod_of_absorption: bool = False,
+        params: dict[str, Any] | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"cast_spell:{self.state.event_counter}"
-        params: dict[str, Any] = {"slot_level": slot_level}
+        execution_params = dict(params or {})
+        execution_params["slot_level"] = slot_level
         if as_ritual:
-            params["as_ritual"] = True
+            execution_params["as_ritual"] = True
         if use_rod_of_absorption:
-            params["use_rod_of_absorption"] = True
+            execution_params["use_rod_of_absorption"] = True
         return self._execute_action(
             action_id=spell_id,
             actor_id=caster_id,
             targets=targets,
-            params=params,
+            params=execution_params,
             idempotency_key=idempotency_key,
         )
 
@@ -861,38 +863,66 @@ class EngineTools:
         memorize_spell_plan = (
             self._wizard_memorize_spell_plan(character, memorize_spell) if memorize_spell else None
         )
-        result = short_rest_rule(
-            character,
-            hit_dice_to_spend,
-            self.roll_service,
-            arcane_recovery_slots,
-            natural_recovery_slots,
-            fiendish_resilience_damage_type,
-        )
-        if memorize_spell_plan is not None:
-            result["memorize_spell"] = self._apply_wizard_memorize_spell_plan(
-                character,
-                memorize_spell_plan,
+        character_snapshot = character.to_dict()
+        combatant_snapshots = {
+            combatant_id: combatant.to_dict()
+            for combatant_id, combatant in (
+                self.state.encounter.combatants.items() if self.state.encounter is not None else []
             )
-        result["actor_id"] = actor_id
-        result["character_id"] = character.id
-        self._sync_character_to_combatants(character)
-        self.audit_log.append(
-            self.state,
-            idempotency_key=idempotency_key,
-            tool_name="short_rest",
-            tool_args={
-                "actor_id": actor_id,
-                "hit_dice_to_spend": hit_dice_to_spend,
-                "arcane_recovery_slots": arcane_recovery_slots or {},
-                "natural_recovery_slots": natural_recovery_slots or {},
-                "fiendish_resilience_damage_type": fiendish_resilience_damage_type,
-                "memorize_spell": memorize_spell or {},
-            },
-            tool_result=result,
-            dice_rolls=list(result.get("dice_rolls", [])),
-        )
-        require_game_state_invariants(self.state)
+            if combatant.entity_id == character.id
+        }
+        roll_counter = self.state.roll_counter
+        event_counter = self.state.event_counter
+        audit_length = len(self.audit_log.events)
+        try:
+            result = short_rest_rule(
+                character,
+                hit_dice_to_spend,
+                self.roll_service,
+                arcane_recovery_slots,
+                natural_recovery_slots,
+                fiendish_resilience_damage_type,
+            )
+            if memorize_spell_plan is not None:
+                result["memorize_spell"] = self._apply_wizard_memorize_spell_plan(
+                    character,
+                    memorize_spell_plan,
+                )
+            result["actor_id"] = actor_id
+            result["character_id"] = character.id
+            self._sync_character_to_combatants(character)
+            self.audit_log.append(
+                self.state,
+                idempotency_key=idempotency_key,
+                tool_name="short_rest",
+                tool_args={
+                    "actor_id": actor_id,
+                    "hit_dice_to_spend": hit_dice_to_spend,
+                    "arcane_recovery_slots": arcane_recovery_slots or {},
+                    "natural_recovery_slots": natural_recovery_slots or {},
+                    "fiendish_resilience_damage_type": fiendish_resilience_damage_type,
+                    "memorize_spell": memorize_spell or {},
+                },
+                tool_result=result,
+                dice_rolls=list(result.get("dice_rolls", [])),
+            )
+            require_game_state_invariants(self.state)
+        except Exception:
+            restored_character = Character.from_dict(character_snapshot)
+            character.__dict__.clear()
+            character.__dict__.update(restored_character.__dict__)
+            if self.state.encounter is not None:
+                for combatant_id, snapshot in combatant_snapshots.items():
+                    combatant = self.state.encounter.combatants.get(combatant_id)
+                    if combatant is None:
+                        continue
+                    restored_combatant = Combatant.from_dict(snapshot)
+                    combatant.__dict__.clear()
+                    combatant.__dict__.update(restored_combatant.__dict__)
+            self.state.roll_counter = roll_counter
+            self.state.event_counter = event_counter
+            del self.audit_log.events[audit_length:]
+            raise
         return result
 
     def long_rest(
@@ -1917,14 +1947,42 @@ class EngineTools:
             character = self.state.characters[target.entity_id]
             self._set_death_recovery_state(character, hp_current)
             self._sync_character_to_combatants(character)
+        elif isinstance(target, Combatant) and target.entity_id in self.state.monsters:
+            monster = self.state.monsters[target.entity_id]
+            monster.hp_current = int(hp_current)
+            self._sync_monster_to_combatants(monster)
         elif isinstance(target, Character):
             self._sync_character_to_combatants(target)
+        elif isinstance(target, Monster):
+            self._sync_monster_to_combatants(target)
 
     def _sync_hp_state_for_target(self, target: Character | Monster | Combatant) -> None:
         if isinstance(target, Combatant) and target.entity_id in self.state.characters:
             self._sync_combatant_to_character(target, self.state.characters[target.entity_id])
+        elif isinstance(target, Combatant) and target.entity_id in self.state.monsters:
+            self._sync_combatant_to_monster(target, self.state.monsters[target.entity_id])
         elif isinstance(target, Character):
             self._sync_character_to_combatants(target)
+        elif isinstance(target, Monster):
+            self._sync_monster_to_combatants(target)
+
+    def _sync_monster_to_combatants(self, monster: Monster) -> None:
+        if self.state.encounter is None:
+            return
+        for combatant in self.state.encounter.combatants.values():
+            if combatant.entity_id != monster.id:
+                continue
+            combatant.hp_current = monster.hp_current
+            combatant.hp_max = monster.hp_max
+            combatant.temp_hp = monster.temp_hp
+            combatant.temp_hp_source_effect_id = monster.temp_hp_source_effect_id
+
+    @staticmethod
+    def _sync_combatant_to_monster(combatant: Combatant, monster: Monster) -> None:
+        monster.hp_current = combatant.hp_current
+        monster.hp_max = combatant.hp_max
+        monster.temp_hp = combatant.temp_hp
+        monster.temp_hp_source_effect_id = combatant.temp_hp_source_effect_id
 
     @staticmethod
     def _set_death_recovery_state(entity: Character | Combatant, hp_current: int) -> None:

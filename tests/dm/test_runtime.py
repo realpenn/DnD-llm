@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from dnd_llm.content.campaign_pack import CampaignPackLoader
+from dnd_llm.content.character_gen import default_fighter
+from dnd_llm.content.runtime import apply_campaign_pack
 from dnd_llm.core.compendium.loader import CompendiumLoader
+from dnd_llm.core.models import GameState
 from dnd_llm.core.persistence import AuditLog
 from dnd_llm.dm.runtime import DMRuntime
 from dnd_llm.orchestrator.session import GameSession
@@ -48,6 +52,34 @@ def _tool_response(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         ],
         "usage": {"prompt_tokens": 9, "completion_tokens": 5, "total_tokens": 14},
     }
+
+
+def test_move_into_campaign_encounter_zone_starts_combat() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    pack = CampaignPackLoader().load("rules_data/campaigns/starter/pack.json")
+    character = default_fighter("pc1", "Penn")
+    state = GameState(campaign_id="test", rng_seed=42, characters={"pc1": character})
+    apply_campaign_pack(state, pack)
+    session = GameSession(state, compendium, AuditLog(), campaign_pack=pack)
+    runtime = DMRuntime(
+        session,
+        client=FakeDMClient(_tool_response("move", {"actor_id": "pc1", "to_zone_id": "ruins"})),
+        model_id="fake-model",
+    )
+
+    response = runtime.handle_player_text(
+        actor_id="pc1",
+        text="DD 前往遗迹",
+        idempotency_key="campaign-zone-encounter",
+    )
+
+    assert response.accepted is True
+    assert state.world.current_zone_id == "ruins"
+    assert state.encounter is not None
+    assert state.encounter.id == "kobold_watch"
+    assert "srd_kobold_1" in state.encounter.combatants
+    assert "srd_kobold_1" in state.monsters
+    assert response.engine_payload["campaign_encounter"]["started"] is True
 
 
 def test_dm_runtime_maps_text_to_tool_result(make_state) -> None:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from typing import Any, Protocol
 
 from telegram import Update
@@ -14,21 +16,47 @@ from .runtime import IncomingMessage, OutgoingMessage
 
 BotSender = Callable[[str, str], Awaitable[Any]]
 MAX_CONCURRENT_UPDATES = 32
+LOGGER = logging.getLogger(__name__)
 
 
 class MessageRuntime(Protocol):
     def handle_message(self, incoming: IncomingMessage, *, now: int) -> list[OutgoingMessage]: ...
 
+    def tick(self, *, now: int) -> list[OutgoingMessage]: ...
+
 
 def build_application(settings: Settings, runtime: MessageRuntime) -> Application:
     if not settings.bot_token:
         raise ValueError("BOT_TOKEN is required to build the Telegram application")
-    application = (
-        Application.builder()
-        .token(settings.bot_token)
-        .concurrent_updates(MAX_CONCURRENT_UPDATES)
-        .build()
+    tick_task: asyncio.Task[None] | None = None
+
+    async def periodic_tick(application: Application) -> None:
+        while True:
+            await asyncio.sleep(1)
+            try:
+                outgoing = await asyncio.to_thread(runtime.tick, now=int(time.time()))
+                for message in outgoing:
+                    await application.bot.send_message(message.chat_id, message.text)
+            except Exception:
+                LOGGER.exception("Telegram periodic runtime tick failed")
+
+    async def post_init(application: Application) -> None:
+        nonlocal tick_task
+        tick_task = application.create_task(periodic_tick(application))
+
+    async def post_shutdown(_: Application) -> None:
+        if tick_task is None:
+            return
+        tick_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await tick_task
+
+    builder = (
+        Application.builder().token(settings.bot_token).concurrent_updates(MAX_CONCURRENT_UPDATES)
     )
+    if hasattr(builder, "post_init") and hasattr(builder, "post_shutdown"):
+        builder = builder.post_init(post_init).post_shutdown(post_shutdown)
+    application = builder.build()
     chat_locks: dict[str, asyncio.Lock] = {}
 
     async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

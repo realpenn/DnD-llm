@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -120,6 +121,30 @@ def test_save_removes_unreferenced_generation_files_after_manifest_commit(
     assert stale_names.isdisjoint(generation_names)
     assert (slot / "state.json").exists()
     assert (slot / ".state-stale.json.tmp").exists()
+
+
+def test_concurrent_saves_to_same_slot_leave_loadable_generation(
+    tmp_path: Path, make_state
+) -> None:
+    slot = tmp_path / "slot"
+    states = [make_state(), make_state()]
+    states[0].world.current_zone_id = "start"
+    states[1].world.current_zone_id = "ruins"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(
+            executor.map(
+                lambda state: save_game(slot, state, AuditLog()),
+                states,
+            )
+        )
+
+    assert results == [None, None]
+    loaded, _ = load_game(slot)
+    assert loaded.world.current_zone_id in {"start", "ruins"}
+    manifest = json.loads((slot / persistence.SAVE_MANIFEST_NAME).read_text(encoding="utf-8"))
+    referenced = {descriptor["name"] for descriptor in manifest["files"].values()}
+    assert referenced <= {path.name for path in slot.iterdir()}
 
 
 def test_generation_cleanup_failure_does_not_break_committed_save(

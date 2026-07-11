@@ -2801,8 +2801,8 @@ def test_resolver_checks_eldritch_smite_pact_weapon_slot_and_prone_size(make_sta
         "srd.pact_of_the_blade_weapon",
         "srd.eldritch_smite",
     ]
-    character.spell_slots = {"3": 1}
-    character.spell_slots_max = {"3": 2}
+    character.pact_spell_slots = {"3": 1}
+    character.pact_spell_slots_max = {"3": 2}
     state.encounter.combatants["goblin1"].size = "huge"
     pact_weapon_effect = {
         "effect_id": "pact-weapon",
@@ -2835,7 +2835,7 @@ def test_resolver_checks_eldritch_smite_pact_weapon_slot_and_prone_size(make_sta
     assert accepted.status == "accepted"
     assert accepted.action_id == "srd.longsword_attack"
 
-    character.spell_slots = {"3": 0}
+    character.pact_spell_slots = {"3": 0}
     no_slot = resolver.resolve(
         PlayerActionDraft(
             actor_id="pc1",
@@ -2847,7 +2847,7 @@ def test_resolver_checks_eldritch_smite_pact_weapon_slot_and_prone_size(make_sta
     )
     assert no_slot.status == "rejected"
     assert no_slot.reason == "insufficient Pact Magic spell slot"
-    character.spell_slots = {"3": 1}
+    character.pact_spell_slots = {"3": 1}
 
     state.encounter.combatants["pc1"].status_effects.append(
         {

@@ -567,6 +567,7 @@ class AutomationExecutor:
         self._validate_requires_self_target(action, actor_id, targets or [])
         self._validate_target_size_max(action, targets or [])
         self._validate_targets_not_out_of_play(action, targets or [])
+        self._validate_dead_healing_targets(action, targets or [])
         self._validate_willing_targets(action, targets or [], params)
         self._validate_charmed_targets(action, actor_id, targets or [], params)
         self._validate_requirements(action, actor_id)
@@ -2083,7 +2084,9 @@ class AutomationExecutor:
                 hp_before=hp_before,
                 hp_damage=hp_damage_after_temp_hp,
                 critical=ctx.attack_critical.get(target_id, False),
+                damage_type=damage_type,
                 path=path,
+                ctx=ctx,
             )
             if zero_hp_change is not None:
                 ctx.result.state_changes.append(zero_hp_change)
@@ -2330,7 +2333,11 @@ class AutomationExecutor:
             ctx.result.dice_rolls.extend(roll.to_dict() for roll in rolls)
             disciple_bonus = self._disciple_of_life_bonus(ctx)
             amount += disciple_bonus
-            applied = self._apply_healing(target_id, amount)
+            applied = self._apply_healing(
+                target_id,
+                amount,
+                allow_dead=ctx.action.id == "srd.revivify",
+            )
             if target_id != ctx.actor_id and applied > 0:
                 blessed_healer_triggered = True
             change: dict[str, Any] = {
@@ -5725,14 +5732,14 @@ class AutomationExecutor:
         after_slots: dict[str, int] = {}
         recover_all = eldritch_master_applies(actor)
         for slot_level, maximum in sorted(pact_slots.items(), key=lambda item: int(item[0])):
-            before = max(0, int(actor.spell_slots.get(slot_level, 0)))
+            before = max(0, int(actor.pact_spell_slots.get(slot_level, 0)))
             recover_limit = maximum if recover_all else (maximum + 1) // 2
             missing = max(0, maximum - before)
             amount = min(missing, recover_limit)
             after = before + amount
-            actor.spell_slots[slot_level] = after
-            actor.spell_slots_max[slot_level] = max(
-                int(actor.spell_slots_max.get(slot_level, 0)),
+            actor.pact_spell_slots[slot_level] = after
+            actor.pact_spell_slots_max[slot_level] = max(
+                int(actor.pact_spell_slots_max.get(slot_level, 0)),
                 maximum,
             )
             before_slots[slot_level] = before
@@ -8959,17 +8966,17 @@ class AutomationExecutor:
         path: str,
     ) -> None:
         key = str(slot_level)
-        before = int(owner.spell_slots.get(key, 0))
+        before = int(owner.pact_spell_slots.get(key, 0))
         if before <= 0:
             raise AutomationError("insufficient Pact Magic spell slot")
-        owner.spell_slots[key] = before - 1
+        owner.pact_spell_slots[key] = before - 1
         ctx.result.state_changes.append(
             {
                 "type": "cost",
                 "actor_id": ctx.actor_id,
-                "resource": f"spell_slot_{key}",
+                "resource": f"pact_spell_slot_{key}",
                 "before": before,
-                "after": owner.spell_slots[key],
+                "after": owner.pact_spell_slots[key],
                 "source_action_id": ELDRITCH_SMITE_ACTION_ID,
                 "path": f"{path}.eldritch_smite",
             }
@@ -11473,18 +11480,24 @@ class AutomationExecutor:
             for entity in (actor, owner)
             for action_id in getattr(entity, "actions", [])
         }
-        if PACK_TACTICS_ACTION_ID not in action_ids:
+        has_registered_action = PACK_TACTICS_ACTION_ID in action_ids
+        has_stat_block_trait = any(
+            "pack_tactics" in set(getattr(entity, "traits", [])) for entity in (actor, owner)
+        )
+        if not has_registered_action and not has_stat_block_trait:
             return []
         if not self._has_ally_within_5ft_of_target(actor_id, target_id):
             return []
-        return [
-            {
-                "source_action_id": PACK_TACTICS_ACTION_ID,
-                "modifier": "pack_tactics",
-                "target_id": target_id,
-                "ally_within_target_ft": 5,
-            }
-        ]
+        source: dict[str, Any] = {
+            "modifier": "pack_tactics",
+            "target_id": target_id,
+            "ally_within_target_ft": 5,
+        }
+        if has_registered_action:
+            source["source_action_id"] = PACK_TACTICS_ACTION_ID
+        else:
+            source["source_ref"] = f"SRD 5.2.1 {actor.name}: Pack Tactics"
+        return [source]
 
     def _precise_hunter_advantage_sources(
         self,
@@ -16181,14 +16194,24 @@ class AutomationExecutor:
             character = self.state.characters[target.entity_id]
             self._set_death_recovery_state(character, hp_current)
             self._sync_character_to_combatants(character)
+        elif isinstance(target, Combatant) and target.entity_id in self.state.monsters:
+            monster = self.state.monsters[target.entity_id]
+            monster.hp_current = int(hp_current)
+            self._sync_monster_to_combatants(monster)
         elif isinstance(target, Character):
             self._sync_character_to_combatants(target)
+        elif isinstance(target, Monster):
+            self._sync_monster_to_combatants(target)
 
     def _sync_hp_state_for_target(self, target: Character | Monster | Combatant) -> None:
         if isinstance(target, Combatant) and target.entity_id in self.state.characters:
             self._sync_combatant_to_character(target, self.state.characters[target.entity_id])
+        elif isinstance(target, Combatant) and target.entity_id in self.state.monsters:
+            self._sync_combatant_to_monster(target, self.state.monsters[target.entity_id])
         elif isinstance(target, Character):
             self._sync_character_to_combatants(target)
+        elif isinstance(target, Monster):
+            self._sync_monster_to_combatants(target)
 
     def _sync_character_to_combatants(self, character: Character) -> None:
         if self.state.encounter is None:
@@ -16215,6 +16238,24 @@ class AutomationExecutor:
         character.death_save_failures = combatant.death_save_failures
         character.stable = combatant.stable
         character.dead = combatant.dead
+
+    def _sync_monster_to_combatants(self, monster: Monster) -> None:
+        if self.state.encounter is None:
+            return
+        for combatant in self.state.encounter.combatants.values():
+            if combatant.entity_id != monster.id:
+                continue
+            combatant.hp_current = monster.hp_current
+            combatant.hp_max = monster.hp_max
+            combatant.temp_hp = monster.temp_hp
+            combatant.temp_hp_source_effect_id = monster.temp_hp_source_effect_id
+
+    @staticmethod
+    def _sync_combatant_to_monster(combatant: Combatant, monster: Monster) -> None:
+        monster.hp_current = combatant.hp_current
+        monster.hp_max = combatant.hp_max
+        monster.temp_hp = combatant.temp_hp
+        monster.temp_hp_source_effect_id = combatant.temp_hp_source_effect_id
 
     @staticmethod
     def _set_death_recovery_state(entity: Character | Combatant, hp_current: int) -> None:
@@ -16339,7 +16380,9 @@ class AutomationExecutor:
                 hp_before=before,
                 hp_damage=remaining,
                 critical=False,
+                damage_type=damage_type,
                 path=path,
+                ctx=ctx,
             )
             if zero_hp_change is not None:
                 ctx.result.state_changes.append(zero_hp_change)
@@ -16353,7 +16396,9 @@ class AutomationExecutor:
         hp_before: int,
         hp_damage: int,
         critical: bool,
+        damage_type: str,
         path: str,
+        ctx: _Context,
     ) -> dict[str, Any] | None:
         target = self._entity(target_id)
         if hp_damage <= 0 or int(getattr(target, "hp_current", 0)) != 0:
@@ -16368,6 +16413,17 @@ class AutomationExecutor:
         )
         if death_ward is not None:
             return death_ward
+        undead_fortitude = self._undead_fortitude_after_drop_to_zero(
+            target_id,
+            hp_before=hp_before,
+            hp_damage=hp_damage,
+            critical=critical,
+            damage_type=damage_type,
+            path=path,
+            ctx=ctx,
+        )
+        if undead_fortitude is not None:
+            return undead_fortitude
         if isinstance(target, Character):
             death_target: Character | Combatant = target
         elif isinstance(target, Combatant) and target.entity_id in self.state.characters:
@@ -16406,6 +16462,47 @@ class AutomationExecutor:
             "stable_after": bool(death_target.stable),
             "dead_before": dead_before,
             "dead_after": bool(death_target.dead),
+            "path": path,
+        }
+
+    def _undead_fortitude_after_drop_to_zero(
+        self,
+        target_id: str,
+        *,
+        hp_before: int,
+        hp_damage: int,
+        critical: bool,
+        damage_type: str,
+        path: str,
+        ctx: _Context,
+    ) -> dict[str, Any] | None:
+        target = self._entity(target_id)
+        if "undead_fortitude" not in set(getattr(target, "traits", [])):
+            return None
+        if hp_before <= 0 or critical or damage_type == "radiant":
+            return None
+        base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(target, "con")
+        roll = self.roll_service.roll(d20_expression(base_bonus))
+        ctx.result.dice_rolls.append(roll.to_dict())
+        dc = 5 + hp_damage
+        success = roll.total >= dc
+        if success:
+            setattr(target, "hp_current", 1)
+            self._sync_hp_state_for_target(target)
+        return {
+            "type": "undead_fortitude",
+            "target_id": target_id,
+            "source_ref": "SRD 5.2.1 Monsters: Zombie, Undead Fortitude",
+            "dc": dc,
+            "roll_id": roll.roll_id,
+            "roll_total": roll.total,
+            "bonus": base_bonus,
+            "proficient": proficient,
+            "proficiency_sources": proficiency_sources,
+            "success": success,
+            "hp_after": int(getattr(target, "hp_current")),
+            "critical": critical,
+            "damage_type": damage_type,
             "path": path,
         }
 
@@ -16591,6 +16688,14 @@ class AutomationExecutor:
         condition: str,
     ) -> list[dict[str, Any]]:
         sources: list[dict[str, Any]] = []
+        if condition in set(getattr(target, "condition_immunities", [])):
+            sources.append(
+                {
+                    "source_ref": "stat_block",
+                    "modifier": "condition_immunities",
+                    "immune_condition": condition,
+                }
+            )
         if condition == "frightened":
             sources.extend(
                 self._paladin_aura_condition_immunity_sources(
@@ -16782,13 +16887,25 @@ class AutomationExecutor:
             "path": path,
         }
 
-    def _apply_healing(self, target_id: str, amount: int) -> int:
+    def _apply_healing(
+        self,
+        target_id: str,
+        amount: int,
+        *,
+        allow_dead: bool = False,
+    ) -> int:
         target = self._entity(target_id)
+        if bool(getattr(target, "dead", False)) and not allow_dead:
+            raise AutomationError("dead creatures cannot regain hit points without revival")
         before = int(getattr(target, "hp_current"))
         max_hp = int(getattr(target, "hp_max"))
-        setattr(target, "hp_current", min(max_hp, before + amount))
-        self._sync_hp_state_for_target(target)
-        return int(getattr(target, "hp_current")) - before
+        after = min(max_hp, before + amount)
+        if before == 0 and after > 0 and isinstance(target, (Character, Combatant)):
+            self._set_hp_and_clear_death_state(target_id, after)
+        else:
+            setattr(target, "hp_current", after)
+            self._sync_hp_state_for_target(target)
+        return after - before
 
     def _disciple_of_life_bonus(self, ctx: _Context) -> int:
         if ctx.action.action_type != "spell":
@@ -17553,7 +17670,7 @@ class AutomationExecutor:
         if self._has_eldritch_smite_used(actor_id):
             raise AutomationError("Eldritch Smite already used this turn")
         slot_level = self._pact_magic_slot_level(owner)
-        if slot_level is None or int(owner.spell_slots.get(str(slot_level), 0)) <= 0:
+        if slot_level is None or int(owner.pact_spell_slots.get(str(slot_level), 0)) <= 0:
             raise AutomationError("insufficient Pact Magic spell slot")
         target_id = self._eldritch_smite_target_id(targets, params)
         if self._eldritch_smite_prone_requested(params) and not self._target_huge_or_smaller(
@@ -17943,6 +18060,10 @@ class AutomationExecutor:
             actor = self._entity(actor_id)
         except KeyError:
             return
+        if bool(getattr(actor, "dead", False)):
+            raise AutomationError("actor is dead")
+        if int(getattr(actor, "hp_current", 1)) <= 0:
+            raise AutomationError("actor is at 0 hit points")
         sources = self._out_of_play_sources(actor)
         if sources:
             raise AutomationError(f"actor is out of play due to {sources[0]}")
@@ -17958,6 +18079,43 @@ class AutomationExecutor:
             sources = self._out_of_play_sources(self._entity(target_id))
             if sources:
                 raise AutomationError(f"target is out of play due to {sources[0]}")
+
+    def _validate_dead_healing_targets(
+        self,
+        action: ActionDefinition,
+        targets: list[str],
+    ) -> None:
+        healing_types = {
+            "healing",
+            "healing_pool",
+            "preserve_life_healing",
+            "restore_all_hit_points",
+        }
+        if not self._automation_contains_node_types(action.automation, healing_types):
+            return
+        if action.id == "srd.revivify" or action.properties.get("target_type") == "dead_creature":
+            return
+        for target_id in targets:
+            if bool(getattr(self._entity(target_id), "dead", False)):
+                raise AutomationError("dead creatures cannot regain hit points without revival")
+
+    @classmethod
+    def _automation_contains_node_types(
+        cls,
+        nodes: list[dict[str, Any]],
+        node_types: set[str],
+    ) -> bool:
+        for node in nodes:
+            if node.get("type") in node_types:
+                return True
+            for key in ("if_true", "if_false"):
+                children = node.get(key)
+                if isinstance(children, list) and cls._automation_contains_node_types(
+                    [child for child in children if isinstance(child, dict)],
+                    node_types,
+                ):
+                    return True
+        return False
 
     def _validate_target_size_max(self, action: ActionDefinition, targets: list[str]) -> None:
         max_size = action.properties.get("target_size_max")
@@ -18384,9 +18542,39 @@ class AutomationExecutor:
         return slot_level
 
     @staticmethod
+    def _spell_slot_pool_to_spend(
+        actor: Character,
+        key: str,
+        params: dict[str, Any],
+    ) -> str:
+        requested_pool = str(params.get("spell_slot_pool", "auto")).casefold()
+        if requested_pool not in {"auto", "spellcasting", "pact_magic"}:
+            raise AutomationError("spell_slot_pool must be auto, spellcasting, or pact_magic")
+        regular_available = int(actor.spell_slots.get(key, 0))
+        pact_available = int(actor.pact_spell_slots.get(key, 0))
+        if requested_pool == "spellcasting":
+            if regular_available <= 0:
+                raise AutomationError(f"no Spellcasting slot level {key} available")
+            return "spell_slots"
+        if requested_pool == "pact_magic":
+            if pact_available <= 0:
+                raise AutomationError(f"no Pact Magic slot level {key} available")
+            return "pact_spell_slots"
+        if regular_available > 0:
+            return "spell_slots"
+        if pact_available > 0:
+            return "pact_spell_slots"
+        raise AutomationError(f"no spell slot level {key} available")
+
+    @staticmethod
     def _highest_own_spell_slot_level(actor: Character) -> int:
         levels: set[int] = set()
-        for slot_map in (actor.spell_slots_max, actor.spell_slots):
+        for slot_map in (
+            actor.spell_slots_max,
+            actor.spell_slots,
+            actor.pact_spell_slots_max,
+            actor.pact_spell_slots,
+        ):
             for level, count in slot_map.items():
                 try:
                     numeric_level = int(level)
@@ -18456,7 +18644,8 @@ class AutomationExecutor:
                 )
             else:
                 key = str(self._spell_slot_level_to_spend(action, params))
-                available = actor.spell_slots.get(key, 0)
+                pool = self._spell_slot_pool_to_spend(actor, key, params)
+                available = getattr(actor, pool).get(key, 0)
                 if available <= 0:
                     raise AutomationError(f"no spell slot level {key} available")
         for resource, amount in action.cost.resources.items():
@@ -18539,14 +18728,20 @@ class AutomationExecutor:
                 slot_level = self._spell_slot_level_to_spend(action, params)
                 key = str(slot_level)
                 base_slot_level = int(action.cost.spell_slot_level)
-                before = actor.spell_slots.get(key, 0)
-                actor.spell_slots[key] = before - 1
+                pool = self._spell_slot_pool_to_spend(actor, key, params)
+                slot_map = getattr(actor, pool)
+                before = slot_map.get(key, 0)
+                slot_map[key] = before - 1
+                resource_prefix = "pact_spell_slot" if pool == "pact_spell_slots" else "spell_slot"
                 cost_change: dict[str, Any] = {
                     "type": "cost",
                     "actor_id": actor_id,
-                    "resource": f"spell_slot_{key}",
+                    "resource": f"{resource_prefix}_{key}",
                     "before": before,
-                    "after": actor.spell_slots[key],
+                    "after": slot_map[key],
+                    "spell_slot_pool": (
+                        "pact_magic" if pool == "pact_spell_slots" else "spellcasting"
+                    ),
                 }
                 if slot_level != base_slot_level:
                     cost_change["base_spell_slot_level"] = base_slot_level

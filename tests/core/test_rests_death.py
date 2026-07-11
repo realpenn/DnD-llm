@@ -486,28 +486,29 @@ def test_short_and_long_rest_restore_warlock_pact_magic_slots(make_state) -> Non
     character = state.characters["pc1"]
     character.class_levels = {"warlock": 3}
     character.resources["srd.resource.magical_cunning"] = 0
-    character.spell_slots = {"2": 0}
-    character.spell_slots_max = {}
+    character.pact_spell_slots = {"2": 0}
+    character.pact_spell_slots_max = {}
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(state, compendium, AuditLog())
 
     short = tools.short_rest("pc1", {}, idempotency_key="warlock-pact-short-rest")
 
-    assert short["spell_slots_before"] == {"2": 0}
+    assert short["spell_slots_before"] == character.spell_slots
     assert short["restored_spell_slots"] == {"2": 2}
-    assert short["spell_slots_after"] == {"2": 2}
-    assert character.spell_slots == {"2": 2}
-    assert character.spell_slots_max == {"2": 2}
+    assert short["pact_spell_slots_before"] == {"2": 0}
+    assert short["pact_spell_slots_after"] == {"2": 2}
+    assert character.pact_spell_slots == {"2": 2}
+    assert character.pact_spell_slots_max == {"2": 2}
     assert character.resources["srd.resource.magical_cunning"] == 0
 
     character.class_levels = {"warlock": 5}
-    character.spell_slots = {"3": 0}
-    character.spell_slots_max = {}
+    character.pact_spell_slots = {"3": 0}
+    character.pact_spell_slots_max = {}
     long = tools.long_rest(["pc1"], idempotency_key="warlock-pact-long-rest")
 
-    assert long["results"]["pc1"]["spell_slots_after"] == {"3": 2}
+    assert long["results"]["pc1"]["pact_spell_slots_after"] == {"3": 2}
     assert long["results"]["pc1"]["restored_resources"] == {"srd.resource.magical_cunning": 1}
-    assert character.spell_slots_max == {"3": 2}
+    assert character.pact_spell_slots_max == {"3": 2}
     assert character.resources["srd.resource.magical_cunning"] == 1
 
 

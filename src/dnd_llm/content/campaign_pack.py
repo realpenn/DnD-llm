@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections import deque
+from copy import deepcopy
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
@@ -54,11 +55,11 @@ class CampaignPackDefinition:
             version=str(data.get("version", "dev")),
             rules_version=str(data.get("rules_version", "srd-5.2.1")),
             start_zone_id=str(data.get("start_zone_id", "start")),
-            zones=dict(data.get("zones", {})),
-            outline=dict(data.get("outline", {})),
-            encounters=dict(data.get("encounters", {})),
-            rewards=dict(data.get("rewards", {})),
-            events=dict(data.get("events", {})),
+            zones=deepcopy(dict(data.get("zones", {}))),
+            outline=deepcopy(dict(data.get("outline", {}))),
+            encounters=deepcopy(dict(data.get("encounters", {}))),
+            rewards=deepcopy(dict(data.get("rewards", {}))),
+            events=deepcopy(dict(data.get("events", {}))),
             attribution=[str(item) for item in data.get("attribution", [])],
         )
 
@@ -69,12 +70,12 @@ class CampaignPackDefinition:
             "version": self.version,
             "rules_version": self.rules_version,
             "start_zone_id": self.start_zone_id,
-            "zones": self.zones,
-            "outline": self.outline,
-            "encounters": self.encounters,
-            "rewards": self.rewards,
-            "events": self.events,
-            "attribution": self.attribution,
+            "zones": deepcopy(self.zones),
+            "outline": deepcopy(self.outline),
+            "encounters": deepcopy(self.encounters),
+            "rewards": deepcopy(self.rewards),
+            "events": deepcopy(self.events),
+            "attribution": list(self.attribution),
         }
 
 

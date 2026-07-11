@@ -2075,8 +2075,8 @@ def test_eldritch_smite_spends_pact_slot_on_hit_and_can_knock_prone(make_state) 
         "srd.pact_of_the_blade_weapon",
         "srd.eldritch_smite",
     ]
-    character.spell_slots = {"3": 1}
-    character.spell_slots_max = {"3": 2}
+    character.pact_spell_slots = {"3": 1}
+    character.pact_spell_slots_max = {"3": 2}
     state.encounter.combatants["goblin1"].size = "huge"
     state.encounter.combatants["goblin1"].hp_current = 40
     state.encounter.combatants["goblin1"].hp_max = 40
@@ -2107,10 +2107,10 @@ def test_eldritch_smite_spends_pact_slot_on_hit_and_can_knock_prone(make_state) 
         idempotency_key="eldritch-smite-hit",
     )
 
-    assert character.spell_slots["3"] == 0
+    assert character.pact_spell_slots["3"] == 0
     assert any(
         change["type"] == "cost"
-        and change["resource"] == "spell_slot_3"
+        and change["resource"] == "pact_spell_slot_3"
         and change["source_action_id"] == "srd.eldritch_smite"
         for change in result["state_changes"]
     )
@@ -2171,8 +2171,8 @@ def test_eldritch_smite_miss_does_not_spend_slot_and_invalid_prone_size_rejects(
         "srd.pact_of_the_blade_weapon",
         "srd.eldritch_smite",
     ]
-    character.spell_slots = {"3": 1}
-    character.spell_slots_max = {"3": 2}
+    character.pact_spell_slots = {"3": 1}
+    character.pact_spell_slots_max = {"3": 2}
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(
         state,
@@ -2196,7 +2196,7 @@ def test_eldritch_smite_miss_does_not_spend_slot_and_invalid_prone_size_rejects(
         idempotency_key="eldritch-smite-miss",
     )
 
-    assert character.spell_slots["3"] == 1
+    assert character.pact_spell_slots["3"] == 1
     assert not [
         change
         for change in miss["state_changes"]
@@ -2216,8 +2216,8 @@ def test_eldritch_smite_miss_does_not_spend_slot_and_invalid_prone_size_rejects(
         "srd.pact_of_the_blade_weapon",
         "srd.eldritch_smite",
     ]
-    gargantuan_character.spell_slots = {"3": 1}
-    gargantuan_character.spell_slots_max = {"3": 2}
+    gargantuan_character.pact_spell_slots = {"3": 1}
+    gargantuan_character.pact_spell_slots_max = {"3": 2}
     gargantuan_state.encounter.combatants["goblin1"].size = "gargantuan"
     gargantuan_tools = EngineTools(gargantuan_state, compendium, AuditLog())
     gargantuan_tools.perform_action(
@@ -9761,8 +9761,8 @@ def test_magical_cunning_recovers_half_of_expended_pact_magic_slots(make_state) 
     character.class_levels = {"warlock": 3}
     character.actions.append("srd.magical_cunning")
     character.resources["srd.resource.magical_cunning"] = 1
-    character.spell_slots = {"2": 0}
-    character.spell_slots_max = {"2": 2}
+    character.pact_spell_slots = {"2": 0}
+    character.pact_spell_slots_max = {"2": 2}
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(state, compendium, AuditLog())
 
@@ -9775,7 +9775,7 @@ def test_magical_cunning_recovers_half_of_expended_pact_magic_slots(make_state) 
 
     assert result["success"] is True
     assert character.resources["srd.resource.magical_cunning"] == 0
-    assert character.spell_slots == {"2": 1}
+    assert character.pact_spell_slots == {"2": 1}
     assert any(
         change["type"] == "pact_magic_recovery"
         and change["recovered"] == {"2": 1}
@@ -9795,8 +9795,8 @@ def test_warlock_eldritch_master_makes_magical_cunning_recover_all_pact_slots(
     character.class_levels = {"warlock": 20}
     character.actions.extend(["srd.magical_cunning", "srd.eldritch_master"])
     character.resources["srd.resource.magical_cunning"] = 1
-    character.spell_slots = {"5": 0}
-    character.spell_slots_max = {"5": 4}
+    character.pact_spell_slots = {"5": 0}
+    character.pact_spell_slots_max = {"5": 4}
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(state, compendium, AuditLog())
 
@@ -9809,7 +9809,7 @@ def test_warlock_eldritch_master_makes_magical_cunning_recover_all_pact_slots(
 
     assert result["success"] is True
     assert character.resources["srd.resource.magical_cunning"] == 0
-    assert character.spell_slots == {"5": 4}
+    assert character.pact_spell_slots == {"5": 4}
     recovery = next(
         change for change in result["state_changes"] if change["type"] == "pact_magic_recovery"
     )

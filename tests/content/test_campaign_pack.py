@@ -37,6 +37,21 @@ def test_starter_campaign_pack_validates_against_loaded_events() -> None:
         "party_level": 1,
         "difficulty": "low",
     }
+
+
+def test_rejected_campaign_edit_does_not_mutate_original_pack() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    pack = CampaignPackLoader().load("rules_data/campaigns/starter/pack.json")
+    original_name = pack.zones["start"]["name"]
+
+    result = apply_natural_language_campaign_edit(
+        pack,
+        "区域 start 名称 被拒绝的名称\n这不是合法指令",
+        validator=CampaignPackValidator(compendium=compendium),
+    )
+
+    assert result.accepted is False
+    assert pack.zones["start"]["name"] == original_name
     assert "starter.loose_stones" in compendium.events
     event = compendium.events["starter.loose_stones"]
     assert event.trigger == {"type": "zone_entry", "zone_id": "ruins"}
@@ -261,6 +276,30 @@ def test_campaign_pack_builds_monster_combatants_from_compendium_stat_blocks() -
     assert kobold.speed_ft == definition.speed_ft
     assert kobold.abilities == definition.abilities
     assert kobold.actions == ["srd.kobold_dagger"]
+
+
+def test_repeated_monster_entries_receive_unique_combatant_ids() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    pack = CampaignPackLoader().load("rules_data/campaigns/starter/pack.json")
+    pack.encounters["kobold_watch"]["monsters"] = [
+        {"monster_id": "srd.kobold", "count": 1},
+        {"monster_id": "srd.kobold", "count": 2},
+    ]
+
+    combatants = build_encounter_combatants(
+        pack=pack,
+        encounter_id="kobold_watch",
+        party={"pc1": default_fighter("pc1", "Penn")},
+        compendium=compendium,
+    )
+
+    assert {
+        combatant_id for combatant_id in combatants if combatant_id.startswith("srd_kobold")
+    } == {
+        "srd_kobold_1",
+        "srd_kobold_2",
+        "srd_kobold_3",
+    }
 
 
 def test_campaign_event_triggers_through_engine_tools(make_state) -> None:

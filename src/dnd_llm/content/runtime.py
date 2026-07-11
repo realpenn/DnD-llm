@@ -110,6 +110,7 @@ def build_encounter_combatants(
     if encounter is None:
         raise KeyError(f"unknown encounter: {encounter_id}")
     combatants: dict[str, Combatant] = {}
+    monster_id_counts: dict[str, int] = {}
     for character in party.values():
         combatants[character.id] = Combatant(
             id=character.id,
@@ -130,9 +131,10 @@ def build_encounter_combatants(
         monster_id = str(monster.get("monster_id", "monster"))
         definition = compendium.monsters.get(monster_id) if compendium is not None else None
         count = int(monster.get("count", 1))
-        for index in range(count):
+        for _index in range(count):
             base_id = monster_id.replace(".", "_")
-            combatant_id = f"{base_id}_{index + 1}"
+            monster_id_counts[base_id] = monster_id_counts.get(base_id, 0) + 1
+            combatant_id = f"{base_id}_{monster_id_counts[base_id]}"
             abilities = (
                 monster.get("abilities")
                 if "abilities" in monster
@@ -177,6 +179,36 @@ def build_encounter_combatants(
                 abilities={str(key): int(value) for key, value in dict(abilities).items()},
                 position_node_id=monster_start_node,
                 actions=[str(action_id) for action_id in actions],
+                resistances=list(
+                    monster.get(
+                        "resistances",
+                        definition.resistances if definition is not None else [],
+                    )
+                ),
+                immunities=list(
+                    monster.get(
+                        "immunities",
+                        definition.immunities if definition is not None else [],
+                    )
+                ),
+                vulnerabilities=list(
+                    monster.get(
+                        "vulnerabilities",
+                        definition.vulnerabilities if definition is not None else [],
+                    )
+                ),
+                condition_immunities=list(
+                    monster.get(
+                        "condition_immunities",
+                        definition.condition_immunities if definition is not None else [],
+                    )
+                ),
+                traits=list(
+                    monster.get(
+                        "traits",
+                        definition.traits if definition is not None else [],
+                    )
+                ),
             )
     return combatants
 

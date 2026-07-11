@@ -16,6 +16,11 @@
     "abilities": { "type": "object" },
     "size": { "type": "string" },
     "creature_type": { "type": "string" },
-    "actions": { "type": "array" }
+    "actions": { "type": "array" },
+    "resistances": { "type": "array" },
+    "immunities": { "type": "array" },
+    "vulnerabilities": { "type": "array" },
+    "condition_immunities": { "type": "array" },
+    "traits": { "type": "array" }
   }
 }

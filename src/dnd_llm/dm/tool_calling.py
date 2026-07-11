@@ -104,6 +104,11 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
                     "maximum": 9,
                     "description": "Requested spell slot level. Resolver/executor validates cost.",
                 },
+                "spell_slot_pool": {
+                    "type": "string",
+                    "enum": ["auto", "spellcasting", "pact_magic"],
+                    "description": "Which slot pool to spend for multiclass Warlocks.",
+                },
                 "as_ritual": {
                     "type": "boolean",
                     "description": "Whether to cast a Ritual-tagged spell as a Ritual.",
@@ -275,8 +280,7 @@ def draft_from_tool_call(
     player_text: str,
     tool_call: DMToolCall,
 ) -> PlayerActionDraft:
-    if tool_call.name not in DM_VISIBLE_TOOL_NAMES:
-        raise DMToolCallError(f"tool is not allowed for DM runtime: {tool_call.name}")
+    validate_dm_tool_call(tool_call)
     args = tool_call.arguments
     if tool_call.name == DRAFT_TOOL_NAME:
         _require_actor_match(actor_id, args.get("actor_id"))
@@ -310,6 +314,8 @@ def draft_from_tool_call(
             "slot_level": int(args.get("slot_level", 0)),
             "as_ritual": bool(args.get("as_ritual", False)),
         }
+        if "spell_slot_pool" in args:
+            params["spell_slot_pool"] = str(args["spell_slot_pool"]).casefold()
         if bool(args.get("use_rod_of_absorption", False)):
             params["use_rod_of_absorption"] = True
         return PlayerActionDraft(
@@ -356,6 +362,81 @@ def draft_from_tool_call(
     raise DMToolCallError(
         f"DM tool {tool_call.name} must be executed by an orchestrator handler, not directly"
     )
+
+
+def validate_dm_tool_call(tool_call: DMToolCall) -> None:
+    if tool_call.name not in DM_VISIBLE_TOOL_NAMES:
+        raise DMToolCallError(f"tool is not allowed for DM runtime: {tool_call.name}")
+    schemas = {
+        str(item["function"]["name"]): item["function"]["parameters"] for item in dm_tool_schemas()
+    }
+    schema = schemas.get(tool_call.name)
+    if not isinstance(schema, dict):
+        raise DMToolCallError(f"tool schema is unavailable: {tool_call.name}")
+    errors = _validate_schema_value(tool_call.arguments, schema, path=tool_call.name)
+    if errors:
+        raise DMToolCallError("; ".join(errors))
+
+
+def _validate_schema_value(value: Any, schema: dict[str, Any], *, path: str) -> list[str]:
+    errors: list[str] = []
+    expected = schema.get("type")
+    if expected is not None and not _matches_schema_type(value, expected):
+        return [f"{path} must be {_schema_type_label(expected)}"]
+    if isinstance(value, int) and not isinstance(value, bool):
+        minimum = schema.get("minimum")
+        maximum = schema.get("maximum")
+        if isinstance(minimum, int | float) and value < minimum:
+            errors.append(f"{path} must be at least {minimum}")
+        if isinstance(maximum, int | float) and value > maximum:
+            errors.append(f"{path} must be at most {maximum}")
+    if isinstance(value, dict):
+        properties = schema.get("properties", {})
+        required = schema.get("required", [])
+        if isinstance(required, list):
+            for name in required:
+                if name not in value:
+                    errors.append(f"{path} is missing required argument {name}")
+        if isinstance(properties, dict):
+            for name, child in properties.items():
+                if name in value and isinstance(child, dict):
+                    errors.extend(_validate_schema_value(value[name], child, path=f"{path}.{name}"))
+            if schema.get("additionalProperties") is False:
+                for name in value:
+                    if name not in properties:
+                        errors.append(f"{path} has unknown argument {name}")
+    if isinstance(value, list):
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(value):
+                errors.extend(_validate_schema_value(item, item_schema, path=f"{path}[{index}]"))
+    return errors
+
+
+def _matches_schema_type(value: Any, expected: Any) -> bool:
+    if isinstance(expected, list):
+        return any(_matches_schema_type(value, item) for item in expected)
+    if expected == "object":
+        return isinstance(value, dict)
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    if expected == "null":
+        return value is None
+    return True
+
+
+def _schema_type_label(expected: Any) -> str:
+    if isinstance(expected, list):
+        return " or ".join(str(item) for item in expected)
+    if expected in {"boolean", "integer", "string", "array", "object"}:
+        return f"a{'n' if expected == 'integer' else ''} {expected}"
+    return str(expected)
 
 
 def _tool(

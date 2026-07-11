@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -136,6 +138,17 @@ def save_game(
 ) -> None:
     target = Path(path)
     target.mkdir(parents=True, exist_ok=True)
+    with _save_slot_lock(target, exclusive=True):
+        _save_game_unlocked(target, state, audit_log, registry=registry)
+
+
+def _save_game_unlocked(
+    target: Path,
+    state: GameState,
+    audit_log: AuditLog,
+    *,
+    registry: Mapping[str, Any] | None = None,
+) -> None:
     _validate_audit_consistency(state, audit_log)
     registry_data = dict(registry) if registry is not None else None
     if registry_data is not None:
@@ -210,6 +223,17 @@ def load_game(
     include_registry: bool = False,
 ) -> tuple[GameState, AuditLog] | tuple[GameState, AuditLog, dict[str, Any] | None]:
     target = Path(path)
+    if target.exists():
+        with _save_slot_lock(target, exclusive=False):
+            return _load_game_unlocked(target, include_registry=include_registry)
+    return _load_game_unlocked(target, include_registry=include_registry)
+
+
+def _load_game_unlocked(
+    target: Path,
+    *,
+    include_registry: bool,
+) -> tuple[GameState, AuditLog] | tuple[GameState, AuditLog, dict[str, Any] | None]:
     manifest_path = target / SAVE_MANIFEST_NAME
     if manifest_path.exists():
         state, audit_log, registry = _load_generation(target, manifest_path)
@@ -218,6 +242,18 @@ def load_game(
     if include_registry:
         return state, audit_log, registry
     return state, audit_log
+
+
+@contextmanager
+def _save_slot_lock(target: Path, *, exclusive: bool) -> Iterator[None]:
+    lock_path = target / ".save.lock"
+    with lock_path.open("a+b") as handle:
+        operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        fcntl.flock(handle.fileno(), operation)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def _load_generation(

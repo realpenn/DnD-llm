@@ -277,8 +277,10 @@ def test_natural_language_character_edit_assigns_warlock_cantrip() -> None:
     ]
     assert "srd.eldritch_mind" not in result.character.actions
     assert result.character.resources["srd.resource.magical_cunning"] == 1
-    assert result.character.spell_slots == {"2": 2}
-    assert result.character.spell_slots_max == {"2": 2}
+    assert result.character.spell_slots == {}
+    assert result.character.spell_slots_max == {}
+    assert result.character.pact_spell_slots == {"2": 2}
+    assert result.character.pact_spell_slots_max == {"2": 2}
 
 
 def test_natural_language_character_edit_assigns_warlock_eldritch_master() -> None:
@@ -299,8 +301,10 @@ def test_natural_language_character_edit_assigns_warlock_eldritch_master() -> No
     assert "srd.magical_cunning" in result.character.actions
     assert "srd.eldritch_master" in result.character.actions
     assert result.character.resources["srd.resource.magical_cunning"] == 1
-    assert result.character.spell_slots == {"5": 4}
-    assert result.character.spell_slots_max == {"5": 4}
+    assert result.character.spell_slots == {}
+    assert result.character.spell_slots_max == {}
+    assert result.character.pact_spell_slots == {"5": 4}
+    assert result.character.pact_spell_slots_max == {"5": 4}
     assert eldritch_master_applies(result.character) is True
 
 
@@ -2888,6 +2892,23 @@ def test_natural_language_character_edit_supports_multiclass_progression() -> No
     assert "srd.cure_wounds" in result.character.actions
     assert result.character.hp_max > character.hp_max
     assert character.class_levels == {"fighter": 1}
+
+
+def test_wizard_warlock_multiclass_keeps_spellcasting_and_pact_slots_separate() -> None:
+    base = default_fighter("pc1", "Penn")
+    wizard = apply_natural_language_character_edit(base, "职业 wizard1")
+    assert wizard.accepted is True
+    assert wizard.character is not None
+
+    result = apply_natural_language_character_edit(wizard.character, "多职业 warlock 1")
+
+    assert result.accepted is True
+    assert result.character is not None
+    assert result.character.class_levels == {"wizard": 1, "warlock": 1}
+    assert result.character.spell_slots == {"1": 2}
+    assert result.character.spell_slots_max == {"1": 2}
+    assert result.character.pact_spell_slots == {"1": 1}
+    assert result.character.pact_spell_slots_max == {"1": 1}
 
 
 def test_natural_language_character_edit_accepts_feat_with_available_asi_slot() -> None:

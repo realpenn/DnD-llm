@@ -105,9 +105,20 @@ def adjusted_damage_amount(
 
 
 def apply_healing(target: Character | Monster | Combatant, amount: int) -> int:
+    if bool(getattr(target, "dead", False)):
+        return 0
     before = int(getattr(target, "hp_current"))
     max_hp = int(getattr(target, "hp_max"))
     setattr(target, "hp_current", min(max_hp, before + amount))
+    if (
+        before == 0
+        and int(getattr(target, "hp_current")) > 0
+        and isinstance(target, (Character, Combatant))
+    ):
+        target.death_save_successes = 0
+        target.death_save_failures = 0
+        target.stable = False
+        target.dead = False
     return int(getattr(target, "hp_current")) - before
 
 

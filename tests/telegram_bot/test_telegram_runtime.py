@@ -116,6 +116,68 @@ def test_commands_do_not_call_dm_runtime(make_state) -> None:
     assert result[0].metadata["command"] == "/status"
 
 
+def test_player_action_drives_monster_turn_in_production_runtime(make_state) -> None:
+    runtime = _runtime(make_state)
+    assert runtime.session.state.encounter is not None
+    goblin = runtime.session.state.encounter.combatants["goblin1"]
+    goblin.hp_current = 30
+    goblin.hp_max = 30
+
+    messages = runtime.handle_message(
+        IncomingMessage(
+            user_id="u1",
+            chat_id="group-1",
+            text="DD 我用短剑攻击 Goblin",
+            message_id="production-monster-turn",
+        ),
+        now=1,
+    )
+
+    assert any(message.metadata.get("monster_turn") is True for message in messages)
+    assert runtime.session.state.encounter.current_combatant_id == "pc1"
+
+
+def test_tick_expires_reactions_and_runs_timeout_takeover(make_state) -> None:
+    runtime = _runtime(make_state, reaction_mode="interactive")
+    state = runtime.session.state
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["goblin1", "pc1"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["goblin1"].position_node_id = "front"
+    state.encounter.combatants["goblin1"].speed_ft = 60
+    state.encounter.combatants["pc1"].position_node_id = "front"
+    state.encounter.combatants["pc2"].position_node_id = "back"
+    runtime.session.set_current_time(1)
+    opened = runtime.session.submit_player_action(
+        PlayerActionDraft(
+            actor_id="goblin1",
+            verb="移动",
+            candidate_action_id="srd.move",
+            params={"to_position_node_id": "back"},
+            raw_text="[monster] withdraw",
+        ),
+        "telegram-production-reaction-window",
+    )
+    timeout_at = opened.payload["reaction_windows"][0]["timeout_at"]
+
+    expired_messages = runtime.tick(now=timeout_at)
+
+    assert state.encounter.pending_reactions == {}
+    assert any(message.metadata.get("reaction_timeout") is True for message in expired_messages)
+
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    runtime.session.timeout.policy.timeout_seconds = 10
+    runtime.session.mark_current_turn_started(100)
+
+    timeout_messages = runtime.tick(now=111)
+
+    assert any(message.metadata.get("timeout_takeover") is True for message in timeout_messages)
+    assert any(message.metadata.get("monster_turn") is True for message in timeout_messages)
+
+
 def test_commands_support_telegram_bot_suffix_and_ignore_other_bots(make_state) -> None:
     runtime = _runtime(make_state)
 

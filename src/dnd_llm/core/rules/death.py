@@ -20,6 +20,8 @@ def roll_death_save(
         raise ValueError("dead creatures cannot make death saving throws")
     if entity.hp_current > 0:
         raise ValueError("death saving throws require hp_current to be 0")
+    if entity.stable:
+        raise ValueError("stable creatures do not make death saving throws")
 
     feature_source = feature_source or (entity if isinstance(entity, Character) else None)
     defy_death = (

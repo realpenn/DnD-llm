@@ -640,6 +640,7 @@ def build_coverage_report(compendium: Compendium) -> CompendiumCoverageReport:
                 expected=EXPECTED_PHASE1_MONSTERS,
                 note="Phase 1 requires the representative Tier 1 encounter stat blocks.",
             ),
+            _monster_capability_section(compendium),
             _expected_set_section(
                 name="items",
                 loaded=set(compendium.items),
@@ -653,6 +654,35 @@ def build_coverage_report(compendium: Compendium) -> CompendiumCoverageReport:
                 note="Phase 1 requires the core SRD environmental hazards named in tasks.md.",
             ),
         ]
+    )
+
+
+def _monster_capability_section(compendium: Compendium) -> CoverageSection:
+    missing: list[str] = []
+    requirements = {
+        "srd.giant_rat:pack_tactics": lambda monster: "pack_tactics" in monster.traits,
+        "srd.wolf:pack_tactics": lambda monster: "pack_tactics" in monster.traits,
+        "srd.skeleton:bludgeoning_vulnerability": lambda monster: (
+            "bludgeoning" in monster.vulnerabilities
+        ),
+        "srd.skeleton:poison_immunity": lambda monster: "poison" in monster.immunities,
+        "srd.skeleton:condition_immunities": lambda monster: (
+            {"exhaustion", "poisoned"} <= set(monster.condition_immunities)
+        ),
+        "srd.zombie:undead_fortitude": lambda monster: "undead_fortitude" in monster.traits,
+    }
+    for requirement, check in requirements.items():
+        monster_id = requirement.split(":", 1)[0]
+        monster = compendium.monsters.get(monster_id)
+        if monster is None or not check(monster):
+            missing.append(requirement)
+    return CoverageSection(
+        name="monster_capabilities",
+        loaded_count=len(requirements) - len(missing),
+        expected_count=len(requirements),
+        missing=missing,
+        complete=not missing,
+        note="Tier 1 coverage includes combat-changing SRD traits, defenses, and weaknesses.",
     )
 
 
