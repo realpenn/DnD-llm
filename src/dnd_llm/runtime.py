@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -365,6 +366,8 @@ class MultiCampaignRuntime:
         self.channels = channels or ChannelDirectory()
         self._runtimes_by_group: dict[str, GameRuntime] = {}
         self._active_group_by_user: dict[str, str] = {}
+        self._routing_lock = threading.RLock()
+        self._runtime_locks: dict[int, threading.RLock] = {}
 
     @classmethod
     def build(cls, settings: Settings) -> MultiCampaignRuntime:
@@ -383,34 +386,38 @@ class MultiCampaignRuntime:
         return sorted(self._runtimes_by_group)
 
     def runtime_for_group(self, chat_id: str) -> GameRuntime:
-        runtime = self._runtimes_by_group.get(chat_id)
-        if runtime is not None:
+        with self._routing_lock:
+            runtime = self._runtimes_by_group.get(chat_id)
+            if runtime is not None:
+                return runtime
+            state = GameState(
+                campaign_id=self.campaign_pack.campaign_id,
+                rng_seed=_seed_for_chat(self.settings.rng_seed, chat_id),
+            )
+            apply_campaign_pack(state, self.campaign_pack)
+            state.campaign_id = _campaign_id_for_chat(self.campaign_pack.campaign_id, chat_id)
+            runtime = GameRuntime(
+                settings=self.settings,
+                compendium=self.compendium,
+                campaign_pack=self.campaign_pack,
+                state=state,
+                audit_log=AuditLog(),
+            )
+            runtime.telegram_runtime.campaign_chat_id = chat_id
+            runtime.telegram_runtime.channels = self.channels
+            self._runtimes_by_group[chat_id] = runtime
+            self._runtime_locks[id(runtime)] = threading.RLock()
             return runtime
-        state = GameState(
-            campaign_id=self.campaign_pack.campaign_id,
-            rng_seed=_seed_for_chat(self.settings.rng_seed, chat_id),
-        )
-        apply_campaign_pack(state, self.campaign_pack)
-        state.campaign_id = _campaign_id_for_chat(self.campaign_pack.campaign_id, chat_id)
-        runtime = GameRuntime(
-            settings=self.settings,
-            compendium=self.compendium,
-            campaign_pack=self.campaign_pack,
-            state=state,
-            audit_log=AuditLog(),
-        )
-        runtime.telegram_runtime.campaign_chat_id = chat_id
-        runtime.telegram_runtime.channels = self.channels
-        self._runtimes_by_group[chat_id] = runtime
-        return runtime
 
     def handle_message(self, incoming: IncomingMessage, *, now: int) -> list[OutgoingMessage]:
         if incoming.is_private:
-            self.channels.bind_private_chat(incoming.user_id, incoming.chat_id)
+            with self._routing_lock:
+                self.channels.bind_private_chat(incoming.user_id, incoming.chat_id)
             return self._handle_private_message(incoming, now=now)
-        self._active_group_by_user[incoming.user_id] = incoming.chat_id
-        runtime = self.runtime_for_group(incoming.chat_id)
-        return runtime.telegram_runtime.handle_message(incoming, now=now)
+        with self._routing_lock:
+            self._active_group_by_user[incoming.user_id] = incoming.chat_id
+            runtime = self.runtime_for_group(incoming.chat_id)
+        return self._handle_with_runtime_lock(runtime, incoming, now=now)
 
     def _handle_private_message(
         self,
@@ -420,11 +427,11 @@ class MultiCampaignRuntime:
     ) -> list[OutgoingMessage]:
         command = _command_name(incoming.text)
         if command == "/start":
-            group_id = self._active_group_by_user.get(incoming.user_id)
+            with self._routing_lock:
+                group_id = self._active_group_by_user.get(incoming.user_id)
             if group_id is not None:
-                return self.runtime_for_group(group_id).telegram_runtime.handle_message(
-                    incoming,
-                    now=now,
+                return self._handle_with_runtime_lock(
+                    self.runtime_for_group(group_id), incoming, now=now
                 )
             return [
                 OutgoingMessage(
@@ -438,8 +445,9 @@ class MultiCampaignRuntime:
             routed = self._runtime_for_reaction(incoming.user_id, incoming.text)
             if routed is not None:
                 group_id, runtime = routed
-                self._active_group_by_user[incoming.user_id] = group_id
-                return runtime.telegram_runtime.handle_message(incoming, now=now)
+                with self._routing_lock:
+                    self._active_group_by_user[incoming.user_id] = group_id
+                return self._handle_with_runtime_lock(runtime, incoming, now=now)
         private_runtime = self._runtime_for_private_user(incoming.user_id)
         if private_runtime is None:
             return [
@@ -450,15 +458,16 @@ class MultiCampaignRuntime:
                     metadata={"missing_campaign_context": True},
                 )
             ]
-        return private_runtime.telegram_runtime.handle_message(incoming, now=now)
+        return self._handle_with_runtime_lock(private_runtime, incoming, now=now)
 
     def _runtime_for_private_user(self, user_id: str) -> GameRuntime | None:
-        group_id = self._active_group_by_user.get(user_id)
-        if group_id is not None:
-            return self.runtime_for_group(group_id)
-        if len(self._runtimes_by_group) == 1:
-            return next(iter(self._runtimes_by_group.values()))
-        return None
+        with self._routing_lock:
+            group_id = self._active_group_by_user.get(user_id)
+            if group_id is not None:
+                return self.runtime_for_group(group_id)
+            if len(self._runtimes_by_group) == 1:
+                return next(iter(self._runtimes_by_group.values()))
+            return None
 
     def _runtime_for_reaction(
         self,
@@ -469,14 +478,31 @@ class MultiCampaignRuntime:
         if len(parts) < 2:
             return None
         reaction_id = parts[1]
-        for group_id, runtime in self._runtimes_by_group.items():
-            character = runtime.command_router.characters.campaign_character_for_user(user_id)
-            if character is None or runtime.state.encounter is None:
-                continue
-            window = runtime.state.encounter.pending_reactions.get(reaction_id)
-            if window is not None and window.get("actor_id") == character.id:
-                return group_id, runtime
+        with self._routing_lock:
+            runtimes = list(self._runtimes_by_group.items())
+        for group_id, runtime in runtimes:
+            with self._runtime_lock_for(runtime):
+                character = runtime.command_router.characters.campaign_character_for_user(user_id)
+                if character is None or runtime.state.encounter is None:
+                    continue
+                window = runtime.state.encounter.pending_reactions.get(reaction_id)
+                if window is not None and window.get("actor_id") == character.id:
+                    return group_id, runtime
         return None
+
+    def _handle_with_runtime_lock(
+        self,
+        runtime: GameRuntime,
+        incoming: IncomingMessage,
+        *,
+        now: int,
+    ) -> list[OutgoingMessage]:
+        with self._runtime_lock_for(runtime):
+            return runtime.telegram_runtime.handle_message(incoming, now=now)
+
+    def _runtime_lock_for(self, runtime: GameRuntime) -> threading.RLock:
+        with self._routing_lock:
+            return self._runtime_locks.setdefault(id(runtime), threading.RLock())
 
 
 def _campaign_pack_path(settings: Settings) -> Path:

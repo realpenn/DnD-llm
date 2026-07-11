@@ -684,9 +684,12 @@ def test_dm_request_combat_starts_session_and_preserves_request_audit(make_state
 
 def test_dm_request_end_combat_ends_session_and_preserves_request_audit(make_state) -> None:
     session = _session(make_state)
+    assert session.state.encounter is not None
+    session.state.characters["pc1"].inventory["srd.arrow"] = 5
+    session.state.encounter.ammunition_inventory_baselines = {"pc1": {"srd.arrow": 10}}
     runtime = DMRuntime(
         session,
-        client=FakeClient(_tool_response("request_end_combat", {})),
+        client=FakeClient(_tool_response("request_end_combat", {"recover_ammunition": True})),
         model_id="fake-dm",
     )
 
@@ -700,6 +703,9 @@ def test_dm_request_end_combat_ends_session_and_preserves_request_audit(make_sta
     assert response.accepted is True
     assert response.engine_payload["requested"] is True
     assert response.engine_payload["ended"] is True
+    assert response.engine_payload["recover_ammunition"] is True
+    assert response.engine_payload["ammunition_recovered"] == {"pc1": {"srd.arrow": 2}}
+    assert session.state.characters["pc1"].inventory["srd.arrow"] == 7
     assert session.state.encounter is None
     assert any(event.tool_name == "request_end_combat" for event in session.audit_log.events)
     assert any(event.tool_name == "orchestrator.end_combat" for event in session.audit_log.events)
@@ -832,6 +838,9 @@ def test_dm_tool_calling_rejects_disallowed_state_tool(make_state) -> None:
 
 def test_dm_tool_schema_exposes_only_public_tools() -> None:
     names = {schema["function"]["name"] for schema in dm_tool_schemas()}
+    attack_schema = next(
+        schema for schema in dm_tool_schemas() if schema["function"]["name"] == "attack"
+    )
     roll_check_schema = next(
         schema for schema in dm_tool_schemas() if schema["function"]["name"] == "roll_check"
     )
@@ -841,14 +850,24 @@ def test_dm_tool_schema_exposes_only_public_tools() -> None:
     cast_spell_schema = next(
         schema for schema in dm_tool_schemas() if schema["function"]["name"] == "cast_spell"
     )
+    end_combat_schema = next(
+        schema for schema in dm_tool_schemas() if schema["function"]["name"] == "request_end_combat"
+    )
     roll_check_properties = roll_check_schema["function"]["parameters"]["properties"]
     roll_save_properties = roll_save_schema["function"]["parameters"]["properties"]
     cast_spell_properties = cast_spell_schema["function"]["parameters"]["properties"]
+    attack_properties = attack_schema["function"]["parameters"]["properties"]
+    end_combat_properties = end_combat_schema["function"]["parameters"]["properties"]
 
     assert "attack" in names
     assert "cast_spell" in names
     assert "expand_zone" in names
     assert "as_ritual" in cast_spell_properties
+    assert attack_properties["two_handed"]["type"] == "boolean"
+    assert attack_properties["weapon_ability"]["enum"] == ["str", "dex"]
+    assert attack_properties["use_weapon_mastery"]["type"] == "boolean"
+    assert attack_properties["use_light_extra_attack"]["type"] == "boolean"
+    assert end_combat_properties["recover_ammunition"]["type"] == "boolean"
     assert "skill" in roll_check_properties
     assert "tool" in roll_check_properties
     assert "examines_within_1_ft" in roll_check_properties
@@ -890,3 +909,57 @@ def test_cast_spell_tool_call_preserves_ritual_param() -> None:
     )
 
     assert draft.params == {"slot_level": 1, "as_ritual": True}
+
+
+def test_attack_tool_call_preserves_weapon_params() -> None:
+    draft = draft_from_tool_call(
+        actor_id="pc1",
+        player_text="DD 我双手持长棍，以力量攻击并发动武器精通",
+        tool_call=DMToolCall(
+            name="attack",
+            arguments={
+                "attacker_id": "pc1",
+                "target_id": "goblin1",
+                "action_id": "srd.quarterstaff_attack",
+                "two_handed": True,
+                "weapon_ability": "STR",
+                "use_weapon_mastery": True,
+                "use_light_extra_attack": True,
+            },
+        ),
+    )
+
+    assert draft.params == {
+        "two_handed": True,
+        "weapon_ability": "str",
+        "use_weapon_mastery": True,
+        "use_light_extra_attack": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("param_name", "value", "message"),
+    [
+        ("two_handed", "yes", "two_handed must be a boolean"),
+        ("use_weapon_mastery", 1, "use_weapon_mastery must be a boolean"),
+        ("weapon_ability", "cha", "weapon_ability must be str or dex"),
+    ],
+)
+def test_attack_tool_call_validates_weapon_params(
+    param_name: str,
+    value: Any,
+    message: str,
+) -> None:
+    arguments: dict[str, Any] = {
+        "attacker_id": "pc1",
+        "target_id": "goblin1",
+        "action_id": "srd.dagger_attack",
+        param_name: value,
+    }
+
+    with pytest.raises(DMToolCallError, match=message):
+        draft_from_tool_call(
+            actor_id="pc1",
+            player_text="DD 我攻击",
+            tool_call=DMToolCall(name="attack", arguments=arguments),
+        )

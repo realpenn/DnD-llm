@@ -143,6 +143,8 @@ class Encounter:
     tactical_graph: dict[str, Any] | None = None
     action_budgets: dict[str, dict[str, int]] = field(default_factory=dict)
     pending_reactions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    status_effect_baselines: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    ammunition_inventory_baselines: dict[str, dict[str, int]] = field(default_factory=dict)
 
     @property
     def current_combatant_id(self) -> str | None:
@@ -160,6 +162,11 @@ class Encounter:
         }
         payload = dict(data)
         payload["combatants"] = combatants
+        if "status_effect_baselines" not in data:
+            payload["status_effect_baselines"] = {
+                combatant_id: [dict(effect) for effect in combatant.status_effects]
+                for combatant_id, combatant in combatants.items()
+            }
         return cls(**payload)
 
 

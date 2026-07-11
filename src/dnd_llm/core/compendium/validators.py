@@ -18,8 +18,17 @@ from ..automation.definitions import (
 from ..automation.nodes import validate_node
 from .localization import AliasIndex
 from .schema_loader import SchemaRegistry
+from .srd_catalog_manifest import SRD_CATALOG_MANIFEST
 
 SrdCatalog = dict[str, dict[str, tuple[str, str, str]]]
+
+
+def trusted_srd_catalog() -> SrdCatalog:
+    return {namespace: dict(entries) for namespace, entries in SRD_CATALOG_MANIFEST.items()}
+
+
+def claims_official_srd(owner_id: str, source: str) -> bool:
+    return owner_id.startswith("srd.") or source.casefold().startswith("srd 5.2.1")
 
 
 def rule_payload_digest(data: object) -> str:
@@ -525,8 +534,7 @@ class RuleDataValidator:
             report.errors.append(f"{owner_id}: srd namespace requires srd rules_version")
         if owner_id.startswith("srd.") and "srd" not in source_text:
             report.errors.append(f"{owner_id}: srd namespace requires SRD source")
-        claims_official_srd = owner_id.startswith("srd.") or source_text.startswith("srd 5.2.1")
-        if not claims_official_srd:
+        if not claims_official_srd(owner_id, source):
             return
         if self.srd_catalog is None:
             return

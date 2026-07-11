@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dnd_llm.content.campaign_pack import CampaignPackLoader
 from dnd_llm.content.runtime import apply_campaign_pack
 from dnd_llm.core.compendium.loader import CompendiumLoader
-from dnd_llm.core.models import Combatant, Monster
-from dnd_llm.core.persistence import AuditLog
+from dnd_llm.core.models import Combatant, GameState, Monster
+from dnd_llm.core.persistence import AuditLog, load_game, save_game
 from dnd_llm.core.positioning import TacticalGraph
 from dnd_llm.core.resolver import PlayerActionDraft
 from dnd_llm.orchestrator.session import GameSession, SessionResult
@@ -508,6 +508,7 @@ def test_end_combat_does_not_restore_effect_removed_from_combatant(make_state) -
     }
     state.characters["pc2"].status_effects = [stale_effect]
     state.encounter.combatants["pc2"].status_effects = []
+    state.encounter.status_effect_baselines["pc2"] = [stale_effect]
     session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
 
     ended = session.end_combat("remove-expired-cross-combat-effect")
@@ -515,6 +516,113 @@ def test_end_combat_does_not_restore_effect_removed_from_combatant(make_state) -
     assert isinstance(ended, SessionResult)
     assert ended.accepted is True
     assert state.characters["pc2"].status_effects == []
+
+
+def test_end_combat_preserves_long_term_effect_added_directly_to_character(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.status_effect_baselines["pc1"] = []
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    result = session.tools.apply_hazard(
+        ["pc1"],
+        "srd.dehydration",
+        {"source": "rules_discrete"},
+        idempotency_key="dehydration-during-combat",
+    )
+    ended = session.end_combat("preserve-dehydration-after-combat")
+
+    assert result["success"] is True
+    assert isinstance(ended, SessionResult)
+    assert ended.accepted is True
+    exhaustion = next(
+        effect
+        for effect in state.characters["pc1"].status_effects
+        if effect.get("condition") == "exhaustion"
+    )
+    assert exhaustion["level"] == 1
+
+
+def test_end_combat_recovers_half_spent_ammunition_only_after_one_minute_search(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].inventory["srd.arrow"] = 5
+    state.encounter.ammunition_inventory_baselines = {"pc1": {"srd.arrow": 10}}
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    result = session.end_combat("recover-ammunition", recover_ammunition=True)
+
+    assert isinstance(result, SessionResult)
+    assert result.accepted is True
+    assert state.characters["pc1"].inventory["srd.arrow"] == 7
+    assert result.payload["ammunition_recovered"] == {"pc1": {"srd.arrow": 2}}
+
+
+def test_end_combat_does_not_recover_ammunition_without_search(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.characters["pc1"].inventory["srd.arrow"] = 5
+    state.encounter.ammunition_inventory_baselines = {"pc1": {"srd.arrow": 10}}
+    session = GameSession(state, CompendiumLoader("rules_data").load(), AuditLog())
+
+    result = session.end_combat("do-not-recover-ammunition")
+
+    assert isinstance(result, SessionResult)
+    assert state.characters["pc1"].inventory["srd.arrow"] == 5
+    assert result.payload["ammunition_recovered"] == {}
+
+
+def test_legacy_encounter_status_baselines_migrate_and_round_trip(
+    tmp_path,
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    baseline_effect = {
+        "effect_id": "legacy-poison",
+        "source_action_id": "test.poison",
+        "target_id": "pc2",
+        "applied_by": "goblin1",
+        "condition": "poisoned",
+    }
+    state.characters["pc2"].status_effects = [baseline_effect]
+    state.encounter.combatants["pc2"].status_effects = [baseline_effect]
+    legacy_payload = state.to_dict()
+    assert legacy_payload["encounter"] is not None
+    legacy_payload["encounter"].pop("status_effect_baselines")
+
+    migrated_state = GameState.from_dict(legacy_payload)
+
+    assert migrated_state.encounter is not None
+    assert migrated_state.encounter.status_effect_baselines["pc2"] == [baseline_effect]
+    save_game(tmp_path / "slot", migrated_state, AuditLog())
+    loaded_state, loaded_audit = load_game(tmp_path / "slot")
+
+    assert loaded_state.encounter is not None
+    assert loaded_state.encounter.status_effect_baselines["pc2"] == [baseline_effect]
+    loaded_state.encounter.combatants["pc2"].status_effects = []
+    long_term_effect = {
+        "effect_id": "legacy-dehydration",
+        "source_action_id": "srd.dehydration",
+        "target_id": "pc2",
+        "applied_by": "environment",
+        "condition": "exhaustion",
+        "level": 1,
+    }
+    loaded_state.characters["pc2"].status_effects.append(long_term_effect)
+    session = GameSession(
+        loaded_state,
+        CompendiumLoader("rules_data").load(),
+        loaded_audit,
+    )
+
+    ended = session.end_combat("end-legacy-encounter")
+
+    assert isinstance(ended, SessionResult)
+    assert ended.accepted is True
+    assert loaded_state.characters["pc2"].status_effects == [long_term_effect]
 
 
 def test_roll_initiative_groups_same_named_monsters(make_state) -> None:

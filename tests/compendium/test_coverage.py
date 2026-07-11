@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from dnd_llm.core.compendium.coverage import build_coverage_report
@@ -12,6 +13,11 @@ def test_compendium_coverage_report_is_explicit_about_phase1_gaps() -> None:
     report = build_coverage_report(compendium)
     sections = {section.name: section for section in report.sections}
 
+    assert sections["verified_srd_catalog"].complete is True
+    assert sections["verified_srd_catalog"].missing == []
+    assert sections["verified_srd_catalog"].unexpected == []
+    assert sections["verified_srd_catalog"].loaded_count == 1055
+    assert sections["verified_srd_catalog"].expected_count == 1055
     assert sections["base_classes"].complete is True
     assert sections["core_conditions"].complete is True
     assert sections["spells_0_to_3"].expected_count == 183
@@ -33,6 +39,30 @@ def test_compendium_coverage_report_is_explicit_about_phase1_gaps() -> None:
     assert sections["hazards"].missing == []
     assert report.fully_complete is True
     assert report.to_dict()["sections"]
+
+
+def test_coverage_rejects_untrusted_srd_ids_but_ignores_extensions() -> None:
+    compendium = CompendiumLoader("rules_data").load()
+    move = compendium.action("srd.move")
+    forged = replace(move, id="srd.imaginary_blade")
+    extension = replace(
+        move,
+        id="extension.imaginary_blade",
+        source="Extension rules",
+        rules_version="extension-1",
+    )
+    compendium.actions[forged.id] = forged
+    compendium.actions[extension.id] = extension
+
+    report = build_coverage_report(compendium)
+    verified = next(
+        section for section in report.sections if section.name == "verified_srd_catalog"
+    )
+
+    assert verified.complete is False
+    assert verified.unexpected == ["action:srd.imaginary_blade"]
+    assert "action:extension.imaginary_blade" not in verified.unexpected
+    assert report.fully_complete is False
 
 
 def test_srd_definitions_do_not_use_sample_labels() -> None:

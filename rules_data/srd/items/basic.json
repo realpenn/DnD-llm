@@ -51,6 +51,26 @@
       "quantity": 1
     },
     {
+      "id": "srd.arrow",
+      "name": "Arrow",
+      "localization": { "en": "Arrow", "zh": "箭", "aliases": ["箭矢"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment, Ammunition",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ammunition",
+      "actions": [],
+      "quantity": 1
+    },
+    {
+      "id": "srd.crossbow_bolt",
+      "name": "Crossbow Bolt",
+      "localization": { "en": "Crossbow Bolt", "zh": "弩矢", "aliases": ["弩箭"] },
+      "source": "SRD 5.2.1 Chapter 6: Equipment, Ammunition",
+      "rules_version": "srd-5.2.1",
+      "item_type": "ammunition",
+      "actions": [],
+      "quantity": 1
+    },
+    {
       "id": "srd.quarterstaff",
       "name": "Quarterstaff",
       "localization": { "en": "Quarterstaff", "zh": "长棍", "aliases": ["木杖"] },

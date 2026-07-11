@@ -120,6 +120,11 @@ class AuditLog:
 
 SAVE_FORMAT_VERSION = 2
 SAVE_MANIFEST_NAME = "manifest.json"
+_GENERATION_FILE_PATTERNS = (
+    "state-*.json",
+    "audit-*.jsonl",
+    "registry-*.json",
+)
 
 
 def save_game(
@@ -180,6 +185,10 @@ def save_game(
         _write_fsynced(manifest_temp, _json_bytes(manifest, pretty=True))
         os.replace(manifest_temp, manifest_path)
         _fsync_directory(target)
+        _cleanup_unreferenced_generations(
+            target,
+            {descriptor["name"] for descriptor in descriptors.values()},
+        )
     finally:
         for temporary_path in temporary_paths:
             temporary_path.unlink(missing_ok=True)
@@ -388,6 +397,24 @@ def _json_bytes(value: object, *, pretty: bool) -> bytes:
         )
         + "\n"
     ).encode("utf-8")
+
+
+def _cleanup_unreferenced_generations(
+    target: Path,
+    referenced_names: set[str],
+) -> None:
+    for pattern in _GENERATION_FILE_PATTERNS:
+        try:
+            candidates = list(target.glob(pattern))
+        except OSError:
+            continue
+        for candidate in candidates:
+            if candidate.name in referenced_names:
+                continue
+            try:
+                candidate.unlink()
+            except OSError:
+                continue
 
 
 def _write_fsynced(path: Path, payload: bytes) -> None:

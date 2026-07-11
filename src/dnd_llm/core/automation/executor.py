@@ -311,6 +311,11 @@ ROBE_OF_USEFUL_ITEMS_INITIALIZED_RESOURCE = "srd.robe_of_useful_items.initialize
 FOOD_DRINK_EXHAUSTION_HAZARD_IDS = frozenset({"srd.dehydration", "srd.malnutrition"})
 THIRSTING_BLADE_EXTRA_ATTACK_USED_CONDITION = "thirsting_blade_extra_attack_used"
 ELDRITCH_SMITE_USED_CONDITION = "eldritch_smite_used"
+LIGHT_WEAPON_ATTACK_CONDITION = "light_weapon_attack_this_turn"
+LIGHT_EXTRA_ATTACK_USED_CONDITION = "light_extra_attack_used_this_turn"
+WEAPON_MASTERY_VEX_CONDITION = "weapon_mastery_vex"
+WEAPON_MASTERY_SLOW_CONDITION = "weapon_mastery_slow"
+WEAPON_MASTERY_SAP_CONDITION = "weapon_mastery_sap"
 SLOW_FALL_ACTION_ID = "srd.slow_fall"
 BANDIT_CAPTAIN_PARRY_ACTION_ID = "srd.bandit_captain_parry"
 BANDIT_CAPTAIN_SCIMITAR_ACTION_ID = "srd.bandit_captain_scimitar"
@@ -647,6 +652,7 @@ class AutomationExecutor:
         self._validate_teleport_outcome_preconditions(action, targets or [], params)
         self._validate_restoring_touch_preconditions(action, actor_id, targets or [], params)
         self._validate_shapechange_preconditions(action, actor_id, params)
+        self._validate_weapon_property_preconditions(action, actor_id, params)
         self._validate_action_economy(action, actor_id, params)
         self._validate_resource_delta_caps(action, actor_id)
         self._validate_tactical_shift_preconditions(action, actor_id, params)
@@ -674,6 +680,7 @@ class AutomationExecutor:
                 f"automation[{len(action.automation)}]",
                 idempotency_key,
             )
+        self._mark_light_attack_flow(ctx)
         self._mark_action_surge_used(ctx)
         self._expire_actor_effects_after_action(ctx, preexisting_actor_effect_ids)
         self._record_fleet_step_window(ctx)
@@ -870,6 +877,7 @@ class AutomationExecutor:
             raise AutomationError(f"unsupported target mode: {mode}")
 
     def _node_attack_roll(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        node = self._resolved_weapon_node(ctx, node)
         if ctx.action.action_type == "weapon_attack":
             ctx.last_attack_node = dict(node)
         ability = (
@@ -888,6 +896,8 @@ class AutomationExecutor:
         for target_id in ctx.targets:
             target = self._entity(target_id)
             studied_attack_effect_ids = self._studied_attacks_effect_ids_for(actor, target_id)
+            vex_effect_ids = self._vex_effect_ids_for(actor, target_id)
+            sap_effect_ids = self._sap_effect_ids_for(actor)
             base_ac, ac, armor_class_sources = self._effective_armor_class(target)
             distance_ft = self._combat_distance(actor, target)
             status_advantage, status_sources = self._attack_status_advantage(
@@ -1048,12 +1058,20 @@ class AutomationExecutor:
                 studied_attack_effect_ids,
                 path,
             )
+            self._expire_weapon_mastery_attack_effects(
+                ctx,
+                target_id,
+                vex_effect_ids | sap_effect_ids,
+                path,
+            )
             self._apply_studied_attacks_on_miss(ctx, target_id, path)
             self._apply_multiattack_defense_on_hit(ctx, target_id, path)
             self._apply_holy_aura_blinding_save_on_hit(ctx, target_id, path)
             self._mark_weapon_attack_target_this_turn(ctx, target_id)
             self._mark_thirsting_blade_pact_weapon_attack_this_turn(ctx, target_id)
             self._mark_thirsting_blade_extra_attack_used(ctx, target_id)
+            self._apply_topple_mastery_if_requested(ctx, target_id, ability, path)
+            self._apply_sap_mastery_on_hit(ctx, target_id, path)
 
     def _attack_bonus(
         self,
@@ -1853,6 +1871,7 @@ class AutomationExecutor:
                 )
 
     def _node_damage(self, ctx: _Context, node: dict[str, Any], path: str) -> None:
+        node = self._resolved_weapon_node(ctx, node)
         damage_type = self._pact_weapon_damage_type(
             ctx,
             self._empowered_strikes_damage_type(
@@ -2138,6 +2157,12 @@ class AutomationExecutor:
             if potent_cantrip is not None:
                 change["potent_cantrip"] = potent_cantrip
             ctx.result.state_changes.append(change)
+            self._apply_damage_based_weapon_mastery(
+                ctx,
+                target_id,
+                total_damage_taken,
+                path,
+            )
             self._apply_improved_blessed_strikes_potent_spellcasting_temp_hp(
                 ctx,
                 target_id,
@@ -6022,15 +6047,22 @@ class AutomationExecutor:
 
     def _roll_amount(self, ctx: _Context, node: dict[str, Any]) -> tuple[int, list[RollResult]]:
         if "amount" in node:
-            return self._minimum_amount(
-                int(node["amount"]) + self._amount_bonus(ctx, node),
-                node,
-            ), []
+            return (
+                self._minimum_amount(
+                    int(node["amount"]) + self._amount_bonus(ctx, node),
+                    node,
+                ),
+                [],
+            )
         if "amount_from" in node:
-            return self._minimum_amount(
-                self._param_amount(ctx, str(node["amount_from"])) + self._amount_bonus(ctx, node),
-                node,
-            ), []
+            return (
+                self._minimum_amount(
+                    self._param_amount(ctx, str(node["amount_from"]))
+                    + self._amount_bonus(ctx, node),
+                    node,
+                ),
+                [],
+            )
         if "dice_from" in node:
             roll = self.roll_service.roll(self._dynamic_dice_expression(ctx, node))
             return self._minimum_amount(
@@ -6160,6 +6192,579 @@ class AutomationExecutor:
         if base_match is not None and base_match.group(2) == extra_sides:
             return f"{int(base_match.group(1)) + extra_count}d{extra_sides}"
         return f"{base_expression}+{extra_count}d{extra_sides}"
+
+    def _resolved_weapon_node(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> dict[str, Any]:
+        if ctx.action.action_type != "weapon_attack":
+            return node
+        resolved = dict(node)
+        ability = self._resolved_weapon_ability(ctx, node)
+        if ability is not None:
+            resolved["ability"] = ability
+            bonus_from = resolved.get("bonus_from")
+            if isinstance(bonus_from, dict) and "ability_modifier" in bonus_from:
+                resolved["bonus_from"] = {**bonus_from, "ability_modifier": ability}
+        if (
+            node.get("type") == "damage"
+            and self._light_extra_attack_requested(ctx.params)
+            and ability is not None
+            and self._ability_modifier(self._entity(ctx.actor_id), ability) >= 0
+        ):
+            bonus_from = resolved.get("bonus_from")
+            if isinstance(bonus_from, dict) and "ability_modifier" in bonus_from:
+                reduced_bonus_from = dict(bonus_from)
+                reduced_bonus_from.pop("ability_modifier", None)
+                if reduced_bonus_from:
+                    resolved["bonus_from"] = reduced_bonus_from
+                else:
+                    resolved.pop("bonus_from", None)
+        if node.get("type") == "damage" and ctx.params.get("two_handed") is True:
+            properties = self._weapon_properties(ctx.action)
+            versatile_dice = ctx.action.properties.get("versatile_damage_dice")
+            base_dice = ctx.action.properties.get("damage_dice")
+            if (
+                "versatile" in properties
+                and isinstance(versatile_dice, str)
+                and isinstance(base_dice, str)
+            ):
+                resolved_dice = resolved.get("dice")
+                if resolved_dice == base_dice:
+                    resolved["dice"] = versatile_dice
+                elif isinstance(resolved_dice, str) and resolved_dice.startswith(
+                    (f"{base_dice}+", f"{base_dice}-")
+                ):
+                    resolved["dice"] = f"{versatile_dice}{resolved_dice[len(base_dice) :]}"
+        return resolved
+
+    def _resolved_weapon_ability(
+        self,
+        ctx: _Context,
+        node: dict[str, Any],
+    ) -> str | None:
+        if node.get("type") not in {"attack_roll", "damage"}:
+            return None
+        default_ability = str(node.get("ability", "str")).casefold()
+        raw = ctx.params.get("weapon_ability", ctx.params.get("attack_ability"))
+        explicit = str(raw).casefold().strip() if raw not in (None, "") else None
+        properties = self._weapon_properties(ctx.action)
+        if "finesse" not in properties:
+            if explicit is not None and explicit != default_ability:
+                raise AutomationError(f"weapon_ability must be {default_ability} for this weapon")
+            return default_ability
+        if explicit is not None:
+            if explicit not in {"str", "dex"}:
+                raise AutomationError("finesse weapon_ability must be str or dex")
+            return explicit
+        actor = self._entity(ctx.actor_id)
+        str_modifier = self._ability_modifier(actor, "str")
+        dex_modifier = self._ability_modifier(actor, "dex")
+        if str_modifier == dex_modifier and default_ability in {"str", "dex"}:
+            return default_ability
+        return "str" if str_modifier > dex_modifier else "dex"
+
+    @staticmethod
+    def _weapon_properties(action: ActionDefinition) -> set[str]:
+        properties = action.properties.get("weapon_properties", [])
+        if isinstance(properties, str):
+            properties = [properties]
+        return {str(item).casefold() for item in properties}
+
+    def _validate_weapon_property_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        if action.action_type != "weapon_attack":
+            return
+        properties = self._weapon_properties(action)
+        raw_ability = params.get("weapon_ability", params.get("attack_ability"))
+        if isinstance(raw_ability, (dict, list)):
+            raise AutomationError("weapon_ability must be a scalar")
+        if raw_ability not in (None, ""):
+            ability = str(raw_ability).casefold().strip()
+            attack_node = self._first_attack_roll_node(action) or {}
+            default_ability = str(attack_node.get("ability", "str")).casefold()
+            allowed = {"str", "dex"} if "finesse" in properties else {default_ability}
+            if ability not in allowed:
+                expected = ", ".join(sorted(allowed))
+                raise AutomationError(f"weapon_ability must be one of: {expected}")
+            params["weapon_ability"] = ability
+        if "two_handed" in params:
+            if not isinstance(params["two_handed"], bool):
+                raise AutomationError("two_handed must be a boolean")
+            if "versatile" not in properties:
+                raise AutomationError("two_handed is supported only by versatile weapons")
+        self._validate_light_extra_attack_preconditions(action, actor_id, params)
+        if self._weapon_mastery_requested(params):
+            mastery_property = str(action.properties.get("weapon_mastery_property", ""))
+            if mastery_property.casefold() not in {"vex", "slow", "sap", "nick", "topple"}:
+                raise AutomationError(
+                    f"weapon mastery {mastery_property or 'unknown'} is not automated"
+                )
+            requested_property = self._specific_weapon_mastery_request(params)
+            if requested_property is not None and requested_property != mastery_property.casefold():
+                raise AutomationError(
+                    f"weapon mastery {requested_property.title()} is not available for this weapon"
+                )
+            owner = self._resource_owner(actor_id)
+            if not isinstance(owner, Character) or not self._has_registered_weapon_mastery(
+                owner,
+                action,
+            ):
+                raise AutomationError(
+                    f"weapon mastery {mastery_property or 'unknown'} is not registered for "
+                    f"{action.properties.get('weapon_item_id')}"
+                )
+            if mastery_property.casefold() == "nick" and not self._light_extra_attack_requested(
+                params
+            ):
+                raise AutomationError("Nick can be used only for the Light property's extra attack")
+
+    @staticmethod
+    def _weapon_mastery_requested(params: dict[str, Any]) -> bool:
+        return any(
+            params.get(param_name) is True
+            for param_name in (
+                "use_weapon_mastery",
+                "use_vex",
+                "use_vex_mastery",
+                "use_slow",
+                "use_slow_mastery",
+                "use_sap",
+                "use_sap_mastery",
+                "use_nick",
+                "use_nick_mastery",
+                "use_topple",
+                "use_topple_mastery",
+            )
+        )
+
+    @staticmethod
+    def _specific_weapon_mastery_request(params: dict[str, Any]) -> str | None:
+        for mastery_property in ("vex", "slow", "sap", "nick", "topple"):
+            if (
+                params.get(f"use_{mastery_property}") is True
+                or params.get(f"use_{mastery_property}_mastery") is True
+            ):
+                return mastery_property
+        return None
+
+    @staticmethod
+    def _has_registered_weapon_mastery(
+        owner: Character,
+        action: ActionDefinition,
+    ) -> bool:
+        weapon_item_id = action.properties.get("weapon_item_id")
+        mastery_property = str(action.properties.get("weapon_mastery_property", ""))
+        return (
+            isinstance(weapon_item_id, str)
+            and str(owner.feature_choices.get(f"weapon_mastery.{weapon_item_id}", "")).casefold()
+            == mastery_property.casefold()
+        )
+
+    def _apply_topple_mastery_if_requested(
+        self,
+        ctx: _Context,
+        target_id: str,
+        attack_ability: str,
+        path: str,
+    ) -> None:
+        if not self._weapon_mastery_active(ctx, "topple", require_request=True):
+            return
+        if not ctx.attack_hits.get(target_id, False):
+            return
+        owner = self._resource_owner(ctx.actor_id)
+        if not isinstance(owner, Character):
+            return
+        dc = (
+            8
+            + self._ability_modifier(self._entity(ctx.actor_id), attack_ability)
+            + int(owner.proficiency_bonus)
+        )
+        save_path = f"{path}.weapon_mastery.topple"
+        success = self._roll_topple_mastery_save(ctx, target_id, dc, save_path)
+        ctx.result.state_changes.append(
+            {
+                "type": "weapon_mastery",
+                "mastery_property": "Topple",
+                "weapon_item_id": ctx.action.properties.get("weapon_item_id"),
+                "weapon_action_id": ctx.action.id,
+                "actor_id": ctx.actor_id,
+                "target_id": target_id,
+                "attack_ability": attack_ability,
+                "dc": dc,
+                "saving_throw_success": success,
+                "path": save_path,
+            }
+        )
+        if success:
+            return
+        target = self._entity(target_id)
+        immunity_sources = self._condition_immunity_sources(target, "prone")
+        if immunity_sources:
+            ctx.result.state_changes.append(
+                {
+                    "type": "condition_immune",
+                    "target_id": target_id,
+                    "condition": "prone",
+                    "immunity_sources": immunity_sources,
+                    "path": save_path,
+                }
+            )
+            return
+        effect = EffectInstance(
+            effect_id=self._effect_id(target_id, f"{path}-weapon-mastery-topple"),
+            source_ref=("SRD 5.2.1 Chapter 6: Equipment, Mastery Properties, Topple"),
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition="prone",
+            duration={"until": "stands_up"},
+            tick_on=None,
+            stacking_policy="replace",
+            audit={
+                "weapon_mastery_property": "Topple",
+                "weapon_item_id": ctx.action.properties.get("weapon_item_id"),
+                "node_path": path,
+            },
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [existing for existing in effects if existing.get("condition") != "prone"]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "condition",
+                "target_id": target_id,
+                "condition": "prone",
+                "effect_id": effect.effect_id,
+                "source_action_id": effect.source_action_id,
+                "duration": effect.duration,
+                "tick_on": effect.tick_on,
+                "path": save_path,
+            }
+        )
+
+    def _roll_topple_mastery_save(
+        self,
+        ctx: _Context,
+        target_id: str,
+        dc: int,
+        path: str,
+    ) -> bool:
+        target = self._entity(target_id)
+        auto_fail_sources = self._saving_throw_auto_failure_sources(
+            target,
+            "con",
+            {"ability": "con"},
+        )
+        if auto_fail_sources:
+            ctx.result.node_results[path] = {
+                "target_id": target_id,
+                "ability": "con",
+                "dc": dc,
+                "dc_source": "weapon_mastery_topple:attack_ability+proficiency",
+                "auto_failed": True,
+                "status_sources": [{"kind": "auto_fail", **source} for source in auto_fail_sources],
+                "success": False,
+            }
+            return False
+        base_bonus, proficient, proficiency_sources = self._saving_throw_bonus(target, "con")
+        target_exhaustion_level, exhaustion_penalty = self._exhaustion_details(target)
+        bonus = base_bonus - exhaustion_penalty
+        status_advantage, status_sources = self._saving_throw_status_advantage(target, "con")
+        roll = self.roll_service.roll(d20_expression(bonus), advantage=status_advantage)
+        adjustment, adjustment_rolls, adjustment_sources = self._passive_roll_adjustment(
+            target,
+            bonus_key="saving_throw_bonus_dice",
+            penalty_key="saving_throw_penalty_dice",
+        )
+        ctx.result.dice_rolls.append(roll.to_dict())
+        ctx.result.dice_rolls.extend(extra.to_dict() for extra in adjustment_rolls)
+        total = roll.total + adjustment
+        success = total >= dc
+        ctx.result.node_results[path] = {
+            "target_id": target_id,
+            "ability": "con",
+            "dc": dc,
+            "dc_source": "weapon_mastery_topple:attack_ability+proficiency",
+            "bonus": bonus,
+            "base_bonus": base_bonus,
+            "proficient": proficient,
+            "proficiency_sources": proficiency_sources,
+            "exhaustion_level": target_exhaustion_level,
+            "d20_penalty": exhaustion_penalty,
+            "base_total": roll.total,
+            "passive_adjustment": adjustment,
+            "passive_sources": adjustment_sources,
+            "status_advantage": status_advantage,
+            "status_sources": status_sources,
+            "total": total,
+            "success": success,
+        }
+        expiry = self._expire_next_saving_throw_disadvantage(target_id, path)
+        if expiry is not None:
+            ctx.result.state_changes.append(expiry)
+        return success
+
+    def _weapon_mastery_active(
+        self,
+        ctx: _Context,
+        mastery_property: str,
+        *,
+        require_request: bool = False,
+    ) -> bool:
+        if (
+            str(ctx.action.properties.get("weapon_mastery_property", "")).casefold()
+            != mastery_property
+        ):
+            return False
+        if require_request and not self._weapon_mastery_requested(ctx.params):
+            return False
+        owner = self._resource_owner(ctx.actor_id)
+        return isinstance(owner, Character) and self._has_registered_weapon_mastery(
+            owner,
+            ctx.action,
+        )
+
+    @staticmethod
+    def _light_extra_attack_requested(params: dict[str, Any]) -> bool:
+        return (
+            params.get("use_light_extra_attack") is True or params.get("light_extra_attack") is True
+        )
+
+    def _uses_nick_mastery(self, action: ActionDefinition, params: dict[str, Any]) -> bool:
+        return (
+            self._light_extra_attack_requested(params)
+            and str(action.properties.get("weapon_mastery_property", "")).casefold() == "nick"
+            and self._weapon_mastery_requested(params)
+        )
+
+    def _validate_light_extra_attack_preconditions(
+        self,
+        action: ActionDefinition,
+        actor_id: str,
+        params: dict[str, Any],
+    ) -> None:
+        if not self._light_extra_attack_requested(params):
+            return
+        if "light" not in self._weapon_properties(action):
+            raise AutomationError("Light extra attack requires a Light weapon")
+        if not self._is_actors_turn(actor_id):
+            raise AutomationError("Light extra attack must be made on the actor's turn")
+        actor = self._entity(actor_id)
+        initial = next(
+            (
+                effect
+                for effect in self._status_effects_for(actor)
+                if effect.get("condition") == LIGHT_WEAPON_ATTACK_CONDITION
+            ),
+            None,
+        )
+        if initial is None:
+            raise AutomationError(
+                "Light extra attack requires a prior Attack action with a Light weapon"
+            )
+        current_weapon_id = action.properties.get("weapon_item_id")
+        if current_weapon_id == initial.get("audit", {}).get("weapon_item_id"):
+            raise AutomationError("Light extra attack requires a different Light weapon")
+        if any(
+            effect.get("condition") == LIGHT_EXTRA_ATTACK_USED_CONDITION
+            for effect in self._status_effects_for(actor)
+        ):
+            raise AutomationError("Light extra attack already used this turn")
+
+    def _is_actors_turn(self, actor_id: str) -> bool:
+        if self.state.encounter is None:
+            return True
+        current_actor_id = self.state.encounter.current_combatant_id
+        return current_actor_id is not None and self._entity_ids_match(current_actor_id, actor_id)
+
+    def _mark_light_attack_flow(self, ctx: _Context) -> None:
+        if "light" not in self._weapon_properties(ctx.action) or not self._is_actors_turn(
+            ctx.actor_id
+        ):
+            return
+        if self._light_extra_attack_requested(ctx.params):
+            self._mark_light_extra_attack_used(ctx)
+            return
+        if ctx.action.action_economy != "action":
+            return
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, LIGHT_WEAPON_ATTACK_CONDITION),
+            source_ref=("SRD 5.2.1 Chapter 6: Equipment, Weapon Properties, Light"),
+            source_action_id=ctx.action.id,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=LIGHT_WEAPON_ATTACK_CONDITION,
+            duration={"until": "start_of_next_turn"},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"weapon_item_id": ctx.action.properties.get("weapon_item_id")},
+        )
+        effects = getattr(actor, "status_effects")
+        effects[:] = [
+            existing
+            for existing in effects
+            if existing.get("condition") != LIGHT_WEAPON_ATTACK_CONDITION
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "light_weapon_attack",
+                "actor_id": ctx.actor_id,
+                "weapon_item_id": ctx.action.properties.get("weapon_item_id"),
+                "effect_id": effect.effect_id,
+            }
+        )
+
+    def _mark_light_extra_attack_used(self, ctx: _Context) -> None:
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=self._effect_id(ctx.actor_id, LIGHT_EXTRA_ATTACK_USED_CONDITION),
+            source_ref=("SRD 5.2.1 Chapter 6: Equipment, Weapon Properties, Light"),
+            source_action_id=ctx.action.id,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=LIGHT_EXTRA_ATTACK_USED_CONDITION,
+            duration={"until": "start_of_next_turn"},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={
+                "weapon_item_id": ctx.action.properties.get("weapon_item_id"),
+                "nick": self._uses_nick_mastery(ctx.action, ctx.params),
+            },
+        )
+        getattr(actor, "status_effects").append(effect.to_dict())
+        ctx.result.state_changes.append(
+            {
+                "type": "light_extra_attack",
+                "actor_id": ctx.actor_id,
+                "weapon_item_id": ctx.action.properties.get("weapon_item_id"),
+                "nick": self._uses_nick_mastery(ctx.action, ctx.params),
+                "effect_id": effect.effect_id,
+            }
+        )
+
+    def _apply_damage_based_weapon_mastery(
+        self,
+        ctx: _Context,
+        target_id: str,
+        damage_taken: int,
+        path: str,
+    ) -> None:
+        if damage_taken <= 0:
+            return
+        if self._weapon_mastery_active(ctx, "vex"):
+            self._apply_vex_mastery(ctx, target_id, path)
+        if self._weapon_mastery_active(ctx, "slow", require_request=True):
+            self._apply_slow_mastery(ctx, target_id, path)
+
+    def _apply_vex_mastery(self, ctx: _Context, target_id: str, path: str) -> None:
+        actor = self._entity(ctx.actor_id)
+        effect = EffectInstance(
+            effect_id=f"{ctx.actor_id}:weapon_mastery_vex:{target_id}",
+            source_ref="SRD 5.2.1 Chapter 6: Equipment, Mastery Properties, Vex",
+            source_action_id=ctx.action.id,
+            target_id=ctx.actor_id,
+            applied_by=ctx.actor_id,
+            condition=WEAPON_MASTERY_VEX_CONDITION,
+            passive_modifiers={
+                "weapon_mastery_vex_advantage": True,
+                "weapon_mastery_vex_target_id": target_id,
+            },
+            duration={
+                "until": "end_of_next_turn",
+                "remaining_ticks": self._next_turn_end_remaining_ticks(ctx.actor_id),
+            },
+            tick_on="self_turn_end",
+            stacking_policy="replace",
+            audit={"weapon_item_id": ctx.action.properties.get("weapon_item_id"), "path": path},
+        )
+        effects = getattr(actor, "status_effects")
+        effects[:] = [
+            existing for existing in effects if existing.get("effect_id") != effect.effect_id
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            self._weapon_mastery_effect_change(ctx, effect, target_id, path)
+        )
+
+    def _apply_slow_mastery(self, ctx: _Context, target_id: str, path: str) -> None:
+        target = self._entity(target_id)
+        effect = EffectInstance(
+            effect_id=f"{target_id}:weapon_mastery_slow:{ctx.actor_id}",
+            source_ref="SRD 5.2.1 Chapter 6: Equipment, Mastery Properties, Slow",
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=WEAPON_MASTERY_SLOW_CONDITION,
+            passive_modifiers={"speed_bonus_ft": -10, "weapon_mastery_slow": True},
+            duration={"until": "start_of_next_turn", "turn_owner_id": ctx.actor_id},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"weapon_item_id": ctx.action.properties.get("weapon_item_id"), "path": path},
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing for existing in effects if existing.get("effect_id") != effect.effect_id
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            self._weapon_mastery_effect_change(ctx, effect, target_id, path)
+        )
+
+    def _apply_sap_mastery_on_hit(self, ctx: _Context, target_id: str, path: str) -> None:
+        if not ctx.attack_hits.get(target_id, False) or not self._weapon_mastery_active(ctx, "sap"):
+            return
+        target = self._entity(target_id)
+        effect = EffectInstance(
+            effect_id=f"{target_id}:weapon_mastery_sap:{ctx.actor_id}",
+            source_ref="SRD 5.2.1 Chapter 6: Equipment, Mastery Properties, Sap",
+            source_action_id=ctx.action.id,
+            target_id=target_id,
+            applied_by=ctx.actor_id,
+            condition=WEAPON_MASTERY_SAP_CONDITION,
+            passive_modifiers={"weapon_mastery_sap_disadvantage": True},
+            duration={"until": "start_of_next_turn", "turn_owner_id": ctx.actor_id},
+            tick_on="self_turn_start",
+            stacking_policy="replace",
+            audit={"weapon_item_id": ctx.action.properties.get("weapon_item_id"), "path": path},
+        )
+        effects = getattr(target, "status_effects")
+        effects[:] = [
+            existing for existing in effects if existing.get("effect_id") != effect.effect_id
+        ]
+        effects.append(effect.to_dict())
+        ctx.result.state_changes.append(
+            self._weapon_mastery_effect_change(ctx, effect, target_id, path)
+        )
+
+    def _weapon_mastery_effect_change(
+        self,
+        ctx: _Context,
+        effect: EffectInstance,
+        target_id: str,
+        path: str,
+    ) -> dict[str, Any]:
+        return {
+            "type": "weapon_mastery",
+            "mastery_property": str(ctx.action.properties.get("weapon_mastery_property")),
+            "weapon_item_id": ctx.action.properties.get("weapon_item_id"),
+            "weapon_action_id": ctx.action.id,
+            "actor_id": ctx.actor_id,
+            "target_id": target_id,
+            "effect_id": effect.effect_id,
+            "duration": effect.duration,
+            "path": path,
+        }
+
+    def _next_turn_end_remaining_ticks(self, actor_id: str) -> int:
+        return 2 if self._is_actors_turn(actor_id) else 1
 
     def _dynamic_dice_expression(self, ctx: _Context, node: dict[str, Any]) -> str:
         dice_from = node.get("dice_from")
@@ -10374,8 +10979,26 @@ class AutomationExecutor:
         base_speed += self._class_feature_speed_bonus(entity)
         return effective_speed(
             base_speed,
-            self._status_effects_for(entity),
+            self._effects_with_slow_mastery_cap(self._status_effects_for(entity)),
         )
+
+    @staticmethod
+    def _effects_with_slow_mastery_cap(effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        capped: list[dict[str, Any]] = []
+        slow_applied = False
+        for effect in effects:
+            if effect.get("condition") != WEAPON_MASTERY_SLOW_CONDITION:
+                capped.append(effect)
+                continue
+            copied = dict(effect)
+            modifiers = dict(copied.get("passive_modifiers", {}))
+            if slow_applied:
+                modifiers.pop("speed_bonus_ft", None)
+            else:
+                slow_applied = True
+            copied["passive_modifiers"] = modifiers
+            capped.append(copied)
+        return capped
 
     def _class_feature_speed_bonus(self, entity: Character | Monster | Combatant) -> int:
         owner = entity
@@ -10615,6 +11238,7 @@ class AutomationExecutor:
         advantage_sources.extend(
             self._attack_roll_advantage_sources(actor, action, actor_id, target_id)
         )
+        advantage_sources.extend(self._vex_attack_advantage_sources(actor, target_id))
         advantage_sources.extend(self._pack_tactics_advantage_sources(actor_id, target_id))
         advantage_sources.extend(self._incoming_attack_advantage_sources(target))
         advantage_blocked_source = self._elusive_attack_advantage_block_source(
@@ -10630,6 +11254,7 @@ class AutomationExecutor:
             {"blinded", "frightened", "poisoned", "prone", "restrained"},
         )
         disadvantage_sources.extend(self._attack_roll_disadvantage_sources(actor, action))
+        disadvantage_sources.extend(self._sap_attack_disadvantage_sources(actor))
         disadvantage_sources.extend(
             self._escape_the_horde_disadvantage_sources(
                 action,
@@ -10720,6 +11345,121 @@ class AutomationExecutor:
                 }
             )
         return sources
+
+    def _vex_attack_advantage_sources(
+        self,
+        actor: Character | Monster | Combatant,
+        target_id: str,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if not isinstance(modifiers, dict):
+                continue
+            vex_target_id = modifiers.get("weapon_mastery_vex_target_id")
+            if modifiers.get("weapon_mastery_vex_advantage") is not True or vex_target_id is None:
+                continue
+            if not self._entity_ids_match(str(vex_target_id), target_id):
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "weapon_mastery_vex_advantage",
+                    "target_id": target_id,
+                }
+            )
+        return sources
+
+    def _sap_attack_disadvantage_sources(
+        self,
+        actor: Character | Monster | Combatant,
+    ) -> list[dict[str, Any]]:
+        sources: list[dict[str, Any]] = []
+        for effect in self._status_effects_for(actor):
+            modifiers = effect.get("passive_modifiers", {})
+            if (
+                not isinstance(modifiers, dict)
+                or modifiers.get("weapon_mastery_sap_disadvantage") is not True
+            ):
+                continue
+            sources.append(
+                {
+                    "condition": effect.get("condition"),
+                    "effect_id": effect.get("effect_id"),
+                    "source_action_id": effect.get("source_action_id"),
+                    "modifier": "weapon_mastery_sap_disadvantage",
+                }
+            )
+        return sources
+
+    def _vex_effect_ids_for(
+        self,
+        actor: Character | Monster | Combatant,
+        target_id: str,
+    ) -> set[str]:
+        return {
+            str(effect["effect_id"])
+            for effect in self._status_effects_for(actor)
+            if effect.get("effect_id") is not None
+            and isinstance(effect.get("passive_modifiers"), dict)
+            and effect["passive_modifiers"].get("weapon_mastery_vex_advantage") is True
+            and self._entity_ids_match(
+                str(effect["passive_modifiers"].get("weapon_mastery_vex_target_id")),
+                target_id,
+            )
+        }
+
+    def _sap_effect_ids_for(
+        self,
+        actor: Character | Monster | Combatant,
+    ) -> set[str]:
+        return {
+            str(effect["effect_id"])
+            for effect in self._status_effects_for(actor)
+            if effect.get("effect_id") is not None
+            and isinstance(effect.get("passive_modifiers"), dict)
+            and effect["passive_modifiers"].get("weapon_mastery_sap_disadvantage") is True
+        }
+
+    def _expire_weapon_mastery_attack_effects(
+        self,
+        ctx: _Context,
+        target_id: str,
+        effect_ids: set[str],
+        path: str,
+    ) -> None:
+        if not effect_ids:
+            return
+        removed: list[dict[str, Any]] = []
+        for owner_type, owner_id, effects in self._actor_effect_lists(ctx.actor_id):
+            retained: list[dict[str, Any]] = []
+            for effect in effects:
+                if str(effect.get("effect_id")) in effect_ids:
+                    removed.append(
+                        {
+                            "owner_type": owner_type,
+                            "owner_id": owner_id,
+                            "effect_id": effect.get("effect_id"),
+                            "condition": effect.get("condition"),
+                            "source_action_id": effect.get("source_action_id"),
+                        }
+                    )
+                else:
+                    retained.append(effect)
+            effects[:] = retained
+        if removed:
+            ctx.result.state_changes.append(
+                {
+                    "type": "effect_expired",
+                    "actor_id": ctx.actor_id,
+                    "target_id": target_id,
+                    "trigger": "next_attack_roll",
+                    "removed": removed,
+                    "path": path,
+                }
+            )
 
     def _pack_tactics_advantage_sources(
         self,
@@ -17062,11 +17802,12 @@ class AutomationExecutor:
         actor_id: str,
         params: dict[str, Any],
     ) -> None:
-        if action.action_economy == "none":
+        action_economy = self._weapon_attack_action_economy(action, params)
+        if action_economy == "none":
             return
         actor = self._entity(actor_id)
-        self._validate_condition_gate(actor, action.action_economy)
-        self._validate_blocked_action_economy(actor, action.action_economy)
+        self._validate_condition_gate(actor, action_economy)
+        self._validate_blocked_action_economy(actor, action_economy)
         if self._fleet_step_waives_bonus_action(action, actor_id, params):
             return
         if self._quivering_palm_harmless_release_waives_action(action, params):
@@ -17076,10 +17817,19 @@ class AutomationExecutor:
             and action.action_economy == "action"
         ):
             return
-        amount = int(params.get("movement_cost", 1)) if action.action_economy == "movement" else 1
+        amount = int(params.get("movement_cost", 1)) if action_economy == "movement" else 1
         budget = self.economy.budget_for(actor_id, self._effective_speed(actor))
-        if not budget.can_spend(action.action_economy, amount):
-            raise AutomationError(f"not enough {action.action_economy} budget")
+        if not budget.can_spend(action_economy, amount):
+            raise AutomationError(f"not enough {action_economy} budget")
+
+    def _weapon_attack_action_economy(
+        self,
+        action: ActionDefinition,
+        params: dict[str, Any],
+    ) -> str:
+        if not self._light_extra_attack_requested(params):
+            return action.action_economy
+        return "none" if self._uses_nick_mastery(action, params) else "bonus_action"
 
     def _validate_charmed_targets(
         self,
@@ -17534,7 +18284,8 @@ class AutomationExecutor:
         params: dict[str, Any],
         result: AutomationResult,
     ) -> None:
-        if action.action_economy == "none":
+        action_economy = self._weapon_attack_action_economy(action, params)
+        if action_economy == "none":
             return
         if self._fleet_step_waives_bonus_action(action, actor_id, params):
             ticket = self._clear_fleet_step_window(actor_id) or {}
@@ -17561,16 +18312,16 @@ class AutomationExecutor:
             and action.action_economy == "action"
         ):
             return
-        amount = int(params.get("movement_cost", 1)) if action.action_economy == "movement" else 1
+        amount = int(params.get("movement_cost", 1)) if action_economy == "movement" else 1
         actor = self._entity(actor_id)
         before = self.economy.budget_for(actor_id, self._effective_speed(actor)).to_dict()
-        self.economy.spend(actor_id, action.action_economy, amount)
+        self.economy.spend(actor_id, action_economy, amount)
         after = self.economy.budget_for(actor_id).to_dict()
         result.state_changes.append(
             {
                 "type": "action_economy",
                 "actor_id": actor_id,
-                "economy": action.action_economy,
+                "economy": action_economy,
                 "amount": amount,
                 "before": before,
                 "after": after,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from dnd_llm.core.compendium.loader import CompendiumLoader
 from dnd_llm.core.memory import remember_fragment
 from dnd_llm.dm.context import build_dm_messages
@@ -71,6 +73,204 @@ def test_dm_context_combat_affordances_are_current_actor_only(make_state) -> Non
     assert shortsword["candidate_target_ids"] == ["goblin1"]
     assert "automation" not in serialized
     assert out_of_turn.affordances == []
+
+
+def test_dm_context_includes_owned_item_actions_and_only_relevant_items(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "pc2", "goblin1"]
+    state.encounter.turn_index = 0
+    character = state.characters["pc1"]
+    character.actions = ["srd.cure_wounds"]
+    character.equipment = ["srd.quarterstaff"]
+    character.inventory = {
+        "srd.light_crossbow": 1,
+        "srd.crossbow_bolt": 2,
+        "srd.rope_50ft": 1,
+    }
+    character.resources["private-test-resource"] = 99
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 1,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    compendium = CompendiumLoader("rules_data").load()
+
+    context = build_context_slice(
+        state,
+        actor_id="pc1",
+        actions=compendium.actions,
+        items=compendium.items,
+    )
+
+    action_ids = {item["action_id"] for item in context.affordances}
+    assert "srd.quarterstaff_attack" in action_ids
+    assert "srd.light_crossbow_attack" in action_ids
+    assert context.visible_state["actor"] == {
+        "equipment": ["srd.quarterstaff"],
+        "inventory": {"srd.light_crossbow": 1, "srd.crossbow_bolt": 2},
+    }
+    assert "private-test-resource" not in repr(context.visible_state)
+    assert "srd.rope_50ft" not in repr(context.visible_state)
+
+
+def test_dm_context_weapon_affordances_expose_legal_attack_params(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    character = state.characters["pc1"]
+    character.actions = []
+    character.equipment = ["srd.quarterstaff", "srd.dagger"]
+    character.feature_choices["weapon_mastery.srd.quarterstaff"] = "Topple"
+    compendium = CompendiumLoader("rules_data").load()
+
+    context = build_context_slice(
+        state,
+        actor_id="pc1",
+        actions=compendium.actions,
+        items=compendium.items,
+    )
+
+    quarterstaff = next(
+        item for item in context.affordances if item["action_id"] == "srd.quarterstaff_attack"
+    )
+    dagger = next(item for item in context.affordances if item["action_id"] == "srd.dagger_attack")
+    assert quarterstaff["weapon_mastery_property"] == "Topple"
+    assert quarterstaff["optional_params"] == {
+        "two_handed": {"type": "boolean"},
+        "use_weapon_mastery": {"type": "boolean"},
+    }
+    assert dagger["weapon_mastery_property"] == "Nick"
+    assert dagger["optional_params"] == {
+        "weapon_ability": {
+            "type": "string",
+            "allowed_values": ["str", "dex"],
+        }
+    }
+
+
+def test_dm_context_loading_weapon_remains_a_single_attack_affordance(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    character = state.characters["pc1"]
+    character.actions = []
+    character.equipment = ["srd.light_crossbow"]
+    character.inventory["srd.crossbow_bolt"] = 2
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "condition": "loading_weapon_used_this_turn",
+            "audit": {"weapon_action_id": "srd.light_crossbow_attack"},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+
+    context = build_context_slice(
+        state,
+        actor_id="pc1",
+        actions=compendium.actions,
+        items=compendium.items,
+    )
+
+    light_crossbow = next(
+        item for item in context.affordances if item["action_id"] == "srd.light_crossbow_attack"
+    )
+    assert light_crossbow["weapon_mastery_property"] == "Slow"
+    assert light_crossbow["optional_params"] == {}
+
+
+@pytest.mark.parametrize(
+    ("item_id", "action_id", "mastery_property", "ammunition_id"),
+    [
+        ("srd.dagger", "srd.dagger_attack", "Nick", None),
+        ("srd.shortbow", "srd.shortbow_attack", "Vex", "srd.arrow"),
+        (
+            "srd.light_crossbow",
+            "srd.light_crossbow_attack",
+            "Slow",
+            "srd.crossbow_bolt",
+        ),
+        ("srd.mace", "srd.mace_attack", "Sap", None),
+    ],
+)
+def test_dm_context_registered_weapon_masteries_expose_use_param(
+    make_state,
+    item_id: str,
+    action_id: str,
+    mastery_property: str,
+    ammunition_id: str | None,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    character = state.characters["pc1"]
+    character.actions = []
+    character.equipment = [item_id]
+    character.feature_choices[f"weapon_mastery.{item_id}"] = mastery_property
+    if ammunition_id is not None:
+        character.inventory[ammunition_id] = 1
+    compendium = CompendiumLoader("rules_data").load()
+
+    context = build_context_slice(
+        state,
+        actor_id="pc1",
+        actions=compendium.actions,
+        items=compendium.items,
+    )
+
+    affordance = next(item for item in context.affordances if item["action_id"] == action_id)
+    assert affordance["weapon_mastery_property"] == mastery_property
+    assert affordance["optional_params"]["use_weapon_mastery"] == {"type": "boolean"}
+
+
+def test_dm_context_exposes_registered_nick_light_extra_attack_after_first_light_attack(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    state.encounter.action_budgets["pc1"] = {
+        "action": 0,
+        "bonus_action": 1,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    character = state.characters["pc1"]
+    character.actions = []
+    character.equipment = ["srd.shortsword", "srd.dagger"]
+    character.feature_choices["weapon_mastery.srd.dagger"] = "Nick"
+    state.encounter.combatants["pc1"].status_effects.append(
+        {
+            "condition": "light_weapon_attack_this_turn",
+            "audit": {"weapon_item_id": "srd.shortsword"},
+        }
+    )
+    compendium = CompendiumLoader("rules_data").load()
+
+    context = build_context_slice(
+        state,
+        actor_id="pc1",
+        actions=compendium.actions,
+        items=compendium.items,
+    )
+
+    dagger = next(item for item in context.affordances if item["action_id"] == "srd.dagger_attack")
+    assert dagger["light_extra_attack_economy"] == "none"
+    assert dagger["optional_params"]["use_light_extra_attack"] == {
+        "type": "boolean",
+        "required_value": True,
+    }
+    assert dagger["optional_params"]["use_weapon_mastery"] == {"type": "boolean"}
+    assert not any(item["action_id"] == "srd.shortsword_attack" for item in context.affordances)
 
 
 def test_dm_context_shows_step_of_the_wind_during_fleet_step_window(make_state) -> None:

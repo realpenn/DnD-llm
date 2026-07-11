@@ -45,6 +45,7 @@ from .character_progression import (
     set_warlock_pact_of_tome_choice,
     set_warlock_repelling_blast_choice,
     set_warlock_thirsting_blade_choice,
+    set_weapon_mastery_choices,
 )
 
 ABILITY_ALIASES = {
@@ -220,8 +221,12 @@ EXPERTISE_RE = re.compile(
     r"(?:\bexpertise\b|技能专精|专精)\s*[:=：]?",
     re.IGNORECASE,
 )
+WEAPON_MASTERY_RE = re.compile(
+    r"(?:weapon\s+mastery|武器精通)\s*[:=：]?",
+    re.IGNORECASE,
+)
 EDIT_MARKER_RE = re.compile(
-    r"(?:\bfeat\b|专长|\bclass\b|(?<!多)职业|\bmulticlass\b|多职业|兼职|\bsubclass\b|子职|子职业|hunter['’]?s\s+prey|猎人猎物|defensive\s+tactics|防御战术|divine\s+order|神圣职责|神圣秩序|blessed\s+strikes|祝福打击|受祝打击|primal\s+order|原初职责|原初秩序|自然职责|circle\s+of\s+the\s+land\s+choice|land\s+choice|land\s+type|大地地形|结社地形|地形选择|eldritch\s+invocation|魔能祈唤|魔能祷唤|异界祈唤|lessons\s+of\s+the\s+first\s+ones|初民训诲|初民教诲|始源训诲|pact\s+of\s+the\s+chain|pact\s+of\s+chain|链契|锁链契约|链之契约|pact\s+of\s+the\s+blade|pact\s+of\s+blade|刃契|刀锋契约|刃之契约|pact\s+of\s+the\s+tome|pact\s+of\s+tome|书契|魔典契约|书之契约|影书契约|investment\s+of\s+the\s+chain\s+master|锁链大师投资|链主投资|链契大师投资|thirsting\s+blade|渴饮魔刃|渴血之刃|饥渴之刃|eldritch\s+smite|魔能斩击|魔能重击|异界斩击|ascendant\s+step|升腾步伐|升阶步伐|飞升步伐|one\s+with\s+shadows|影中合一|与影合一|融入阴影|master\s+of\s+myriad\s+forms|万形大师|千形大师|百变大师|gift\s+of\s+the\s+depths|深海馈赠|深渊馈赠|深海赠礼|gaze\s+of\s+two\s+minds|双心凝视|双重心灵凝视|双心视界|\bexpertise\b|技能专精|专精)",
+    r"(?:weapon\s+mastery|武器精通|\bfeat\b|专长|\bclass\b|(?<!多)职业|\bmulticlass\b|多职业|兼职|\bsubclass\b|子职|子职业|hunter['’]?s\s+prey|猎人猎物|defensive\s+tactics|防御战术|divine\s+order|神圣职责|神圣秩序|blessed\s+strikes|祝福打击|受祝打击|primal\s+order|原初职责|原初秩序|自然职责|circle\s+of\s+the\s+land\s+choice|land\s+choice|land\s+type|大地地形|结社地形|地形选择|eldritch\s+invocation|魔能祈唤|魔能祷唤|异界祈唤|lessons\s+of\s+the\s+first\s+ones|初民训诲|初民教诲|始源训诲|pact\s+of\s+the\s+chain|pact\s+of\s+chain|链契|锁链契约|链之契约|pact\s+of\s+the\s+blade|pact\s+of\s+blade|刃契|刀锋契约|刃之契约|pact\s+of\s+the\s+tome|pact\s+of\s+tome|书契|魔典契约|书之契约|影书契约|investment\s+of\s+the\s+chain\s+master|锁链大师投资|链主投资|链契大师投资|thirsting\s+blade|渴饮魔刃|渴血之刃|饥渴之刃|eldritch\s+smite|魔能斩击|魔能重击|异界斩击|ascendant\s+step|升腾步伐|升阶步伐|飞升步伐|one\s+with\s+shadows|影中合一|与影合一|融入阴影|master\s+of\s+myriad\s+forms|万形大师|千形大师|百变大师|gift\s+of\s+the\s+depths|深海馈赠|深渊馈赠|深海赠礼|gaze\s+of\s+two\s+minds|双心凝视|双重心灵凝视|双心视界|\bexpertise\b|技能专精|专精)",
     re.IGNORECASE,
 )
 SKILLED_CHOICE_IGNORE = {
@@ -487,6 +492,13 @@ def apply_natural_language_character_edit(
         )
         errors.extend(result.errors)
 
+    for weapon_mastery_match in WEAPON_MASTERY_RE.finditer(text):
+        choices = _weapon_mastery_choices_from_segment(
+            _segment_after_match(text, weapon_mastery_match)
+        )
+        result = set_weapon_mastery_choices(edited, choices)
+        errors.extend(result.errors)
+
     for feat_match in FEAT_RE.finditer(text):
         feat_id = normalize_feat_name(feat_match.group(1))
         if feat_id is None:
@@ -513,6 +525,14 @@ def _parse_abilities(text: str) -> dict[str, int]:
         ability = ABILITY_ALIASES[alias]
         updates[ability] = int(match.group(2))
     return updates
+
+
+def _weapon_mastery_choices_from_segment(segment: str) -> list[str]:
+    return [
+        choice.strip()
+        for choice in re.split(r"\s*(?:,|，|、|/|\band\b|和)\s*", segment, flags=re.IGNORECASE)
+        if choice.strip()
+    ]
 
 
 def _level_from_match(match: re.Match[str]) -> int:

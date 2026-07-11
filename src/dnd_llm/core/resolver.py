@@ -162,6 +162,9 @@ RESOLVER_THIRSTING_BLADE_EXTRA_ATTACK_USED_CONDITION = "thirsting_blade_extra_at
 RESOLVER_ELDRITCH_SMITE_USED_CONDITION = "eldritch_smite_used"
 RESOLVER_COUNTERCHARM_CONDITIONS = frozenset({"charmed", "frightened"})
 RESOLVER_COUNTERCHARM_RANGE_FT = 30
+RESOLVER_LIGHT_WEAPON_ATTACK_CONDITION = "light_weapon_attack_this_turn"
+RESOLVER_LIGHT_EXTRA_ATTACK_USED_CONDITION = "light_extra_attack_used_this_turn"
+RESOLVER_WEAPON_MASTERY_SLOW_CONDITION = "weapon_mastery_slow"
 
 
 @dataclass
@@ -219,6 +222,13 @@ class ActionResolver:
             return ResolverResult(
                 status="rejected",
                 reason=ownership_error,
+                action_id=action.id,
+            )
+        weapon_property_error = self._weapon_property_error(draft, actor, action)
+        if weapon_property_error is not None:
+            return ResolverResult(
+                status="rejected",
+                reason=weapon_property_error,
                 action_id=action.id,
             )
         requirements_error = self._requirements_error(draft.actor_id, actor, action)
@@ -413,6 +423,8 @@ class ActionResolver:
             )
         if self._uses_thirsting_blade_extra_attack(draft):
             action_economy = "none"
+        if self._uses_light_extra_attack(draft):
+            action_economy = "none" if self._uses_nick_mastery(draft, action) else "bonus_action"
         if self._uses_fleet_step(draft, actor, action):
             action_economy = "none"
         if self._quivering_palm_harmless_release(draft, action):
@@ -600,12 +612,179 @@ class ActionResolver:
         owned_actions = getattr(owner, "actions", [action.id])
         if (
             action.id not in owned_actions
+            and self._owned_item_for_action(owner, action.id) is None
             and not self._has_active_pact_weapon_action(actor, action)
             and not (isinstance(owner, Combatant) and not owned_actions)
             and not action.requirements.get("global", False)
         ):
             return "actor does not own action"
         return None
+
+    def _owned_item_for_action(
+        self,
+        actor: Character | Monster | Combatant,
+        action_id: str,
+    ) -> ItemDefinition | None:
+        return next(
+            (
+                item
+                for item in self.items.values()
+                if action_id in item.actions and self._actor_has_item(actor, item.id)
+            ),
+            None,
+        )
+
+    def _weapon_property_error(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> str | None:
+        if action.action_type != "weapon_attack":
+            return None
+        properties = action.properties.get("weapon_properties", [])
+        if isinstance(properties, str):
+            properties = [properties]
+        weapon_properties = {str(item).casefold() for item in properties}
+        raw_ability = draft.params.get("weapon_ability", draft.params.get("attack_ability"))
+        if raw_ability not in (None, ""):
+            if isinstance(raw_ability, (dict, list)):
+                return "weapon_ability must be a scalar"
+            ability = str(raw_ability).casefold().strip()
+            attack_node = self._first_attack_roll_node(action) or {}
+            default_ability = str(attack_node.get("ability", "str")).casefold()
+            allowed = {"str", "dex"} if "finesse" in weapon_properties else {default_ability}
+            if ability not in allowed:
+                expected = ", ".join(sorted(allowed))
+                return f"weapon_ability must be one of: {expected}"
+            draft.params["weapon_ability"] = ability
+        if "two_handed" in draft.params:
+            if not isinstance(draft.params["two_handed"], bool):
+                return "two_handed must be a boolean"
+            if "versatile" not in weapon_properties:
+                return "two_handed is supported only by versatile weapons"
+        light_error = self._light_extra_attack_error(draft, actor, action)
+        if light_error is not None:
+            return light_error
+        if self._weapon_mastery_requested(draft.params):
+            mastery_property = str(action.properties.get("weapon_mastery_property", ""))
+            if mastery_property.casefold() not in {"vex", "slow", "sap", "nick", "topple"}:
+                return f"weapon mastery {mastery_property or 'unknown'} is not automated"
+            requested_property = self._specific_weapon_mastery_request(draft.params)
+            if requested_property is not None and requested_property != mastery_property.casefold():
+                return (
+                    f"weapon mastery {requested_property.title()} is not available for this weapon"
+                )
+            owner = self._action_owner(draft.actor_id, actor)
+            if not isinstance(owner, Character) or not self._has_registered_weapon_mastery(
+                owner,
+                action,
+            ):
+                return (
+                    f"weapon mastery {mastery_property or 'unknown'} is not registered for "
+                    f"{action.properties.get('weapon_item_id')}"
+                )
+            if mastery_property.casefold() == "nick" and not self._uses_light_extra_attack(draft):
+                return "Nick can be used only for the Light property's extra attack"
+        return None
+
+    @staticmethod
+    def _weapon_mastery_requested(params: dict[str, Any]) -> bool:
+        return any(
+            params.get(param_name) is True
+            for param_name in (
+                "use_weapon_mastery",
+                "use_vex",
+                "use_vex_mastery",
+                "use_slow",
+                "use_slow_mastery",
+                "use_sap",
+                "use_sap_mastery",
+                "use_nick",
+                "use_nick_mastery",
+                "use_topple",
+                "use_topple_mastery",
+            )
+        )
+
+    @staticmethod
+    def _specific_weapon_mastery_request(params: dict[str, Any]) -> str | None:
+        for mastery_property in ("vex", "slow", "sap", "nick", "topple"):
+            if (
+                params.get(f"use_{mastery_property}") is True
+                or params.get(f"use_{mastery_property}_mastery") is True
+            ):
+                return mastery_property
+        return None
+
+    @staticmethod
+    def _has_registered_weapon_mastery(
+        owner: Character,
+        action: ActionDefinition,
+    ) -> bool:
+        weapon_item_id = action.properties.get("weapon_item_id")
+        mastery_property = str(action.properties.get("weapon_mastery_property", ""))
+        return (
+            isinstance(weapon_item_id, str)
+            and str(owner.feature_choices.get(f"weapon_mastery.{weapon_item_id}", "")).casefold()
+            == mastery_property.casefold()
+        )
+
+    def _light_extra_attack_error(
+        self,
+        draft: PlayerActionDraft,
+        actor: Character | Monster | Combatant,
+        action: ActionDefinition,
+    ) -> str | None:
+        if not self._uses_light_extra_attack(draft):
+            return None
+        properties = action.properties.get("weapon_properties", [])
+        if isinstance(properties, str):
+            properties = [properties]
+        if "light" not in {str(item).casefold() for item in properties}:
+            return "Light extra attack requires a Light weapon"
+        if not self._is_actors_turn(draft.actor_id):
+            return "Light extra attack must be made on the actor's turn"
+        initial = next(
+            (
+                effect
+                for effect in self._status_effects_for(actor)
+                if effect.get("condition") == RESOLVER_LIGHT_WEAPON_ATTACK_CONDITION
+            ),
+            None,
+        )
+        if initial is None:
+            return "Light extra attack requires a prior Attack action with a Light weapon"
+        if action.properties.get("weapon_item_id") == initial.get("audit", {}).get(
+            "weapon_item_id"
+        ):
+            return "Light extra attack requires a different Light weapon"
+        if any(
+            effect.get("condition") == RESOLVER_LIGHT_EXTRA_ATTACK_USED_CONDITION
+            for effect in self._status_effects_for(actor)
+        ):
+            return "Light extra attack already used this turn"
+        return None
+
+    @staticmethod
+    def _uses_light_extra_attack(draft: PlayerActionDraft) -> bool:
+        return (
+            draft.params.get("use_light_extra_attack") is True
+            or draft.params.get("light_extra_attack") is True
+        )
+
+    def _uses_nick_mastery(self, draft: PlayerActionDraft, action: ActionDefinition) -> bool:
+        return (
+            self._uses_light_extra_attack(draft)
+            and str(action.properties.get("weapon_mastery_property", "")).casefold() == "nick"
+            and self._weapon_mastery_requested(draft.params)
+        )
+
+    def _is_actors_turn(self, actor_id: str) -> bool:
+        if self.state.encounter is None:
+            return True
+        current_actor_id = self.state.encounter.current_combatant_id
+        return current_actor_id is not None and current_actor_id == actor_id
 
     def _fast_hands_item_error(
         self,
@@ -2950,7 +3129,25 @@ class ActionResolver:
             base_speed += class_feature_speed_bonus(actor)
         if isinstance(actor, Combatant) and actor.entity_id in self.state.monsters:
             effects.extend(self.state.monsters[actor.entity_id].status_effects)
-        return effective_speed(base_speed, effects)
+        return effective_speed(base_speed, self._effects_with_slow_mastery_cap(effects))
+
+    @staticmethod
+    def _effects_with_slow_mastery_cap(effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        capped: list[dict[str, Any]] = []
+        slow_applied = False
+        for effect in effects:
+            if effect.get("condition") != RESOLVER_WEAPON_MASTERY_SLOW_CONDITION:
+                capped.append(effect)
+                continue
+            copied = dict(effect)
+            modifiers = dict(copied.get("passive_modifiers", {}))
+            if slow_applied:
+                modifiers.pop("speed_bonus_ft", None)
+            else:
+                slow_applied = True
+            copied["passive_modifiers"] = modifiers
+            capped.append(copied)
+        return capped
 
     def _check_targets(
         self,

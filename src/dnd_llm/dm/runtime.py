@@ -633,8 +633,17 @@ class DMRuntime:
                 **result.payload,
             }
         if tool_call.name == "request_end_combat":
-            request_result = self.session.tools.request_end_combat(idempotency_key=tool_key)
-            result = self.session.end_combat(f"{tool_key}:orchestrator.end_combat")
+            recover_ammunition = tool_call.arguments.get("recover_ammunition", False)
+            if not isinstance(recover_ammunition, bool):
+                raise DMToolCallError("recover_ammunition must be a boolean")
+            request_result = self.session.tools.request_end_combat(
+                recover_ammunition=recover_ammunition,
+                idempotency_key=tool_key,
+            )
+            result = self.session.end_combat(
+                f"{tool_key}:orchestrator.end_combat",
+                recover_ammunition=recover_ammunition,
+            )
             if not isinstance(result, SessionResult):
                 raise DMToolCallError("unexpected end_combat result")
             return {

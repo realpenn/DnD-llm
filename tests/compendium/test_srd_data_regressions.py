@@ -96,6 +96,14 @@ def test_starter_weapons_reference_executable_srd_attacks() -> None:
     assert dagger.properties["weapon_mastery_property"] == "Nick"
     assert dagger.properties["damage_dice"] == "1d4"
 
+    shortsword = compendium.action("srd.shortsword_attack")
+    assert shortsword.properties["weapon_properties"] == ["finesse", "light"]
+    assert shortsword.properties["weapon_mastery_property"] == "Vex"
+
+    longsword = compendium.action("srd.longsword_attack")
+    assert longsword.properties["versatile_damage_dice"] == "1d10"
+    assert longsword.properties["weapon_mastery_property"] == "Sap"
+
     shortbow = compendium.action("srd.shortbow_attack")
     assert shortbow.range == {"normal_ft": 80, "long_ft": 320}
     assert shortbow.properties["weapon_mastery_property"] == "Vex"

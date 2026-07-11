@@ -1083,7 +1083,12 @@ class EngineTools:
         )
         return {"requested": True, "participants": participants}
 
-    def request_end_combat(self, *, idempotency_key: str | None = None) -> dict[str, Any]:
+    def request_end_combat(
+        self,
+        *,
+        recover_ammunition: bool = False,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
         idempotency_key = idempotency_key or f"request_end_combat:{self.state.event_counter}"
         cached = self._cached_result(idempotency_key)
         if cached is not None:
@@ -1092,9 +1097,13 @@ class EngineTools:
             self.state,
             idempotency_key=idempotency_key,
             tool_name="request_end_combat",
-            tool_result={"requested": True},
+            tool_args={"recover_ammunition": recover_ammunition},
+            tool_result={
+                "requested": True,
+                "recover_ammunition": recover_ammunition,
+            },
         )
-        return {"requested": True}
+        return {"requested": True, "recover_ammunition": recover_ammunition}
 
     def apply_damage(
         self,

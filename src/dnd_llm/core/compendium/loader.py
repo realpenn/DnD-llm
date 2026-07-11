@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ...resources import bundled_rules_data_dir
 from ..automation.definitions import (
     ActionDefinition,
     ClassDefinition,
@@ -18,7 +17,7 @@ from ..automation.definitions import (
 )
 from .localization import AliasIndex
 from .schema_loader import SchemaRegistry
-from .validators import RuleDataValidator, SrdCatalog, rule_payload_digest
+from .validators import RuleDataValidator, trusted_srd_catalog
 
 
 @dataclass
@@ -58,8 +57,7 @@ class CompendiumLoader:
         )
 
     def load(self) -> Compendium:
-        _build_srd_catalog(self.root)
-        self.validator.srd_catalog = _build_srd_catalog(_trusted_srd_root(self.root))
+        self.validator.srd_catalog = trusted_srd_catalog()
         compendium = Compendium()
         compendium.attributions = self._load_attributions()
         for path in sorted(self.root.glob("srd/actions/**/*.json")):
@@ -215,70 +213,6 @@ def _load_items(path: Path) -> list[Any]:
     if isinstance(data, dict):
         return [data]
     raise ValueError(f"unsupported rule data file: {path}")
-
-
-def _trusted_srd_root(root: Path) -> Path:
-    bundled_root = bundled_rules_data_dir().resolve()
-    if root.resolve() == bundled_root:
-        return root
-    return bundled_root
-
-
-def _build_srd_catalog(root: Path) -> SrdCatalog:
-    catalog: SrdCatalog = {}
-    locations: dict[tuple[str, str], Path] = {}
-    patterns = {
-        "action": "srd/actions/**/*.json",
-        "condition": "srd/conditions/**/*.json",
-        "class": "srd/classes/**/*.json",
-        "spell": "srd/spells/**/*.json",
-        "monster": "srd/monsters/**/*.json",
-        "item": "srd/items/**/*.json",
-        "hazard": "srd/hazards/**/*.json",
-    }
-    for namespace, pattern in patterns.items():
-        for path in sorted(root.glob(pattern)):
-            for raw_item in _load_items(path):
-                item = raw_item
-                if namespace == "condition" and isinstance(item, str):
-                    item = {
-                        "id": item,
-                        "name": item.title(),
-                        "localization": {"en": item.title(), "zh": item, "aliases": []},
-                        "source": "SRD 5.2.1",
-                        "rules_version": "srd-5.2.1",
-                        "effects": {},
-                    }
-                if not isinstance(item, dict):
-                    continue
-                _add_catalog_entry(catalog, locations, namespace, item, path)
-                if namespace == "spell" and isinstance(item.get("action"), dict):
-                    _add_catalog_entry(catalog, locations, "action", item["action"], path)
-    return catalog
-
-
-def _add_catalog_entry(
-    catalog: SrdCatalog,
-    locations: dict[tuple[str, str], Path],
-    namespace: str,
-    item: dict[str, Any],
-    path: Path,
-) -> None:
-    item_id = item.get("id")
-    if not isinstance(item_id, str) or not item_id:
-        return
-    key = (namespace, item_id)
-    if key in locations:
-        raise ValueError(f"duplicate {namespace} id {item_id}: {locations[key]} and {path}")
-    locations[key] = path
-    source = item.get("source")
-    rules_version = item.get("rules_version")
-    if isinstance(source, str) and isinstance(rules_version, str):
-        catalog.setdefault(namespace, {})[item_id] = (
-            source,
-            rules_version,
-            rule_payload_digest(item),
-        )
 
 
 def _store_unique(

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..core.automation.definitions import ActionDefinition
+from ..core.automation.definitions import ActionDefinition, ItemDefinition
 from ..core.memory import retrieve_memory
 from ..core.models import Character, Combatant, GameState, Monster
 from ..core.positioning import TacticalGraph
@@ -15,6 +15,8 @@ ROUTER_STEP_OF_THE_WIND_ACTION_IDS = frozenset(
 )
 ROUTER_FLEET_STEP_ACTION_ID = "srd.fleet_step"
 ROUTER_FLEET_STEP_CONDITION = "fleet_step_available"
+ROUTER_LIGHT_WEAPON_ATTACK_CONDITION = "light_weapon_attack_this_turn"
+ROUTER_LIGHT_EXTRA_ATTACK_USED_CONDITION = "light_extra_attack_used_this_turn"
 
 
 @dataclass
@@ -32,6 +34,7 @@ def build_context_slice(
     *,
     actor_id: str | None,
     actions: dict[str, ActionDefinition],
+    items: dict[str, ItemDefinition] | None = None,
     query: str = "",
 ) -> ContextSlice:
     mode = "combat" if state.encounter is not None else state.session_mode
@@ -66,28 +69,41 @@ def build_context_slice(
         and actor_id == state.encounter.current_combatant_id
     ):
         actor_side = _actor_side(state, actor_id)
-        for action_id in _action_ids_for_actor(state, actor_id):
+        action_ids = _action_ids_for_actor(state, actor_id, actions=actions, items=items)
+        visible_actor_items = _visible_actor_items(
+            state,
+            actor_id,
+            action_ids=action_ids,
+            actions=actions,
+            items=items,
+        )
+        if visible_actor_items:
+            visible_state["actor"] = visible_actor_items
+        for action_id in action_ids:
             action = actions.get(action_id)
             if action is None:
                 continue
             if not _action_budget_available(state, actor_id, action):
                 continue
-            affordances.append(
-                {
-                    "action_id": action.id,
-                    "name": action.localization.get("zh") or action.name,
-                    "economy": action.action_economy,
-                    "cost": action.cost.to_dict(),
-                    "target_type": _target_type(action),
-                    "target_policy": action.target_policy,
-                    "candidate_target_ids": _candidate_target_ids(
-                        state,
-                        actor_id=actor_id,
-                        actor_side=actor_side,
-                        action=action,
-                    ),
-                }
-            )
+            if not _action_items_available(state, actor_id, action):
+                continue
+            affordance = {
+                "action_id": action.id,
+                "name": action.localization.get("zh") or action.name,
+                "economy": action.action_economy,
+                "cost": action.cost.to_dict(),
+                "target_type": _target_type(action),
+                "target_policy": action.target_policy,
+                "candidate_target_ids": _candidate_target_ids(
+                    state,
+                    actor_id=actor_id,
+                    actor_side=actor_side,
+                    action=action,
+                ),
+            }
+            if action.action_type == "weapon_attack":
+                affordance.update(_weapon_attack_affordance(state, actor_id, action))
+            affordances.append(affordance)
     return ContextSlice(
         mode=mode,
         actor_id=actor_id,
@@ -161,15 +177,194 @@ def _actor_side(state: GameState, actor_id: str) -> str | None:
     return combatant.side if combatant is not None else None
 
 
-def _action_ids_for_actor(state: GameState, actor_id: str) -> list[str]:
+def _action_ids_for_actor(
+    state: GameState,
+    actor_id: str,
+    *,
+    actions: dict[str, ActionDefinition],
+    items: dict[str, ItemDefinition] | None,
+) -> list[str]:
+    actor_action_ids: list[str]
     if state.encounter is not None and actor_id in state.encounter.combatants:
         combatant = state.encounter.combatants[actor_id]
         if combatant.entity_id in state.characters:
-            return list(state.characters[combatant.entity_id].actions)
-        if combatant.entity_id in state.monsters:
-            return list(state.monsters[combatant.entity_id].actions)
-    actor = state.entity_for_actor(actor_id)
-    return list(getattr(actor, "actions", []))
+            actor_action_ids = list(state.characters[combatant.entity_id].actions)
+        elif combatant.entity_id in state.monsters:
+            actor_action_ids = list(state.monsters[combatant.entity_id].actions)
+        else:
+            actor_action_ids = list(combatant.actions)
+    else:
+        actor = state.entity_for_actor(actor_id)
+        actor_action_ids = list(getattr(actor, "actions", []))
+
+    owner = _resource_owner(state, actor_id)
+    owned_item_ids = _owned_item_ids(owner)
+    item_action_ids: list[str] = []
+    if items is not None:
+        for item_id in owned_item_ids:
+            item = items.get(item_id)
+            if item is not None:
+                item_action_ids.extend(item.actions)
+    else:
+        item_action_ids.extend(
+            action.id for action in actions.values() if _action_item_id(action) in owned_item_ids
+        )
+    return list(dict.fromkeys([*actor_action_ids, *item_action_ids]))
+
+
+def _visible_actor_items(
+    state: GameState,
+    actor_id: str,
+    *,
+    action_ids: list[str],
+    actions: dict[str, ActionDefinition],
+    items: dict[str, ItemDefinition] | None,
+) -> dict[str, Any]:
+    owner = _resource_owner(state, actor_id)
+    relevant_item_ids: set[str] = set()
+    for action_id in action_ids:
+        action = actions.get(action_id)
+        if action is None:
+            continue
+        relevant_item_ids.update(action.cost.items)
+        item_id = _action_item_id(action)
+        if item_id is not None:
+            relevant_item_ids.add(item_id)
+        if items is not None:
+            relevant_item_ids.update(
+                item.id for item in items.values() if action_id in item.actions
+            )
+    equipment = [
+        str(item_id)
+        for item_id in getattr(owner, "equipment", [])
+        if str(item_id) in relevant_item_ids
+    ]
+    inventory = {
+        str(item_id): int(quantity)
+        for item_id, quantity in getattr(owner, "inventory", {}).items()
+        if str(item_id) in relevant_item_ids and int(quantity) > 0
+    }
+    if not equipment and not inventory:
+        return {}
+    return {"equipment": equipment, "inventory": inventory}
+
+
+def _owned_item_ids(actor: Character | Monster | Combatant | None) -> set[str]:
+    if actor is None:
+        return set()
+    item_ids = {
+        str(item_id)
+        for item_id, quantity in getattr(actor, "inventory", {}).items()
+        if int(quantity) > 0
+    }
+    item_ids.update(str(item_id) for item_id in getattr(actor, "equipment", []))
+    return item_ids
+
+
+def _action_item_id(action: ActionDefinition) -> str | None:
+    item_id = action.properties.get("weapon_item_id", action.requirements.get("item"))
+    return str(item_id) if isinstance(item_id, str) and item_id else None
+
+
+def _action_items_available(
+    state: GameState,
+    actor_id: str,
+    action: ActionDefinition,
+) -> bool:
+    owner = _resource_owner(state, actor_id)
+    inventory = getattr(owner, "inventory", {})
+    return all(
+        int(inventory.get(item_id, 0)) >= amount for item_id, amount in action.cost.items.items()
+    )
+
+
+def _weapon_attack_affordance(
+    state: GameState,
+    actor_id: str,
+    action: ActionDefinition,
+) -> dict[str, Any]:
+    properties = action.properties.get("weapon_properties", [])
+    if isinstance(properties, str):
+        properties = [properties]
+    weapon_properties = {str(item).casefold() for item in properties}
+    optional_params: dict[str, Any] = {}
+    if "versatile" in weapon_properties:
+        optional_params["two_handed"] = {"type": "boolean"}
+    if "finesse" in weapon_properties:
+        optional_params["weapon_ability"] = {
+            "type": "string",
+            "allowed_values": ["str", "dex"],
+        }
+
+    light_extra_attack = _light_extra_attack_available(state, actor_id, action)
+    if light_extra_attack:
+        optional_params["use_light_extra_attack"] = {"type": "boolean", "required_value": True}
+
+    mastery_property = action.properties.get("weapon_mastery_property")
+    if _weapon_mastery_available(state, actor_id, action, mastery_property):
+        optional_params["use_weapon_mastery"] = {"type": "boolean"}
+
+    payload: dict[str, Any] = {"optional_params": optional_params}
+    if isinstance(mastery_property, str) and mastery_property:
+        payload["weapon_mastery_property"] = mastery_property
+    if light_extra_attack:
+        payload["light_extra_attack_economy"] = (
+            "none"
+            if str(mastery_property).casefold() == "nick"
+            and _weapon_mastery_available(state, actor_id, action, mastery_property)
+            else "bonus_action"
+        )
+    return payload
+
+
+def _weapon_mastery_available(
+    state: GameState,
+    actor_id: str,
+    action: ActionDefinition,
+    mastery_property: Any,
+) -> bool:
+    if not isinstance(mastery_property, str) or not mastery_property:
+        return False
+    owner = _resource_owner(state, actor_id)
+    if not isinstance(owner, Character):
+        return False
+    weapon_item_id = action.properties.get("weapon_item_id")
+    return (
+        isinstance(weapon_item_id, str)
+        and str(owner.feature_choices.get(f"weapon_mastery.{weapon_item_id}", "")).casefold()
+        == mastery_property.casefold()
+    )
+
+
+def _light_extra_attack_available(
+    state: GameState,
+    actor_id: str,
+    action: ActionDefinition,
+) -> bool:
+    properties = action.properties.get("weapon_properties", [])
+    if isinstance(properties, str):
+        properties = [properties]
+    if "light" not in {str(item).casefold() for item in properties}:
+        return False
+    if state.encounter is not None and state.encounter.current_combatant_id != actor_id:
+        return False
+    actor = _actor_entity(state, actor_id)
+    effects = _status_effects_for(state, actor)
+    initial = next(
+        (
+            effect
+            for effect in effects
+            if effect.get("condition") == ROUTER_LIGHT_WEAPON_ATTACK_CONDITION
+        ),
+        None,
+    )
+    if initial is None:
+        return False
+    if action.properties.get("weapon_item_id") == initial.get("audit", {}).get("weapon_item_id"):
+        return False
+    return not any(
+        effect.get("condition") == ROUTER_LIGHT_EXTRA_ATTACK_USED_CONDITION for effect in effects
+    )
 
 
 def _candidate_target_ids(
@@ -202,16 +397,29 @@ def _action_budget_available(
     actor_id: str,
     action: ActionDefinition,
 ) -> bool:
-    if state.encounter is None or action.action_economy == "none":
+    action_economy = action.action_economy
+    if action.action_type == "weapon_attack" and _light_extra_attack_available(
+        state,
+        actor_id,
+        action,
+    ):
+        mastery_property = action.properties.get("weapon_mastery_property")
+        action_economy = (
+            "none"
+            if str(mastery_property).casefold() == "nick"
+            and _weapon_mastery_available(state, actor_id, action, mastery_property)
+            else "bonus_action"
+        )
+    if state.encounter is None or action_economy == "none":
         return True
     budget = state.encounter.action_budgets.get(actor_id)
     if budget is None:
         return True
     if _fleet_step_makes_step_available(state, actor_id, action):
         return True
-    if action.action_economy == "movement":
+    if action_economy == "movement":
         return int(budget.get("movement", 0)) > 0
-    return int(budget.get(action.action_economy, 0)) > 0
+    return int(budget.get(action_economy, 0)) > 0
 
 
 def _fleet_step_makes_step_available(

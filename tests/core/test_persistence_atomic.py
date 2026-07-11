@@ -29,6 +29,12 @@ def test_save_failure_before_manifest_swap_keeps_previous_generation(
     state.world.current_zone_id = "start"
     registry = _registry_for(state)
     save_game(slot, state, AuditLog(), registry=registry)
+    previous_manifest = json.loads(
+        (slot / persistence.SAVE_MANIFEST_NAME).read_text(encoding="utf-8")
+    )
+    previous_paths = {
+        slot / descriptor["name"] for descriptor in previous_manifest["files"].values()
+    }
     state.world.current_zone_id = "ruins"
     real_replace = os.replace
 
@@ -46,6 +52,109 @@ def test_save_failure_before_manifest_swap_keeps_previous_generation(
     assert loaded_state.world.current_zone_id == "start"
     assert registry is not None
     assert registry["campaign_members"] == {"u1": "pc1"}
+    assert all(path.exists() for path in previous_paths)
+
+
+def test_save_failure_during_manifest_fsync_keeps_previous_generation(
+    tmp_path: Path,
+    make_state,
+    monkeypatch,
+) -> None:
+    slot = tmp_path / "slot"
+    state = make_state()
+    save_game(slot, state, AuditLog(), registry=_registry_for(state))
+    previous_manifest = json.loads(
+        (slot / persistence.SAVE_MANIFEST_NAME).read_text(encoding="utf-8")
+    )
+    previous_paths = {
+        slot / descriptor["name"] for descriptor in previous_manifest["files"].values()
+    }
+
+    def fail_manifest_fsync(path: Path) -> None:
+        raise OSError("injected manifest fsync failure")
+
+    monkeypatch.setattr(persistence, "_fsync_directory", fail_manifest_fsync)
+    state.world.current_zone_id = "ruins"
+
+    with pytest.raises(OSError, match="injected manifest fsync failure"):
+        save_game(slot, state, AuditLog())
+
+    assert all(path.exists() for path in previous_paths)
+
+
+def test_save_removes_unreferenced_generation_files_after_manifest_commit(
+    tmp_path: Path,
+    make_state,
+) -> None:
+    slot = tmp_path / "slot"
+    state = make_state()
+    save_game(slot, state, AuditLog(), registry=_registry_for(state))
+    previous_manifest = json.loads(
+        (slot / persistence.SAVE_MANIFEST_NAME).read_text(encoding="utf-8")
+    )
+    previous_names = {descriptor["name"] for descriptor in previous_manifest["files"].values()}
+    stale_names = {
+        "state-stale.json",
+        "audit-stale.jsonl",
+        "registry-stale.json",
+    }
+    for name in stale_names:
+        (slot / name).write_text("stale", encoding="utf-8")
+    (slot / "state.json").write_text("legacy", encoding="utf-8")
+    (slot / ".state-stale.json.tmp").write_text("temporary", encoding="utf-8")
+
+    state.world.current_zone_id = "ruins"
+    save_game(slot, state, AuditLog())
+
+    current_manifest = json.loads(
+        (slot / persistence.SAVE_MANIFEST_NAME).read_text(encoding="utf-8")
+    )
+    current_names = {descriptor["name"] for descriptor in current_manifest["files"].values()}
+    generation_names = {
+        path.name
+        for pattern in persistence._GENERATION_FILE_PATTERNS
+        for path in slot.glob(pattern)
+    }
+    assert generation_names == current_names
+    assert previous_names.isdisjoint(generation_names)
+    assert stale_names.isdisjoint(generation_names)
+    assert (slot / "state.json").exists()
+    assert (slot / ".state-stale.json.tmp").exists()
+
+
+def test_generation_cleanup_failure_does_not_break_committed_save(
+    tmp_path: Path,
+    make_state,
+    monkeypatch,
+) -> None:
+    slot = tmp_path / "slot"
+    state = make_state()
+    save_game(slot, state, AuditLog(), registry=_registry_for(state))
+    previous_manifest = json.loads(
+        (slot / persistence.SAVE_MANIFEST_NAME).read_text(encoding="utf-8")
+    )
+    previous_paths = {
+        kind: slot / descriptor["name"] for kind, descriptor in previous_manifest["files"].items()
+    }
+    failed_path = previous_paths["state"]
+    real_unlink = Path.unlink
+
+    def fail_one_generation_unlink(path: Path, *args, **kwargs) -> None:
+        if path == failed_path:
+            raise OSError("injected generation cleanup failure")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_one_generation_unlink)
+    state.world.current_zone_id = "ruins"
+
+    save_game(slot, state, AuditLog())
+
+    loaded_state, _, registry = load_game(slot, include_registry=True)
+    assert loaded_state.world.current_zone_id == "ruins"
+    assert registry is None
+    assert failed_path.exists()
+    assert not previous_paths["audit"].exists()
+    assert not previous_paths["registry"].exists()
 
 
 def test_load_rejects_generation_file_checksum_mismatch(tmp_path: Path, make_state) -> None:

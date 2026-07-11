@@ -8067,7 +8067,11 @@ def test_fighter_studied_attacks_grants_targeted_advantage_after_miss(make_state
     )
 
     assert miss["node_results"]["automation[1]"]["hit"] is False
-    effect = state.encounter.combatants["pc1"].status_effects[-1]
+    effect = next(
+        effect
+        for effect in state.encounter.combatants["pc1"].status_effects
+        if effect.get("condition") == "studied_attacks"
+    )
     assert effect["condition"] == "studied_attacks"
     assert effect["source_action_id"] == "srd.studied_attacks"
     assert effect["passive_modifiers"] == {
@@ -8831,7 +8835,12 @@ def test_reckless_attack_does_not_grant_dex_attack_advantage(make_state) -> None
     tools = EngineTools(state, compendium, AuditLog())
 
     tools.perform_action("pc1", "srd.reckless_attack", [])
-    attack = tools.perform_action("pc1", "srd.shortsword_attack", ["goblin1"])
+    attack = tools.perform_action(
+        "pc1",
+        "srd.shortsword_attack",
+        ["goblin1"],
+        {"weapon_ability": "dex"},
+    )
 
     attack_node = attack["node_results"]["automation[1]"]
     assert attack["dice_rolls"][0]["advantage"] is None
@@ -14371,6 +14380,7 @@ def test_potion_of_speed_applies_haste_without_concentration_or_lethargy(
     state.characters["pc1"].inventory["srd.potion_of_speed"] = 1
     state.encounter.combatants["pc1"].speed_ft = 30
     state.encounter.combatants["pc1"].armor_class = 16
+    state.encounter.combatants["goblin1"].abilities["dex"] = 16
     compendium = CompendiumLoader("rules_data").load()
     tools = EngineTools(
         state,
@@ -14389,6 +14399,7 @@ def test_potion_of_speed_applies_haste_without_concentration_or_lethargy(
         "goblin1",
         "srd.shortsword_attack",
         ["pc1"],
+        {"weapon_ability": "dex"},
         idempotency_key="speed-potion-ac-check",
     )
 
@@ -25182,7 +25193,7 @@ def test_conjure_minor_elementals_records_emanation_and_adds_chosen_attack_damag
     assert attack["success"] is True
     assert [roll["expression"] for roll in attack["dice_rolls"]] == [
         "1d20+5",
-        "1d6+3",
+        "1d6",
         "2d8",
     ]
     damage_change = next(change for change in attack["state_changes"] if change["type"] == "damage")
@@ -25251,7 +25262,7 @@ def test_conjure_minor_elementals_upcast_increases_attack_damage_dice(
 
     assert [roll["expression"] for roll in attack["dice_rolls"]] == [
         "1d20+5",
-        "1d6+3",
+        "1d6",
         "3d8",
     ]
     damage_change = next(change for change in attack["state_changes"] if change["type"] == "damage")
@@ -32548,6 +32559,348 @@ def _weapon_attack_action(attack_bonus: int = 99) -> ActionDefinition:
         ],
         audit_label="Test Weapon Attack",
     )
+
+
+def test_quarterstaff_versatile_uses_two_handed_damage_die(make_state) -> None:
+    compendium = CompendiumLoader("rules_data").load()
+
+    one_handed_state = make_state()
+    assert one_handed_state.encounter is not None
+    one_handed_state.encounter.combatants["goblin1"].hp_current = 30
+    one_handed_state.encounter.combatants["goblin1"].hp_max = 30
+    one_handed_action = compendium.action("srd.quarterstaff_attack")
+    one_handed_action.action_economy = "none"
+    one_handed = AutomationExecutor(
+        one_handed_state,
+        _FixedSingleDieRollService([10, 4]),
+        AuditLog(),
+    ).execute(one_handed_action, actor_id="pc1", targets=["goblin1"])
+
+    two_handed_state = make_state()
+    assert two_handed_state.encounter is not None
+    two_handed_state.encounter.combatants["goblin1"].hp_current = 30
+    two_handed_state.encounter.combatants["goblin1"].hp_max = 30
+    two_handed_action = CompendiumLoader("rules_data").load().action("srd.quarterstaff_attack")
+    two_handed_action.action_economy = "none"
+    two_handed = AutomationExecutor(
+        two_handed_state,
+        _FixedSingleDieRollService([10, 7]),
+        AuditLog(),
+    ).execute(
+        two_handed_action,
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={"two_handed": True},
+    )
+
+    assert one_handed.dice_rolls[1]["expression"] == "1d6"
+    assert two_handed.dice_rolls[1]["expression"] == "1d8"
+    assert (
+        next(change for change in one_handed.state_changes if change["type"] == "damage")["amount"]
+        == 7
+    )
+    assert (
+        next(change for change in two_handed.state_changes if change["type"] == "damage")["amount"]
+        == 10
+    )
+
+
+def test_quarterstaff_topple_mastery_requires_registration_and_request(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    action = CompendiumLoader("rules_data").load().action("srd.quarterstaff_attack")
+    action.action_economy = "none"
+
+    with pytest.raises(
+        AutomationError,
+        match="weapon mastery Topple is not registered for srd.quarterstaff",
+    ):
+        AutomationExecutor(
+            state,
+            _FixedSingleDieRollService([]),
+            AuditLog(),
+        ).execute(
+            action,
+            actor_id="pc1",
+            targets=["goblin1"],
+            params={"use_weapon_mastery": True},
+        )
+
+    state.characters["pc1"].feature_choices["weapon_mastery.srd.quarterstaff"] = "Topple"
+    without_request = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 4]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", targets=["goblin1"])
+
+    assert not any(change["type"] == "weapon_mastery" for change in without_request.state_changes)
+    assert not any(
+        effect.get("condition") == "prone"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_quarterstaff_topple_mastery_uses_attack_ability_dc_and_applies_prone(
+    make_state,
+) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.characters["pc1"].feature_choices["weapon_mastery.srd.quarterstaff"] = "Topple"
+    action = CompendiumLoader("rules_data").load().action("srd.quarterstaff_attack")
+    action.action_economy = "none"
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 1, 4]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={"use_weapon_mastery": True},
+    )
+
+    save = result.node_results["automation[1].weapon_mastery.topple"]
+    mastery = next(change for change in result.state_changes if change["type"] == "weapon_mastery")
+    assert save["ability"] == "con"
+    assert save["dc"] == 13
+    assert save["success"] is False
+    assert mastery["attack_ability"] == "str"
+    assert mastery["saving_throw_success"] is False
+    assert any(
+        effect.get("condition") == "prone"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_vex_mastery_grants_advantage_on_next_attack_against_same_target(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.characters["pc1"].feature_choices["weapon_mastery.srd.shortbow"] = "Vex"
+    state.characters["pc1"].inventory["srd.arrow"] = 2
+    compendium = CompendiumLoader("rules_data").load()
+    shortbow = compendium.action("srd.shortbow_attack")
+    shortbow.action_economy = "none"
+    follow_up = compendium.action("srd.quarterstaff_attack")
+    follow_up.action_economy = "none"
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 4, 10, 4]),
+        AuditLog(),
+    )
+
+    executor.execute(shortbow, actor_id="pc1", targets=["goblin1"])
+    result = executor.execute(follow_up, actor_id="pc1", targets=["goblin1"])
+
+    assert result.dice_rolls[0]["advantage"] == "advantage"
+    assert not any(
+        effect.get("condition") == "weapon_mastery_vex"
+        for effect in state.encounter.combatants["pc1"].status_effects
+    )
+
+
+def test_slow_mastery_reduces_speed_by_ten_feet_after_damage(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.characters["pc1"].feature_choices["weapon_mastery.srd.light_crossbow"] = "Slow"
+    state.characters["pc1"].inventory["srd.crossbow_bolt"] = 1
+    action = CompendiumLoader("rules_data").load().action("srd.light_crossbow_attack")
+    action.action_economy = "none"
+
+    AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 4]),
+        AuditLog(),
+    ).execute(
+        action,
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={"use_weapon_mastery": True},
+    )
+
+    slow = next(
+        effect
+        for effect in state.encounter.combatants["goblin1"].status_effects
+        if effect.get("condition") == "weapon_mastery_slow"
+    )
+    assert slow["passive_modifiers"]["speed_bonus_ft"] == -10
+
+
+def test_sap_mastery_disadvantages_and_consumes_targets_next_attack(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.characters["pc1"].feature_choices["weapon_mastery.srd.mace"] = "Sap"
+    mace = CompendiumLoader("rules_data").load().action("srd.mace_attack")
+    mace.action_economy = "none"
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 4, 10, 4]),
+        AuditLog(),
+    )
+
+    executor.execute(mace, actor_id="pc1", targets=["goblin1"])
+    result = executor.execute(
+        _weapon_attack_action(),
+        actor_id="goblin1",
+        targets=["pc1"],
+    )
+
+    assert result.dice_rolls[0]["advantage"] == "disadvantage"
+    assert not any(
+        effect.get("condition") == "weapon_mastery_sap"
+        for effect in state.encounter.combatants["goblin1"].status_effects
+    )
+
+
+def test_nick_moves_light_extra_attack_into_attack_action(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.initiative_order = ["pc1", "goblin1"]
+    state.encounter.turn_index = 0
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.encounter.action_budgets["pc1"] = {
+        "action": 1,
+        "bonus_action": 1,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    state.characters["pc1"].feature_choices["weapon_mastery.srd.dagger"] = "Nick"
+    compendium = CompendiumLoader("rules_data").load()
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 2, 10, 2]),
+        AuditLog(),
+    )
+
+    executor.execute(
+        compendium.action("srd.shortsword_attack"), actor_id="pc1", targets=["goblin1"]
+    )
+    result = executor.execute(
+        compendium.action("srd.dagger_attack"),
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={"use_light_extra_attack": True, "use_weapon_mastery": True},
+    )
+
+    budget = state.encounter.action_budgets["pc1"]
+    assert budget["action"] == 0
+    assert budget["bonus_action"] == 1
+    assert (
+        next(change for change in result.state_changes if change["type"] == "damage")["amount"] == 2
+    )
+    assert (
+        next(change for change in result.state_changes if change["type"] == "light_extra_attack")[
+            "nick"
+        ]
+        is True
+    )
+
+
+def test_finesse_defaults_to_higher_ability_and_allows_explicit_choice(make_state) -> None:
+    default_state = make_state()
+    assert default_state.encounter is not None
+    default_state.encounter.combatants["goblin1"].hp_current = 30
+    default_state.encounter.combatants["goblin1"].hp_max = 30
+    default_action = CompendiumLoader("rules_data").load().action("srd.shortsword_attack")
+    default_action.action_economy = "none"
+    default_result = AutomationExecutor(
+        default_state,
+        _FixedSingleDieRollService([10, 2]),
+        AuditLog(),
+    ).execute(default_action, actor_id="pc1", targets=["goblin1"])
+
+    explicit_state = make_state()
+    assert explicit_state.encounter is not None
+    explicit_state.encounter.combatants["goblin1"].hp_current = 30
+    explicit_state.encounter.combatants["goblin1"].hp_max = 30
+    explicit_action = CompendiumLoader("rules_data").load().action("srd.shortsword_attack")
+    explicit_action.action_economy = "none"
+    explicit_result = AutomationExecutor(
+        explicit_state,
+        _FixedSingleDieRollService([10, 2]),
+        AuditLog(),
+    ).execute(
+        explicit_action,
+        actor_id="pc1",
+        targets=["goblin1"],
+        params={"weapon_ability": "dex"},
+    )
+
+    assert default_result.node_results["automation[1]"]["ability"] == "str"
+    assert default_result.node_results["automation[1]"]["base_attack_bonus"] == 5
+    assert explicit_result.node_results["automation[1]"]["ability"] == "dex"
+    assert explicit_result.node_results["automation[1]"]["base_attack_bonus"] == 4
+    assert (
+        next(change for change in default_result.state_changes if change["type"] == "damage")[
+            "amount"
+        ]
+        == 5
+    )
+    assert (
+        next(change for change in explicit_result.state_changes if change["type"] == "damage")[
+            "amount"
+        ]
+        == 4
+    )
+
+
+def test_loading_allows_one_shot_per_available_action(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    state.characters["pc1"].inventory["srd.crossbow_bolt"] = 2
+    action = CompendiumLoader("rules_data").load().action("srd.light_crossbow_attack")
+    state.encounter.action_budgets["pc1"] = {
+        "action": 2,
+        "bonus_action": 1,
+        "reaction": 1,
+        "movement": 30,
+        "movement_used": 0,
+        "free": 1,
+    }
+    executor = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 4, 10, 4]),
+        AuditLog(),
+    )
+
+    executor.execute(action, actor_id="pc1", targets=["goblin1"])
+    executor.execute(action, actor_id="pc1", targets=["goblin1"])
+
+    assert state.characters["pc1"].inventory["srd.crossbow_bolt"] == 0
+    assert state.encounter.action_budgets["pc1"]["action"] == 0
+
+
+def test_weapon_mastery_declaration_does_not_grant_unowned_mastery_effect(make_state) -> None:
+    state = make_state()
+    assert state.encounter is not None
+    state.encounter.combatants["goblin1"].hp_current = 30
+    state.encounter.combatants["goblin1"].hp_max = 30
+    action = CompendiumLoader("rules_data").load().action("srd.quarterstaff_attack")
+    action.action_economy = "none"
+
+    result = AutomationExecutor(
+        state,
+        _FixedSingleDieRollService([10, 4]),
+        AuditLog(),
+    ).execute(action, actor_id="pc1", targets=["goblin1"])
+
+    assert action.properties["weapon_mastery_property"] == "Topple"
+    assert not any(change["type"] == "condition" for change in result.state_changes)
 
 
 def test_bane_subtracts_passive_dice_from_saving_throws(make_state) -> None:

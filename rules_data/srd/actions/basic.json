@@ -37,16 +37,19 @@
             "properties": {
                 "weapon_item_id": "srd.shortsword",
                 "weapon_category": "melee",
-                "weapon_properties": ["finesse", "light"]
+                "weapon_properties": ["finesse", "light"],
+                "weapon_mastery_property": "Vex",
+                "damage_dice": "1d6"
             },
             "friendly_fire_policy": "confirm",
             "cost": {},
             "automation": [
                 {"type": "target", "mode": "explicit"},
-                {"type": "attack_roll", "attack_bonus": 5, "ability": "dex"},
+                {"type": "attack_roll", "ability": "dex"},
                 {
                     "type": "damage",
-                    "dice": "1d6+3",
+                    "dice": "1d6",
+                    "bonus_from": {"ability_modifier": "dex"},
                     "damage_type": "piercing",
                     "ability": "dex",
                     "requires_hit": true
@@ -70,7 +73,14 @@
             "range": {"normal_ft": 5},
             "target_policy": {"min": 1, "max": 1, "harmful": true},
             "requirements": {},
-            "properties": {"weapon_item_id": "srd.longsword", "weapon_category": "melee"},
+            "properties": {
+                "weapon_item_id": "srd.longsword",
+                "weapon_category": "melee",
+                "weapon_properties": ["versatile"],
+                "weapon_mastery_property": "Sap",
+                "damage_dice": "1d8",
+                "versatile_damage_dice": "1d10"
+            },
             "friendly_fire_policy": "confirm",
             "cost": {},
             "automation": [
@@ -186,10 +196,10 @@
                 "weapon_properties": ["ammunition", "two-handed"],
                 "weapon_mastery_property": "Vex",
                 "damage_dice": "1d6",
-                "ammunition": "arrow"
+                "ammunition": "srd.arrow"
             },
             "friendly_fire_policy": "confirm",
-            "cost": {},
+            "cost": {"items": {"srd.arrow": 1}},
             "automation": [
                 {"type": "target", "mode": "explicit"},
                 {"type": "attack_roll", "ability": "dex"},
@@ -225,10 +235,10 @@
                 "weapon_properties": ["ammunition", "loading", "two-handed"],
                 "weapon_mastery_property": "Slow",
                 "damage_dice": "1d8",
-                "ammunition": "bolt"
+                "ammunition": "srd.crossbow_bolt"
             },
             "friendly_fire_policy": "confirm",
-            "cost": {},
+            "cost": {"items": {"srd.crossbow_bolt": 1}},
             "automation": [
                 {"type": "target", "mode": "explicit"},
                 {"type": "attack_roll", "ability": "dex"},

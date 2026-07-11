@@ -3386,3 +3386,51 @@ def test_subclass_edit_preserves_consumed_shared_class_resource() -> None:
     assert edited.accepted is True
     assert edited.character is not None
     assert edited.character.resources["srd.resource.channel_divinity"] == 1
+
+
+def test_character_edit_registers_srd_weapon_mastery_choices_with_class_limit() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    accepted = apply_natural_language_character_edit(
+        character,
+        "武器精通 长剑、长棍、短弓",
+    )
+    rejected = apply_natural_language_character_edit(
+        character,
+        "武器精通 长剑、长棍、短弓、匕首",
+    )
+
+    assert accepted.accepted is True
+    assert accepted.character is not None
+    assert accepted.character.feature_choices["weapon_mastery.srd.longsword"] == "Sap"
+    assert accepted.character.feature_choices["weapon_mastery.srd.quarterstaff"] == "Topple"
+    assert accepted.character.feature_choices["weapon_mastery.srd.shortbow"] == "Vex"
+    assert rejected.accepted is False
+    assert rejected.errors is not None
+    assert any("超过职业允许数量" in error for error in rejected.errors)
+
+
+def test_character_edit_enforces_barbarian_melee_weapon_mastery_scope() -> None:
+    character = default_fighter("pc1", "Penn")
+
+    result = apply_natural_language_character_edit(
+        character,
+        "职业 野蛮人1 武器精通 手斧、短弓",
+    )
+
+    assert result.accepted is False
+    assert result.errors is not None
+    assert any("Barbarian 仅限近战武器" in error for error in result.errors)
+
+
+def test_character_edit_removes_weapon_mastery_choices_when_feature_is_lost() -> None:
+    character = default_fighter("pc1", "Penn")
+    mastered = apply_natural_language_character_edit(character, "武器精通 长剑、长棍、短弓")
+    assert mastered.accepted is True
+    assert mastered.character is not None
+
+    changed = apply_natural_language_character_edit(mastered.character, "职业 法师1")
+
+    assert changed.accepted is True
+    assert changed.character is not None
+    assert not any(key.startswith("weapon_mastery.") for key in changed.character.feature_choices)

@@ -168,6 +168,48 @@ CLASS_LANGUAGES = {
     "rogue": ["thieves_cant"],
 }
 
+WEAPON_MASTERY_CHOICE_PREFIX = "weapon_mastery."
+WEAPON_MASTERY_PROPERTIES = {
+    "srd.dagger": "Nick",
+    "srd.handaxe": "Vex",
+    "srd.light_crossbow": "Slow",
+    "srd.longsword": "Sap",
+    "srd.mace": "Sap",
+    "srd.quarterstaff": "Topple",
+    "srd.shortbow": "Vex",
+    "srd.shortsword": "Vex",
+    "srd.spear": "Sap",
+}
+WEAPON_MASTERY_MELEE_WEAPONS = {
+    "srd.dagger",
+    "srd.handaxe",
+    "srd.longsword",
+    "srd.mace",
+    "srd.quarterstaff",
+    "srd.shortsword",
+    "srd.spear",
+}
+WEAPON_MASTERY_ALIASES = {
+    _choice_key(alias): weapon_id
+    for weapon_id, aliases in {
+        "srd.dagger": ("srd.dagger", "dagger", "匕首"),
+        "srd.handaxe": ("srd.handaxe", "handaxe", "hand axe", "手斧"),
+        "srd.light_crossbow": (
+            "srd.light_crossbow",
+            "light crossbow",
+            "light_crossbow",
+            "轻弩",
+        ),
+        "srd.longsword": ("srd.longsword", "longsword", "long sword", "长剑"),
+        "srd.mace": ("srd.mace", "mace", "硬头锤", "钉头锤"),
+        "srd.quarterstaff": ("srd.quarterstaff", "quarterstaff", "长棍", "木杖"),
+        "srd.shortbow": ("srd.shortbow", "shortbow", "短弓"),
+        "srd.shortsword": ("srd.shortsword", "shortsword", "short sword", "短剑"),
+        "srd.spear": ("srd.spear", "spear", "长矛"),
+    }.items()
+    for alias in aliases
+}
+
 CLASS_BASE_ACTIONS = {
     "bard": ["srd.cure_wounds"],
     "cleric": ["srd.cure_wounds"],
@@ -985,6 +1027,88 @@ def normalize_subclass_name(raw: str, class_name: str | None = None) -> tuple[st
 
 def normalize_feat_name(raw: str) -> str | None:
     return FEAT_ALIASES.get(raw.strip().casefold())
+
+
+def normalize_weapon_mastery_weapon(raw: str) -> str | None:
+    return WEAPON_MASTERY_ALIASES.get(_choice_key(raw))
+
+
+def weapon_mastery_choice_limit(character: Character) -> int:
+    return _weapon_mastery_choice_limit_for_levels(character.class_levels)
+
+
+def _weapon_mastery_choice_limit_for_levels(class_levels: dict[str, int]) -> int:
+    barbarian_level = int(class_levels.get("barbarian", 0))
+    fighter_level = int(class_levels.get("fighter", 0))
+    if barbarian_level >= 10:
+        barbarian_choices = 4
+    elif barbarian_level >= 4:
+        barbarian_choices = 3
+    elif barbarian_level >= 1:
+        barbarian_choices = 2
+    else:
+        barbarian_choices = 0
+    if fighter_level >= 16:
+        fighter_choices = 6
+    elif fighter_level >= 10:
+        fighter_choices = 5
+    elif fighter_level >= 4:
+        fighter_choices = 4
+    elif fighter_level >= 1:
+        fighter_choices = 3
+    else:
+        fighter_choices = 0
+    fixed_choices = 2 * sum(
+        int(class_levels.get(class_name, 0)) >= 1 for class_name in ("paladin", "ranger", "rogue")
+    )
+    return barbarian_choices + fighter_choices + fixed_choices
+
+
+def set_weapon_mastery_choices(
+    character: Character,
+    weapons: Sequence[str],
+) -> ProgressionResult:
+    normalized: list[str] = []
+    for weapon in weapons:
+        weapon_id = normalize_weapon_mastery_weapon(str(weapon))
+        if weapon_id is None:
+            return ProgressionResult([f"不支持的 SRD Weapon Mastery 武器：{weapon}"])
+        if weapon_id in normalized:
+            return ProgressionResult([f"Weapon Mastery 武器不能重复登记：{weapon_id}"])
+        normalized.append(weapon_id)
+    if not _weapon_mastery_choices_assignable(normalized, character.class_levels):
+        return ProgressionResult(
+            ["Weapon Mastery 登记超过职业允许数量，或不符合 Barbarian 仅限近战武器的范围"]
+        )
+    choices = {
+        key: value
+        for key, value in character.feature_choices.items()
+        if not key.startswith(WEAPON_MASTERY_CHOICE_PREFIX)
+    }
+    for weapon_id in normalized:
+        choices[f"{WEAPON_MASTERY_CHOICE_PREFIX}{weapon_id}"] = WEAPON_MASTERY_PROPERTIES[weapon_id]
+    character.feature_choices = choices
+    _recalculate_progression_fields(character)
+    return ProgressionResult(errors=[])
+
+
+def _weapon_mastery_choices_assignable(
+    weapon_ids: Sequence[str],
+    class_levels: dict[str, int],
+) -> bool:
+    barbarian_level = int(class_levels.get("barbarian", 0))
+    if barbarian_level >= 10:
+        barbarian_slots = 4
+    elif barbarian_level >= 4:
+        barbarian_slots = 3
+    elif barbarian_level >= 1:
+        barbarian_slots = 2
+    else:
+        barbarian_slots = 0
+    total_slots = _weapon_mastery_choice_limit_for_levels(class_levels)
+    unrestricted_slots = total_slots - barbarian_slots
+    ranged_choices = sum(weapon_id not in WEAPON_MASTERY_MELEE_WEAPONS for weapon_id in weapon_ids)
+    return len(weapon_ids) <= total_slots and ranged_choices <= unrestricted_slots
 
 
 def normalize_hunters_prey_choice(raw: str) -> str | None:
@@ -1944,6 +2068,7 @@ def _recalculate_progression_fields(character: Character) -> None:
 
 def _sync_feature_choices(character: Character) -> None:
     choices = dict(getattr(character, "feature_choices", {}))
+    _sync_weapon_mastery_choices(choices, character.class_levels)
     if (
         character.subclasses.get("ranger") == "hunter"
         and int(character.class_levels.get("ranger", 0)) >= 3
@@ -2122,6 +2247,27 @@ def _sync_feature_choices(character: Character) -> None:
         choices.pop(WARLOCK_THIRSTING_BLADE_CHOICE_KEY, None)
         choices.pop(WARLOCK_ELDRITCH_SMITE_CHOICE_KEY, None)
     character.feature_choices = choices
+
+
+def _sync_weapon_mastery_choices(
+    choices: dict[str, str],
+    class_levels: dict[str, int],
+) -> None:
+    selected: list[str] = []
+    for key, value in choices.items():
+        if not key.startswith(WEAPON_MASTERY_CHOICE_PREFIX):
+            continue
+        weapon_id = key.removeprefix(WEAPON_MASTERY_CHOICE_PREFIX)
+        mastery_property = WEAPON_MASTERY_PROPERTIES.get(weapon_id)
+        if mastery_property is None or str(value).casefold() != mastery_property.casefold():
+            continue
+        if _weapon_mastery_choices_assignable([*selected, weapon_id], class_levels):
+            selected.append(weapon_id)
+    for key in list(choices):
+        if key.startswith(WEAPON_MASTERY_CHOICE_PREFIX):
+            choices.pop(key)
+    for weapon_id in selected:
+        choices[f"{WEAPON_MASTERY_CHOICE_PREFIX}{weapon_id}"] = WEAPON_MASTERY_PROPERTIES[weapon_id]
 
 
 def _append_fixed_class_tool_proficiencies(character: Character, class_name: str) -> None:

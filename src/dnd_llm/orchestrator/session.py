@@ -114,6 +114,7 @@ class GameSession:
             self.state,
             actor_id=actor_id,
             actions=self.compendium.actions,
+            items=self.compendium.items,
             query=query,
         )
 
@@ -217,9 +218,20 @@ class GameSession:
             self._handle_session_event,
         )
 
-    def end_combat(self, idempotency_key: str) -> SessionResult | object:
+    def end_combat(
+        self,
+        idempotency_key: str,
+        *,
+        recover_ammunition: bool = False,
+    ) -> SessionResult | object:
         return self.queue.submit(
-            QueuedEvent(idempotency_key=idempotency_key, payload={"type": "end_combat"}),
+            QueuedEvent(
+                idempotency_key=idempotency_key,
+                payload={
+                    "type": "end_combat",
+                    "recover_ammunition": recover_ammunition,
+                },
+            ),
             self._handle_session_event,
         )
 
@@ -413,6 +425,11 @@ class GameSession:
                 id=str(payload["encounter_id"]),
                 combatants=combatants,
                 tactical_graph=tactical_graph.to_dict(),
+                status_effect_baselines={
+                    combatant_id: [dict(effect) for effect in combatant.status_effects]
+                    for combatant_id, combatant in combatants.items()
+                },
+                ammunition_inventory_baselines=self._ammunition_inventory_baselines(combatants),
             )
             self.state.session_mode = "combat"
             self.economy.use_backing(self.state.encounter.action_budgets)
@@ -447,7 +464,10 @@ class GameSession:
             )
             return SessionResult(accepted=True, payload=result)
         if event_type == "end_combat":
-            return self._handle_end_combat(event.idempotency_key)
+            return self._handle_end_combat(
+                event.idempotency_key,
+                recover_ammunition=bool(payload.get("recover_ammunition", False)),
+            )
         if event_type == "enter_cutscene":
             return self._handle_enter_cutscene(
                 event.idempotency_key,
@@ -504,10 +524,16 @@ class GameSession:
         )
         return SessionResult(accepted=True, payload=result)
 
-    def _handle_end_combat(self, idempotency_key: str) -> SessionResult:
+    def _handle_end_combat(
+        self,
+        idempotency_key: str,
+        *,
+        recover_ammunition: bool,
+    ) -> SessionResult:
         if self.state.encounter is None:
             return SessionResult(accepted=False, payload={"reason": "no active encounter"})
         ended_encounter_id = self.state.encounter.id
+        ammunition_recovered = _recover_spent_ammunition(self.state) if recover_ammunition else {}
         _sync_encounter_status_effects_to_backing(self.state)
         self.state.encounter = None
         self.economy.use_backing({})
@@ -515,6 +541,8 @@ class GameSession:
         result = {
             "ended_encounter_id": ended_encounter_id,
             "session_mode": self.state.session_mode,
+            "ammunition_recovery_attempted": recover_ammunition,
+            "ammunition_recovered": ammunition_recovered,
         }
         self.audit_log.append(
             self.state,
@@ -523,6 +551,25 @@ class GameSession:
             tool_result=result,
         )
         return SessionResult(accepted=True, payload=result)
+
+    def _ammunition_inventory_baselines(
+        self,
+        combatants: dict[str, Combatant],
+    ) -> dict[str, dict[str, int]]:
+        ammunition_item_ids = {
+            item.id for item in self.compendium.items.values() if item.item_type == "ammunition"
+        }
+        baselines: dict[str, dict[str, int]] = {}
+        for combatant in combatants.values():
+            character = self.state.characters.get(combatant.entity_id)
+            if character is None:
+                continue
+            baselines[character.id] = {
+                item_id: int(quantity)
+                for item_id, quantity in character.inventory.items()
+                if item_id in ammunition_item_ids and int(quantity) > 0
+            }
+        return baselines
 
     def _handle_enter_cutscene(self, idempotency_key: str, *, reason: str) -> SessionResult:
         if self.state.encounter is not None:
@@ -1213,7 +1260,84 @@ def _sync_encounter_status_effects_to_backing(state: GameState) -> None:
         )
         if backing is None or combatant.status_effects is backing.status_effects:
             continue
-        backing.status_effects = [dict(effect) for effect in combatant.status_effects]
+        baseline = state.encounter.status_effect_baselines.get(combatant.id, [])
+        backing.status_effects = _merge_status_effect_changes(
+            baseline=baseline,
+            combatant_effects=combatant.status_effects,
+            backing_effects=backing.status_effects,
+        )
+
+
+def _recover_spent_ammunition(state: GameState) -> dict[str, dict[str, int]]:
+    if state.encounter is None:
+        return {}
+    recovered: dict[str, dict[str, int]] = {}
+    for character_id, baseline in state.encounter.ammunition_inventory_baselines.items():
+        character = state.characters.get(character_id)
+        if character is None:
+            continue
+        character_recovered: dict[str, int] = {}
+        for item_id, starting_quantity in baseline.items():
+            current_quantity = int(character.inventory.get(item_id, 0))
+            spent = max(0, int(starting_quantity) - current_quantity)
+            amount = spent // 2
+            if amount <= 0:
+                continue
+            character.inventory[item_id] = current_quantity + amount
+            character_recovered[item_id] = amount
+        if character_recovered:
+            recovered[character_id] = character_recovered
+    return recovered
+
+
+def _merge_status_effect_changes(
+    *,
+    baseline: list[dict[str, Any]],
+    combatant_effects: list[dict[str, Any]],
+    backing_effects: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    baseline_by_id = {_status_effect_identity(effect): effect for effect in baseline}
+    combatant_by_id = {_status_effect_identity(effect): effect for effect in combatant_effects}
+    backing_by_id = {_status_effect_identity(effect): effect for effect in backing_effects}
+    merged: list[dict[str, Any]] = []
+    ordered_ids = list(
+        dict.fromkeys(
+            [
+                *(_status_effect_identity(effect) for effect in baseline),
+                *(_status_effect_identity(effect) for effect in combatant_effects),
+                *(_status_effect_identity(effect) for effect in backing_effects),
+            ]
+        )
+    )
+    for effect_id in ordered_ids:
+        original = baseline_by_id.get(effect_id)
+        combatant_effect = combatant_by_id.get(effect_id)
+        backing_effect = backing_by_id.get(effect_id)
+        selected: dict[str, Any] | None
+        if original is None:
+            selected = combatant_effect or backing_effect
+        elif combatant_effect is None:
+            selected = backing_effect if backing_effect != original else None
+        elif backing_effect is None:
+            selected = combatant_effect
+        elif backing_effect != original and combatant_effect == original:
+            selected = backing_effect
+        elif combatant_effect != original and backing_effect == original:
+            selected = combatant_effect
+        elif backing_effect != original:
+            selected = backing_effect
+        else:
+            selected = combatant_effect
+        if selected is not None:
+            merged.append(dict(selected))
+    return merged
+
+
+def _status_effect_identity(effect: dict[str, Any]) -> str:
+    effect_id = effect.get("effect_id")
+    if isinstance(effect_id, str) and effect_id:
+        return f"id:{effect_id}"
+    return repr(sorted(effect.items()))
 
 
 def _status_effects_for(

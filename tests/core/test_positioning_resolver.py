@@ -3728,7 +3728,6 @@ def test_resolver_accepts_item_id_when_inventory_or_equipment_has_item(make_stat
 
     assert equipped.status == "accepted"
     assert equipped.action_id == "srd.wear_boots_of_elvenkind"
-
     state.characters["pc1"].equipment.append("srd.boots_of_levitation")
     state.characters["pc1"].spell_slots["2"] = 0
     levitation_boots = resolver.resolve(
@@ -4943,3 +4942,89 @@ def test_resolver_rejects_fast_hands_for_item_that_is_already_bonus_action(
 
     assert result.status == "rejected"
     assert result.reason == "Fast Hands requires a magic item action that normally uses an action"
+
+
+def test_resolver_accepts_action_provided_by_owned_weapon_item(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.actions = ["srd.cure_wounds"]
+    character.inventory["srd.quarterstaff"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    owned = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.quarterstaff_attack",
+        )
+    )
+    character.inventory["srd.quarterstaff"] = 0
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.quarterstaff_attack",
+        )
+    )
+
+    assert owned.status == "accepted"
+    assert missing.status == "rejected"
+    assert missing.reason == "actor does not own action"
+
+
+def test_resolver_requires_declared_ammunition_for_owned_ranged_weapon(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.actions = []
+    character.inventory["srd.shortbow"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+
+    missing = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortbow_attack",
+        )
+    )
+    character.inventory["srd.arrow"] = 1
+    available = resolver.resolve(
+        PlayerActionDraft(
+            actor_id="pc1",
+            verb="attack",
+            target_ids=["goblin1"],
+            candidate_action_id="srd.shortbow_attack",
+        )
+    )
+
+    assert missing.status == "rejected"
+    assert missing.reason == "insufficient item srd.arrow"
+    assert available.status == "accepted"
+
+
+def test_resolver_requires_registered_quarterstaff_topple_mastery(make_state) -> None:
+    state = make_state()
+    character = state.characters["pc1"]
+    character.actions = []
+    character.inventory["srd.quarterstaff"] = 1
+    compendium = CompendiumLoader("rules_data").load()
+    resolver = ActionResolver(state, compendium.actions, compendium.items)
+    draft = PlayerActionDraft(
+        actor_id="pc1",
+        verb="attack",
+        target_ids=["goblin1"],
+        candidate_action_id="srd.quarterstaff_attack",
+        params={"use_weapon_mastery": True},
+    )
+
+    missing = resolver.resolve(draft)
+    character.feature_choices["weapon_mastery.srd.quarterstaff"] = "Topple"
+    registered = resolver.resolve(draft)
+
+    assert missing.status == "rejected"
+    assert missing.reason == ("weapon mastery Topple is not registered for srd.quarterstaff")
+    assert registered.status == "accepted"

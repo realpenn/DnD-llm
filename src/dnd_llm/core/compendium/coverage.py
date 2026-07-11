@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .loader import Compendium
+from .validators import claims_official_srd, trusted_srd_catalog
 
 EXPECTED_BASE_CLASSES = {
     "barbarian",
@@ -556,6 +557,7 @@ class CoverageSection:
     loaded_count: int
     expected_count: int | None = None
     missing: list[str] = field(default_factory=list)
+    unexpected: list[str] = field(default_factory=list)
     complete: bool = False
     note: str = ""
 
@@ -565,6 +567,7 @@ class CoverageSection:
             "loaded_count": self.loaded_count,
             "expected_count": self.expected_count,
             "missing": self.missing,
+            "unexpected": self.unexpected,
             "complete": self.complete,
             "note": self.note,
         }
@@ -589,8 +592,27 @@ def build_coverage_report(compendium: Compendium) -> CompendiumCoverageReport:
     class_ids = set(compendium.classes)
     condition_ids = set(compendium.conditions)
     hazard_ids = set(compendium.hazards)
+    trusted_catalog = trusted_srd_catalog()
+    verified_srd_ids = {
+        f"{namespace}:{entry_id}"
+        for namespace, entries in _compendium_namespaces(compendium).items()
+        for entry_id, entry in entries.items()
+        if claims_official_srd(entry_id, entry.source)
+    }
+    expected_srd_ids = {
+        f"{namespace}:{entry_id}"
+        for namespace, entries in trusted_catalog.items()
+        for entry_id in entries
+    }
     return CompendiumCoverageReport(
         sections=[
+            _expected_set_section(
+                "verified_srd_catalog",
+                verified_srd_ids,
+                expected_srd_ids,
+                reject_unexpected=True,
+                note="Loaded official SRD claims must exactly match the committed trust manifest.",
+            ),
             _expected_set_section("base_classes", class_ids, EXPECTED_BASE_CLASSES),
             _expected_set_section("core_conditions", condition_ids, EXPECTED_CORE_CONDITIONS),
             _expected_set_section(
@@ -640,13 +662,28 @@ def _expected_set_section(
     expected: set[str],
     *,
     note: str = "",
+    reject_unexpected: bool = False,
 ) -> CoverageSection:
     missing = sorted(expected - loaded)
+    unexpected = sorted(loaded - expected) if reject_unexpected else []
     return CoverageSection(
         name=name,
         loaded_count=len(loaded),
         expected_count=len(expected),
         missing=missing,
-        complete=not missing,
+        unexpected=unexpected,
+        complete=not missing and not unexpected,
         note=note,
     )
+
+
+def _compendium_namespaces(compendium: Compendium) -> dict[str, dict[str, Any]]:
+    return {
+        "action": compendium.actions,
+        "condition": compendium.conditions,
+        "class": compendium.classes,
+        "spell": compendium.spells,
+        "monster": compendium.monsters,
+        "item": compendium.items,
+        "hazard": compendium.hazards,
+    }

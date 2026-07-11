@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -461,6 +462,65 @@ def test_multi_campaign_runtime_isolates_group_state_and_saves(tmp_path: Path) -
     assert "beta" in group_b_save[0].text
     assert (tmp_path / "saves" / group_a.state.campaign_id / "alpha").is_dir()
     assert (tmp_path / "saves" / group_b.state.campaign_id / "beta").is_dir()
+
+
+def test_multi_campaign_runtime_serializes_group_and_private_messages_for_same_campaign(
+    tmp_path: Path,
+) -> None:
+    runtime = MultiCampaignRuntime.build(_settings(tmp_path))
+    runtime.handle_message(
+        IncomingMessage(user_id="u1", chat_id="group-a", text="/status"),
+        now=1,
+    )
+    campaign = runtime.runtime_for_group("group-a")
+    private_started = threading.Event()
+    release_private = threading.Event()
+    group_entered = threading.Event()
+
+    def blocking_handle(incoming: IncomingMessage, *, now: int):
+        if incoming.is_private:
+            private_started.set()
+            assert release_private.wait(timeout=2)
+        else:
+            group_entered.set()
+        return []
+
+    campaign.telegram_runtime.handle_message = blocking_handle  # type: ignore[method-assign]
+    private_thread = threading.Thread(
+        target=runtime.handle_message,
+        kwargs={
+            "incoming": IncomingMessage(
+                user_id="u1",
+                chat_id="private-u1",
+                text="DD second wind",
+                is_private=True,
+            ),
+            "now": 2,
+        },
+    )
+    group_thread = threading.Thread(
+        target=runtime.handle_message,
+        kwargs={
+            "incoming": IncomingMessage(
+                user_id="gm",
+                chat_id="group-a",
+                text="/load slot",
+            ),
+            "now": 3,
+        },
+    )
+
+    private_thread.start()
+    assert private_started.wait(timeout=1)
+    group_thread.start()
+    assert not group_entered.wait(timeout=0.05)
+    release_private.set()
+    private_thread.join(timeout=2)
+    group_thread.join(timeout=2)
+
+    assert not private_thread.is_alive()
+    assert not group_thread.is_alive()
+    assert group_entered.is_set()
 
 
 def test_multi_campaign_runtime_keeps_group_character_registries_separate(

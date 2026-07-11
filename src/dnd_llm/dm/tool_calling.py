@@ -6,7 +6,7 @@ from typing import Any
 
 from dnd_llm.core.resolver import PlayerActionDraft
 
-DM_TOOL_SCHEMA_VERSION = "dm-tools-v1"
+DM_TOOL_SCHEMA_VERSION = "dm-tools-v2"
 
 DRAFT_TOOL_NAME = "submit_player_action_draft"
 
@@ -69,6 +69,25 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
                 "attacker_id": _string("Actor id. Must match the current player actor."),
                 "target_id": _string("Single target id."),
                 "action_id": _string("ActionDefinition id for the attack."),
+                "two_handed": _boolean(
+                    "Whether to make this attack using two hands. Only use when the "
+                    "weapon affordance exposes this optional parameter."
+                ),
+                "weapon_ability": {
+                    "type": "string",
+                    "enum": ["str", "dex"],
+                    "description": (
+                        "Strength or Dexterity for this weapon attack. Only use a value "
+                        "listed by the weapon affordance."
+                    ),
+                },
+                "use_weapon_mastery": _boolean(
+                    "Whether to apply the exposed, registered weapon Mastery property."
+                ),
+                "use_light_extra_attack": _boolean(
+                    "Whether this is the different Light weapon's extra attack after a prior "
+                    "Light weapon attack on the same turn."
+                ),
             },
             required=["attacker_id", "target_id", "action_id"],
         ),
@@ -217,7 +236,12 @@ def dm_tool_schemas() -> list[dict[str, Any]]:
         _tool(
             "request_end_combat",
             "Ask the orchestrator/GM layer to end the current combat.",
-            {},
+            {
+                "recover_ammunition": _boolean(
+                    "Whether the party spends 1 minute after the fight searching the "
+                    "battlefield to recover half its expended ammunition, rounded down."
+                )
+            },
             required=[],
         ),
         _tool(
@@ -266,11 +290,18 @@ def draft_from_tool_call(
         )
     if tool_call.name == "attack":
         _require_actor_match(actor_id, args.get("attacker_id"))
+        attack_params: dict[str, Any] = {}
+        for param_name in ("two_handed", "use_weapon_mastery", "use_light_extra_attack"):
+            if param_name in args:
+                attack_params[param_name] = _required_bool(args[param_name], name=param_name)
+        if "weapon_ability" in args:
+            attack_params["weapon_ability"] = _weapon_ability(args["weapon_ability"])
         return PlayerActionDraft(
             actor_id=actor_id,
             verb="attack",
             target_ids=[str(args["target_id"])],
             candidate_action_id=str(args["action_id"]),
+            params=attack_params,
             raw_text=player_text,
         )
     if tool_call.name == "cast_spell":
@@ -372,6 +403,21 @@ def _string_array(description: str) -> dict[str, Any]:
 
 def _object(description: str) -> dict[str, Any]:
     return {"type": "object", "description": description, "additionalProperties": True}
+
+
+def _required_bool(value: Any, *, name: str) -> bool:
+    if not isinstance(value, bool):
+        raise DMToolCallError(f"{name} must be a boolean")
+    return value
+
+
+def _weapon_ability(value: Any) -> str:
+    if not isinstance(value, str):
+        raise DMToolCallError("weapon_ability must be str or dex")
+    ability = value.casefold().strip()
+    if ability not in {"str", "dex"}:
+        raise DMToolCallError("weapon_ability must be str or dex")
+    return ability
 
 
 def _raw_tool_calls(response: dict[str, Any]) -> list[dict[str, Any]]:
